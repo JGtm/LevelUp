@@ -1,7 +1,7 @@
 # RAPPORT R7 — La liste complete d'evenements du film : le verrou des largeurs saute, le repulseur apparait
 
 Date : 2026-09-03. Lot R7 du `PLAN_PERCER_TRAME_FILM_2026-08-30.md`. Retro-ingenierie
-STATIQUE sur le projet Ghidra existant `HI` (`C:\Users\Guillaume\Downloads\HI.gpr`,
+STATIQUE sur le projet Ghidra existant `HI` (`<poste>\Downloads\HI.gpr`,
 `HaloInfinite.exe` retail) + mesure sur le corpus de films. Lecture seule des deux cotes :
 aucun debogueur, aucune ecriture dans la base Ghidra, aucun DuckDB ouvert, aucun commit.
 
@@ -483,7 +483,7 @@ position 1, dont le cadrage est certain et que la correction du type 5 laisse IN
 
 ## 5. Commandes exactes rejouables
 
-`<mig>` = `C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration`.
+`<mig>` = `<poste>/Downloads/Scripts/LevelUp-go-migration`.
 Toutes se lancent depuis `apps/go-api` de CE worktree.
 
 Variables communes :

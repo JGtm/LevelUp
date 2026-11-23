@@ -99,8 +99,8 @@ au 2026-09-13 (2 RT migrés le 2026-06-13, jamais depuis) ; local idem depuis le
 ## Lot C — LUSR (`feat/finitions-lusr`, Go)
 Source : `RAPPORT_VOLET1_LUSR_H5.md` sur `wt/lusr-h5-cause` (§5.3 G1-G4, §6). Census du
 13/09 (serveur arrêté) : lignes brutes `h5_arena` dans les player DB Infinite = JGtm 913,
-Madina 1 064, Chocoboflor 471, Daemon 31, chacune en LUSR + LUSR_V2 ; `_latest` n'en garde
-que 2 (Madina, matchs non rejouables) ; les 4 bases halo_5 ne portent que `h5_arena`.
+joueur_075 1 064, joueur_165 471, Daemon 31, chacune en LUSR + LUSR_V2 ; `_latest` n'en garde
+que 2 (joueur_075, matchs non rejouables) ; les 4 bases halo_5 ne portent que `h5_arena`.
 - [x] C.1 `SyncEngine.RecomputeLUSRCanonical` (`internal/sync/engine_backfills.go:187`) stampe
       `ctxkeys.WithTitleSlug(ctx, e.titleSlug)` avant `RecomputeLUSRCanonicalForPlayer` (miroir
       de `engine_postsync_scoring.go:162`). Couvre `registry_lusr_gaps.go` (replay admin) ;
@@ -626,7 +626,7 @@ Contrat `plan-execution`, périmètre FERMÉ, découvertes consignées non trait
 - [x] I.1 (13/09 soir) Lot G fusionné `70e9d07fd` (CI branche verte 34773829242), lot H fusionné `11b1cef2d`+`676978ed0` (CI branche verte 34773808291) ; revue bornée `.ai/V7.5/REVUE_FINITIONS_GH_2026-09-13.md` : 0 P0, 2 P1 corrigés (`605b59d6c` : périmètre anti-ART par le helper unique ; assertion morte du stamp retirée), 9 P2 consignés ci-dessous ; worktrees et branches des lots supprimés. Hors lot : `formes.fixtures.ts:142` (autre session, lot ajust-D2) faisait rougir `lint:fields` au pre-push (« Aquarius » = libellé du dictionnaire) — libellé de fixture remplacé par « Cliffside » pour débloquer le push de la branche partagée.
 - 2026-09-13 (pilote) : mesure G.4 exécutée, serveur arrêté, sur les 4 player DB Infinite
   (`player_match_enrichment_latest`) : 0 chaîne de performance étrangère (JGtm 1 060 lignes
-  sur 3 chaînes, Madina97294 1 147 sur 6, Chocoboflor 521 sur 3, XxDaemonGamerxX 16 sur 2, toutes
+  sur 3 chaînes, joueur_117 1 147 sur 6, joueur_165 521 sur 3, joueur_291 16 sur 2, toutes
   légitimes). Le défaut G.4 n'a jamais mordu : fermeture préventive, aucune donnée à rattraper.
   Lot G fusionné dans feat/v75 (CI de branche verte, run 34773829242).
 

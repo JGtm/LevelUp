@@ -7,7 +7,7 @@ Pièces (toutes dans `SP/sondes/positions_limbe/`) : `sweep.mjs`/`sweep_out.txt`
 `bits_out.txt` (chaînes de bits des valeurs aberrantes), `temoin_bits.mjs` (témoin), `census.mjs`/`census_out.txt`
 (recensement final + durées d'affichage), `probe1.txt`/`probe2.txt` (sonde Go sur 3 fichiers de faits : 81c02726,
 ab526724, 879a4dba), `maps.tsv` (carte par match, copie DuckDB). Sonde Go : worktree
-`C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-inv-positions_limbe` (détaché, `43a01721e`), fichier non commité
+`<poste>\Downloads\Scripts\LevelUp-wt-inv-positions_limbe` (détaché, `43a01721e`), fichier non commité
 `apps/go-api/internal/games/halo_infinite/film/replay/limbe_positions_research_test.go` — à retirer par le superviseur.
 
 ---
@@ -25,7 +25,7 @@ cadre (≈ 0:09 à 0:15 selon la taille de la toile) et `edgeMarkFor` le PLAQUE 
 « s'immobilise hors zone jouable ». Il y reste jusqu'à 1:15.6, puis revient au spawn en 5,2 s.
 Mongoose 768 : même chose, t=812 (0:58.5, vue 11 s) et t=983 (1:15.6, interpolation 914→1691 = **77,7 s**).
 
-**Madina97294** (slot 523) — MESURÉ : la vie publiée commence à t=645 (0:41.8) en (-78.6, 46.38, **z=-325.4**) ;
+**joueur_117** (slot 523) — MESURÉ : la vie publiée commence à t=645 (0:41.8) en (-78.6, 46.38, **z=-325.4**) ;
 le point suivant arrive à t=692 (0:46.5) au vrai spawn (-1.72, -22.1, 118.8), à 456 m en 4,66 s. Le client affiche
 d'abord la flèche hors cadre (nom + distance), puis interpole sur 4,7 s jusqu'au spawn : le joueur « vole ».
 
@@ -46,7 +46,7 @@ carte à l'autre, même quand les largeurs et les bornes diffèrent** :
   - Mêmes bits, donc coordonnées « monde » différentes : ce ne sont pas des positions.
 - **Motif B** : période de 30 bits `011111000001000000011101111110`. Le champ Z (17 bits) vaut exactement les 17 premiers
   bits de la période suivante.
-  - Cartes Forge : Empyrean, Rat's Nest ×2, Fortitude, Curfew, Isolation, Critical Dewpoint, Starboard (Madina,
+  - Cartes Forge : Empyrean, Rat's Nest ×2, Fortitude, Curfew, Isolation, Critical Dewpoint, Starboard (joueur_075,
     ab526724), Snowbound. Les valeurs y sont récurrentes : -6.79, 217.3, y=-200.53, z=-370.22.
   - Même motif sur Launch Site (17/17/15, Wraith 784 : champ **X** = 63520 = la valeur du champ **Z** des cartes
     Forge), Behemoth et Recharge.
@@ -93,11 +93,11 @@ dizaines de secondes.
    (`offline_filters.go:9-18`). §1.2 prouve que les bits lus ne sont pas une position quantifiée par la carte.
 2. **Les filtres le laissent passer** (`offline_biped_band.go:97-101`) :
    - `DropIsolated` garde tout point dont le voisin le plus proche est à ≤ 15 s. Le Mongoose 770 à t=983 a un vrai
-     voisin 5,2 s après ; Madina à t=645 a le sien 4,66 s après.
+     voisin 5,2 s après ; joueur_075 à t=645 a le sien 4,66 s après.
    - `DropTeleportsExcept` accepte TOUJOURS le premier point d'un slot (`offline_filters.go:128-164`, condition `a.ok` ligne 145).
-     C'est le cas de Madina : premier point du slot 523 dans le film.
+     C'est le cas de joueur_075 : premier point du slot 523 dans le film.
    - Après un long silence, la vitesse calculée est faible : 193 m / 70 s = 2,7 m/s. Au retour, 37 m/s < 100 m/s.
-     Madina : 456 m en 4,66 s = 97,8 m/s, juste sous le seuil de 100.
+     joueur_075 : 456 m en 4,66 s = 97,8 m/s, juste sous le seuil de 100.
 3. **Le client amplifie.**
    - `positionAt` interpole linéairement quel que soit le trou (`replayLogic.ts:29-48`).
    - `Point.g` est publié : « la piste ne doit donc pas être interpolée au travers », `replay/document_aim.go:51-65`.
@@ -108,7 +108,7 @@ dizaines de secondes.
 **Ce que le film dit (grammaire), mesuré sur les faits persistés** (`probe1.txt`, `probe2.txt`) :
 
 - **Pas de delta avant la création.** Les ouvertures de vie qui PRÉCÈDENT le record de création de leur slot : 1 sur 53
-  (81c02726), 1 sur 144 (ab526724), 0 sur 219 (879a4dba). Ce sont exactement les deux points de Madina, 4,65 s et 9,49 s
+  (81c02726), 1 sur 144 (ab526724), 0 sur 219 (879a4dba). Ce sont exactement les deux points de joueur_075, 4,65 s et 9,49 s
   avant la création de son corps.
   - La création coïncide avec le vrai placement. Délai création → première position valide : médiane 10 à 30 ms,
     max 0,02 s (81c02726) et 0,98 s (879a4dba).
@@ -117,7 +117,7 @@ dizaines de secondes.
   - Le mot « limbes » ne s'applique donc pas : **aucun corps n'existe quand le point aberrant est écrit.**
   - La règle était déjà mesurée au lot E2 : « AUCUN record de création ne tombe dans l'intervalle d'une vie »
     (`replay/identity_registry_creation.go:178-184`). Elle n'est simplement pas appliquée : `viesOuvertes` accepte une
-    création qui tombe DANS la vie (celle de Madina, 645→741, est ouverte par la création de t≈692).
+    création qui tombe DANS la vie (celle de joueur_075, 645→741, est ouverte par la création de t≈692).
 - **Parc (identité publiée).**
   - Les 31 cas T1+T2 sont tous dans une vacance du slot :
     - 9 vies ouvertes par une création postérieure à leur premier point ;
@@ -163,7 +163,7 @@ Ghidra n'est pas nécessaire.
 ## 3. Historique — ce qui a été vu, et pourquoi ça n'a pas suffi
 
 - **2026-09-08, bornes aberrantes** (`thought_log.md:5868-5917`).
-  - Le point exact de Madina (81c02726, slot 523, image 645, z=-325.4) est qualifié d'« artefact de décodage ».
+  - Le point exact de joueur_075 (81c02726, slot 523, image 645, z=-325.4) est qualifié d'« artefact de décodage ».
   - Le rejet par centiles n'a été appliqué qu'au **cadre** (`boundsOf`) : le point reste publié et le client le dessine.
 - **2026-09-12, lot B-bis** (`.ai/V7.5/RAPPORT_LOT_BBIS_BIT_PROJECTILE_2026-09-12.md:259-268`).
   - Sur les cartes Forge, 612 pas impossibles d'objets du monde : « la signature d'un **faux positif du balayage par
@@ -197,7 +197,7 @@ sur `a.opt.BipedCreations` :
 - **R-B1 : une vie ouverte par un record de création commence à ce record.**
   - Les points de la vie antérieurs au record sont écartés et comptés.
   - Règle E2 mesurée : « aucun record de création dans l'intervalle d'une vie ».
-  - Effet : sur 81c02726 la vie de Madina démarre au vrai spawn (t=692) ; sur ab526724 sa vie d'un point (t=269) relève de R-B2. Probablement les 9 cas T1 (vérifié 1 sur 1
+  - Effet : sur 81c02726 la vie de joueur_075 démarre au vrai spawn (t=692) ; sur ab526724 sa vie d'un point (t=269) relève de R-B2. Probablement les 9 cas T1 (vérifié 1 sur 1
     sur les faits, les 8 autres à mesurer).
 - **R-B2 : aucune vie avant la première création de son slot**, quand le slot en porte au moins une.
   - Parc : 20 vies, toutes de 1 ou 2 points. Aucune vraie vie ne serait perdue (négatif mesuré).
@@ -242,7 +242,7 @@ sur `a.opt.BipedCreations` :
   - témoins négatifs : chute continue au-delà du cadre (Behemoth 771, t=3371-3384) conservée ; véhicule garé
     100 s conservé.
 - Régression sur faits réels (test `research`, ≤ 3 fichiers) :
-  - 81c02726 : 770 n'a plus d'échantillon à t=983, Madina démarre à t=692 ;
+  - 81c02726 : 770 n'a plus d'échantillon à t=983, joueur_075 démarre à t=692 ;
   - ab526724 : 769/770 non publiés ;
   - 879a4dba : excursions 770 et 774 retirées.
 - Web (vitest) : `positionAt` et `trailAt` au travers d'un point `g`, maintien véhicule au travers de `g`.

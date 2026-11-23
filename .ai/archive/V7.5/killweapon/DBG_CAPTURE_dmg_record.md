@@ -44,7 +44,7 @@ PROCHAIN: décompiler FUN_14080AADE (lecteur) + mapper offsets champ; structure 
 Setup ghidra-mcp debugger (pybag/dbgeng) qui a MARCHE. A refaire pour capter un autre event (ex: FUN_1407e00ac l'apply, qui a attaquant+victime en RAM).
 
 ## Pre-requis (une fois)
-- Deps debugger dans le venv ISOLE ghidra-mcp : `C:\Users\Guillaume\Downloads\ghidra-mcp\.venv\Scripts\python.exe -m pip install -r requirements-debugger.txt` (pybag, comtypes, protobuf).
+- Deps debugger dans le venv ISOLE ghidra-mcp : `<poste>\Downloads\ghidra-mcp\.venv\Scripts\python.exe -m pip install -r requirements-debugger.txt` (pybag, comtypes, protobuf).
 - Pas besoin d'installer WinDbg : System32 a dbgeng/dbghelp/dbgmodel/dbgcore. On pointe pybag dessus via `WINDBG_DIR=C:\Windows\System32`.
 - PATCHS ADDITIFS au bridge (deja appliques, inoffensifs) :
   - `debugger/server.py` : endpoint POST `/debugger/go_blocking` -> `engine.go()` (BLOQUANT, WaitForEvent propre). INDISPENSABLE : le `/debugger/go` standard est non-bloquant (go_nowait, PAS de WaitForEvent) -> l'exception du bp n'est jamais traitee -> GEL + wedge.
@@ -52,7 +52,7 @@ Setup ghidra-mcp debugger (pybag/dbgeng) qui a MARCHE. A refaire pour capter un 
 
 ## Demarrer le serveur debugger (port 8099)
 ```
-cd C:/Users/Guillaume/Downloads/ghidra-mcp && export WINDBG_DIR='C:\Windows\System32' && .venv/Scripts/python.exe -m debugger
+cd <poste>/Downloads/ghidra-mcp && export WINDBG_DIR='C:\Windows\System32' && .venv/Scripts/python.exe -m debugger
 ```
 (lancer en background ; verifier "Debugger server starting on 127.0.0.1:8099").
 

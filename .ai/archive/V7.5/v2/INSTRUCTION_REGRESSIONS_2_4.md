@@ -64,8 +64,8 @@ Joueur par joueur, les deux vies perdues :
 
 | slot | reference s20 | HEAD s40 |
 |---|---|---|
-| 562 | une piste `[1439..2080]`, nommee `2533274905069348` | deux pistes `[1439..1452]` et `[1578..2080]`, **aucune nommee** |
-| 570 | une piste `[1760..2010]`, nommee `2535406820545228` | deux pistes `[1760..1798]` et `[2009..2010]`, **aucune nommee** |
+| 562 | une piste `[1439..2080]`, nommee `2565702631566128` | deux pistes `[1439..1452]` et `[1578..2080]`, **aucune nommee** |
+| 570 | une piste `[1760..2010]`, nommee `2641162439853805` | deux pistes `[1760..1798]` et `[2009..2010]`, **aucune nommee** |
 
 ### 4.2 Verite terrain
 

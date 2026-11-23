@@ -1,4 +1,4 @@
-2026/08/18 08:19:48 INFO faits du match charges path=C:\Users\Guillaume\Projects\LevelUp-wt-visee-pub\.ai\V7.5\replay2d\registre_film\lotA_faits\530820e5.json match=530820e5-cdb5-4956-a16e-cf700822ab03 joueurs=8 variante=CTF:Arena
+2026/08/18 08:19:48 INFO faits du match charges path=<poste>\Projects\LevelUp-wt-visee-pub\.ai\V7.5\replay2d\registre_film\lotA_faits\530820e5.json match=530820e5-cdb5-4956-a16e-cf700822ab03 joueurs=8 variante=CTF:Arena
 2026/08/18 08:19:49 INFO replaybuild: actions d'objectif identifiees match_id=530820e5-cdb5-4956-a16e-cf700822ab03 famille=flag nommees=183 identifiees=183 slotsApparies=8
 2026/08/18 08:19:58 INFO replaybuild: attribution ligne par ligne refusée — morts neutres sans type match_id=530820e5-cdb5-4956-a16e-cf700822ab03 candidates=2
 2026/08/18 08:20:27 INFO capacites : lectures d i48 recordsDelta=148911 masqueAvecI48=22 lues=22 illisibles=0 sansIdentite=4
@@ -14,4 +14,4 @@
 2026/08/18 08:22:13 INFO rejeu : episodes d'equipement actif viesPubliees=98 viesCamo=0 episodesCamo=0 viesSurbouclier=0 episodesSurbouclier=0
 2026/08/18 08:22:13 INFO rejeu : palette de capacites palette=famille_a lectures=18 rangsNommes=3
 2026/08/18 08:22:13 INFO rejeu : couverture par calque tirsRattaches=1705 tirsDisponibles=1783 tirsSansSlot=70 tirsAmbigus=8 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=91 grenadesDisponibles=91 verdictTirs=nominal verdictGrenades=nominal verdictPont=nominal
-2026/08/18 08:22:13 INFO artefact rejeu écrit path=C:\Users\Guillaume\Projects\LevelUp-wt-visee-pub\data\cache\replays\halo_infinite\530820e5.json tracks=98 module=catalyst bytes=1611598 match=530820e5-cdb5-4956-a16e-cf700822ab03 title=halo_infinite
+2026/08/18 08:22:13 INFO artefact rejeu écrit path=<poste>\Projects\LevelUp-wt-visee-pub\data\cache\replays\halo_infinite\530820e5.json tracks=98 module=catalyst bytes=1611598 match=530820e5-cdb5-4956-a16e-cf700822ab03 title=halo_infinite

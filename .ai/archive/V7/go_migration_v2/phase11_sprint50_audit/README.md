@@ -11,7 +11,7 @@ Clôturer la migration Python → Go **et** Streamlit → React avec une triple 
 
 ## Portée
 
-- **Baseline Python** : worktree principal `c:\Users\Guillaume\Downloads\Scripts\LevelUp` (dernière version sur `main` au démarrage du sprint)
+- **Baseline Python** : worktree principal `<poste>\Downloads\Scripts\LevelUp` (dernière version sur `main` au démarrage du sprint)
 - **Cible Go** : worktree `LevelUp-go-migration`, backend `apps/go-api/`
 - **Cible React** : worktree `LevelUp-go-migration`, frontend `apps/web/`
 - **Baseline Streamlit** : `src/ui/pages/` dans le worktree Python

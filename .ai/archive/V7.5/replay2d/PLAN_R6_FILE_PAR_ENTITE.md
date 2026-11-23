@@ -6,7 +6,7 @@
 > passe par `FUN_142f2913c` (baseline-emit) qui draine une file par-entite alimentee par
 > `FUN_142f29538` — donc un bitstream RECONSTRUIT, pas le payload du film. La
 > transformation "payload type-2 -> file par-entite" n'est identifiee nulle part. »
-> Worktree `C:/Users/Guillaume/Projects/LevelUp-wt-kfqueue`, branche `wt/kf-file-entite`,
+> Worktree `<poste>/Projects/LevelUp-wt-kfqueue`, branche `wt/kf-file-entite`,
 > base `wt/kf-grammaire` = `ffc465336` (= R3 + R5).
 > Execution sous le contrat du skill `plan-execution`. Grille `plan-review` passee au §6bis.
 
@@ -148,7 +148,7 @@ denominateurs.
 
 ## 4. Corpus — FERME
 
-Racine, LECTURE SEULE : `C:/Users/Guillaume/Projects/LevelUp/data/cache/film_chunks/`.
+Racine, LECTURE SEULE : `<poste>/Projects/LevelUp/data/cache/film_chunks/`.
 
 | film | role |
 |---|---|
@@ -169,7 +169,7 @@ capture live), en lecture seule, et une seule fois.
 | Le pont `mcp__ghidra__*` refuse de se connecter (instance UDS `unknown`) | outillage | API HTTP du plugin en LECTURE SEULE (`127.0.0.1:8089`, memes endpoints). Consigne dans ce plan et dans `WALK_PORT_NOTES.md` |
 | Les films vivent dans le depot PRINCIPAL, absent du worktree | chemin | lecture seule par chemin absolu, aucune ecriture |
 | Un seul decodage `filmdec` par process (hooks + bascules GLOBALES) | technique | un seul test a la fois, bascules restaurees en `defer` |
-| Cache Go partage corrompu par deux `go` concurrents | technique | `GOCACHE=C:/Users/Guillaume/Projects/LevelUp-wt-kfqueue/.gocache` (deja dans l'`info/exclude` partage) + UNE commande `go` a la fois |
+| Cache Go partage corrompu par deux `go` concurrents | technique | `GOCACHE=<poste>/Projects/LevelUp-wt-kfqueue/.gocache` (deja dans l'`info/exclude` partage) + UNE commande `go` a la fois |
 | CGO sur le chemin de build | technique | `CGO_ENABLED=0` sur `filmdec`/`replay` |
 | Ghidra est le programme de l'utilisateur | ressource partagee | LECTURE SEULE stricte, aucun rename, aucun script |
 | Le film de la capture live peut ne pas etre dans le cache | donnee | C0 accepte un negatif : la reconciliation STRUCTURELLE (type de paquet + rang) suffit a la conclusion, l'identification du film n'est qu'un bonus |
@@ -454,7 +454,7 @@ R3 bis tourne dans le worktree principal (`ti=37`) ; l'habillage est en fusion.
 4. **Interdits** : aucun run de masse, aucune re-cuisson d'artefact publie sous `data/`,
    aucune ecriture DuckDB, aucune ecriture hors du worktree `LevelUp-wt-kfqueue`. Les films
    et les autres worktrees sont lus en LECTURE SEULE.
-5. **Cache Go isole** : `GOCACHE=C:/Users/Guillaume/Projects/LevelUp-wt-kfqueue/.gocache`,
+5. **Cache Go isole** : `GOCACHE=<poste>/Projects/LevelUp-wt-kfqueue/.gocache`,
    **une seule commande `go` a la fois**.
 6. Commits par phase sur `wt/kf-file-entite` (`feat(v7.5-rejeu-kfq):` / `mesure(...)` /
    `docs(...)`, terminaison `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`), hooks
@@ -674,7 +674,7 @@ SchemaVersion reste a 8.
 
 1. Relire le skill `plan-execution`, puis ce fichier de haut en bas : les cases disent ou en
    est le lot, le journal §10 dit ce qui a ete mesure.
-2. Verifier la branche : `git -C C:/Users/Guillaume/Projects/LevelUp-wt-kfqueue branch
+2. Verifier la branche : `git -C <poste>/Projects/LevelUp-wt-kfqueue branch
    --show-current` doit rendre `wt/kf-file-entite`.
 3. Relire §7 (contrat d'interface) AVANT de toucher un fichier partage du decodeur.
 4. **Verifier sur pieces** avant de coder ET avant de cocher : les references de §2 sont

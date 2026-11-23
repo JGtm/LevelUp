@@ -159,8 +159,8 @@ Mesure dans le navigateur, puis mutation :
 | Tel quel | `279.688px 273.094px` | 480 | **563** (83 px rognés) |
 | Après `repeat(2, minmax(0, 1fr))` | `235px 235px` | 480 | **480** |
 
-Après le correctif, les trois gamertags longs (`XXDAEMONGAMERXX`, `BIOLY GOLAB1054`,
-`CRUMBLYDONUT617`) passent en `truncate` effectif (`scrollWidth > clientWidth`) — exactement le
+Après le correctif, les trois gamertags longs (`JOUEUR_291`, `JOUEUR_828`,
+`JOUEUR_045`) passent en `truncate` effectif (`scrollWidth > clientWidth`) — exactement le
 comportement demandé.
 
 ### 4. Joueurs attribués à la mauvaise équipe (match Origin) — **CONFIRMÉ : deux identités sont interverties sur les 77 premières secondes**
@@ -176,27 +176,27 @@ comportement demandé.
 | xuid | gamertag | équipe (scoreboard) | x au spawn | base |
 |---|---|---|---|---|
 | 2533274823110022 | JGtm | `t0` | −22,52 | ouest ✔ |
-| 2533274858283686 | Madina97294 | `t0` | −22,01 | ouest ✔ |
-| 2533274833178266 | XxDaemonGamerxX | `t0` | −22,03 | ouest ✔ |
-| **2535469190789936** | **Chocoboflor** | **`t0`** | **+22,62** | **est ✘** |
-| 2535449383340628 | Hanover Cat | `t1` | +23,10 | est ✔ |
-| 2535461109438273 | biOly goLab1054 | `t1` | +22,59 | est ✔ |
-| 2535450759128461 | CrumblyDonut617 | `t1` | +22,xx | est ✔ |
-| **2535452521259564** | **StevenW5318** | **`t1`** | **−22,51** | **ouest ✘** |
+| 2623439693412443 | joueur_117 | `t0` | −22,01 | ouest ✔ |
+| 2558964982616721 | joueur_291 | `t0` | −22,03 | ouest ✔ |
+| **2547408409520575** | **joueur_165** | **`t0`** | **+22,62** | **est ✘** |
+| 2700529065230693 | joueur_270 | `t1` | +23,10 | est ✔ |
+| 2770776903346818 | joueur_828 | `t1` | +22,59 | est ✔ |
+| 2571481023573114 | joueur_045 | `t1` | +22,xx | est ✔ |
+| **2658276600435201** | **joueur_571** | **`t1`** | **−22,51** | **ouest ✘** |
 
-**Interversion propre de DEUX joueurs**, un de chaque camp. Chocoboflor est dessiné dans la base
+**Interversion propre de DEUX joueurs**, un de chaque camp. joueur_165 est dessiné dans la base
 adverse, avec l'équipe adverse — exactement ce que tu décris.
 
 **Et elle se résorbe.** Les vies suivantes retombent du bon côté :
 
 | vie | slot | joueur | image de départ | x | verdict |
 |---|---|---|---|---|---|
-| 1 | 516 | StevenW5318 (`t1`) | 0 | **−22,51** | ✘ inversé |
-| 1 | 518 | Chocoboflor (`t0`) | 1 | **+22,62** | ✘ inversé |
-| 2 | 516 | StevenW5318 (`t1`) | 229 | **−22,49** | ✘ inversé |
-| 2 | 518 | Chocoboflor (`t0`) | 270 | **+22,62** | ✘ inversé |
-| 3 | 525 | StevenW5318 (`t1`) | 874 | **+13,74** | ✔ correct |
-| 3 | 526 | Chocoboflor (`t0`) | 875 | **−13,09** | ✔ correct |
+| 1 | 516 | joueur_571 (`t1`) | 0 | **−22,51** | ✘ inversé |
+| 1 | 518 | joueur_165 (`t0`) | 1 | **+22,62** | ✘ inversé |
+| 2 | 516 | joueur_571 (`t1`) | 229 | **−22,49** | ✘ inversé |
+| 2 | 518 | joueur_165 (`t0`) | 270 | **+22,62** | ✘ inversé |
+| 3 | 525 | joueur_571 (`t1`) | 874 | **+13,74** | ✔ correct |
+| 3 | 526 | joueur_165 (`t0`) | 875 | **−13,09** | ✔ correct |
 
 L'interversion couvre les **images 0 à ~774, soit les 77 premières secondes** — le début du match,
 là où tu l'as vue.
@@ -278,7 +278,7 @@ décodeur.
 
 **Second constat, distinct, sur le même panneau :** à `0:00` la colonne COBRA n'affiche que 4
 fiches alors que le camp en compte 5. « Ady 01 » n'apparaît qu'en fin de match, à la place de
-« biOly goLab1054 ». C'est le **relais de siège** (`model/seatLogic.ts:82`) : un arrivant apparié à
+« joueur_828 ». C'est le **relais de siège** (`model/seatLogic.ts:82`) : un arrivant apparié à
 un partant disparaît de la liste des sièges et vit dans celui de son prédécesseur. Intentionnel et
 documenté, mais rien à l'écran ne dit qu'un siège est partagé.
 
@@ -481,7 +481,7 @@ même match donne 14 paires utiles. Cause = section commune.
 
 ### 13. Médias sans match associé : 106 en local, 17 en prod — **entièrement expliqué**
 
-**104 médias sans association en local** (JGtm), 0 pour Madina97294. Répartition par année de
+**104 médias sans association en local** (JGtm), 0 pour joueur_117. Répartition par année de
 capture :
 
 | année | sans match |
@@ -694,7 +694,7 @@ extérieur se **chevauchent au point d'être illisibles** (« Bobine à souffle 
 « Bo…% choc », « 30…Fusion UNSC »… empilées les unes sur les autres). 20 étiquettes se disputent le
 même flanc gauche. C'est un défaut de rendu à part entière.
 
-**Cause C — les identifiants bruts.** Sur la fiche joueur du rejeu Isolation, MADINA97294 affiche
+**Cause C — les identifiants bruts.** Sur la fiche joueur du rejeu Isolation, JOUEUR_117 affiche
 **`0xD7915565`** en lieu et place d'un nom d'arme : un identifiant non résolu par `weaponLabels`
 s'affiche tel quel.
 
@@ -837,7 +837,7 @@ lecteurs — avec le garde-rail que la règle n°6 du dépôt exige (une factori
 re-diverge).
 
 **La forme voisine, à ne pas confondre** : « Ce que mon camp prend du lobby » (`ESCOUADE C`) est
-une barre empilée à 100 %, segmentée **par joueur nommé** (JGtm, Madina97294, Chocoboflor,
+une barre empilée à 100 %, segmentée **par joueur nommé** (JGtm, joueur_117, joueur_165,
 « Coéquipier hors escouade »), avec l'**équipe adverse en hachuré — comptée, jamais nommée** — et
 un trait ambre de parité. Elle répond à *qui*, la grille répond à *quand*.
 
@@ -1127,8 +1127,8 @@ soit `0xD7915565` en forme courte, celle qui s'affiche à l'écran.
 
 | slot | xuid | gamertag | équipe | F/M du match |
 |---|---|---|---|---|
-| 519, 528 | `2533274846254457` | **BrunoArtl** | 1 | 6 / 2 |
-| 535, 549 | `2533274858283686` | **Madina97294** | 0 | 6 / 8 |
+| 519, 528 | `2675090586154937` | **joueur_733** | 1 | 6 / 2 |
+| 535, 549 | `2623439693412443` | **joueur_117** | 0 | 6 / 8 |
 
 **Quand elle tire** — **3 tirs seulement**, images **1636 à 1935**, soit environ
 **2:20 → 2:50** sur l'horloge du lecteur (l'horloge affichée est décalée d'environ −23 s par
@@ -1154,7 +1154,7 @@ jq -r '[.tracks[]? | select(.xuid != null) | {slot, xuid}] | unique_by(.slot)
 **Ce que je NE peux pas te dire** : quelle arme c'est. L'identifiant n'est ni dans les
 `weaponLabels` du document (18 entrées), ni dans le catalogue du titre — c'est précisément ce que
 `useReplayWeaponPads.ts:84` assume en affichant l'hexadécimal. À toi de jouer : le film est celui
-du 7 septembre 21:34 sur Isolement, et l'arme est portée par BrunoArtl et Madina97294 aux instants
+du 7 septembre 21:34 sur Isolement, et l'arme est portée par joueur_733 et joueur_117 aux instants
 ci-dessus.
 
 ---
@@ -1398,8 +1398,8 @@ Décision du 2026-09-09 : on ne compte pas les charges.
 mesure « utilisés par famille » fondée sur lui exigerait une inférence, pas une lecture.
 
 **6. Le défaut de forme actuel, chiffré.** `ValueGrid` donne à chaque colonne SA propre échelle.
-Sur le match `4f77afc1`, colonne « Mur » : la barre *déployé* de `Dafar8423` (3) et la barre
-*lâché* de `nerdpuncher` (2) sont **toutes deux pleines**. Deux barres identiques à l'œil pour deux
+Sur le match `4f77afc1`, colonne « Mur » : la barre *déployé* de `joueur_017` (3) et la barre
+*lâché* de `joueur_427` (2) sont **toutes deux pleines**. Deux barres identiques à l'œil pour deux
 valeurs différentes. Et colonne « Écran occultant », la colonne *déployé* est vide : que **personne
 de la partie ne s'en soit jamais servi** est aujourd'hui invisible.
 

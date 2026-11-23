@@ -2360,7 +2360,7 @@
           },
           {
             "axe": "vehicules",
-            "metrique": "vehicles.rides/duree-totale/par-xuid/2535415759610104",
+            "metrique": "vehicles.rides/duree-totale/par-xuid/2746409228518711",
             "sens": "perte",
             "ancien": "266",
             "nouveau": "198"
@@ -2516,7 +2516,7 @@
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/duree-totale/par-xuid/2535415759610104",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2746409228518711",
           "sens": "perte",
           "ancien": "266",
           "nouveau": "198"

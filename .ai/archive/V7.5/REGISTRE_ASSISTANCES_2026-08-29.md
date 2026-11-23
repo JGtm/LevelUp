@@ -123,7 +123,7 @@ pas cause et effet.
 (`internal/domain/title/registry.go:704`) rend `<repoRoot>/data/cache` ; la cascade est
 `--cache` -> `LEVELUP_LEGACY_FILM_CACHE_DIR` -> defaut ; la variable est vide dans
 l'environnement courant et absente des fichiers de config ; une recherche disque
-(`C:\Users\Guillaume` en profondeur 6 + autres volumes) ne trouve aucun autre
+(`<poste>` en profondeur 6 + autres volumes) ne trouve aucun autre
 `film_manifests/` ou `film_chunks/`.
 
 ---
@@ -217,9 +217,9 @@ conclusion qu'il portait ne l'etait pas.
 | joueur (xuid) | matchs depuis avril | dont sans passe de film |
 |---|---|---|
 | JGtm (2533274823110022) | 394 | 374 |
-| Madina97294 (2533274858283686) | 201 | 182 |
-| Chocoboflor (2535469190789936) | 189 | 173 |
-| XxDaemonGamerxX (2533274833178266) | 10 | 10 |
+| joueur_117 (2623439693412443) | 201 | 182 |
+| joueur_165 (2547408409520575) | 189 | 173 |
+| joueur_291 (2558964982616721) | 10 | 10 |
 
 ---
 

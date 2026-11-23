@@ -2,7 +2,7 @@
 
 Rapport brut d'un agent en lecture seule, annexe de `.ai/PLAN_V8_1_2_2026-11-09.md`. Le plan fait foi en cas d'écart.
 
-Analyse terminée : le dépôt n'est pas modifié (même `git status` qu'au départ) et aucune base du dépôt n'a été ouverte en place. Les mesures ont été faites sur des copies à froid et des tests hors dépôt, sous `C:\Users\GUILLA~1\AppData\Local\Temp\claude\17871fa88c29004d\21dc6e8a-f21e-4f7f-80b4-739a03f09e2d\scratchpad\analyse-kpi\` (`data\`, `epx\`, `p11\`, `overlay\`). Le serveur actif est l'appli installée (données sous `%LOCALAPPDATA%\LevelUp`) ; `data/levelup.lock` du dépôt n'est pas tenu.
+Analyse terminée : le dépôt n'est pas modifié (même `git status` qu'au départ) et aucune base du dépôt n'a été ouverte en place. Les mesures ont été faites sur des copies à froid et des tests hors dépôt, sous `<poste>\AppData\Local\Temp\claude\17871fa88c29004d\21dc6e8a-f21e-4f7f-80b4-739a03f09e2d\scratchpad\analyse-kpi\` (`data\`, `epx\`, `p11\`, `overlay\`). Le serveur actif est l'appli installée (données sous `%LOCALAPPDATA%\LevelUp`) ; `data/levelup.lock` du dépôt n'est pas tenu.
 
 ## Ordre recommandé
 
@@ -18,10 +18,10 @@ P10 est indépendant. P13 avant P11, car les deux touchent `behavioral.go` et le
 
 | Joueur | Matchs éligibles | Non convergents |
 |---|---|---|
-| Madina97294 | 1198 | 16 |
+| joueur_117 | 1198 | 16 |
 | JGtm | 1160 | 12 |
-| Chocoboflor | 587 | 7 |
-| XxDaemonGamerxX | 38 | 0 |
+| joueur_165 | 587 | 7 |
+| joueur_291 | 38 | 0 |
 
   - Rosters de 4v5 à 16v16, soit environ 1 à 1,4 %, ce qui colle aux 18 de la prod.
   - Hors périmètre de cette mesure : décalage d'escouade (non activé dans ma simulation), mise à jour croisée des états entre propriétaires (chaque joueur est rejoué isolément) et recalibrage des hyperparamètres par groupe (ces derniers sont lus en base : seules les bornes de paliers y figurent).
@@ -29,9 +29,9 @@ P10 est indépendant. P13 avant P11, car les deux touchent `behavioral.go` et le
   - Sans elles, **35 non-convergences sur 35 convergent** (poids de temps joué et pénalités d'abandon conservés).
   - **L'amortissement ne règle pas le problème.** Un amortissement fixe rattrape 3 à 6 de ces matchs sur 12 à 16 selon le joueur (0,3 avec 3000 itérations). Aucun réglage essayé (0,1 à 0,5, 500 à 20000 itérations) n'en rattrape plus de la moitié. Le backlog et l'ADR 0024 §139/178 (« Phase 3e damping ») sont donc à corriger.
 - **Un correctif ne change pas que les matchs non convergents** (preuve en rejeu, états propagés) :
-  - Avec le repli sans comptes, 844 des 1182 notes déjà posées de Madina changent (922/1148 pour JGtm, 434/580 pour Chocoboflor).
-  - Sur Madina, 186 notes bougent d'au moins 5 points de rating et 85 d'au moins 20 ; le maximum est de 130 points.
-  - Même un seul match rattrapé change 170 notes ultérieures de Madina.
+  - Avec le repli sans comptes, 844 des 1182 notes déjà posées de joueur_075 changent (922/1148 pour JGtm, 434/580 pour joueur_165).
+  - Sur joueur_075, 186 notes bougent d'au moins 5 points de rating et 85 d'au moins 20 ; le maximum est de 130 points.
+  - Même un seul match rattrapé change 170 notes ultérieures de joueur_075.
   - **La révision n'est donc pas un choix** : sans elle, un rejeu (bouton admin, auto-heal) produirait un historique différent de celui stocké.
 
 **(b) Correctif recommandé : une seule issue.** Repli sans observations de comptes quand le solveur ne converge pas, puis montée de `LUSRRev`. Le repli est côté appelant (qui a `ctx` pour journaliser) : sur `errors.Is(err, skillv2.ErrNotConverged)`, journaliser un `slog.WarnContext`, incrémenter un expvar, puis rappeler `UpdateTwoTeamWithCountsEP` avec une copie de `counts` où `Kills` et `Deaths` valent nil pour tous. Les `Weight` et les `Quit` sont conservés et `flattenCountInputs` n'émet plus d'observation.
@@ -83,11 +83,11 @@ Fichiers fermés à modifier ou créer :
 **(b) Correctif**
 - Lire `p.kda` dans la requête de `loadShared`, avec repli sur `analysis.AggregateKDA(k,a,d,1)` si NULL (même valeur que la valeur API native).
 - Seuil d'alerte : la chute relative `(hors − pendant)/hors` n'a plus de sens avec un net, pouvant être négatif ou proche de zéro.
-  - Sur les copies locales, 3 joueurs : moyenne de FDA par match = +4,98 (Madina), −0,39 (JGtm), +0,19 (Choco) ; écart-type 4,4 à 9,1.
-  - Avec le même seuil relatif de 0,25, la moyenne hors-série de JGtm est ≤ 0 dans 522 des 1163 fenêtres, et 174 sur 567 chez Choco.
+  - Sur les copies locales, 3 joueurs : moyenne de FDA par match = +4,98 (joueur_075), −0,39 (JGtm), +0,19 (joueur_901) ; écart-type 4,4 à 9,1.
+  - Avec le même seuil relatif de 0,25, la moyenne hors-série de JGtm est ≤ 0 dans 522 des 1163 fenêtres, et 174 sur 567 chez joueur_901.
 - Proposé : un seuil absolu en points de FDA, `TiltFDADropPoints`. Calibré sur 2 959 fenêtres glissantes de 50 matchs avec série de 3 défaites ou plus, à taux de déclenchement égal à l'ancien (55 %) : **2,0 points** pour le tilt, **4,0 points** pour la sévérité haute (ancien 35 %, soit 31 % des fenêtres).
   - Le taux de 55 % est lui-même élevé. Une valeur plus stricte (2,5 / 5) est à trancher.
-  - Pour les chutes de FDA en 50 matchs, la médiane est de 3,27 points chez Madina contre 1,6 chez Choco : une normalisation par écart-type est la piste rigoureuse, au prix de la lisibilité.
+  - Pour les chutes de FDA en 50 matchs, la médiane est de 3,27 points chez joueur_075 contre 1,6 chez joueur_901 : une normalisation par écart-type est la piste rigoureuse, au prix de la lisibilité.
 - Fatigue : seuil « pente < 0 », invariant d'échelle ; `FatigueSessionCovPct=0,6` est conservé. Sur les fenêtres de 50 matchs, le déclenchement est de 1283 (ancien) contre 1239 (nouveau), soit −3,4 %.
 - Effet visible : la carte Solo/Escouade de JGtm sur 50 matchs passe de 1,11 / 1,04 à −0,69 / −0,29, et la formule d'affichage est alors enfin celle de l'ADR.
 

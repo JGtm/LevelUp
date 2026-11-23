@@ -449,7 +449,7 @@ reste verte. Les chemins sont **en style Windows** (`C:/...`) : un chemin de sty
 
 ```bash
 cd apps/go-api
-C="C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks"
+C="<poste>/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks"
 
 # Le corpus du lot : 14 films d'arene, 6 de Grande bataille, 2 de FFA.
 F="000d5950 0014603f 00502e52 00761d27 0076ebdc 008e1bba 010d1f7b 01db4132 01e1f945 02205ed3"

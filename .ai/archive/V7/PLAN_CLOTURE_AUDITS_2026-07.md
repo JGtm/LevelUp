@@ -386,7 +386,7 @@ convenue avec l'utilisateur (règle projet : prévenir avant toute op prod).
   medals_earned H5 = 2149 orphelins (bruit ingestion, Découvertes). (4) colonnes DROP
   différé toutes présentes (PME known_teammates_count/friends_xuids ×8 DB ; media_files
   discord_notified ×2 shared_social). (5) watermark LUSR = dernière ligne (pas de désync de
-  tête) ; 23 gaps d'intérieur (Madina 7 / JGtm 10 / Choco 6) = résidu EP ~0,8% hors V9.
+  tête) ; 23 gaps d'intérieur (joueur_075 7 / JGtm 10 / joueur_901 6) = résidu EP ~0,8% hors V9.
   (6) counts = V10a (Inf 1780/26577, H5 3032/24208).
 - [x] V9b — Correctif TZ : l'outil `cmd/backfill_first_joined_tz` a DÉJÀ un mode `--commit`
   (pas seulement diag) → aucune implémentation requise. Validé sur copie : dry-run =
@@ -429,14 +429,14 @@ sync+service = 0 FAIL (V9c import re-vérifié). Aucune écriture sur la copie p
   timer systemd `levelup-restic-backup.timer` (04:00 UTC), scope `data/titles` (2 titres)
   + `data/auth` + config JSON. Méthode (a) : restic LOCAL 0.18.1 via `sftp:lvelup:` +
   password injecté depuis le VPS → restore de `latest` (9e96ed20, 2026-06-27) vers
-  `C:\Users\Guillaume\Downloads\Scripts\LevelUp-prod-copy\` (HORS repo git, survit à la
+  `<poste>\Downloads\Scripts\LevelUp-prod-copy\` (HORS repo git, survit à la
   session — consommée par V9a). 109 fichiers / 734.832 MiB. Toutes les DB ouvertes en RO
   (outil Go `cmd/tmpdbq`, pas de duckdb CLI local). Counts de référence pour V9a :
   Infinite shared 1780 matchs / 26577 participants (2021-11→2026-06-25) ; Infinite
   metadata 123 maps / 167 medals / 35 playlists / 9702 asset_tr ; Infinite pve 20 ;
-  joueurs Infinite Madina 1182 / JGtm 958 / Chocoboflor 490 / XxDaemon 22 (mv_player_matches) ;
+  joueurs Infinite joueur_075 1182 / JGtm 958 / joueur_165 490 / joueur_639 22 (mv_player_matches) ;
   H5 shared 3032 matchs / 24208 participants (2015-2023) ; H5 metadata 13 tables ;
-  H5 social 33 tables ; H5 Madina 1424 matchs ; 9 tokens auth. Runbook :
+  H5 social 33 tables ; H5 joueur_075 1424 matchs ; 9 tokens auth. Runbook :
   `docs/RUNBOOK_RESTORE_TEST.md`. ALARME reportée en Découvertes (backup auto jamais
   produit — voir V10-D1).
 - [x] V10b — Checklist de déploiement EXÉCUTABLE écrite : `docs/RUNBOOK_DEPLOY_CHECKLIST.md`

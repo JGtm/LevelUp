@@ -118,7 +118,7 @@ package duckdbbackup
 
 // Target décrit une base DuckDB à sauvegarder.
 type Target struct {
-    Key  string // nom court (manifest + logs) : "shared_matches_v2", "player:Chocoboflor"
+    Key  string // nom court (manifest + logs) : "shared_matches_v2", "player:joueur_165"
     Path string // chemin absolu vers le fichier .duckdb
 }
 
@@ -385,7 +385,7 @@ T+0h  boot → BackupScheduler.Run() démarre → premier cycle immédiat
       restic forget --prune
       manifest.Save()
 
-T+6h  tick → 2 DBs modifiées (shared + Chocoboflor)
+T+6h  tick → 2 DBs modifiées (shared + joueur_165)
       Export 2 DBs → staging/ (écrase les anciens Parquet de ces 2 DBs)
       restic backup staging/  → snapshot #2 (dédup : seuls les nouveaux blocs stockés)
       restic forget --prune

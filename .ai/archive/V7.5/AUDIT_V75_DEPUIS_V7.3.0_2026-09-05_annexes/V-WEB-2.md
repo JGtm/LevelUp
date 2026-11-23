@@ -1,8 +1,8 @@
 # Vérification adverse V-WEB-2
 
-Dépôt `C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration`, branche `feat/v75`, HEAD `736ccf3c3`.
+Dépôt `<poste>/Downloads/Scripts/LevelUp-go-migration`, branche `feat/v75`, HEAD `736ccf3c3`.
 Lecture seule. Tous les chemins ci-dessous sont absolus ou relatifs à
-`C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/apps/web/src/`.
+`<poste>/Downloads/Scripts/LevelUp-go-migration/apps/web/src/`.
 
 ---
 

@@ -1,8 +1,8 @@
 #!/bin/bash
 # usage: rang.sh <rev ancienne> <rev nouvelle> : monte grammar.Rev, regenere empreintes, golden de formes et fixtures de contrat, puis verifie
-S=/c/Users/GUILLA~1/AppData/Local/Temp/claude/c--Users-Guillaume-Downloads-Scripts-LevelUp/bfd187a4-ee4b-4656-9ab4-0654cbc1dfb8/scratchpad
-W=/c/Users/Guillaume/Downloads/Scripts/LevelUp-wt-grammaire-arrets-vue-b-2
-export GOCACHE=C:/Users/Guillaume/AppData/Local/go-build-vueb CGO_ENABLED=1 CC=gcc
+S=/c/Users/utilisateur/AppData/Local/Temp/claude/c--Users-poste-Downloads-Scripts-LevelUp/bfd187a4-ee4b-4656-9ab4-0654cbc1dfb8/scratchpad
+W=/c/Users/utilisateur/Downloads/Scripts/LevelUp-wt-grammaire-arrets-vue-b-2
+export GOCACHE=C:/Users/utilisateur/AppData/Local/go-build-vueb CGO_ENABLED=1 CC=gcc
 cd $W/apps/go-api
 F=internal/games/halo_infinite/film
 sed -i "s/^const Rev = \"$1\"\$/const Rev = \"$2\"/" $F/internal/grammar/rev.go

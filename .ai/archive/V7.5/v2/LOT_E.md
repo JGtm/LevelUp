@@ -1,13 +1,13 @@
 # Lot E — Decodeur (Go) — journal d'execution
 
 > Plan : `.ai/PLAN_V2_REJEU_FILM_2026-09-05.md`, section « Lot E ». Contrat : skill
-> `plan-execution`. Worktree `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-v2-decodeur`,
+> `plan-execution`. Worktree `<poste>\Downloads\Scripts\LevelUp-wt-v2-decodeur`,
 > branche `feat/v2-decodeur`, base `a21fd77f4`.
 > Statuts : `[x]` fait et verifie · `[~]` couvert ailleurs (reference) · `[!]` non traite
 > (justification).
 >
 > Prefixe de TOUTE commande Go : depuis `apps/go-api`,
-> `GOCACHE=/c/Users/Guillaume/AppData/Local/go-build-v2-decodeur CGO_ENABLED=1`,
+> `GOCACHE=<poste>/AppData/Local/go-build-v2-decodeur CGO_ENABLED=1`,
 > en SERIE, en avant-plan, `-p 1 -parallel 1 -count=1`.
 
 ## Tache E-I — refonte a comportement identique
@@ -264,7 +264,7 @@ films reels IDENTIQUES a la reference E.1.
 
 Toutes les commandes ci-dessous ont tourne EN AVANT-PLAN, en serie, sur l'arbre a `9d01c9733`
 (les cinq items commites), avec le prefixe du lot :
-`GOCACHE=/c/Users/Guillaume/AppData/Local/go-build-v2-decodeur CGO_ENABLED=1`, depuis
+`GOCACHE=<poste>/AppData/Local/go-build-v2-decodeur CGO_ENABLED=1`, depuis
 `apps/go-api`, `-p 1 -parallel 1 -count=1`.
 
 | commande | derniere ligne / verdict |
@@ -378,7 +378,7 @@ demarre PAS sans son message.
 # Tache E-II — preuves en CI (2026-09-06)
 
 Meme worktree, meme branche, memes regles. Les temoins de E.1 restent le gate de chaque item ;
-`GOLANGCI_LINT_CACHE=/c/Users/Guillaume/AppData/Local/golangci-v2-decodeur` isole desormais la
+`GOLANGCI_LINT_CACHE=<poste>/AppData/Local/golangci-v2-decodeur` isole desormais la
 mesure de lint (lecon du lot E-I : ce cache est global a la machine et sert des verdicts perimes).
 
 ## [x] E.6 — golden inconditionnel des familles de balayage (F3, residu F1)
@@ -392,7 +392,7 @@ Commit `8a65d0969`. `filmdec/golden_minibobine_test.go` + `testdata/golden_minib
 | une valeur nommee lisible par famille | `[x]` | Le premier element, champs NOMMES, tronque a 140 caracteres. Exemple : `zoomEvents 37 ... {TimestampUS:4551203771 Slot:517 Level:1}`. Un rouge se lit dans le diff, sans outil. |
 | `t.Fatal` si la bobine manque | `[x]` | Aucun `t.Skip` : la bobine est versionnee, son absence est une panne du depot. |
 | assertions nommees i0/i4/i11/i43-46 + empreinte du registre | `[x]` | Dans `registry_test.go`, rassemblees en UN test (voir ci-dessous) plutot que dupliquees. |
-| `registry_test.go` repointe, `t.Fatal` | `[x]` | Il pointait `c:/Users/Guillaume/.../data/cache/film_chunks/000d5950` — un chemin ABSOLU de la machine de l'auteur — et se `t.Skipf` ailleurs : il ne gardait rien en CI ni chez personne. Il lit maintenant la mini-bobine versionnee et `t.Fatal`. |
+| `registry_test.go` repointe, `t.Fatal` | `[x]` | Il pointait `<poste>/.../data/cache/film_chunks/000d5950` — un chemin ABSOLU de la machine de l'auteur — et se `t.Skipf` ailleurs : il ne gardait rien en CI ni chez personne. Il lit maintenant la mini-bobine versionnee et `t.Fatal`. |
 
 POURQUOI CETTE BOBINE-CI. La mini-bobine de `killsource` est un PREFIXE CONTIGU du film 000d5950
 (chunks 00 a 05 + le chunk highlight), donc elle porte le REGISTRE et la continuite que le
@@ -960,8 +960,8 @@ Les deux mutations sont annulees ; G1, G3, G4, G5 passent, le paquet `filmdec` e
 ## Gate de cloture des corrections + E.9 — rejoue INTEGRALEMENT le 2026-09-06
 
 Meme worktree, meme branche, en SERIE, en avant-plan, `-p 1 -parallel 1 -count=1`, prefixe
-`GOCACHE=/c/Users/Guillaume/AppData/Local/go-build-v2-decodeur-2`
-`GOLANGCI_LINT_CACHE=/c/Users/Guillaume/AppData/Local/golangci-v2-decodeur CGO_ENABLED=1`.
+`GOCACHE=<poste>/AppData/Local/go-build-v2-decodeur-2`
+`GOLANGCI_LINT_CACHE=<poste>/AppData/Local/golangci-v2-decodeur CGO_ENABLED=1`.
 Films lus en LECTURE SEULE dans le checkout principal, UN film par processus. Aucune cuisson
 d'artefact, aucun tag `gamefiles`.
 

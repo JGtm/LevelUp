@@ -34,7 +34,7 @@ Puis, sur décision du superviseur et du user, lire cet objet en production.
 
 ## Étape A — recherche (lecture seule, aucun code de production)
 
-Films (tous locaux sous `C:\Users\Guillaume\Downloads\Scripts\LevelUp\data\cache\film_chunks\`) :
+Films (tous locaux sous `<poste>\Downloads\Scripts\LevelUp\data\cache\film_chunks\`) :
 
 | id | carte (`EQUIPPORTE_CARTE`) | date | familles riches |
 |---|---|---|---|
@@ -52,7 +52,7 @@ Familles : capteur (`sensor`), traqueur (`threat_seeker`), écran (`shroud_scree
 (`repair_field`), mur (`wall`), translocateur (`translocator_beacon`), et à titre de contrôle répulseur,
 surbouclier et camouflage (familles sans objet attendu). La famille d'un usage se lit par le rang i48
 (`ScanEquipmentChanges`, comme `TestChampParc`) rapproché des `abilityLabels` de l'artefact du match
-(`C:\Users\Guillaume\Downloads\Scripts\LevelUp\data\cache\replays\halo_infinite\<id>.json`, champ `family`).
+(`<poste>\Downloads\Scripts\LevelUp\data\cache\replays\halo_infinite\<id>.json`, champ `family`).
 
 - [x] A.1 UN instrument de recherche `//go:build research` dans `internal/grammar/` (un fichier, réutilisant
   `cfCanal`, `epContexte`, `bornesDeLaCarte`, le canal de production). Pour chaque usage d'équipement

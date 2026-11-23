@@ -28,9 +28,9 @@
 | Joueur | Univers | DNF (outcome=4) | Exclus | Scorables | Notes ACTUEL | Notes NOUVEAU | Matchs couverts PSA |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | JGtm | 1120 | 39 | 1 | 1080 | 1033 | 1033 | 1101 |
-| Chocoboflor | 554 | 19 | 0 | 535 | 496 | 496 | 548 |
-| Madina97294 | 1242 | 57 | 0 | 1185 | 1131 | 1121 | 1223 |
-| XxDaemonGamerxX | 32 | 1 | 0 | 31 | 12 | 12 | 32 |
+| joueur_165 | 554 | 19 | 0 | 535 | 496 | 496 | 548 |
+| joueur_117 | 1242 | 57 | 0 | 1185 | 1131 | 1121 | 1223 |
+| joueur_291 | 32 | 1 | 0 | 31 | 12 | 12 | 32 |
 
 ## B0.2 — Regle de dedup `personal_score_awards` retenue
 
@@ -46,16 +46,16 @@ divisee par les minutes jouees (meme repli 600 s que le reste du moteur).
 | Joueur | Lignes PSA | Lignes d'un autre xuid | Tombstones | Lignes de generation perimee | Matchs multi-generation | Somme objectif dedupliquee | Somme objectif SANS dedup |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | JGtm | 3830 | 15 | 0 | 0 | 0 | 85485 | 85485 |
-| Chocoboflor | 1655 | 0 | 0 | 0 | 0 | 48370 | 48370 |
-| Madina97294 | 4118 | 0 | 0 | 0 | 0 | 155455 | 155455 |
-| XxDaemonGamerxX | 104 | 0 | 0 | 16 | 7 | 700 | 925 |
+| joueur_165 | 1655 | 0 | 0 | 0 | 0 | 48370 | 48370 |
+| joueur_117 | 4118 | 0 | 0 | 0 | 0 | 155455 | 155455 |
+| joueur_291 | 104 | 0 | 0 | 16 | 7 | 700 | 925 |
 
 **Presence d'ospm** : ospm n'existe QUE si le match a une couverture PSA (au moins une
 ligne retenue). Un match couvert avec 0 point objectif vaut ospm = 0 (valeur legitime :
 le joueur n'a rien fait a l'objectif) ; un match SANS ligne PSA a une metrique ABSENTE
 (poids redistribue). Confondre les deux reviendrait a noter 0 une absence de donnee.
 
-**Piege majeur rencontre** (cf. Decouvertes du CR) : sur la DB `XxDaemonGamerxX`,
+**Piege majeur rencontre** (cf. Decouvertes du CR) : sur la DB `joueur_291`,
 l'index `idx_psa_match` est INCOHERENT — `WHERE match_id = '05fffb2a-...'` rend 2 lignes
 la ou le scan complet en rend 4. Toutes les lectures PSA de l'outil se font donc en scan
 complet SANS predicat, la selection etant faite en Go.
@@ -78,7 +78,7 @@ entre regimes uniquement par l'effet du seuil de 10 matchs sur une chaine scinde
 | `ranked_objectif` | 2 | 0 | 0 | - | - | - | - | - | - |
 | `firefight` | 1 | 0 | 0 | - | - | - | - | - | - |
 
-### Chocoboflor
+### joueur_165
 
 | Chaine | n matchs | n scorees ACTUEL | n scorees NOUVEAU | med ACTUEL | p10/p90 ACTUEL | med 0.08 | med 0.12 | med 0.16 | p10/p90 (0.12) |
 |---|---:|---:|---:|---:|---|---:|---:|---:|---|
@@ -89,7 +89,7 @@ entre regimes uniquement par l'effet du seuil de 10 matchs sur une chaine scinde
 | `ranked_objectif` | 2 | 0 | 0 | - | - | - | - | - | - |
 | `btb` | 1 | 0 | 0 | - | - | - | - | - | - |
 
-### Madina97294
+### joueur_117
 
 | Chaine | n matchs | n scorees ACTUEL | n scorees NOUVEAU | med ACTUEL | p10/p90 ACTUEL | med 0.08 | med 0.12 | med 0.16 | p10/p90 (0.12) |
 |---|---:|---:|---:|---:|---|---:|---:|---:|---|
@@ -101,7 +101,7 @@ entre regimes uniquement par l'effet du seuil de 10 matchs sur une chaine scinde
 | `ranked_slayer` | 12 | 11 | 2 | 76.7 | 30.7 / 88.5 | 60.6 | 60.6 | 60.6 | 47.9 / 73.2 |
 | `firefight` | 4 | 0 | 0 | - | - | - | - | - | - |
 
-### XxDaemonGamerxX
+### joueur_291
 
 | Chaine | n matchs | n scorees ACTUEL | n scorees NOUVEAU | med ACTUEL | p10/p90 ACTUEL | med 0.08 | med 0.12 | med 0.16 | p10/p90 (0.12) |
 |---|---:|---:|---:|---:|---|---:|---:|---:|---|
@@ -118,21 +118,21 @@ par cause (priorite DNF > exclu > sous-seuil > hors univers).
 | Joueur | Notes stockees | Conservees | Purgees | dont DNF | dont exclus | dont sous-seuil | dont hors univers |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | JGtm | 1111 | 1033 | **78** | 33 | 1 | 44 | 0 |
-| Chocoboflor | 537 | 496 | **41** | 12 | 0 | 29 | 0 |
-| Madina97294 | 1239 | 1121 | **118** | 54 | 0 | 64 | 0 |
-| XxDaemonGamerxX | 22 | 12 | **10** | 0 | 0 | 10 | 0 |
+| joueur_165 | 537 | 496 | **41** | 12 | 0 | 29 | 0 |
+| joueur_117 | 1239 | 1121 | **118** | 54 | 0 | 64 | 0 |
+| joueur_291 | 22 | 12 | **10** | 0 | 0 | 10 | 0 |
 
 Repartition des notes purgees selon la chaine STOCKEE (celle qui disparait) :
 
 | Joueur | Chaine stockee | Notes purgees |
 |---|---|---:|
 | JGtm | `(NULL)` | 78 |
-| Chocoboflor | `(NULL)` | 40 |
-| Chocoboflor | `arena_slayer` | 1 |
-| Madina97294 | `(NULL)` | 108 |
-| Madina97294 | `ranked` | 10 |
-| XxDaemonGamerxX | `(NULL)` | 8 |
-| XxDaemonGamerxX | `arena_slayer` | 2 |
+| joueur_165 | `(NULL)` | 40 |
+| joueur_165 | `arena_slayer` | 1 |
+| joueur_117 | `(NULL)` | 108 |
+| joueur_117 | `ranked` | 10 |
+| joueur_291 | `(NULL)` | 8 |
+| joueur_291 | `arena_slayer` | 2 |
 
 ## Table de decision — matchs « ecrase au combat mais actif a l'objectif »
 
@@ -146,8 +146,8 @@ notes sous les deux regimes et porteurs d'un ospm.
 |---|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|
 | JGtm | 2026-07-07 | Arena:Neutral Flag CTF on Chasm | `arena_objectif` | 2/13 | 4 | 96 | 10.5 | 17.9 | 21.0 | 24.0 | +10.5 | `e8d384c7-63b4-461d-88b4-95f73e91d767` |
 | JGtm | 2026-03-03 | Arena:CTF on Detachment | `arena_objectif` | 4/4 | 21 | 100 | 51.5 | 56.9 | 58.6 | 60.2 | +7.1 | `034200db-1019-46ee-84bf-a5662ab1e491` |
-| Madina97294 | 2026-04-10 | Arena:CTF on Absolution | `arena_objectif` | 6/8 | 21 | 98 | 35.3 | 41.4 | 43.7 | 45.8 | +8.4 | `a01e98ec-3b42-477b-8d45-64c984f00a6f` |
-| Chocoboflor | 2026-03-24 | Arena:CTF on Domicile | `arena_objectif` | 3/3 | 23 | 100 | 46.5 | 52.5 | 54.4 | 56.2 | +7.9 | `83ee3f9f-8e36-4e41-8405-31acbc9898dd` |
+| joueur_117 | 2026-04-10 | Arena:CTF on Absolution | `arena_objectif` | 6/8 | 21 | 98 | 35.3 | 41.4 | 43.7 | 45.8 | +8.4 | `a01e98ec-3b42-477b-8d45-64c984f00a6f` |
+| joueur_165 | 2026-03-24 | Arena:CTF on Domicile | `arena_objectif` | 3/3 | 23 | 100 | 46.5 | 52.5 | 54.4 | 56.2 | +7.9 | `83ee3f9f-8e36-4e41-8405-31acbc9898dd` |
 | JGtm | 2025-10-23 | Arena:King of the Hill on Banished Narrows | `arena_objectif` | 3/8 | 23 | 100 | 34.8 | 41.3 | 43.7 | 45.9 | +8.9 | `f6091638-a8c2-46fc-8a07-bdba71d6acb6` |
 
 ### Contre-temoins — forts au combat, absents de l'objectif
@@ -159,10 +159,10 @@ ET `p ospm` <= 40).
 | Joueur | Date | Mode | Chaine | K/D | p combat | p ospm | Note ACTUEL | 0.08 | 0.12 | 0.16 | Delta (0.12) | match_id |
 |---|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|
 | JGtm | 2026-01-22 | Arena:VIP on Bazaar | `arena_objectif` | 11/5 | 89 | 6 | 88.7 | 81.5 | 78.4 | 75.6 | -10.3 | `9903b1c5-b5e5-40d2-bd81-83d540b233cf` |
-| Madina97294 | 2023-03-08 | Arena:King of the Hill on Chasm | `arena_objectif` | 22/5 | 82 | 0 | 74.9 | 67.5 | 64.7 | 62.2 | -10.2 | `81ef08e6-227a-422d-ab5c-f9f7daa182a5` |
-| Chocoboflor | 2026-04-19 | Arena:Neutral Flag CTF on Detachment | `arena_objectif` | 10/6 | 87 | 6 | 79.0 | 71.9 | 69.2 | 66.7 | -9.8 | `3421f7f1-ec05-4928-b941-96e14c4640dc` |
-| Chocoboflor | 2026-03-24 | Arena:CTF on Dynasty | `arena_objectif` | 5/1 | 77 | 0 | 82.5 | 75.4 | 72.4 | 69.5 | -10.1 | `a17e61a2-5142-4204-acdf-6f469a12d428` |
-| Chocoboflor | 2026-04-23 | Arena:CTF on Starboard | `arena_objectif` | 12/8 | 78 | 2 | 77.3 | 70.6 | 67.8 | 65.2 | -9.5 | `69504bb6-b73a-4071-8697-690ba01d920b` |
+| joueur_117 | 2023-03-08 | Arena:King of the Hill on Chasm | `arena_objectif` | 22/5 | 82 | 0 | 74.9 | 67.5 | 64.7 | 62.2 | -10.2 | `81ef08e6-227a-422d-ab5c-f9f7daa182a5` |
+| joueur_165 | 2026-04-19 | Arena:Neutral Flag CTF on Detachment | `arena_objectif` | 10/6 | 87 | 6 | 79.0 | 71.9 | 69.2 | 66.7 | -9.8 | `3421f7f1-ec05-4928-b941-96e14c4640dc` |
+| joueur_165 | 2026-03-24 | Arena:CTF on Dynasty | `arena_objectif` | 5/1 | 77 | 0 | 82.5 | 75.4 | 72.4 | 69.5 | -10.1 | `a17e61a2-5142-4204-acdf-6f469a12d428` |
+| joueur_165 | 2026-04-23 | Arena:CTF on Starboard | `arena_objectif` | 12/8 | 78 | 2 | 77.3 | 70.6 | 67.8 | 65.2 | -9.5 | `69504bb6-b73a-4071-8697-690ba01d920b` |
 
 ## Criteres de gate
 
@@ -177,15 +177,15 @@ reforme d'une mediane que la reforme aurait deplacee.
 | JGtm | `chaos` | 408 | 50.8 | 50.8 | OK |
 | JGtm | `arena_slayer` | 400 | 49.7 | 49.7 | OK |
 | JGtm | `arena_objectif` | 225 | 51.7 | 50.5 | OK |
-| Chocoboflor | `arena_slayer` | 340 | 49.5 | 49.5 | OK |
-| Chocoboflor | `arena_objectif` | 146 | 52.5 | 51.2 | OK |
-| Chocoboflor | `chaos` | 10 | 45.9 | 45.9 | OK |
-| Madina97294 | `btb` | 484 | 50.2 | 50.2 | OK |
-| Madina97294 | `arena_slayer` | 419 | 49.8 | 49.8 | OK |
-| Madina97294 | `arena_objectif` | 189 | 50.2 | 49.8 | OK |
-| Madina97294 | `chaos` | 15 | 41.0 | 41.0 | **HORS** (deja hors fenetre au regime actuel) |
-| Madina97294 | `ranked_objectif` | 12 | 39.2 | 43.8 | **HORS** (deja hors fenetre au regime actuel) |
-| XxDaemonGamerxX | `arena_slayer` | 12 | 54.0 | 54.0 | OK |
+| joueur_165 | `arena_slayer` | 340 | 49.5 | 49.5 | OK |
+| joueur_165 | `arena_objectif` | 146 | 52.5 | 51.2 | OK |
+| joueur_165 | `chaos` | 10 | 45.9 | 45.9 | OK |
+| joueur_117 | `btb` | 484 | 50.2 | 50.2 | OK |
+| joueur_117 | `arena_slayer` | 419 | 49.8 | 49.8 | OK |
+| joueur_117 | `arena_objectif` | 189 | 50.2 | 49.8 | OK |
+| joueur_117 | `chaos` | 15 | 41.0 | 41.0 | **HORS** (deja hors fenetre au regime actuel) |
+| joueur_117 | `ranked_objectif` | 12 | 39.2 | 43.8 | **HORS** (deja hors fenetre au regime actuel) |
+| joueur_291 | `arena_slayer` | 12 | 54.0 | 54.0 | OK |
 
 Bilan : 10 chaines dans la fenetre, 2 hors fenetre.
 
@@ -194,9 +194,9 @@ Bilan : 10 chaines dans la fenetre, 2 hors fenetre.
 | Joueur | DNF dans l'univers | Notes simulees sur un DNF |
 |---|---:|---:|
 | JGtm | 39 | 0 |
-| Chocoboflor | 19 | 0 |
-| Madina97294 | 57 | 0 |
-| XxDaemonGamerxX | 1 | 0 |
+| joueur_165 | 19 | 0 |
+| joueur_117 | 57 | 0 |
+| joueur_291 | 1 | 0 |
 
 Total des fuites : **0** (le filtre `outcome != 4` est applique avant toute notation).
 
@@ -211,15 +211,15 @@ abandonnee : les comparer n'aurait aucun sens).
 | JGtm | `arena_objectif` | 211 | 52.5 | 51.7 | -0.8 | 0.70 | 156 (74%) |
 | JGtm | `arena_slayer` | 400 | 49.2 | 49.7 | +0.5 | 0.54 | 330 (82%) |
 | JGtm | `chaos` | 408 | 50.8 | 50.8 | +0.0 | 0.00 | 408 (100%) |
-| Chocoboflor | `arena_objectif` | 142 | 51.8 | 52.3 | +0.5 | 1.60 | 67 (47%) |
-| Chocoboflor | `arena_slayer` | 340 | 50.2 | 49.5 | -0.7 | 2.09 | 142 (42%) |
-| Chocoboflor | `chaos` | 10 | 40.0 | 45.9 | +5.9 | 2.12 | 5 (50%) |
-| Madina97294 | `arena_objectif` | 182 | 49.2 | 50.0 | +0.8 | 2.04 | 62 (34%) |
-| Madina97294 | `arena_slayer` | 419 | 49.6 | 49.8 | +0.2 | 1.37 | 233 (56%) |
-| Madina97294 | `btb` | 484 | 50.5 | 50.2 | -0.3 | 2.17 | 206 (43%) |
-| Madina97294 | `chaos` | 15 | 39.5 | 41.0 | +1.5 | 3.14 | 8 (53%) |
-| Madina97294 | `ranked` | 24 | 52.5 | 51.9 | -0.6 | 1.32 | 14 (58%) |
-| XxDaemonGamerxX | `arena_slayer` | 12 | 54.0 | 54.0 | +0.0 | 0.01 | 12 (100%) |
+| joueur_165 | `arena_objectif` | 142 | 51.8 | 52.3 | +0.5 | 1.60 | 67 (47%) |
+| joueur_165 | `arena_slayer` | 340 | 50.2 | 49.5 | -0.7 | 2.09 | 142 (42%) |
+| joueur_165 | `chaos` | 10 | 40.0 | 45.9 | +5.9 | 2.12 | 5 (50%) |
+| joueur_117 | `arena_objectif` | 182 | 49.2 | 50.0 | +0.8 | 2.04 | 62 (34%) |
+| joueur_117 | `arena_slayer` | 419 | 49.6 | 49.8 | +0.2 | 1.37 | 233 (56%) |
+| joueur_117 | `btb` | 484 | 50.5 | 50.2 | -0.3 | 2.17 | 206 (43%) |
+| joueur_117 | `chaos` | 15 | 39.5 | 41.0 | +1.5 | 3.14 | 8 (53%) |
+| joueur_117 | `ranked` | 24 | 52.5 | 51.9 | -0.6 | 1.32 | 14 (58%) |
+| joueur_291 | `arena_slayer` | 12 | 54.0 | 54.0 | +0.0 | 0.01 | 12 (100%) |
 
 **Cause attendue d'ecart : `medal_exploit` absent de la simulation.** Sonde empirique —
 retrait d'UNE metrique de poids 0.06 (`dpm_damage`) du profil actuel, puis mesure de
@@ -228,17 +228,17 @@ l'ecart de note induit :
 | Joueur | n | |delta| moyen | p90 | max |
 |---|---:|---:|---:|---:|
 | JGtm | 1033 | 1.26 | 2.50 | 7.50 |
-| Chocoboflor | 496 | 1.35 | 2.75 | 4.00 |
-| Madina97294 | 1131 | 1.19 | 2.50 | 5.10 |
-| XxDaemonGamerxX | 12 | 1.16 | 1.80 | 2.60 |
+| joueur_165 | 496 | 1.35 | 2.75 | 4.00 |
+| joueur_117 | 1131 | 1.19 | 2.50 | 5.10 |
+| joueur_291 | 12 | 1.16 | 1.80 | 2.60 |
 
 Borne analytique : avec un poids w=0.06 sur une somme de poids 1.01, l'ecart vaut
 `0.06 x (p_metrique - note) / 1.01`, soit au plus ~3 pts et typiquement ~1.5 pt.
 
-**Lecture du contraste entre joueurs.** Chez JGtm et XxDaemonGamerxX la replique est
+**Lecture du contraste entre joueurs.** Chez JGtm et joueur_291 la replique est
 EXACTE (ecart 0.00 sur 1033 et 12 matchs, 100% dans +/-1) : sur ces DB, les notes
 stockees ont donc ete produites SANS medal_exploit, exactement comme la simulation.
-Chez Chocoboflor et Madina97294 l'ecart moyen (1.3 a 2.2 pt) et son p90 tombent dans
+Chez joueur_165 et joueur_117 l'ecart moyen (1.3 a 2.2 pt) et son p90 tombent dans
 la plage mesuree par la sonde ci-dessus — hypothese coherente, non prouvee ici : leurs
 notes stockees ont ete produites AVEC medal_exploit. Les medianes restent a +/-0.8 pt
 sur toutes les chaines de volume ; les seuls ecarts mediens > 1 pt sont les chaines
@@ -326,12 +326,12 @@ aussi combattu. C'est le quatrieme argument, convergent, pour 0.12.
 | Joueur | Notes stockees | Notes apres reforme | Perdues | Chaines ranked creees (n scorees) |
 |---|---:|---:|---:|---|
 | JGtm | 1111 | 1033 | 78 | `ranked_slayer` 6 matchs (0), `ranked_objectif` 2 matchs (0) |
-| Chocoboflor | 537 | 496 | 41 | `ranked_slayer` 6 matchs (0), `ranked_objectif` 2 matchs (0) |
-| Madina97294 | 1239 | 1121 | 118 | `ranked_slayer` 12 matchs (2), `ranked_objectif` 22 matchs (12) |
-| XxDaemonGamerxX | 22 | 12 | 10 | aucune |
+| joueur_165 | 537 | 496 | 41 | `ranked_slayer` 6 matchs (0), `ranked_objectif` 2 matchs (0) |
+| joueur_117 | 1239 | 1121 | 118 | `ranked_slayer` 12 matchs (2), `ranked_objectif` 22 matchs (12) |
+| joueur_291 | 22 | 12 | 10 | aucune |
 
-La scission ranked ne produit de notes QUE chez Madina97294 : les 8 matchs ranked de
-JGtm et les 8 de Chocoboflor tombent sous le seuil de 10 par chaine et perdent leur
+La scission ranked ne produit de notes QUE chez joueur_117 : les 8 matchs ranked de
+JGtm et les 8 de joueur_165 tombent sous le seuil de 10 par chaine et perdent leur
 note — conformement a D-D (purge seche, deja validee par l'utilisateur).
 
 ## Annexe — classification effective des sous-modes (categories Assassin + Ranked)

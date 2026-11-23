@@ -276,7 +276,7 @@ Instrument existant `TestRosterEtRemplacements` (`killsource/roster_remplacement
 
 - base : 10 dead-states hors roster, TOUS avec l'indice 16 d'un côté (tueur 16 : 5 ; victime 16 : 5) ;
 - lot : 42, TOUS avec l'indice 16 d'un côté (tueur 16 : 23 ; victime 16 : 19) ;
-- le motif du xuid lit l'indice **16** pour `2535427268703421` (« V1RU54702 », index **9** de la
+- le motif du xuid lit l'indice **16** pour `2570088983326508` (« V1RU54702 », index **9** de la
   table du film) sur 66 chunks sur 66 (`MotifDuplicate:1`) ; le roster retient 16 sièges (0 à 15).
 
 Lecture : ce sont des morts RÉELLES d'un participant que le roster ne place pas à l'indice que le

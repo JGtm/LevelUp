@@ -2,7 +2,7 @@
 
 > Investigation sur preuves, sans modification de code. Branche `feat/v75` (43a01721e),
 > serveur de dev local (air + Vite), joueur JGtm (1 160 matchs), composition
-> XxDaemonGamerxX + Madina97294 + Chocoboflor, poste 16 coeurs / 32 Go.
+> joueur_291 + joueur_117 + joueur_165, poste 16 coeurs / 32 Go.
 > Trois enquetes Opus en lecture seule (front, backend Escouade, socle et acces DuckDB)
 > + mesures en direct (Chrome DevTools MCP, `logs/http.log` en DEBUG, echantillonnage CPU)
 > + chronometrage des requetes SQL sur une COPIE des bases (outil temporaire, supprime).

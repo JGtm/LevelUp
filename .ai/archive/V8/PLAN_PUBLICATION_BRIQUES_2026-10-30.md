@@ -160,7 +160,7 @@ Conséquences pour le plan (amendements, pas de nouvelle décision produit) :
   que). Non figé : le délai de base de 800 ms (contexte annulé au premier essai) ; `Retry-After` mesuré 1 s.
   T3 : `halo5-servicerecord`, `ugc-carte <asset_id> [version_id]`, `gamecms-actif <chemin>`, `xbox-succes`
   dans `cmd/diag_api_lecture` (`titleseams.RegisterAll` exigé par le ratchet des binaires liés à `sync`).
-  Captures « avant » (compte Chocoboflor) dans `%TEMP%\claude\...\scratchpad\temoins_pub_lot0_avant\` avec
+  Captures « avant » (compte joueur_165) dans `%TEMP%\claude\...\scratchpad\temoins_pub_lot0_avant\` avec
   `T3_md5s.txt` : `servicerecord` 4 565 o, `halo5-servicerecord` 955 o, `ugc-carte` (Absolution
   `78da545f-a168-4a5e-9c8d-dd379067c352`) 659 o, `gamecms-actif`
   (`Waypoint/file/images/nameplates/104-001-olympus-campa-2ddbe23b_n809699482.png`) 103 o, `xbox-succes`

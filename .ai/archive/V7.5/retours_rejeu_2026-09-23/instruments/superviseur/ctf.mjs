@@ -1,6 +1,6 @@
 import fs from 'fs';
 const id = process.argv[2];
-const doc = JSON.parse(fs.readFileSync(`C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/${id}.json`, 'utf8'));
+const doc = JSON.parse(fs.readFileSync(`C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/${id}.json`, 'utf8'));
 const keys = Object.keys(doc);
 console.log('top keys', keys.join(','));
 for (const k of ['objectives','flagCarries','objectiveObjects','zoneStates','flagReturnZone','scoreTimeline','neutralDeaths','rounds','victory']) {

@@ -134,7 +134,7 @@
     game_state_measure_test.go:72:     player-pending-join-in-progress-spawn-component  lectures     8 · porte fermee     0 · distinctes    1 · 1(8)
     game_state_measure_test.go:72:     player-malleable-properties-simulation-component lectures   641 · porte fermee     0 · distinctes    3 · 1,1,1,1,478,1,797,1,1434,1,1106,1,1106,0...(333) 1,1,1,1,478,1,797,1,1434,1,1106,1,1106,0...(307) 0,1,0,0,0,1,1657,1,3776,1,3315,0,0,1,404...(1)
     game_state_measure_test.go:72:     player-respawn-timer-component                   CAPTURE : 288 lectures certaines dont ACTIF 1 · distinctes 13 · false/5/8(70) false/4/8(67) false/6/8(67) false/7/8(67) false/7/9(4) false/5/9(3)
-    game_state_measure_test.go:74: TSV deposes dans C:\Users\Guillaume\Projects\LevelUp-wt-joueur-moteur\.ai\V7.5\replay2d\registre_film\lotBP
+    game_state_measure_test.go:74: TSV deposes dans <poste>\Projects\LevelUp-wt-joueur-moteur\.ai\V7.5\replay2d\registre_film\lotBP
 --- PASS: TestGameEntitiesPhase0 (25.52s)
 PASS
 ok  	levelup/go-api/internal/analysis/filmdec	26.621s

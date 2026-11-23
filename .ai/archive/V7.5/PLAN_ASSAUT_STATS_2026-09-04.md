@@ -1,7 +1,7 @@
 # PLAN — STATISTIQUES D'OBJECTIF DU MODE ASSAUT, RECONSTRUITES DU FILM
 
 > Ouvert le 2026-09-04. Branche : `wt/assaut-stats` (worktree dedie
-> `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-assaut-stats`), depuis `feat/v75`.
+> `<poste>/Downloads/Scripts/LevelUp-wt-assaut-stats`), depuis `feat/v75`.
 > Contrat d'execution : skill `plan-execution` (ordre strict, aucun report d'une etape
 > executable, statut obligatoire par item, verification sur pieces avant de cocher, zero fix
 > hors perimetre).
@@ -372,12 +372,12 @@ $ go test ./internal/analysis/replay/ -run AssautBombArmsGate -v -count=1 -timeo
 35b75a31 : recalage film -> match = 114 ms (premier paquet 8892226, deathOffset 8892112)
 35b75a31 : armements dates 3 / par lacher 1 / par repli 1 / non attribues 1
            (sans porteur 0, slot non ponte 1, ambigus 0)
-  bomb_armed 299176 -> 2535460750735339 (carry_active)   [290194, 308258], fin par mort
-  bomb_armed 536215 -> 2533274824432629 (carry_drop)
+  bomb_armed 299176 -> 2701236422544437 (carry_active)   [290194, 308258], fin par mort
+  bomb_armed 536215 -> 2730449333403982 (carry_drop)
   bomb_armed 782064 -> SANS ACTEUR                       (slot 665 non ponte)
 9f57c612 : recalage 88 ms — armements dates 0 (calque retenu a la source, cf. E2-ter)
 1c01e34f : recalage 50 ms — armements dates 4 / par lacher 3 / par repli 1 / non attribues 0
-  bomb_armed 395764 -> 2535406537212173 (carry_active)
+  bomb_armed 395764 -> 2650582318285902 (carry_active)
 3d58eb37 : recalage 33 ms — armements dates 3 / par lacher 3 / par repli 0 / non attribues 0
 69b16f5d : recalage 62 ms — armements dates 3 / par lacher 2 / par repli 1 / non attribues 0
   bomb_armed 273746 -> 2812739231567214 (carry_active)
@@ -408,7 +408,7 @@ pas les explosions — One Bomb n'en date aucun, ses 4 explosions sont hors de c
   armement n'est tombe en `ArmingsAmbiguous` sur le corpus : sur ces cinq films, jamais deux
   porteurs ne couvrent le meme instant arme.
 - **LE PREMIER EST CORROBORE PAR UNE SOURCE INDEPENDANTE.** Le gate imprime, pour l'explosion
-  de 304 013 ms : `poseur = detonateur 2535460750735339` — le STATBORG nomme le meme joueur
+  de 304 013 ms : `poseur = detonateur 2701236422544437` — le STATBORG nomme le meme joueur
   que le repli a nomme sur l'armement de 299 176. Les deux autres tombent sur des explosions a
   desaccord B2 connu : le repli y nomme le PORTEUR, le statborg y nomme un autre detonateur,
   et B3 n'a pas tranche. Le desaccord n'est ni cree ni resolu par ce lot — il reste le meme,
@@ -569,9 +569,9 @@ $ go test ./internal/analysis/replay/ -run AssautBombArmsGate -v -count=1
 35b75a31 : armements dates 3 / par lacher 1 / par repli 1 / non attribues 1 (non ponte 1)
 9f57c612 : armements dates 5 / par lacher 2 / par repli 1 / non attribues 2
            (sans porteur 1, slot non ponte 1, ambigus 0)
-  bomb_armed  279103 -> 2535470823750470 (carry_drop)
-  bomb_armed  335193 -> 2535419279251362 (carry_drop)
-  bomb_armed  388080 -> 2535470823750470 (carry_active)
+  bomb_armed  279103 -> 2806693292111299 (carry_drop)
+  bomb_armed  335193 -> 2718388560365789 (carry_drop)
+  bomb_armed  388080 -> 2806693292111299 (carry_active)
   bomb_armed   65137 -> SANS ACTEUR (slot 518 non ponte)
   bomb_armed  445839 -> SANS ACTEUR (aucune periode fermee ne le couvre)
   ecart lacher - armement : min +250, mediane +250, max +251 ms (n=3, fenetre +/-2500 ms)
@@ -603,13 +603,13 @@ n'a bouge d'une unite**, ni en compte, ni en instant, ni en acteur, ni en regle.
 
 **CE QUE 9f57c612 PUBLIE, ET A QUELS INSTANTS** (horloge du film) : 5 armements a
 **65 137 · 279 103 · 335 193 · 388 080 · 445 839 ms**, dont 3 nommes — 279 103 et 388 080 a
-`2535470823750470`, 335 193 a `2535419279251362`. Les deux anonymes le sont pour des raisons
+`2806693292111299`, 335 193 a `2718388560365789`. Les deux anonymes le sont pour des raisons
 DIFFERENTES et nommees : 65 137 a bien un lacher a +250 ms, mais au slot 518 que le pont ne
 nomme pas (`ArmingsNoBridge`) ; 445 839 n'est couvert par AUCUNE periode de portage fermee
 (`ArmingsNoCarrier`). Dans les deux cas l'armement est PUBLIE sans acteur, jamais devine.
 
 **CORROBORATION INDEPENDANTE** : le gate de portage imprime, pour l'explosion 298 489 de
-`9f57c612`, `poseur = detonateur 2535470823750470` — le STATBORG nomme le meme joueur que la
+`9f57c612`, `poseur = detonateur 2806693292111299` — le STATBORG nomme le meme joueur que la
 regle du lacher a nomme sur l'armement de 279 103. Deux canaux, deux chaines, un seul nom.
 
 **LA FENETRE DE RATTRAPAGE DE L'ATTRIBUTION N'A PAS BOUGE, ET LA MESURE DIT POURQUOI.** La

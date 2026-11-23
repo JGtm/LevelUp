@@ -133,7 +133,7 @@ La réponse renvoie toujours le `xuid` résolu.
 ### service-record — `GET /hmcc/users/{u}/service-record`
 ```json
 {
-  "xuid": "2533274823512881",
+  "xuid": "2746100301882497",
   "xp": 524122300,
   "avatarSrc": "https://content.halocdn.com/.../playeridavatar_032-....jpg",
   "emblemSrc": "https://emblems.svc.halowaypoint.com/hmcc/emblems/white_white_skullking-on-blank",
@@ -151,7 +151,7 @@ La réponse renvoie toujours le `xuid` résolu.
 ### matches — `GET /hmcc/users/{u}/matches`
 ```json
 {
-  "xuid": "2533274823512881", "totalMatches": 12272, "pageSize": 25, "maxPage": 4,
+  "xuid": "2746100301882497", "totalMatches": 12272, "pageSize": 25, "maxPage": 4,
   "matches": [
     { "score": 11, "datePlayed": "2026-06-03T00:35:42.793Z", "durationSeconds": 450,
       "mapId": 205, "won": true, "standing": 4, "kills": 12, "deaths": 8, "assists": 0,

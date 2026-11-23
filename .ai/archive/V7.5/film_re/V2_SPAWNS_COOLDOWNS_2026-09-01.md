@@ -3,7 +3,7 @@
 > Execute le 2026-09-01 dans le worktree `LevelUp-wt-vehicules`. Aucun commit, aucun `git add`,
 > aucune ecriture DuckDB. Toutes les mesures en AVANT-PLAN, `CGO_ENABLED=0`, GOCACHE isole
 > (`scratchpad/gocache_v2`), sur les donnees reelles du checkout principal
-> (`C:/Users/Guillaume/Projects/LevelUp/data`, lecture seule).
+> (`<poste>/Projects/LevelUp/data`, lecture seule).
 >
 > Corpus mesure : **18 films Behemoth Super Fiesta + 8 films Launch Site Super Fiesta** (la liste
 > V1a des films retenus). Prerequis V1b utilises tels quels, jamais modifies :

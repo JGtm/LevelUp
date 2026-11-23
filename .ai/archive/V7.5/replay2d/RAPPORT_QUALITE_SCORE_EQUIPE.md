@@ -42,7 +42,7 @@ Deux autres ecrivains existent, hors perimetre Infinite-sync :
 ### Commande de controle (rejouable)
 
 ```bash
-cd C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-qualite-score
+cd <poste>/Downloads/Scripts/LevelUp-wt-qualite-score
 grep -rn "team_0_score\|team_1_score" apps/go-api/ cmd/ --include="*.go" | grep -v "_test.go" | sort
 grep -rn "Team0Score\|Team1Score" apps/go-api/ cmd/ --include="*.go" | grep -v "_test.go" | sort
 grep -rn "MyTeamScore\|EnemyTeamScore" apps/go-api/ --include="*.go" | grep -v "_test.go" | sort
@@ -131,7 +131,7 @@ Outil : `apps/go-api/cmd/diag_matchstats_dump` (cree pour ce lot ; auth store-fi
 ADR 0023, AUCUNE ouverture DuckDB, AUCUNE ecriture en base). Commande exacte :
 
 ```bash
-LEVELUP_REPO_ROOT=C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration \
+LEVELUP_REPO_ROOT=<poste>/Downloads/Scripts/LevelUp-go-migration \
   go run ./cmd/diag_matchstats_dump --gamertag JGtm --rps 4 \
   --out .ai/V7.5/replay2d/registre_film/api_dumps \
   7344d24f-0154-4949-80ad-e2b781c122f1 \
@@ -240,7 +240,7 @@ Sous-famille residuelle, 11 des 80 ne s'expliquent PAS par les ticks de zone :
 | `f395b462` | Arena:Attrition | 2/**1950** | 2/0 | valeur aberrante |
 
 Les 11 sont toutes dans la fenetre A (2026-02-14) et 10 sur 11 portent
-`first_sync_by = Madina97294`. Mecanisme non identifie — consigne en §Decouvertes, non traite.
+`first_sync_by = joueur_117`. Mecanisme non identifie — consigne en §Decouvertes, non traite.
 
 ### 1.3 — Oracle croise : le film contre l'API
 
@@ -433,18 +433,18 @@ export GOCACHE=<cache prive>          # une commande go a la fois
 # 1. REPETITION A BLANC — serveur allume, aucune ecriture.
 #    Attendu : « planifiees=80 corriges=0 echecs=0 » + l'avertissement « RIEN n'a ete ecrit ».
 #    `planifiees` = ce qui SERAIT corrige ; `corriges` reste a 0 tant qu'on n'applique pas.
-LEVELUP_REPO_ROOT=C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration \
+LEVELUP_REPO_ROOT=<poste>/Downloads/Scripts/LevelUp-go-migration \
   go run ./cmd/backfill-team-scores --gamertag JGtm
 
 # 2. APPLICATION — SERVEUR ARRETE (air + server.exe), sinon l'ouverture RW echoue.
 #    Attendu : « planifiees=80 corriges=80 echecs=0 ». Tout ecart entre les deux
 #    compteurs = des lignes prevues qui n'ont pas ete ecrites : lire les ERROR.
-LEVELUP_REPO_ROOT=C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration \
+LEVELUP_REPO_ROOT=<poste>/Downloads/Scripts/LevelUp-go-migration \
   go run ./cmd/backfill-team-scores --gamertag JGtm --apply
 
 # 3. CONTROLE — re-jouer le dry-run : attendu « identiques=80 planifiees=0 »,
 #    et PLUS d'avertissement de repetition a blanc.
-LEVELUP_REPO_ROOT=C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration \
+LEVELUP_REPO_ROOT=<poste>/Downloads/Scripts/LevelUp-go-migration \
   go run ./cmd/backfill-team-scores --gamertag JGtm
 ```
 
@@ -519,7 +519,7 @@ fois. Le dossier n'est pas suivi.
 ## Decouvertes (hors perimetre — CONSIGNEES, NON TRAITEES)
 
 1. **11 lignes fausses que le substitut de ticks n'explique pas**, toutes du lot initial
-   2026-02-14, 10/11 avec `first_sync_by = Madina97294` : 7 sont des **inversions exactes des
+   2026-02-14, 10/11 avec `first_sync_by = joueur_117` : 7 sont des **inversions exactes des
    deux camps** (6 Oddball + 1 BTB:Sentry Defense), 1 cumule inversion et ticks
    (`1141896d`), 2 One Flag CTF ont un score de vainqueur a 2 au lieu de 3, et
    `f395b462` (Arena:Attrition) porte **1 950** la ou l'API donne 0. Le mecanisme n'a pas ete

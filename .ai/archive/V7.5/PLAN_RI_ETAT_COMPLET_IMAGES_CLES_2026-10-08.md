@@ -94,7 +94,7 @@
   mesurées). Partir de là règle le conflit documentaire que `83dc72eab` aurait garanti à la première
   fusion (correction 12 de la contre-vérification : `a4515e66c` modifie le plan de l'étape 2 et le
   thought_log). Préfixe `feat/` : la CI se déclenche. Worktree DÉDIÉ, RÉUTILISÉ :
-  `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-ri` (il n'y a plus de `LevelUp-wt-lk`), un seul
+  `<poste>/Downloads/Scripts/LevelUp-wt-ri` (il n'y a plus de `LevelUp-wt-lk`), un seul
   exécutant.
 - Jonctions vers le checkout principal DÉJÀ EN PLACE dans ce worktree (vérifiées à l'étape 0, créées
   par `cmd //c mklink /J`, jamais `ln -s`, qui copie) : `data/cache/film_chunks`,
@@ -106,8 +106,8 @@
   fusionné sans accord. La fusion du §1.3 se fait à l'ouverture du jalon suivant.
 - `data/cache/film_facts` du worktree : dossier RÉEL (jamais une jonction), renommé avant chaque
   passe de preuve (§5, pièges).
-- Cache Go : `GOCACHE='C:\Users\Guillaume\AppData\Local\go-build-ri'` et
-  `GOLANGCI_LINT_CACHE='C:\Users\Guillaume\AppData\Local\golangci-ri'`, un seul processus `go` à la
+- Cache Go : `GOCACHE='<poste>\AppData\Local\go-build-ri'` et
+  `GOLANGCI_LINT_CACHE='<poste>\AppData\Local\golangci-ri'`, un seul processus `go` à la
   fois ; jamais `go build ./...` (disque).
 
 ### 1.2 Reprise des instruments de recherche (patch relu, jamais le crochet)
@@ -147,10 +147,10 @@ règle 7). Noms des sorties, fixés par le patch (une étiquette de mode unique,
 
 ### 1.4 Variables communes des commandes (bash, depuis `$WT/apps/go-api`)
 ```bash
-export GOCACHE='C:\Users\Guillaume\AppData\Local\go-build-ri' GOLANGCI_LINT_CACHE='C:\Users\Guillaume\AppData\Local\golangci-ri' PATH="/c/msys64/ucrt64/bin:$PATH" CGO_ENABLED=1
-WT=/c/Users/Guillaume/Downloads/Scripts/LevelUp-wt-ri
-R=C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/film_chunks
-REF=C:/Users/GUILLA~1/AppData/Local/Temp/claude/c--Users-Guillaume-Downloads-Scripts-LevelUp/2efb0786-9fba-4f95-8fd0-464ee47b91d7/scratchpad/ri/d1
+export GOCACHE='<poste>\AppData\Local\go-build-ri' GOLANGCI_LINT_CACHE='<poste>\AppData\Local\golangci-ri' PATH="/c/msys64/ucrt64/bin:$PATH" CGO_ENABLED=1
+WT=<poste>/Downloads/Scripts/LevelUp-wt-ri
+R=<poste>/Downloads/Scripts/LevelUp/data/cache/film_chunks
+REF=<poste>/AppData/Local/Temp/claude/c--Users-poste-Downloads-Scripts-LevelUp/2efb0786-9fba-4f95-8fd0-464ee47b91d7/scratchpad/ri/d1
 S=$REF/../lk                       # scratchpad de la session (le même que REF) ; un sous-dossier par étape : $S/e0, $S/lk3, ...
 G=./internal/games/halo_infinite/film/internal/grammar/
 FILMS="000d5950,01e1f945,084a804d,111fa685,11de8353,1c4c63c2,50247b26,51101d1d,53ce4390,60ae07c4,64e8adfa,696a9d7c,7344d24f,9f57c612,a349fea8,a521164d,bcb6d393,d9781168,e5adf7b2,fb1a1a72,0797ce72,396cfc92,4f77afc1,51ebbc0f,bf15f7ab,bfecd02b,c75f33b8,f75e7053"

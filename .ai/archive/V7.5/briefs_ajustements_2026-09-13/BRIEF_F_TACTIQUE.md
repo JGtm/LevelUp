@@ -1,6 +1,6 @@
 # LOT F — Page Tactique : rechargement au clic + conformité à la maquette 034b1915
 
-Worktree : `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ajust-tactique` · branche `feat/ajust-tactique` · port Vite **5187**.
+Worktree : `<poste>\Downloads\Scripts\LevelUp-wt-ajust-tactique` · branche `feat/ajust-tactique` · port Vite **5187**.
 Lis d'abord `BRIEF_COMMUN.md`. Maquette : `artefacts/034b1915_onglet_tactique.html` — LIS-LA EN ENTIER (HTML + CSS + script), version texte `artefacts/art_034b1915.txt`. Ce lot touche probablement le Go (skills `arch-rules`, `go-features`, `db-schema`), GOCACHE privé.
 
 ## Cadrage utilisateur (verbatim)

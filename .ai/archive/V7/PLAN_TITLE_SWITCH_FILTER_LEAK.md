@@ -39,7 +39,7 @@ Fichiers clés :
 
 ### Constat 2 — Comptes auth_only traités comme cibles de sync (BRUIT LOGS/METRIQUES)
 
-5 comptes Halo Infinite (`DankerGlue`, `QuiteSiren`, `Trimbutton`, `GeleJugefi`,
+5 comptes Halo Infinite (`joueur_1016`, `QuiteSiren`, `joueur_1018`, `joueur_1017`,
 `UppedJoker`) ont `db_path:""` + `auth_only:true` dans `db_profiles.json`. Confirmé par
 l'utilisateur : ils n'auront JAMAIS de DB, ils existent uniquement pour fournir des
 refresh tokens au pool de sync partagé.
@@ -48,7 +48,7 @@ Le filtre canonique `domain.SyncablePlayers()`
 (`apps/go-api/internal/domain/bootstrap.go:63-71`) ne filtre que sur `SyncEnabled`, PAS
 sur `AuthOnly`. Ces 5 comptes fantômes passent donc dans la liste transmise à
 `runOnceV2()` à chaque cycle -> warnings en boucle observés dans les logs :
-`sync.v2: joueur en échec ... open player DB DankerGlue`, `snapshot: player DB indisponible`.
+`sync.v2: joueur en échec ... open player DB joueur_1016`, `snapshot: player DB indisponible`.
 
 IMPORTANT (validé par lecture de `discovery.go` / `known_loader.go`) : pour ces comptes
 l'échec se produit AVANT tout appel réseau (l'ouverture DuckDB locale échoue
@@ -150,7 +150,7 @@ NE PAS toucher (ces call-sites ont légitimement besoin des comptes auth_only) :
   Deux filtres à rôles distincts, ne pas fusionner.
 
 Tests : `apps/go-api/internal/domain/syncable_players_test.go`
-- `TestSyncablePlayers_ExcludesAuthOnly` (RealPlayer gardé, DankerGlue exclu).
+- `TestSyncablePlayers_ExcludesAuthOnly` (RealPlayer gardé, joueur_1016 exclu).
 - `TestSyncablePlayers_ExcludesAuthOnly_EvenIfSyncEnabled` (auth_only + pause -> exclu).
 
 ## Hors scope (chantier séparé)

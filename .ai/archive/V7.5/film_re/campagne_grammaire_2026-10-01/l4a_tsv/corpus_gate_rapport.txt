@@ -570,8 +570,8 @@ BANC DE VERITE — 4f77afc1 : ok
   [FILET] couverture coverage.vehicles.samplesAfterEnd : 577 -> 1636 (aucune mesure du banc ne couvre ce bloc)
   [FILET] couverture coverage.vehicles.turretRidesAlreadyAboard : 1 -> 2 (aucune mesure du banc ne couvre ce bloc)
   [FILET] vehicules vehicles.rides/duree-totale : 27157 -> 27083 (aucune mesure du banc ne couvre ce bloc)
-  [FILET] vehicules vehicles.rides/duree-totale/par-xuid/2533274827096894 : 1097 -> 1030 (aucune mesure du banc ne couvre ce bloc)
-  [FILET] vehicules vehicles.rides/duree-totale/par-xuid/2535461484006747 : 237 -> 230 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] vehicules vehicles.rides/duree-totale/par-xuid/2542494231387188 : 1097 -> 1030 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] vehicules vehicles.rides/duree-totale/par-xuid/2769104854931374 : 237 -> 230 (aucune mesure du banc ne couvre ce bloc)
   [FILET] vehicules vehicles/duree-totale : 226325 -> 225331 (aucune mesure du banc ne couvre ce bloc)
   [FILET] vehicules vehicles/duree-totale/par-slot/795 : 2738 -> 936 (aucune mesure du banc ne couvre ce bloc)
   [FILET] vehicules vehicles/duree-totale/par-slot/812 : 5418 -> 1415 (aucune mesure du banc ne couvre ce bloc)
@@ -726,8 +726,8 @@ DETAIL DES PERTES (13 temoin(s)) :
     perte     couverture       coverage.vehicles.samplesAfterEnd                         577 -> 1636      
     perte     couverture       coverage.vehicles.turretRidesAlreadyAboard                  1 -> 2         
     perte     vehicules        vehicles.rides/duree-totale                             27157 -> 27083     
-    perte     vehicules        vehicles.rides/duree-totale/par-xuid/2533274827096894       1097 -> 1030      
-    perte     vehicules        vehicles.rides/duree-totale/par-xuid/2535461484006747        237 -> 230       
+    perte     vehicules        vehicles.rides/duree-totale/par-xuid/2542494231387188       1097 -> 1030      
+    perte     vehicules        vehicles.rides/duree-totale/par-xuid/2769104854931374        237 -> 230       
     perte     vehicules        vehicles/duree-totale                                  226325 -> 225331    
     perte     vehicules        vehicles/duree-totale/par-slot/795                       2738 -> 936       
     perte     vehicules        vehicles/duree-totale/par-slot/812                       5418 -> 1415      

@@ -1,5 +1,5 @@
 import fs from 'fs';
-const dir = 'C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
+const dir = 'C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
 const want = process.argv.slice(2).map(s => s.toUpperCase().replace('0X','0x'));
 const files = fs.readdirSync(dir).filter(f => f.endsWith('.json') && !f.includes('derived'));
 const seen = {};

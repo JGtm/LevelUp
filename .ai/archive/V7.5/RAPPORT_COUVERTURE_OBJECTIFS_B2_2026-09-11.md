@@ -394,7 +394,7 @@ Les seules references de TEST qui bougent sont celles de l'item 4 : la ligne `fl
   sortie. **A instruire avant tout `-update` du corpus** : re-figer maintenant effacerait la trace.
   Reproduction : `LEVELUP_REPO_ROOT=<racine> go run ./cmd/replay-equiv -films 000d5950`.
 - **D2 — `fb1a1a72` publie 10 prises de drapeau pour 0 a l'oracle** sur le joueur
-  2535450323793545 (slot 24), alors que les 7 autres slots sont exacts. `comp 22 A` est un
+  2759150029385955 (slot 24), alors que les 7 autres slots sont exacts. `comp 22 A` est un
   emplacement de PRODUCTION : c'est donc une publication FAUSSE, et elle passe SOUS la borne de
   deroulage recalibree par B1 (16). Le film n'avait pas d'artefact au parc, l'audit ne l'avait donc
   jamais mesure. Famille C6, non traitee ici.

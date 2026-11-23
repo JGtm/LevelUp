@@ -47,7 +47,7 @@
     equipment_uses_research_test.go:133: == D.0.4 RELATION i26 <-> DECROISSANCE DE CHARGE == 0/1 (0.0 %) des decroissances sont accompagnees d'une HAUSSE d'i26 sur la MEME vie dans la fenetre ± 500 ms · 3 hausses d'i26 au total · 108 vies portent i26 sans aucune decroissance de charge
     equipment_uses_research_test.go:134: == D.0.4 POSES PAR POSEUR == 55 slots poseurs (VIES, pas joueurs) · 0 poses sans poseur a portee · total par famille : grapple:2 grenade_frag:85 grenade_plasma:22 other:2
     equipment_uses_research_test.go:134:   mediane de poses par slot poseur : 2.0
-    equipment_uses_research_test.go:135:   piece ecrite : C:\Users\Guillaume\Projects\LevelUp-wt-usages-film\.ai\V7.5\replay2d\registre_film\lotD\24dbb67d_vies.tsv
-    equipment_uses_research_test.go:135:   piece ecrite : C:\Users\Guillaume\Projects\LevelUp-wt-usages-film\.ai\V7.5\replay2d\registre_film\lotD\24dbb67d_decroissances.tsv
+    equipment_uses_research_test.go:135:   piece ecrite : <poste>\Projects\LevelUp-wt-usages-film\.ai\V7.5\replay2d\registre_film\lotD\24dbb67d_vies.tsv
+    equipment_uses_research_test.go:135:   piece ecrite : <poste>\Projects\LevelUp-wt-usages-film\.ai\V7.5\replay2d\registre_film\lotD\24dbb67d_decroissances.tsv
 --- PASS: TestEquipmentUsesPhase0 (43.88s)
 PASS

@@ -8,7 +8,7 @@
 
 ## Contexte
 
-Le 27/05/2026 à 13:38, l'utilisateur signale que la page Media est vide pour tous les comptes (Chocoboflor, Madina97294, JGtm, XxDaemonGamerxX). Les logs montrent en boucle :
+Le 27/05/2026 à 13:38, l'utilisateur signale que la page Media est vide pour tous les comptes (joueur_165, joueur_117, JGtm, joueur_291). Les logs montrent en boucle :
 
 ```
 [WARN]  pool: ouverture SharedSocial échouée (dégradation: socialDB=nil)

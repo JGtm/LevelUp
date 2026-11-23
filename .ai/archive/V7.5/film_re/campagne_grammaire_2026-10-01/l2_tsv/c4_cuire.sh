@@ -1,6 +1,6 @@
 #!/bin/bash
 # cuire.sh : les quatre films, base puis tete, binaires instrumentes (sonde C4), un a la fois.
-S=/c/Users/GUILLA~1/AppData/Local/Temp/claude/c--Users-Guillaume-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad
+S=/c/Users/utilisateur/AppData/Local/Temp/claude/c--Users-poste-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad
 C4=$S/L2/c4; R=$C4/root; mkdir -p $C4/dump $C4/art
 export LEVELUP_REPO_ROOT=$(cygpath -m $R)
 for spec in "bcb6d393|Cliffhanger" "4f77afc1|Flood Gulch" "084a804d|Fortitude Heavies" "1c4c63c2|Refuge"; do

@@ -1,6 +1,6 @@
 # LOT A — Accueil + Médias
 
-Worktree : `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ajust-accueil` · branche `feat/ajust-accueil` · port Vite **5181**.
+Worktree : `<poste>\Downloads\Scripts\LevelUp-wt-ajust-accueil` · branche `feat/ajust-accueil` · port Vite **5181**.
 Lis d'abord `BRIEF_COMMUN.md` (même dossier).
 
 ## Repérage déjà fait (vérifie sur pièces, le code a pu bouger)

@@ -1,6 +1,6 @@
 # LOT G — Match view
 
-Worktree : `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ajust-matchview` · branche `feat/ajust-matchview` · port Vite **5188**.
+Worktree : `<poste>\Downloads\Scripts\LevelUp-wt-ajust-matchview` · branche `feat/ajust-matchview` · port Vite **5188**.
 Lis d'abord `BRIEF_COMMUN.md`. Lot web (les données existent). Match témoin : choisis un match récent de JGtm avec film décodé (rejeu disponible, prises de socle, équipements) — trouve-le en interrogeant l'API :8000 (`/players/JGtm/matches?…`) ou via la page Historique ; note son id dans le rapport. L'onglet Chronologie de la match view porte les blocs équipement/armes spéciales/positions.
 
 ## Cadrage utilisateur (verbatim, à respecter à la lettre)

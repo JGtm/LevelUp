@@ -1,13 +1,13 @@
 # CONTEXTE COMMUN — enquête en lecture seule (superviseur, 2026-09-23)
 
-Tu es un enquêteur Opus piloté par un superviseur. Projet LevelUp : dashboard Halo Infinite (Go `apps/go-api/`, React/TS `apps/web/`, DuckDB). Dépôt principal : `C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration` (bash : `/c/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration`), branche `feat/v75`, commit de référence `43a01721e`. CE CHECKOUT EST PARTAGÉ avec d'autres sessions : tu n'y écris RIEN (aucune modification de fichier, aucun `git add/commit/stash/checkout/merge/reset`, aucune écriture dans `.ai/`, `data/`, `apps/`). Lecture seule : Read / Grep / Glob, `git log / show / blame / diff`.
+Tu es un enquêteur Opus piloté par un superviseur. Projet LevelUp : dashboard Halo Infinite (Go `apps/go-api/`, React/TS `apps/web/`, DuckDB). Dépôt principal : `<poste>\Downloads\Scripts\LevelUp-go-migration` (bash : `<poste>/Downloads/Scripts/LevelUp-go-migration`), branche `feat/v75`, commit de référence `43a01721e`. CE CHECKOUT EST PARTAGÉ avec d'autres sessions : tu n'y écris RIEN (aucune modification de fichier, aucun `git add/commit/stash/checkout/merge/reset`, aucune écriture dans `.ai/`, `data/`, `apps/`). Lecture seule : Read / Grep / Glob, `git log / show / blame / diff`.
 
 L'utilisateur (Guillaume, francophone ; il a fait lui-même la rétro-ingénierie du film Theater et a AUTORITÉ sur la mécanique de jeu) a remonté des défauts du REJEU 2D et de l'UI. Ta mission : établir SUR PIÈCES la cause racine de TON point et proposer une solution planifiable. AUCUNE implémentation.
 
 ## Espace de travail
 Scratchpad du superviseur (tu peux y écrire) :
-- Windows : `C:\Users\GUILLA~1\AppData\Local\Temp\claude\c--Users-Guillaume-Downloads-Scripts-LevelUp-go-migration\5e1d6f3f-b6be-4233-b361-e8a896dd728d\scratchpad`
-- bash : `/c/Users/GUILLA~1/AppData/Local/Temp/claude/c--Users-Guillaume-Downloads-Scripts-LevelUp-go-migration/5e1d6f3f-b6be-4233-b361-e8a896dd728d/scratchpad` (ci-dessous `SP`)
+- Windows : `<poste>\AppData\Local\Temp\claude\c--Users-poste-Downloads-Scripts-LevelUp-go-migration\5e1d6f3f-b6be-4233-b361-e8a896dd728d\scratchpad`
+- bash : `<poste>/AppData/Local/Temp/claude/c--Users-poste-Downloads-Scripts-LevelUp-go-migration/5e1d6f3f-b6be-4233-b361-e8a896dd728d/scratchpad` (ci-dessous `SP`)
 - Rapport final : `SP/rapports/<ton_lot>.md` (en français).
 - Scripts d'analyse : Node uniquement (`node x.mjs`) dans `SP/sondes/<ton_lot>/`. JAMAIS de Python.
 - Documents de rejeu publiés (schéma 68, JSON, 111 fichiers) : `<repo>/data/cache/replays/halo_infinite/<id8>.json`. Lecture séquentielle autorisée (un document à la fois en mémoire).
@@ -24,8 +24,8 @@ Scratchpad du superviseur (tu peux y écrire) :
 1. Aucun serveur (air, :8000), aucun Vite, aucun navigateur (outils MCP chrome-devtools interdits).
 2. Aucun décodage de film, aucun `replay-build` / `backfill-*` / `replay-worker`, aucune écriture d'artefact, aucune boucle sur des films ou des faits (bombe RAM : un film BTB = 7,9 Go).
 3. Commandes `go` : seulement si INDISPENSABLE à ta preuve, et alors :
-   a. dans un worktree DÉTACHÉ à toi : `git -C /c/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration worktree add --detach /c/Users/Guillaume/Downloads/Scripts/LevelUp-wt-inv-<lot> 43a01721e` — jamais dans le checkout principal ;
-   b. `GOCACHE` privé : `GOCACHE=/c/Users/Guillaume/Downloads/Scripts/LevelUp-wt-inv-<lot>/.gocache` ;
+   a. dans un worktree DÉTACHÉ à toi : `git -C <poste>/Downloads/Scripts/LevelUp-go-migration worktree add --detach <poste>/Downloads/Scripts/LevelUp-wt-inv-<lot> 43a01721e` — jamais dans le checkout principal ;
+   b. `GOCACHE` privé : `GOCACHE=<poste>/Downloads/Scripts/LevelUp-wt-inv-<lot>/.gocache` ;
    c. sous le VERROU machine : `bash SP/voie.sh acquire <lot>` AVANT toute commande go (il attend si un autre enquêteur tient la voie ; s'il répond TIMEOUT, relance-le), puis `bash SP/voie.sh release <lot>` APRÈS, même en cas d'échec. Une seule commande go à la fois sur toute la machine ;
    d. sondes = tests `//go:build research` qui lisent AU PLUS 3 fichiers de faits persistés (jamais un film), en avant-plan : `go test -tags research -count=1 -run <TonTest> ./internal/games/halo_infinite/film/replay/` depuis `apps/go-api` du worktree ;
    e. si CGO est exigé : `PATH=/c/msys64/ucrt64/bin:$PATH CGO_ENABLED=1 CC=C:/msys64/ucrt64/bin/gcc.exe`.

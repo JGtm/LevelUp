@@ -41,7 +41,7 @@ Archivé le 2026-07-16 — rotation anticipée demandée par l'utilisateur ; ent
 
 **Tâche** (retour user) : ajouter un graphe « Précision par arme » sur la page Synthèse pour Halo 5, et déclarer côté capabilities le besoin de cette donnée (dérivable des tirs tirés/touchés par arme, ou d'une précision directe si un titre la fournit). Précision « user » validée : afficher **toutes les armes tirées** (pas de seuil de volume), pourcentage = tirs au but / tirs tirés.
 
-**Constat clé** : la donnée existe DÉJÀ. La table partagée `weapon_accuracy` (`match_id, xuid, weapon_id, shots_fired, shots_landed, drops`) est peuplée pour Halo 5 (ingest `halo_5/ingest/weapon_accuracy.go` depuis les events `weapon_drop` natifs). Vérif DuckDB Go (`cmd/diag_exec` read-only) : 146 531 rows / 2 855 matchs / 57 armes ; les 3 joueurs de validation (Madina97294, JGtm, Chocoboflor) ont ~53 armes, ~43 % global. Halo Infinite ne peuple PAS cette table (pas d'events drop dans la timeline reconstruite). Il ne manquait que la lecture agrégée → service → API → chart + la capability.
+**Constat clé** : la donnée existe DÉJÀ. La table partagée `weapon_accuracy` (`match_id, xuid, weapon_id, shots_fired, shots_landed, drops`) est peuplée pour Halo 5 (ingest `halo_5/ingest/weapon_accuracy.go` depuis les events `weapon_drop` natifs). Vérif DuckDB Go (`cmd/diag_exec` read-only) : 146 531 rows / 2 855 matchs / 57 armes ; les 3 joueurs de validation (joueur_117, JGtm, joueur_165) ont ~53 armes, ~43 % global. Halo Infinite ne peuple PAS cette table (pas d'events drop dans la timeline reconstruite). Il ne manquait que la lecture agrégée → service → API → chart + la capability.
 
 **Décisions techniques** :
 - **Capability à 2 niveaux** (choix user) : data-level `match.weapon.accuracy` (`games.CapWeaponAccuracy`, commentaire sur la double source tirs/précision-directe ; H5=supported, Infinite=not_exposed dans les 2 capabilities.toml + fallbacks hardcodés des adapters + compteur `AllCapabilityKeys` 16→17 + tests skeleton/parity MAJ) ; title-level `weapon_accuracy` (`title.CapWeaponAccuracy`, `knownCapabilities`, `halo_5/title.toml`, miroir TS `TITLE_CAPABILITIES` + label `FeatureUnavailable`). NE PAS confondre avec `weapon_kills` (complétude snapshot) déjà existant.
@@ -338,7 +338,7 @@ préservé) + catalogue reconstruit `{emblem_ids:320, nameplate_ids:308}` (sans 
 
 **Diagnostic (vérifié sur VPS + code)** : le bandeau front lit `bootstrap.reauth_required`, calculé serveur-side sur **`currentPlayer.XUID`** (le joueur AFFICHÉ), via `reauthStore.IsReauthRequired`. Or :
 - JGtm (`2533274823110022`) est sain : `reauth_required` absent, `oauth_refresh: échange OK` dans `auth.log` aujourd'hui.
-- **3 autres joueurs ont un RT réellement mort depuis le 13/06** (Chocoboflor `…789936`, Madina97294 `…283686`, XxDaemonGamerxX `…178266`) : flag `reauth_required:true` + `cli_auth: refresh_token mort` à chaque cycle (AADSTS70000 × 2256). Confirme la mémoire `feedback_token_model_rt_never_recapture` (ces 3 = comptes à re-capturer par leurs propriétaires).
+- **3 autres joueurs ont un RT réellement mort depuis le 13/06** (joueur_165 `…789936`, joueur_117 `…283686`, joueur_291 `…178266`) : flag `reauth_required:true` + `cli_auth: refresh_token mort` à chaque cycle (AADSTS70000 × 2256). Confirme la mémoire `feedback_token_model_rt_never_recapture` (ces 3 = comptes à re-capturer par leurs propriétaires).
 - L'utilisateur se connecte en `jgtm_xbox` (**role admin**) → `authz.CanAccessPlayer` admin = voit les 4 joueurs. Le joueur courant par défaut = `ownedPlayers[0]`, et `LoadPlayers` **itère une map Go sans tri** (ordre non-déterministe) → tombe ~3 fois sur 4 sur un joueur mort → bandeau. Un admin ne peut RIEN faire pour le RT d'un tiers (seul le propriétaire se reconnecte) → bandeau trompeur.
 
 **Décision (validée utilisateur)** : scoper le bandeau au **compte connecté**, pas au joueur affiché. (Ordre non-déterministe de `LoadPlayers` + nommage du joueur dans le message = hors-scope, notés comme dette latente — deviennent sans effet sur le bandeau une fois scopé.)
@@ -358,7 +358,7 @@ préservé) + catalogue reconstruit `{emblem_ids:320, nameplate_ids:308}` (sans 
 
 ## [2026-06-28] H5 rang/XP (SR) absent pour les joueurs au RT mort — dé-pin pool + serve-persisted + backfill — COMPLÉTÉ + vérifié
 
-**Symptôme** : le rang/XP Halo 5 de Chocoboflor/Madina97294/XxDaemonGamerxX (les 3 joueurs au refresh_token mort, cf. bandeau reauth) ne s'affiche pas. L'utilisateur note à raison que ces stats ne sont PAS gatées derrière le token du joueur.
+**Symptôme** : le rang/XP Halo 5 de joueur_165/joueur_117/joueur_291 (les 3 joueurs au refresh_token mort, cf. bandeau reauth) ne s'affiche pas. L'utilisateur note à raison que ces stats ne sont PAS gatées derrière le token du joueur.
 
 **Diagnostic (vérifié code + 4 DB H5 copiées en local)** :
 - Le SR (Spartan Rank 1..152 + XP) vient du `XpInfo` de la **carnage** (`dto_carnage.go` — l'API renvoie `SpartanRank` ET `TotalXP` directement, confirmé sur `.ai/H5_EXPLORATION/03_carnage_ranked_SAMPLE.json`). Public, récupérable par matchID avec n'importe quel token.
@@ -368,7 +368,7 @@ préservé) + catalogue reconstruit `{emblem_ids:320, nameplate_ids:308}` (sans 
 **Fix livré (3 parties, branche `fix/h5-career-rank-xp-pool-fallback`)** :
 1. **Serve-persisted** : `LoadCareerSnapshot` passé en **live-first → fallback local** (+ helper `liveCareerSnapshot`) ; `WithCareerSource` dé-gaté prod (kill-feed reste démo). → la carrière d'un joueur au RT mort ne disparaît plus. 2 tests.
 2. **Dé-pin sync** : `acquire.go` `PolicyPinnedPlayer` → fallback `PolicyAnyPublic` si le RT du joueur est mort (achievements échoue best-effort, inchangé). 3 tests. → futurs matchs des RT morts persistent CSR+SR via le pool.
-3. **Backfill SR historique (one-shot prod)** : `cmd/h5-csr-match-backfill` + `LEVELUP_H5_AUTH_AS=JGtm` (token emprunté sain → carnage publique des 3 joueurs), exécuté dans un conteneur `golang:1.26` jetable (binaire pré-build app en ligne ; coupure ~25 s pour le run, app stoppée → zéro contention lock DuckDB mono-process/B-swap). maxMatches=15 (matchs récents = SR courant). Résultat : SR écrits Chocoboflor=14 / Madina=15 / XxDaemon=15 / JGtm=15. Vérifié : Chocoboflor 0→14 lignes SR, **SR 122** (~4,7M XP, dernier match avril 2023).
+3. **Backfill SR historique (one-shot prod)** : `cmd/h5-csr-match-backfill` + `LEVELUP_H5_AUTH_AS=JGtm` (token emprunté sain → carnage publique des 3 joueurs), exécuté dans un conteneur `golang:1.26` jetable (binaire pré-build app en ligne ; coupure ~25 s pour le run, app stoppée → zéro contention lock DuckDB mono-process/B-swap). maxMatches=15 (matchs récents = SR courant). Résultat : SR écrits joueur_165=14 / joueur_075=15 / joueur_639=15 / JGtm=15. Vérifié : joueur_165 0→14 lignes SR, **SR 122** (~4,7M XP, dernier match avril 2023).
 
 **Reste** : commit 1+2 + merge main → deploy (la prod sert live-only tant que le dé-gate n'est pas déployé → le SR backfillé ne s'affiche qu'après deploy).
 
@@ -679,7 +679,7 @@ Vérif : `go test ./internal/scheduler/...` + `go test ./internal/api/ -run HasC
 
 ## [2026-06-27] Démo Halo 5 — Phase 4 : vidéos H5 (indexation + extraction démo)
 
-**Tâche** : intégrer des clips Halo 5 dans la démo (échantillons « solo avec vidéos »). Captures locales `C:\Users\Guillaume\Videos\Captures\JGtm` (2018-2019, 86 fichiers `Halo_5_Guardians-*.mp4`).
+**Tâche** : intégrer des clips Halo 5 dans la démo (échantillons « solo avec vidéos »). Captures locales `<poste>\Videos\Captures\JGtm` (2018-2019, 86 fichiers `Halo_5_Guardians-*.mp4`).
 
 **Validations préalables** : (1) les captures 2018 correspondent à de VRAIS matchs H5 (capture 2018-10-08 22h08 Paris=20:08 UTC → match à 20:06 UTC ; 1149 matchs H5 en 2018) ; (2) `index-media --title halo_5` est DÉJÀ title-aware (associe par timestamp à shared_social h5) — 7/7 captures associées (delta 48-507 s) ; (3) les captures sont du **mp4 H.264/AAC mono-piste = WEB-NATIF** (ffprobe) → servies en DIRECT, **AUCUN transcodage HLS** (transcode_status=NULL). ffmpeg confirmé sur le VPS (indexation y tournera).
 
@@ -800,8 +800,8 @@ Vérif : `go test ./internal/scheduler/...` + `go test ./internal/api/ -run HasC
 **Tâche** : merger la branche `feat/h5-events-enrichment` (9 commits : proficience arme, discipline suicides/trahisons, engagement pondéré 2 titres, bannière synthétisée Home, CSR Champion, MMR not_supported) dans main + exécuter les ops de déploiement (backfill, recompute, copie bases vers prod).
 
 **Ops data (serveur local arrêté, DBs libres)** :
-- **Backfill discipline H5** (`cmd/h5-enrich` → `computeAndPersistH5DisciplineAwards`) : PSA suicides/trahisons calculées depuis `shared.killer_victim_pairs` + équipes, écrites par génération `psa_generation_seq` (append-only). 4 joueurs (JGtm/Chocoboflor/Madina97294/XxDaemonGamerxX).
-- **Recompute engagement pondéré** : H5 via `h5-enrich` ; Infinite via `levelup engagement-coefs --all --with-scores --force` (recompute scores depuis highlight_events + coefs, force = recalcule l'existant). 4 player DBs Infinite (JGtm 932, Madina 596, Chocoboflor 487, XxDaemon 31 scores) ; 5 joueurs auth-only sans DB locale skippés.
+- **Backfill discipline H5** (`cmd/h5-enrich` → `computeAndPersistH5DisciplineAwards`) : PSA suicides/trahisons calculées depuis `shared.killer_victim_pairs` + équipes, écrites par génération `psa_generation_seq` (append-only). 4 joueurs (JGtm/joueur_165/joueur_117/joueur_291).
+- **Recompute engagement pondéré** : H5 via `h5-enrich` ; Infinite via `levelup engagement-coefs --all --with-scores --force` (recompute scores depuis highlight_events + coefs, force = recalcule l'existant). 4 player DBs Infinite (JGtm 932, joueur_075 596, joueur_165 487, joueur_639 31 scores) ; 5 joueurs auth-only sans DB locale skippés.
 - **Copie prod** : conteneur principal arrêté (`docker compose stop levelup`, demo conservée), 8 player DBs (H5 4 + Infinite 4) copiées via scp vers `lvelup:/opt/levelup/data/titles/.../players/`. Vérif data-loss : les 2 shared (H5 146550784 / Infinite 302788608) sont **byte-identiques** local==prod → prod n'a collecté aucun match exclusif (scheduler prod re-post-traite l'existant, personne ne joue H5) → copie sûre. Pas de `.wal` résiduel (checkpoint clean au shutdown).
 
 **Résolution de conflit clé (MMR)** : main avait introduit `ProvidesTeamMMR`/`no_team_mmr` (déjà câblé : bootstrap_service + masquage colonne MMR Escouade/Explorer) ; ma branche avait `ProvidesMMR`/`no_mmr` pour le même besoin (H5 = aucun MMR). Décision : **adopter la version de main, supprimer mon doublon** (`ProvidesMMR`/`ProvidesMMRFromResolver`/champ `NoMMR`/flag `no_mmr`/`TestProvidesMMR`) — mon `ProvidesMMR` n'avait AUCUN consommateur réel (seulement son test), le highlight underdog s'auto-omet sur MMR nil. Conflits `thought_log.md` (union) + `damage_model.go`/`constants.toml` (version main). Garde-fou diag prod relevé : conteneur unhealthy transitoire (/health time-out >5s pendant les cycles de sync) + bugs PRÉ-EXISTANTS hors périmètre (`playlists_catalog` inexistante, `snapshot_ready_at` absent des player DBs prod — la copie des DBs migrées corrige ce dernier).
@@ -989,7 +989,7 @@ Les deux câblés dans `CollectMatchBatch` (AddHighlightEvents).
 
 **Correction d'une erreur d'analyse (auto-critique)** : j'avais conclu à tort que LUSR/win-prob étaient réservés au classé et que 5d16ff8d (non classé) n'avait "par design" pas de LUSR. FAUX — l'utilisateur l'a corrigé : LUSR existe pour TOUS les matchs (il comble l'absence de CSR sur le non-classé) et la win-prob est universelle. Le vrai diagnostic, prouvé : **#6 (pas de LUSR) et #7b (pas de win-prob) sont une CASCADE de #10 (roster incomplet)**.
 
-**Chaîne causale vérifiée** : à l'ingest H5, `match_participants` (carnage gamertag-keyée, xuid nul) a droppé les joueurs non résolus → rosters déséquilibrés (ex. 5d16ff8d en 2v4 au lieu de 4v4). Le moteur LUSR saute les matchs `|teamA-teamB|>1` (skill_v2_shadow.go isTeamImbalanceTooHigh + concurrentTeamSize) → ni LUSR ni win-prob. **2281 matchs 2-équipes déséquilibrés**. Ce N'EST PAS une limite API : le kill-feed `killer_victim_pairs` (issu des EVENTS) porte déjà xuid+gamertag de TOUS les joueurs (vérifié : Madman684844/Pancakeflips présents dans le kill-feed de 5d16ff8d, absents de match_participants).
+**Chaîne causale vérifiée** : à l'ingest H5, `match_participants` (carnage gamertag-keyée, xuid nul) a droppé les joueurs non résolus → rosters déséquilibrés (ex. 5d16ff8d en 2v4 au lieu de 4v4). Le moteur LUSR saute les matchs `|teamA-teamB|>1` (skill_v2_shadow.go isTeamImbalanceTooHigh + concurrentTeamSize) → ni LUSR ni win-prob. **2281 matchs 2-équipes déséquilibrés**. Ce N'EST PAS une limite API : le kill-feed `killer_victim_pairs` (issu des EVENTS) porte déjà xuid+gamertag de TOUS les joueurs (vérifié : joueur_711/joueur_036 présents dans le kill-feed de 5d16ff8d, absents de match_participants).
 
 **Solution hybride (sur directive user "accepte le trou, ceux en local tu enrichis, les autres tu refetch")** :
 - **Patch ART préalable** : `cmd/h5-lusr-backfill` faisait `DELETE FROM player_skill_state_v2` (vecteur ART #23046) → remplacé par le helper canonique `RecomputeLUSRCanonicalForPlayer` (reset par INSERT sentinelle is_reset=TRUE).
@@ -1369,7 +1369,7 @@ Les deux câblés dans `CollectMatchBatch` (AddHighlightEvents).
 Le « blocage d'activation » démystifié : `config/titles/halo_5/` (title.toml + mappings + milestones) n'existe QUE sur la branche feat, PAS sur main. Le registre runtime (`LoadTitlesIntoRegistry`) enregistre tout titre ayant un title.toml valide — AUCUN filtre de statut. Mon serveur local lisait la config du repo principal (sur `main`, sans halo_5) → titre inconnu → header `X-LevelUp-Title: halo_5` ignoré → fallback HINF. Rien de mystérieux, juste la config absente de l'endroit où le serveur lit.
 
 DÉMONTRÉ en rendant la config H5 visible localement (copie temp config/titles/halo_5 dans le repo principal, retirée après) + db_profiles.halo_5 complété (3 joueurs manquants ajoutés : seul JGtm y était). Résultat backfill progression V2 ciblant H5 (PREUVE par mtime : player DB H5 modifiés ; milestone_catalog metadata H5 = 14 lignes 100% halo_5 = mon fix C5 validé live) :
-- JGtm 13 / Chocoboflor 12 / Madina97294 12 / XxDaemonGamerxX 4 milestones gagnés (persistés, vérifiés post-shutdown via diag_exec).
+- JGtm 13 / joueur_165 12 / joueur_117 12 / joueur_291 4 milestones gagnés (persistés, vérifiés post-shutdown via diag_exec).
 - streaks/records = 0 : NORMAL, pas un bug. `loadProgressionSharedMatches` filtre `start_time >= now - ProgressionMatchHistoryDays(120j)` ; H5 est dormant (matchs vieux) → 0 match dans la fenêtre → 0 streak/record d'activité récente. Les milestones (cumul à vie) passent.
 
 VRAI FIX PERMANENT = merger feat→main (la config H5 arrive sur main → le serveur prod/local register halo_5 → endpoint + UI title-aware fonctionnent). db_profiles.json (runtime, non-versionné, repo principal) complété à 4 joueurs halo_5 — gardé (forward-compatible). Nettoyage : config temp retirée, app_settings restauré, binaire/logs supprimés.
@@ -1394,7 +1394,7 @@ Refonte title-agnostic H5 TERMINÉE côté code (branche feat/h5-enrichment-pari
 - La donnée SE PEUPLE AUTOMATIQUEMENT au prochain sync live H5 (le hook cfg.ProgressionAfterSync est câblé dans le runner H5, commit C1) — le backfill manuel n'est qu'une accélération.
 Commande de déclenchement manuel (serveur up, titre H5 dans le header) :
   curl -s -X POST -H 'X-LevelUp-Title: halo_5' http://127.0.0.1:8000/api/v1/_admin/progression/backfill/JGtm | jq
-  (idem Chocoboflor / Madina97294 / XxDaemonGamerxX ; idempotent ; diag de counts en retour). Vérif counts via GET .../diag/progression/{slug} ou l'outil diag_progression.
+  (idem joueur_165 / joueur_117 / joueur_291 ; idempotent ; diag de counts en retour). Vérif counts via GET .../diag/progression/{slug} ou l'outil diag_progression.
 
 ## [2026-06-24] H5 — Refonte title-agnostic : C7 slug literals + C0 (descopé, justifié) — Complété
 
@@ -1491,7 +1491,7 @@ Vérif : build ./... + vet OK (pas de cycle livesync→sync, déjà existant) ; 
 
 ## [2026-06-23] H5 — dominance_flag title-agnostic + feasibility PSA/CSR — Complété (suite "fais le max")
 
-dominance_flag CORRIGÉ pour H5 (l'entrée précédente le notait à 0). H5 highlight_events = 100% `event_type='medal'` (zéro kill-event), `team_*_score` NULL, `game_variant_name` NULL → ni courbe de kills ni scores registry ; le path DOMINATION/HUMILIATION dépendait de MedalSteaktacularID (Infinite). Fix : `analysis.ComputeScoreMarginDominance` (marge de score finale, seuil .ai/STEAKTACULAR.md : gap ≥ leadPct×winner, leadPct standard 0.40), appelée par `computeMatchDominanceFlag` UNIQUEMENT si zéro kill-event → Infinite (en a toujours) reste byte-identique. Score d'équipe = registry team_*_score sinon SOMME des kills par équipe (match_participants), limité aux 2-équipes. Résultats : JGtm 378 DOM/167 HUM, Choco 337/152, Madina 309/108, XxDaemon 54/29. Pas de remontada (3/4/5) sans timeline. Build/vet/tests analysis+sync verts.
+dominance_flag CORRIGÉ pour H5 (l'entrée précédente le notait à 0). H5 highlight_events = 100% `event_type='medal'` (zéro kill-event), `team_*_score` NULL, `game_variant_name` NULL → ni courbe de kills ni scores registry ; le path DOMINATION/HUMILIATION dépendait de MedalSteaktacularID (Infinite). Fix : `analysis.ComputeScoreMarginDominance` (marge de score finale, seuil .ai/STEAKTACULAR.md : gap ≥ leadPct×winner, leadPct standard 0.40), appelée par `computeMatchDominanceFlag` UNIQUEMENT si zéro kill-event → Infinite (en a toujours) reste byte-identique. Score d'équipe = registry team_*_score sinon SOMME des kills par équipe (match_participants), limité aux 2-équipes. Résultats : JGtm 378 DOM/167 HUM, joueur_901 337/152, joueur_075 309/108, joueur_639 54/29. Pas de remontada (3/4/5) sans timeline. Build/vet/tests analysis+sync verts.
 
 Feasibility des 2 autres gaps (lecture dto_carnage.go) : (a) `personal_score_awards` IMPOSSIBLE — le carnage H5 n'a que `PlayerScore` scalaire (déjà = match_participants.personal_score), pas de breakdown par catégorie d'objectif. (b) CSR par match ABSENT du carnage → nécessite l'endpoint ArenaPlaylistStats/skill (non câblé) + re-fetch réseau = chantier (avec la classification ranked). (c) `H5CarnageTeam.Score` porte les vrais scores d'équipe mais le mapper les droppe → fix mapper + re-fetch = refinement futur (la somme de kills suffit pour Slayer/Arena).
 
@@ -1507,7 +1507,7 @@ Livré :
 - Fix data `end_time` : le mapper H5 (`ingest/registry.go`) ne posait jamais `end_time` (NULL pour les 3032 matchs) → `loadMatchesForEngagement` (WHERE end_time IS NOT NULL) excluait tout → engagement=0, et probablement corrélation média cassée. Fix SOURCE (end_time = start + duration) + dérivation des rows existantes (diag_exec UPDATE offline, 3031 rows).
 - LUSR v2 (`cmd/h5-lusr-backfill`, déjà existant) : même fix résolution xuid. Lancé pour les 4.
 
-Résultats (errors=0 partout) : JGtm 1970 rows / perf 1909 / sessions 1970 / engagement 1800 / friends 1399 / LUSR μ23.0 (1111 matchs) ; Chocoboflor 1855 / 1818 / 1855 / 1687 / 977 / μ24.2 ; Madina97294 1456 / 1424 / 1456 / 1370 / 1265 / μ24.7 ; XxDaemonGamerxX 309 / 287 / 309 / 265 / 285 / μ21.2. σ LUSR=0.7 (convergé), valeurs différenciées. had_bot=0/assists=0 dégradations attendues (pas de bots H5, modèle assists niche).
+Résultats (errors=0 partout) : JGtm 1970 rows / perf 1909 / sessions 1970 / engagement 1800 / friends 1399 / LUSR μ23.0 (1111 matchs) ; joueur_165 1855 / 1818 / 1855 / 1687 / 977 / μ24.2 ; joueur_117 1456 / 1424 / 1456 / 1370 / 1265 / μ24.7 ; joueur_291 309 / 287 / 309 / 265 / 285 / μ21.2. σ LUSR=0.7 (convergé), valeurs différenciées. had_bot=0/assists=0 dégradations attendues (pas de bots H5, modèle assists niche).
 
 Findings : (1) `dominance_flag` utilise `MedalSteaktacularID` Infinite hardcodé → DOMINATION/HUMILIATION ne déclenchent pas pour H5 (comeback-via-events OK) ; généralisation par titre = polish futur. (2) Surfaces H5 (home/synthèse/sessions/timeseries/engagement) servent DÉJÀ la donnée enrichie : caps coarse `title.toml` ouvertes + pas de gate fine sur les chemins service (le serving passe par le canonical, pas l'adapter.Load* qui reste stub) → caps fines `analytics.timeseries`/`engagement.score` laissées `not_exposed` (refléteraient à tort l'adapter).
 
@@ -1685,11 +1685,11 @@ Prochaine étape (GO user) : « la suite » = build registre weapon taxonomy P2�
 
 ## [2026-06-23] Backfill H5 multi-joueurs (4 joueurs) + override d'auth `LEVELUP_H5_AUTH_AS` — Complété
 
-Objectif : backfill historique H5 pour JGtm, Chocoboflor, Madina97294, XxDaemonGamerxX. Blocage : 3 des 4 (Chocoboflor `2535469190789936`, Madina97294 `2533274858283686`, XxDaemonGamerxX `2533274833178266`) ont des RT morts `AADSTS70000` (vieille app Azure, jamais re-capturer, cf. [[feedback_token_model_rt_never_recapture]]) → `cmd/h5-backfill` plantait au refresh du token de la cible.
+Objectif : backfill historique H5 pour JGtm, joueur_165, joueur_117, joueur_291. Blocage : 3 des 4 (joueur_165 `2547408409520575`, joueur_117 `2623439693412443`, joueur_291 `2558964982616721`) ont des RT morts `AADSTS70000` (vieille app Azure, jamais re-capturer, cf. [[feedback_token_model_rt_never_recapture]]) → `cmd/h5-backfill` plantait au refresh du token de la cible.
 
-Finding décisif (client.go) : le fetch H5 = `GET /h5/players/{gamertag}/matches`, header `X-343-Authorization-Spartan` SEUL, **PAS de 343-clearance ni xuid dans l'auth**. Donc l'historique de N'IMPORTE quel gamertag est servi avec N'IMPORTE quel SpartanToken v4 valide. → ajout `LEVELUP_H5_AUTH_AS=<Gamertag>` dans `cmd/h5-backfill/main.go` : découple le compte d'AUTH (token emprunté) de la CIBLE (gamertag/xuid passés au `Viewer` + owner des batches). Additif, rétro-compatible (défaut = la cible elle-même). Le `WithHaloAuth` porte le xuid du token owner ; `BuildBackfillDeps` reçoit la cible. Validé empiriquement (Chocoboflor via token JGtm renvoie bien les matchs de Chocoboflor).
+Finding décisif (client.go) : le fetch H5 = `GET /h5/players/{gamertag}/matches`, header `X-343-Authorization-Spartan` SEUL, **PAS de 343-clearance ni xuid dans l'auth**. Donc l'historique de N'IMPORTE quel gamertag est servi avec N'IMPORTE quel SpartanToken v4 valide. → ajout `LEVELUP_H5_AUTH_AS=<Gamertag>` dans `cmd/h5-backfill/main.go` : découple le compte d'AUTH (token emprunté) de la CIBLE (gamertag/xuid passés au `Viewer` + owner des batches). Additif, rétro-compatible (défaut = la cible elle-même). Le `WithHaloAuth` porte le xuid du token owner ; `BuildBackfillDeps` reçoit la cible. Validé empiriquement (joueur_165 via token JGtm renvoie bien les matchs de joueur_165).
 
-Résultats (run séquentiel, lock RW unique, ~1h50, auth empruntée à JGtm) : JGtm +0 (déjà complet, 1970 Arena connus), Chocoboflor +869 (jusqu'à févr. 2016), Madina97294 +172, XxDaemonGamerxX +21 (jusqu'à nov. 2015). Total +1062 matchs. Shared H5 `match_registry` 1970 -> 3032, `participants` 13241 -> 19124. `persist_errors=0` partout, skip-known dédupe correctement les matchs communs, Warzone exclu par design. Conclusion : backfill multi-joueurs débloqué sans re-capture de tokens ; outil ops réutilisable.
+Résultats (run séquentiel, lock RW unique, ~1h50, auth empruntée à JGtm) : JGtm +0 (déjà complet, 1970 Arena connus), joueur_165 +869 (jusqu'à févr. 2016), joueur_117 +172, joueur_291 +21 (jusqu'à nov. 2015). Total +1062 matchs. Shared H5 `match_registry` 1970 -> 3032, `participants` 13241 -> 19124. `persist_errors=0` partout, skip-known dédupe correctement les matchs communs, Warzone exclu par design. Conclusion : backfill multi-joueurs débloqué sans re-capture de tokens ; outil ops réutilisable.
 
 ## [2026-06-23] Snowball H5 — neutralisation des surfaces dépendantes de damage_taken (résistance) — Complété (3 surfaces)
 
@@ -2573,7 +2573,7 @@ Le mapping persiste via l'ingest (`AddXUIDAliases`), d'où `persist=nil` sur le 
 
 **Sync live — décision archi** (recon ultracode `wf_dabfb368-ed9`, 5 agents) : côté ÉCRITURE déjà title-générique (PathResolver, prouvé byte-identique `engine_title_seam_test.go`) ; seul le FETCH est Infinite-spécifique ; les 2 chemins convergent sur `persist.MatchBatch`. → **DeltaRunner h5 SÉPARÉ** (fetch cryptum → canonical → `CollectMatchBatch` → SharedPersister sous lease `AcquireSharedWriterStandalone`), sélectionné au `BuildEngine`/`newEngineFor` par le registre (jamais `slug==`), ne touche JAMAIS `SyncEngine.run`. **Identité** : gamertags h5 → vrais xuid Xbox via `worldenrich.CachingResolver`/PeopleHub (title-agnostic) → lignes compatibles + cross-linkables avec Infinite.
 
-**T1 — capture engine** (`halo_5/capture.go`) : `CollectRecentMatches` fetch paginé matchs+events → mappers privés → `ingest.CollectMatchBatch` → `[]*persist.MatchBatch`, PUR (zéro DB), delta-stop, résilience events. **T2 — participants** : carnage = seule source du roster (matches list self-only) ; `dto_carnage.go` + client `GetMatchCarnage` + `mapCarnageParticipants` → `match_participants` (outcome team/FFA/DNF via `TeamStats`, comptes bruts) ; **KDA/Accuracy/DamageTaken nil, JAMAIS fabriqués**. `probe-h5` enrichi d'un dump carnage (shape réel : Chocoboflor/Madina97294/JGtm…).
+**T1 — capture engine** (`halo_5/capture.go`) : `CollectRecentMatches` fetch paginé matchs+events → mappers privés → `ingest.CollectMatchBatch` → `[]*persist.MatchBatch`, PUR (zéro DB), delta-stop, résilience events. **T2 — participants** : carnage = seule source du roster (matches list self-only) ; `dto_carnage.go` + client `GetMatchCarnage` + `mapCarnageParticipants` → `match_participants` (outcome team/FFA/DNF via `TeamStats`, comptes bruts) ; **KDA/Accuracy/DamageTaken nil, JAMAIS fabriqués**. `probe-h5` enrichi d'un dump carnage (shape réel : joueur_165/joueur_117/JGtm…).
 
 **INSIGHT KDA/FDA (user)** : KDA = **stat d'API**, jamais calculée pour Infinite (`transforms.go:342` lit le champ natif). Formule native (concepteur ranking h5) : `FDA = ((k+⅓a)−d)/games` — forme **NET/différence**, peut être négative → explique vraisemblablement les KDA négatifs + l'échec historique de reproduction locale du FDA Infinite (on faisait le ratio `(k+a/3)/d`). RÈGLE : calcul local du KDA = exception, JAMAIS pour Infinite ; h5 (API sans KDA) → nil. `assist_frag_weight` title-aware ne concerne QUE le rendement. Consigné `PLAN_DAMAGE_MODEL_PER_TITLE.md` §0.4.
 
@@ -4842,7 +4842,7 @@ Les 3 fichiers `career_live_{service,merge,partial}.go` faisaient transiter les 
 
 **Résultats** : Go `go test ./internal/media/...` vert (incl. golden d'intégration `TestBuildHLS_Integration` qui régénère un arbre 2 pistes et prouve game/voices/full **tous AAC** désormais + nouveau garde-fou `TestPlanHLS_MultiTrackUniformAAC`) ; `go vet` propre. Front : `tsc -b` exit 0, eslint **0 erreur** (4 warnings tous pré-existants/hors périmètre), vitest CoverFlowModal **34/34** (3 nouveaux tests d'enchaînement effectif : clips A→B→C + arrêt sur dernier, images après délai, autoChain off).
 
-**Migration des anciens clips (suite, même branche)** : mesure prod = **56 clips multipistes** (52 JGtm + 4 Madina97294), **0 source `.mkv`** restante (supprimées post-transcodage) → impossible de réutiliser `RunHLSTranscode` (part de la source). Audio = ~3-4 % du clip (vidéo AV1/H.264 = copy), donc ré-encoder seulement la rendition Opus→AAC est léger. Nouvel outil **in-place** : `internal/media/hls_audio_migrate.go` (`MigrateHLSAudioToAAC` : parse master → ffprobe init de chaque rendition → ré-encode les non-AAC via ffmpeg dans un tmp, valide AAC, swap atomique par fichier ; vidéo + master intacts ; idempotent) + CLI `cmd/migrate-hls-audio` (parcourt la racine média, `--root`/`--slug`/`--limit`/`--dry-run`). Const `aacRenditionBitrate` (192k) partagée avec `buildHLSArgs`. Tests : `TestParseMasterAudioRenditions` (+No-audio), intégration `TestMigrateHLSAudioToAAC_Integration` (arbre mixte game=opus/full=aac → game converti AAC, vidéo intacte, VerifyHLSPlayable OK, idempotent) + `_DryRun`. `go build`/`go vet`/`go test ./internal/media/...` verts.
+**Migration des anciens clips (suite, même branche)** : mesure prod = **56 clips multipistes** (52 JGtm + 4 joueur_117), **0 source `.mkv`** restante (supprimées post-transcodage) → impossible de réutiliser `RunHLSTranscode` (part de la source). Audio = ~3-4 % du clip (vidéo AV1/H.264 = copy), donc ré-encoder seulement la rendition Opus→AAC est léger. Nouvel outil **in-place** : `internal/media/hls_audio_migrate.go` (`MigrateHLSAudioToAAC` : parse master → ffprobe init de chaque rendition → ré-encode les non-AAC via ffmpeg dans un tmp, valide AAC, swap atomique par fichier ; vidéo + master intacts ; idempotent) + CLI `cmd/migrate-hls-audio` (parcourt la racine média, `--root`/`--slug`/`--limit`/`--dry-run`). Const `aacRenditionBitrate` (192k) partagée avec `buildHLSArgs`. Tests : `TestParseMasterAudioRenditions` (+No-audio), intégration `TestMigrateHLSAudioToAAC_Integration` (arbre mixte game=opus/full=aac → game converti AAC, vidéo intacte, VerifyHLSPlayable OK, idempotent) + `_DryRun`. `go build`/`go vet`/`go test ./internal/media/...` verts.
 
 Impact taille (mesuré) : AAC@192k un peu moins efficace qu'Opus (game opus ~484 Ko vs aac ~730 Ko sur un clip ~32 s) mais audio négligeable face à la vidéo (~41 Mo) → +0,5 % par clip, qualité transparente.
 
@@ -5158,11 +5158,11 @@ Impact taille (mesuré) : AAC@192k un peu moins efficace qu'Opus (game opus ~484
 
 **Incident git résolu avant deploy** : un `git pull` accidentel sur la branche (qui track origin/main) avait tenté de merger `125042306` (le revert prod-safety qui avait retiré la migration PME de main) → conflit sur order.go + 2 fichiers PME "deleted by them" (séquelle aussi d'une corruption d'index racy-stat Windows antérieure). Abort du pull, puis merge délibéré branche→main en résolvant les 3 conflits en faveur de la branche (la campagne ré-introduit ces migrations à la racine). Vérif : arbre mergé IDENTIQUE à la branche.
 
-**Crash-test étendu pré-deploy** : migrations validées sur les 4 player DBs locales (Madina/JGtm/Chocoboflor/XxDaemon) + shared via apply_shared_migrations — zéro erreur (schémas legacy variables 23-24 cols PME / 7-8 PSA, tous gérés par les migrations robustes).
+**Crash-test étendu pré-deploy** : migrations validées sur les 4 player DBs locales (joueur_075/JGtm/joueur_165/joueur_639) + shared via apply_shared_migrations — zéro erreur (schémas legacy variables 23-24 cols PME / 7-8 PSA, tous gérés par les migrations robustes).
 
-**Deploy vérifié** : GitHub Actions tous verts (Deploy Pre-Check 4m59s + ADR 0021 Gate + Deploy to VPS 2m30s + Regen demo). Conteneur `levelup-levelup-1` Up healthy. **Preuve DIRECTE sur les vraies DBs prod (modifiées au boot 17:27)** : Madina player DB porte generation_id + personal_score_awards_latest + match_citations_latest + player_match_enrichment_latest ; shared DB porte is_reset + weapon_kills_generation_seq + player_skill_state_v2_latest. **Zéro erreur ART/FATAL/migration/reader** dans les logs. `pool: migrate player db` (OpenPlayerDB = lance les ensures append-only) a réussi pour tous les joueurs AVEC db.
+**Deploy vérifié** : GitHub Actions tous verts (Deploy Pre-Check 4m59s + ADR 0021 Gate + Deploy to VPS 2m30s + Regen demo). Conteneur `levelup-levelup-1` Up healthy. **Preuve DIRECTE sur les vraies DBs prod (modifiées au boot 17:27)** : joueur_075 player DB porte generation_id + personal_score_awards_latest + match_citations_latest + player_match_enrichment_latest ; shared DB porte is_reset + weapon_kills_generation_seq + player_skill_state_v2_latest. **Zéro erreur ART/FATAL/migration/reader** dans les logs. `pool: migrate player db` (OpenPlayerDB = lance les ensures append-only) a réussi pour tous les joueurs AVEC db.
 
-**WARN prod pré-existants (NON liés à l'ART, à NE PAS confondre)** : OAuth invalid_grant (AADSTS70000, tokens à re-capturer pour Madina/Choco/XxDaemon) ; « No such file » pour QuiteSiren/UppedJoker/GeleJugefi/Trimbutton/DankerGlue (profils db_profiles.json sans DB synchronisée) ; restic absent ; catalog playlist 404 best-effort.
+**WARN prod pré-existants (NON liés à l'ART, à NE PAS confondre)** : OAuth invalid_grant (AADSTS70000, tokens à re-capturer pour joueur_075/joueur_901/joueur_639) ; « No such file » pour QuiteSiren/UppedJoker/joueur_1017/joueur_1018/joueur_1016 (profils db_profiles.json sans DB synchronisée) ; restic absent ; catalog playlist 404 best-effort.
 
 **Conclusion** : **le bug ART DuckDB #23046 est ÉRADIQUÉ en prod** sur toutes les tables d'état (Phase 1 PME + Phase 2 PSA/watermark/citations/weapon_kills). Serveur sain, DBs converties, zéro perte. Campagne TERMINÉE. (CI run encore en cours post-deploy — ne gate pas ; rerun si flake DuckDB connu.)
 
@@ -5180,7 +5180,7 @@ Impact taille (mesuré) : AAC@192k un peu moins efficace qu'Opus (game opus ~484
 
 **Garde-fous + corrections transverses** : 4 tables ajoutées à appendOnlyStateTables. **Durcissement regex garde-fou** (borné au backtick : `[^;\`]*`) — un faux positif weapon_kills/shared_persister (le `[^;]*` faisait le pont jusqu'au INSERT OR IGNORE medals/xuid_aliases du même fichier, les strings SQL Go n'ayant pas de `;` final). **Test atomicité persist** : tout étant append-only (PK techniques séquentielles), plus aucun conflit de PK exploitable → injection de panne via conversion NaN→INTEGER. order.go : 4 migrations insérées au rang d'enregistrement (TestSortByCanonicalIsNoOp). **Bug Phase 1 rattrapé** : le working tree order.go avait perdu `player_append_only_match_enrichment_v1` (anomalie git racy-stat Windows masquant la diff) → restauré depuis HEAD (le commit Phase 1 est sain).
 
-**CRASH-TEST RÉEL — décisif, 2 VRAIS BUGS TROUVÉS** : `apply_shared_migrations` + `engagement-coefs --all --with-scores --force` ×3 sur COPIES réelles Madina97294 + JGtm + shared (sandbox 427M). Les fixtures `:memory:` avaient `id` + `created_at` ; les **vraies** tables legacy (ancien schéma/pipeline Python) ne les ont PAS. Bugs : (a) CTAS citations/PSA faisait `COALESCE(created_at, …)` → colonne absente → fix `CURRENT_TIMESTAMP AS written_at` ; (b) PSA swap assumait `id` → absent → fix ajout conditionnel via séquence. Après fix : **migrations appliquées OK** (citations 6889 rows, PSA 3341+id, weapon_kills shared, PME 942 ; zéro signature ART), cardinalité validée (vues `_latest` = match distincts, zéro fan-out/collision id ; 496 « dups » PSA JGtm = doublons LEGACY pré-existants, sommés comme avant, nettoyés à la ré-écriture), **engagement-coefs ×3 EXIT=0 zéro ART** sur DBs converties. Test de non-régression `:memory:` legacy-swap (sans id/created_at) ajouté.
+**CRASH-TEST RÉEL — décisif, 2 VRAIS BUGS TROUVÉS** : `apply_shared_migrations` + `engagement-coefs --all --with-scores --force` ×3 sur COPIES réelles joueur_117 + JGtm + shared (sandbox 427M). Les fixtures `:memory:` avaient `id` + `created_at` ; les **vraies** tables legacy (ancien schéma/pipeline Python) ne les ont PAS. Bugs : (a) CTAS citations/PSA faisait `COALESCE(created_at, …)` → colonne absente → fix `CURRENT_TIMESTAMP AS written_at` ; (b) PSA swap assumait `id` → absent → fix ajout conditionnel via séquence. Après fix : **migrations appliquées OK** (citations 6889 rows, PSA 3341+id, weapon_kills shared, PME 942 ; zéro signature ART), cardinalité validée (vues `_latest` = match distincts, zéro fan-out/collision id ; 496 « dups » PSA JGtm = doublons LEGACY pré-existants, sommés comme avant, nettoyés à la ré-écriture), **engagement-coefs ×3 EXIT=0 zéro ART** sur DBs converties. Test de non-régression `:memory:` legacy-swap (sans id/created_at) ajouté.
 
 **Résultats tests** : **18 packages intégration TOUS VERTS, zéro FAIL** (migration, sync(+v2,invariants,halotest), persist, platform/duckdb, api(+handlers,middleware), progression/*, ops). Cascade fixtures corrigée (seedPlayerSchema + fixtures sync/persist : born-append-only + vues + séquences ; INSERT positionnels → nommés ; assertions idempotence raw→`_latest`/v_weapon_kills).
 
@@ -5215,7 +5215,7 @@ Impact taille (mesuré) : AAC@192k un peu moins efficace qu'Opus (game opus ~484
 - **MEDIUM** `player_skill_state_v2` : `lusr_full_recompute.go:34` DELETE WHERE xuid (reset watermark), index idx_psk_v2, post-import sérialisé.
 - False-positives correctement jugés : challenge (dé-indexé par ce sprint + garde-fou), killer_victim_pairs (aucun index), xuid_aliases/medals_earned/highlight_events (INSERT OR IGNORE = insert-only sans DELETE/UPDATE → pas le bug ART), match_registry/match_participants (ON CONFLICT DO UPDATE allowlistés + sérialisés dblease).
 
-**CRASH-TEST ART ORIGINEL — PASSÉ (GO sans réserve, 2026-06-21)** : `engagement-coefs --all --with-scores --force` ×3 sur COPIES réelles Madina97294 + JGtm (sandbox LEVELUP_REPO_ROOT, 427M, non destructif). Reproduit le scénario exact qui crashait la prod : la migration `OpenPlayerDB`→`EnsurePlayerMatchEnrichmentAppendOnly` convertit la VRAIE table PME legacy (38-39M, PK(match_id) + 3 index ART, données réelles) en append-only, puis ~1500 INSERTs engagement la churnent ×3. Résultats : **3 rounds EXIT=0, ZÉRO signature ART** (grep `Failed to delete all rows from index`/FATAL/invalidated/panic = vide), JGtm 914 + Madina 596 scores/round, 0 failed. Schéma converti confirmé (id BIGINT + stage + written_at). **Invariant merge-on-read PARFAIT sur données réelles** : `_latest` rows == match_id distincts (Madina 1183==1183, JGtm 942==942), **0 doublon** (zéro fan-out), physical >> latest (2971/3684 vs 1183/942 = append-only accumule), scores sains (0/100, avg ~50). Sandbox + artefacts supprimés, working tree propre.
+**CRASH-TEST ART ORIGINEL — PASSÉ (GO sans réserve, 2026-06-21)** : `engagement-coefs --all --with-scores --force` ×3 sur COPIES réelles joueur_117 + JGtm (sandbox LEVELUP_REPO_ROOT, 427M, non destructif). Reproduit le scénario exact qui crashait la prod : la migration `OpenPlayerDB`→`EnsurePlayerMatchEnrichmentAppendOnly` convertit la VRAIE table PME legacy (38-39M, PK(match_id) + 3 index ART, données réelles) en append-only, puis ~1500 INSERTs engagement la churnent ×3. Résultats : **3 rounds EXIT=0, ZÉRO signature ART** (grep `Failed to delete all rows from index`/FATAL/invalidated/panic = vide), JGtm 914 + joueur_075 596 scores/round, 0 failed. Schéma converti confirmé (id BIGINT + stage + written_at). **Invariant merge-on-read PARFAIT sur données réelles** : `_latest` rows == match_id distincts (joueur_075 1183==1183, JGtm 942==942), **0 doublon** (zéro fan-out), physical >> latest (2971/3684 vs 1183/942 = append-only accumule), scores sains (0/100, avg ~50). Sandbox + artefacts supprimés, working tree propre.
 
 **Conclusion / prochaine étape** : **Phase 1 = COMPLÈTE, VERTE, vérifiée adversarialement (0 réfutation), crash-test ART PASSÉ, non commitée** (95 fichiers working tree sur `refactor/art-pme-appendonly`, attente autorisation user pour commit GROUPÉ — ne pas laisser de commit partiel atteindre main=auto-deploy). Décisions user (2026-06-21) : crash-test PUIS commit (crash-test fait → re-demande commit) ; **P2 = phase suivante distincte** (PSA append-only blocker live + weapon_kills + citations + watermark), sur sa propre branche/commits APRÈS atterrissage Phase 1, avant le deploy final de la campagne ("déployer à la fin").
 
@@ -5240,7 +5240,7 @@ Impact taille (mesuré) : AAC@192k un peu moins efficace qu'Opus (game opus ~484
 
 **Pré-existant signalé (HORS scope PME, non corrigé)** : ~25 tests média de `platform/duckdb` (`media_repo_filters`, `match_view_repo_media`, `LoadMediaFiles`) échouent sur `media_match_associations_latest does not exist` — gap de la campagne média ANTÉRIEURE (reader prod migré vers `_latest` lisant la table sœur `media_match_associations_history`, mais `seedSharedSocialSchema` jamais mis à jour). Confirmé indépendant de PME (diff isolé à seedPlayerSchema, aucun fichier média touché). Présent sur la baseline `b763df91e`.
 
-**Conclusion / prochaine étape** : conversion ATOMIQUE complète et verte sur les tests PME-affectés. **NON commitée** (attente autorisation user). ⚠️ Livraison GROUPÉE migration+writers+readers+fixtures (ne pas laisser de commit partiel atteindre main = auto-deploy). go/no-go restant : `engagement-coefs --all --with-scores --force` ×3 sur copies Madina/JGtm. Puis P2 (PSA/weapon_kills/citations/watermark) + clôture. À traiter à part : fixtures média (campagne antérieure) + catalog_expand ON CONFLICT.
+**Conclusion / prochaine étape** : conversion ATOMIQUE complète et verte sur les tests PME-affectés. **NON commitée** (attente autorisation user). ⚠️ Livraison GROUPÉE migration+writers+readers+fixtures (ne pas laisser de commit partiel atteindre main = auto-deploy). go/no-go restant : `engagement-coefs --all --with-scores --force` ×3 sur copies joueur_075/JGtm. Puis P2 (PSA/weapon_kills/citations/watermark) + clôture. À traiter à part : fixtures média (campagne antérieure) + catalog_expand ON CONFLICT.
 
 ---
 
@@ -5258,7 +5258,7 @@ Impact taille (mesuré) : AAC@192k un peu moins efficace qu'Opus (game opus ~484
 
 **Fait** : backend (combat_yield.go bandes via slices bandThreshold+classifyBand, combat_profile.go 15 CombatStyle + AvgPaceRatio, câblage canonical+legacymatch, kpi_stats/synthesis/session_compare, domain/session_compare) ; front (module features/_shared/combatProfileLabels.ts source unique, SynthesisPage + SquadCombatProfileRow dé-dupliqués, types.ts unions 5 valeurs + avg_pace_ratio, SessionCompareEngagement, Lot 2 sur les 3 répliques de barres) ; glossaire help/i18n.ts FR+EN (entrée « Profil de combat » + repères 0.90/1.65) ; tests (combat_yield_test table-driven 5 bandes + pace_ratio, kpi_stats_test, combat-yield-bar.test + TimeseriesCombatYield.test markline 0.90/0.65).
 
-**Résultats** : Go build ./... + vet OK ; go test analysis/domain/service/platform-duckdb tous verts. Front tsc -b vert, eslint 0 erreur, vitest barres 13/13. Attendu sur les 4 joueurs (enfin différenciés) : JGtm Précis/Exposé/Mesuré · Madina Équilibré/Solide/Agressif · Chocoboflor Équilibré/Solide/Discret · XxDaemonGamerxX Dispersé/Fragile/Passif.
+**Résultats** : Go build ./... + vet OK ; go test analysis/domain/service/platform-duckdb tous verts. Front tsc -b vert, eslint 0 erreur, vitest barres 13/13. Attendu sur les 4 joueurs (enfin différenciés) : JGtm Précis/Exposé/Mesuré · joueur_075 Équilibré/Solide/Agressif · joueur_165 Équilibré/Solide/Discret · joueur_291 Dispersé/Fragile/Passif.
 
 **Conclusion / prochaine étape** : prêt à commit (en attente autorisation user). Non déployé. Aucun backfill requis (pace déjà en base, profil calculé à la lecture). Branche `feat/combat-profile-recalibration` (depuis main, distincte de la campagne ART sur fix/metadata-art-battlepass-appendonly).
 
@@ -5437,7 +5437,7 @@ Impact taille (mesuré) : AAC@192k un peu moins efficace qu'Opus (game opus ~484
 
 **Problème** : `db_profiles.json` contient des profils qui n'existent que pour la gestion des tokens auth (pas de vrais joueurs, `db_path: ""`). Ils remontaient dans `available_players` (bootstrap) → polluaient les favoris suggérés des multiselects gamertag (sélecteur L1, page Escouade, page Explorer).
 
-**Décision** : champ explicite plutôt que de dériver de `db_path == ""` (un vrai joueur peut avoir un `db_path` vide en onboarding pré-sync). Ajout de `auth_only: true` sur les 5 profils token-only (Trimbutton, DankerGlue, QuiteSiren, UppedJoker, GeleJugefi). Vrais joueurs (JGtm, Chocoboflor, Madina97294, XxDaemonGamerxX) restent sans flag.
+**Décision** : champ explicite plutôt que de dériver de `db_path == ""` (un vrai joueur peut avoir un `db_path` vide en onboarding pré-sync). Ajout de `auth_only: true` sur les 5 profils token-only (joueur_1018, joueur_1016, QuiteSiren, UppedJoker, joueur_1017). Vrais joueurs (JGtm, joueur_165, joueur_117, joueur_291) restent sans flag.
 
 **Implémentation** :
 - `dbProfileEntry.AuthOnly` + `domain.PlayerSummary.AuthOnly` (`json:"auth_only,omitempty"`), propagés dans `loadPlayersV2`/`loadPlayersV3`.
@@ -5583,8 +5583,8 @@ Suite revue : les strings inline FR/EN des nouvelles pages (GroupsPage, JoinPage
 ## [2026-06-19] Alignement données prod : in-place rebuild ART + backfill engagement — Complété (ZÉRO perte)
 
 **Résultat** : prod aligné sur les corrections locales, **sur ses propres données** (pas de copie). Maintenance via `ssh lvelup` : backup (`/opt/levelup/data/backups/pre_align_20260619_104239`) → `docker compose stop levelup` → `docker compose run --rm --entrypoint levelup levelup rebuild-pme-art --all` → `... engagement-coefs --all --with-scores --force` → restart (trap de sécurité). Serveur HTTP 200 healthy après.
-- **Zéro perte** : Madina 1183, **JGtm 947** (les 5 matchs prod-only préservés), rebuild rows_before==after partout, indexes recréés.
-- **Coefs recentrés = local** : Madina PvP_unranked 1.279 (+ ranked 1.45), JGtm 1.009.
+- **Zéro perte** : joueur_075 1183, **JGtm 947** (les 5 matchs prod-only préservés), rebuild rows_before==after partout, indexes recréés.
+- **Coefs recentrés = local** : joueur_075 PvP_unranked 1.279 (+ ranked 1.45), JGtm 1.009.
 - **metadata.duckdb prod** : déjà OK (123 maps fr-FR, The Pit→La fosse) — rien à aligner, la feature maps FR marche en prod.
 - Outil `levelup rebuild-pme-art` désormais permanent dans l'image → réparation/backfill futurs en une commande (« plus à le faire à la main »).
 
@@ -5640,16 +5640,16 @@ Suite revue : les strings inline FR/EN des nouvelles pages (GroupsPage, JoinPage
 
 **Statut** : 4 player DB réparées, re-backfill réussi, coefs recentrés. Backup pris. `go build`/`vet`/tests migration ✓.
 
-**Déclencheur** : le re-backfill `engagement-coefs --with-scores` crashait DuckDB (FATAL "Failed to append to PRIMARY_player_match_enrichment_0: duplicate key") sur Madina+JGtm — bug d'index ART (faux-positif : données sans doublon, COUNT==DISTINCT). User : « réparer proprement, aucune perte de données ».
+**Déclencheur** : le re-backfill `engagement-coefs --with-scores` crashait DuckDB (FATAL "Failed to append to PRIMARY_player_match_enrichment_0: duplicate key") sur joueur_075+JGtm — bug d'index ART (faux-positif : données sans doublon, COUNT==DISTINCT). User : « réparer proprement, aucune perte de données ».
 
-**Constat intégrité (read-only)** : ZÉRO perte. Toutes les lignes présentes, aucun doublon réel (Madina 1183=1183, JGtm 942=942, Choco 505, XxDaemon 32). 2 WAL résiduels (crash). Le crash est un faux-positif d'INDEX, pas de données.
+**Constat intégrité (read-only)** : ZÉRO perte. Toutes les lignes présentes, aucun doublon réel (joueur_075 1183=1183, JGtm 942=942, joueur_901 505, joueur_639 32). 2 WAL résiduels (crash). Le crash est un faux-positif d'INDEX, pas de données.
 
 **Décisions techniques** :
 1. **Backup** des 4 stats.duckdb (+WAL) → `data/backups/pre_art_rebuild_20260619_114622/`.
 2. **Fix `RebuildPlayerMatchEnrichmentART`** (`steps_player_rebuild_match_enrichment.go`) : la version 2026-05-23 (a) DROP-ait les indexes secondaires sans les recréer (commentaire « pas d'indexes connus » périmé — la table a gagné idx_pme_engagement_history/_paces/_session après) et (b) n'était PAS transactionnelle. Corrigé : capture dynamique des CREATE INDEX (duckdb_indexes is_primary=false) → swap CTAS **en transaction** avec **garde anti-perte** (rebuilt==before sinon rollback) → recréation des indexes. Même sûreté que RebuildMatchParticipantsART. Test non-régression `…_RecreatesSecondaryIndexes` ajouté.
 3. **CLI `cmd/rebuild_pme_art`** : cible UNIQUEMENT player_match_enrichment + CHECKPOINT initial (rejoue le WAL de crash) et final (vide le WAL). Évite `force_rebuild_art --player-db` qui tente AUSSI de rebuild match_skill_rank — table devenue append-only (v5.3) qui ne peut plus porter de PK → échec + WAL non checkpointé (bug pré-existant de force_rebuild_art, hors scope).
-4. **Rebuild des 4 DB** : counts identiques au baseline (zéro perte), 3 indexes recréés (1 pour Choco), WAL nettoyés, RO open OK, match_skill_rank intact.
-5. **Re-backfill** `engagement-coefs --all --with-scores --force` : RÉUSSI sans crash (XxDaemon 31, Choco 487, JGtm 914, Madina 596 scores). **Coefs recentrés** : JGtm 1.345→**1.009**, Madina 1.819→**1.279** (+ PvP_ranked 1.45 désormais calculé) — confirme l'effet pace_team-inclut-le-joueur sur les données historiques.
+4. **Rebuild des 4 DB** : counts identiques au baseline (zéro perte), 3 indexes recréés (1 pour joueur_901), WAL nettoyés, RO open OK, match_skill_rank intact.
+5. **Re-backfill** `engagement-coefs --all --with-scores --force` : RÉUSSI sans crash (joueur_639 31, joueur_901 487, JGtm 914, joueur_075 596 scores). **Coefs recentrés** : JGtm 1.345→**1.009**, joueur_075 1.819→**1.279** (+ PvP_ranked 1.45 désormais calculé) — confirme l'effet pace_team-inclut-le-joueur sur les données historiques.
 
 **Résultats** : zéro perte (vérifié counts == baseline avant/après), engagement recentré sur tout l'historique, build/tests verts.
 
@@ -5698,7 +5698,7 @@ Suite revue : les strings inline FR/EN des nouvelles pages (GroupsPage, JoinPage
 
 **Réponses / décisions** :
 - **« équipe observée »** = rythme réel moyen de l'escouade (per-player, joueur inclus depuis le commit pace_team). Relabel des 3 courbes via i18n (nouvelles clés `engagement.squad.trace.{lobby,expected,observed}`) : « Lobby / Escouade attendue / Escouade réelle » (FR), « Lobby / Squad (expected) / Squad (actual) » (EN). `SquadEngagementView` ne hardcode plus les noms (prop `seriesLabels`, passée localisée par `SquadEngagementSection`). Sous-titre manifest aligné.
-- **coef post-sync** : confirmé OK (diagnostic antérieur : JGtm/Madina ont bien leur coef PvP_unranked ; ranked vide = joueur ne joue pas classé, normal).
+- **coef post-sync** : confirmé OK (diagnostic antérieur : JGtm/joueur_075 ont bien leur coef PvP_unranked ; ranked vide = joueur ne joue pas classé, normal).
 - **noms de maps** : truncation front assouplie (9→14 car). **Résolution FR backend DIFFÉRÉE** : la requête `LoadMatchEngagementContext` fait `COALESCE(mr.map_name_fr, mr.map_name)` qui n'emprunte pas le pattern canonique `asset_translations` (cf. mémoire reference_asset_translations_fr + helper `applyMapFRTranslations` dans filters_repo.go). Diagnostic bloqué : shared/metadata DB tenue par `backfill-world.exe`. À faire quand DB libre : vérifier si `map_name_fr` est NULL (→ enrichir via asset_translations, mirroring applyMapFRTranslations) vs simple troncature.
 
 **Prochaine étape** : re-backfill engagement (--with-scores) + diagnostic maps quand `backfill-world.exe` relâche la shared DB.
@@ -5866,7 +5866,7 @@ Suite revue : les strings inline FR/EN des nouvelles pages (GroupsPage, JoinPage
 
 **Résultats observés** : tous les gates verts (cf. Statut). `/lab/charts` (galerie ECharts dev-sandbox) laissée intacte, hors périmètre.
 
-**Conclusion / prochaine étape** : Stage 1a (consolidation IA) livré. Restent **Stage 1b** (handler passthrough Waypoint ~50 LOC + panneau « Explorateur d'API ») et **Stage 1c** (actions diagnostics : relancer parité / probe tokens / sync). Plan : `C:\Users\Guillaume\.claude\plans\agile-noodling-key.md`.
+**Conclusion / prochaine étape** : Stage 1a (consolidation IA) livré. Restent **Stage 1b** (handler passthrough Waypoint ~50 LOC + panneau « Explorateur d'API ») et **Stage 1c** (actions diagnostics : relancer parité / probe tokens / sync). Plan : `<poste>\.claude\plans\agile-noodling-key.md`.
 
 ---
 
@@ -6283,7 +6283,7 @@ Suite revue : les strings inline FR/EN des nouvelles pages (GroupsPage, JoinPage
 
 **Statut** : Complété. Étape 1 (config prod) LIVRÉE + vérifiée end-to-end (user confirme miniatures + vidéos visibles, y compris médias famille). Étape 2 (durcissement code) sur branche `fix/media-captures-base-dir-resilience`, tests verts — à déployer à la prochaine cadence de merge.
 
-**Contexte** : sur lvelup.info (VPS dockerisé `/opt/levelup` → conteneur `/app`), la galerie Médias n'affichait aucune miniature ni vidéo lisible. Diagnostic 100 % read-only (SSH `lvelup`, logs nginx + conteneur, FS, DB via `strings`). Cause racine : `/opt/levelup/app_settings.json` (gitignoré, monté `./app_settings.json:/app/app_settings.json`) avait `media_captures_base_dir = "C:\\Users\\Guillaume\\Videos\\Captures"` — chemin Windows recopié du poste local — alors que les médias vivent à `/app/data/media/{slug}` (118 HLS + 118 thumbs/joueur déjà présents). `ServeMediaFile` résolvait contre ce chemin inexistant → 404 sur TOUS les médias. DB saine (chemins relatifs `{owner}/{rel}`), seul le réglage était faux. Secondaires élucidés : 502 = fenêtres de redémarrage (backend down), pas un bug média ; `filters_error` = repro local (0 sur le VPS) ; « médias d'un autre joueur » déjà géré par `friend_gamertags` + `authz.CanAccessPlayer` (famille), masqué par le 404 universel.
+**Contexte** : sur lvelup.info (VPS dockerisé `/opt/levelup` → conteneur `/app`), la galerie Médias n'affichait aucune miniature ni vidéo lisible. Diagnostic 100 % read-only (SSH `lvelup`, logs nginx + conteneur, FS, DB via `strings`). Cause racine : `/opt/levelup/app_settings.json` (gitignoré, monté `./app_settings.json:/app/app_settings.json`) avait `media_captures_base_dir = "<poste>\\Videos\\Captures"` — chemin Windows recopié du poste local — alors que les médias vivent à `/app/data/media/{slug}` (118 HLS + 118 thumbs/joueur déjà présents). `ServeMediaFile` résolvait contre ce chemin inexistant → 404 sur TOUS les médias. DB saine (chemins relatifs `{owner}/{rel}`), seul le réglage était faux. Secondaires élucidés : 502 = fenêtres de redémarrage (backend down), pas un bug média ; `filters_error` = repro local (0 sur le VPS) ; « médias d'un autre joueur » déjà géré par `friend_gamertags` + `authz.CanAccessPlayer` (famille), masqué par le 404 universel.
 
 **Décision technique** : (1) Fix prod immédiat = `media_captures_base_dir` → `/app/data/media` + `docker compose up -d levelup` (réglage gitignoré → persiste aux deploys). (2) Durcissement : `PathResolver.MediaDataDir()` (base canonique title-agnostic `{root}/data/media`) ajoutée aux bases candidates de `ServeMediaFile` ; `effectiveMediaBase()` (fallback + WARN) câblé sur scan/sync/HLS (`media_index_service.go`) → un réglage invalide ne peut plus rendre les médias illisibles. Chemins via `PathResolver` (pas de `filepath.Join(repoRoot,"data",…)` hors resolver).
 
@@ -6539,7 +6539,7 @@ Suite revue : les strings inline FR/EN des nouvelles pages (GroupsPage, JoinPage
 
 **Statut** : Op prod faite (rôle admin), plan optionnel rédigé.
 
-**Action** : `jgtm_xbox` passé `user`→`admin` dans `data/auth/users.json` (VPS, backup `.bak` créé, `sed` borné au bloc jgtm_xbox pour ne pas toucher madina/xxdaemon restés `user`). Pas de jq sur le VPS, pas de CLI de rôle exposé (`userstore.SetRole` existe mais sans cmd). Re-login SSO déclenché pour que la session récupère le rôle (figé au login) → vérifié : session jgtm_xbox la plus récente porte `"role":"admin"`. NB : `is_admin` du bootstrap dérive de `sess.Role`, donc effectif seulement après re-login.
+**Action** : `jgtm_xbox` passé `user`→`admin` dans `data/auth/users.json` (VPS, backup `.bak` créé, `sed` borné au bloc jgtm_xbox pour ne pas toucher joueur_075/xxdaemon restés `user`). Pas de jq sur le VPS, pas de CLI de rôle exposé (`userstore.SetRole` existe mais sans cmd). Re-login SSO déclenché pour que la session récupère le rôle (figé au login) → vérifié : session jgtm_xbox la plus récente porte `"role":"admin"`. NB : `is_admin` du bootstrap dérive de `sess.Role`, donc effectif seulement après re-login.
 
 **Plan** : `.ai/PLAN_AUTH_HARDENING_OPTIONAL.md` — 6 phases optionnelles, **Phase 0 = audit Azure solide AVANT toute suppression** (refresh tokens du parc liés à l'app émettrice ; supprimer la mauvaise app = re-capture forcée). Suite : PKCE + hygiène logs nginx, découplage `LEVELUP_OAUTH_CLIENT_ID` de l'app watcher, suppression apps mortes, lockdown instance, fusion comptes JGtm.
 
@@ -6722,21 +6722,21 @@ Suite revue : les strings inline FR/EN des nouvelles pages (GroupsPage, JoinPage
 
 **Prochaine étape** : commit (accord user). Validation bout-en-bout DIFFÉRÉE (nécessite booter le serveur) : déclencher un scan, vérifier `logs/media.log` (`hls: transcoding lancé` / `RunHLSTranscode: terminé`) + `hls_path` non NULL en DB + lecture du clip OK dans le web. Option restante (filet MP4 : remux live HEVC/H264 → MP4 fragmenté pour la fenêtre pré-HLS / échec HLS) à implémenter si souhaité. Volet 2 (synthèse monitoring csstat, idées à porter) = livrable doc seule, dans le plan.
 
-## [2026-06-11] LUSR delta : ordering chronologique par start_time (vue + loadPrevious) + incident ART/WAL Choco géré — Complété (tests verts, non commité)
+## [2026-06-11] LUSR delta : ordering chronologique par start_time (vue + loadPrevious) + incident ART/WAL joueur_901 géré — Complété (tests verts, non commité)
 
 **Statut** : Code complet + tests verts (sync/migration/persist normal + integration). Suite du fix rating_value continu (commits df6039b80, 29035e8f4). NON commité (accord user). Branche à VÉRIFIER avant commit (autre agent actif dans le tree).
 
-**Problème résiduel après le fix continu** : deltas de Chocoboflor encore faux (+75 constant). Root cause : SA base avait `written_at DEFAULT NULL` (migration append-only partielle — idempotente sur `id`, le `ALTER SET DEFAULT now()` n'avait pas abouti). `loadPreviousLUSRRating` ET la vue `match_skill_rank_latest` ordonnaient par `written_at DESC` (NULLS LAST) → les rows re-backfillées (written_at NULL) étaient ignorées → vieille row figée (1499) servie comme « précédent » et comme « latest ». Isolé à Choco (JGtm/Madina/Daemon = `written_at now()`).
+**Problème résiduel après le fix continu** : deltas de joueur_165 encore faux (+75 constant). Root cause : SA base avait `written_at DEFAULT NULL` (migration append-only partielle — idempotente sur `id`, le `ALTER SET DEFAULT now()` n'avait pas abouti). `loadPreviousLUSRRating` ET la vue `match_skill_rank_latest` ordonnaient par `written_at DESC` (NULLS LAST) → les rows re-backfillées (written_at NULL) étaient ignorées → vieille row figée (1499) servie comme « précédent » et comme « latest ». Isolé à joueur_901 (JGtm/joueur_075/Daemon = `written_at now()`).
 
 **Fix durable — ordonner par start_time (date réelle du match), pas written_at (ordre d'écriture, fragile)** :
 - `persist/lusr_append_only_persister` : `+StartTime` → colonne `start_time` peuplée à l'INSERT (était 100% NULL pour LUSR).
 - `sync/skill_v2_canonical` : `writeCanonicalLUSRRow(... startTime ...)` ; `loadPreviousLUSRRating`/`loadPreviousDisplayedOrdinal` → `WHERE (start_time IS NULL OR start_time < ?) ORDER BY start_time DESC NULLS LAST, written_at DESC, id DESC`. `canonicalGate` passe `m.startTime` (déjà chargé chrono par loadShadowMatches).
-- Vue `match_skill_rank_latest` : `ORDER BY CASE type, start_time DESC NULLS LAST, written_at DESC, id DESC` dans `sync/schema.go` (playerSchemaSQL — recréée à chaque `EnsurePlayerSchema`, donc toutes bases au boot) + migration `player_msr_view_priority_csr`. schema.go aussi aligné sur le CASE 3-voies (corrige un bug latent 2-voies). Test integration reproduisant le cas Choco.
+- Vue `match_skill_rank_latest` : `ORDER BY CASE type, start_time DESC NULLS LAST, written_at DESC, id DESC` dans `sync/schema.go` (playerSchemaSQL — recréée à chaque `EnsurePlayerSchema`, donc toutes bases au boot) + migration `player_msr_view_priority_csr`. schema.go aussi aligné sur le CASE 3-voies (corrige un bug latent 2-voies). Test integration reproduisant le cas joueur_901.
 - Migration `msr_written_at_default_now_repair_v1` (fichier `steps_player_append_only_match_skill_rank_repair.go`, nommé pour s'init juste après l'append-only) : `ALTER written_at SET DEFAULT now()` SEUL. **UPDATE des NULL RETIRÉ** — un UPDATE de written_at (colonne indexée) déclenche le bug ART DuckDB.
 
-**Incident géré (leçon)** : tenter de réparer written_at par `UPDATE` → FATAL ART (`Failed to delete all rows from index`) + WAL non rejouable (`GetDefaultDatabase`). Récupéré : backup `data/.../Chocoboflor/_recovery_bak`, WAL retiré, base intègre (4659 rows). **Règle : JAMAIS UPDATE/DELETE/ALTER sur une player DB via outil externe** (laisse un WAL piégé + ART) — passer par le serveur (gère le WAL) ou INSERT pur (le re-backfill, lui, checkpointe).
+**Incident géré (leçon)** : tenter de réparer written_at par `UPDATE` → FATAL ART (`Failed to delete all rows from index`) + WAL non rejouable (`GetDefaultDatabase`). Récupéré : backup `data/.../joueur_165/_recovery_bak`, WAL retiré, base intègre (4659 rows). **Règle : JAMAIS UPDATE/DELETE/ALTER sur une player DB via outil externe** (laisse un WAL piégé + ART) — passer par le serveur (gère le WAL) ou INSERT pur (le re-backfill, lui, checkpointe).
 
-**Vérifié** : re-backfill 4 joueurs (start_time peuplé) ; deltas Choco corrects par start_time (+3.87, +1.19, −2.87 au lieu de +75). Reste : l'UI de Choco prendra les bonnes rows au **prochain boot serveur** (EnsurePlayerSchema applique la vue start_time). Non vérifiable sans booter (autre agent actif). Nettoyer `_recovery_bak` une fois confirmé.
+**Vérifié** : re-backfill 4 joueurs (start_time peuplé) ; deltas joueur_901 corrects par start_time (+3.87, +1.19, −2.87 au lieu de +75). Reste : l'UI de joueur_901 prendra les bonnes rows au **prochain boot serveur** (EnsurePlayerSchema applique la vue start_time). Non vérifiable sans booter (autre agent actif). Nettoyer `_recovery_bak` une fois confirmé.
 
 ## [2026-06-11] Bruit terminal auth/boot — root causes + observabilité dashboard — Complété (non commité)
 
@@ -6745,7 +6745,7 @@ Suite revue : les strings inline FR/EN des nouvelles pages (GroupsPage, JoinPage
 **Décisions techniques principales** :
 - Root cause AADSTS90023 (~80 % du bruit, 5 comptes watcher) : `client_secret` envoyé pour des RT émis en flux client public. Fix stateless dans `ExchangeRefreshTokenWithRotation` : retry unique SANS secret sur 90023 (1re tentative avec secret conservée — les 4 comptes principaux en dépendent). Erreurs OAuth désormais typées (`OAuthExchangeError` + classes config/revoked/transient) + compteurs expvar `levelup.auth.oauth_refresh_*`.
 - Cache négatif par gamertag dans `pool/resolver` : un échec PERMANENT (config 1h / revoked 6h) court-circuite les Resolve suivants (0 appel réseau, Debug) ; invalidation automatique si la source porte un RT différent (re-capture). 1 seul WARN par chaîne d'échec (resolver, avec classe) — logs intermédiaires (oauth_refresh, sisu_provider, MSALProvider) démotés en Debug. `ErrPermanentAuthFailure` sentinel pour que `refresherLoop` (10 s) ne re-logue pas en ERROR.
-- **BUG DÉCOUVERT en passant : boucle boot `pool.NewPool` (`i--`+`poolSize--`) retentait le même index après échec et ABANDONNAIT toutes les sources suivantes** (= burst 7× DankerGlue + comptes sains jamais montés dans le pool). Réécrite en append ; régression testée.
+- **BUG DÉCOUVERT en passant : boucle boot `pool.NewPool` (`i--`+`poolSize--`) retentait le même index après échec et ABANDONNAIT toutes les sources suivantes** (= burst 7× joueur_1016 + comptes sains jamais montés dans le pool). Réécrite en append ; régression testée.
 - Persistance du dernier échec (`LastAuthErrorClass/Error/At` dans UserTokens, callbacks `onAuthError`/`onReauth` câblés dans buildAutoSyncPool) → dashboard admin Santé des tokens enrichi : badge erreur (classe + date + action) + chip Source de credentials (`pool.LastScanSource`, snapshot mémoire du dernier Scan — dette ADR-0023 visible en warning).
 - Warn « legacy sync_meta utilisée » : émis uniquement si la valeur legacy est réellement ADOPTÉE (l'ancien warn se déclenchait à la simple lecture même quand le store couvrait — bruit mensonger). Purge sync_meta REPORTÉE volontairement : le double-write compat onRotated la ré-écrirait à chaque rotation (cf. plan, déviation 3).
 - Boot : migrations player skippées (Debug) quand la player DB n'existe pas (comptes watcher token-only, db_path vide) ; 3 warns config dev consolidés en 1 ligne ; écriture compat sync_meta d'onRotated skippée sans player DB.
@@ -6782,9 +6782,9 @@ Suite revue : les strings inline FR/EN des nouvelles pages (GroupsPage, JoinPage
 
 ## [2026-06-10] LUSR : `rating_value` continu → `rating_delta` = vrai gain de skill/match — COMPLÉTÉ + backfill fait
 
-**Statut** : COMPLÉTÉ + vérifié. Code + tests verts (Go build/vet/tests ; web typecheck/lint/vitest 211 OK). Re-backfill `--commit` fait (2436 matchs : Madina 1058, JGtm 879, Choco 468, Daemon 31 ; serveur arrêté). Branche `fix/lusr-delta-continuous`. NON commité (accord user requis). ATTENTION travail CONCURRENT détecté dans le working tree (autre agent : invariants I10 PvE-exclusion, `expvar_metrics`, `registry_invariants`, `invariants_gate_integration_test`, `AdminPage.tsx` + entrée thought_log « Audit A1 ») → commit LUSR à SCOPER strictement à mes fichiers.
+**Statut** : COMPLÉTÉ + vérifié. Code + tests verts (Go build/vet/tests ; web typecheck/lint/vitest 211 OK). Re-backfill `--commit` fait (2436 matchs : joueur_075 1058, JGtm 879, joueur_901 468, Daemon 31 ; serveur arrêté). Branche `fix/lusr-delta-continuous`. NON commité (accord user requis). ATTENTION travail CONCURRENT détecté dans le working tree (autre agent : invariants I10 PvE-exclusion, `expvar_metrics`, `registry_invariants`, `invariants_gate_integration_test`, `AdminPage.tsx` + entrée thought_log « Audit A1 ») → commit LUSR à SCOPER strictement à mes fichiers.
 
-**Résultats vérifiés (après backfill)** : deltas continus — JGtm 915 matchs, **0** delta=0 (885 valeurs distinctes) ; Madina 1133, 17 delta=0 (**1.5 %** vs 40 % avant). Clamp OK : valeurs ∈ plage du sous-palier affiché (Or 5 ∈ [1533,1567[, Diamant 1/3 ∈ leurs bandes). Non-régression paliers : Madina 4/4 identiques ; quelques sous-paliers ±1 cran (JGtm slayer Or V→IV, Choco) = effet replay-vs-live (EP lit l'état courant des coéquipiers), PAS la métrique (calcul du palier inchangé). Cibles `reference_lusr_target_levels` respectées.
+**Résultats vérifiés (après backfill)** : deltas continus — JGtm 915 matchs, **0** delta=0 (885 valeurs distinctes) ; joueur_075 1133, 17 delta=0 (**1.5 %** vs 40 % avant). Clamp OK : valeurs ∈ plage du sous-palier affiché (Or 5 ∈ [1533,1567[, Diamant 1/3 ∈ leurs bandes). Non-régression paliers : joueur_075 4/4 identiques ; quelques sous-paliers ±1 cran (JGtm slayer Or V→IV, joueur_901) = effet replay-vs-live (EP lit l'état courant des coéquipiers), PAS la métrique (calcul du palier inchangé). Cibles `reference_lusr_target_levels` respectées.
 
 **Vérification finale (couverture tests + logging)** : suite Go `./...` = 80 packages OK ; SEUL FAIL = `internal/api`/`TestContractRoutesDocumented` (route `/api/v1/admin/invariants` non documentée dans openapi.yaml) → c'est le travail CONCURRENT (registry_invariants/AdminPage), PAS ce commit (`git show df6039b80` = 0 fichier route/handler/openapi). Tests AJOUTÉS : `TestLegacyContinuousSubTierProgress` (Go) + `formatRankDelta` (web, CSR/LUSR/LUSR_V2, `±0`/`±0.00` jamais `-0`). Logging AJOUTÉ : `slog.DebugContext` sur clamp hystérésis (μ hors sous-palier affiché) → `logs/sync.log` (dossier dédié vérifié, routing par module actif) ; aucun `fmt.Println`. typecheck/lint/vitest web OK.
 
@@ -6798,18 +6798,18 @@ Suite revue : les strings inline FR/EN des nouvelles pages (GroupsPage, JoinPage
 
 **Audit pré-fix** (3 agents) : les seuls sites « À ADAPTER » étaient les 3 mod-50 + les 4 deltas front ; `progress_pct`/`skill_progress_pct` backend ne sont pas consommés par le front (match-view recalcule via `subTierPosition`) → 0 régression. Vue `match_skill_rank_latest` = collapse/priorité, pas d'arithmétique sur la valeur → SAFE.
 
-**Prochaine étape** : (1) re-backfill canonical owner-only, un joueur à la fois (`go run -tags cgo ./cmd/lusr_v2_canonical_backfill --commit <GT>`, serveur arrêté) ; (2) garde-fou non-régression : `cmd/diag_lusr_displayed` avant/après → paliers + labels STRICTEMENT identiques (seules valeur fine + delta changent) ; (3) re-vérif cibles (Madina Diamant/Onyx, JGtm Or). Puis commit.
+**Prochaine étape** : (1) re-backfill canonical owner-only, un joueur à la fois (`go run -tags cgo ./cmd/lusr_v2_canonical_backfill --commit <GT>`, serveur arrêté) ; (2) garde-fou non-régression : `cmd/diag_lusr_displayed` avant/après → paliers + labels STRICTEMENT identiques (seules valeur fine + delta changent) ; (3) re-vérif cibles (joueur_075 Diamant/Onyx, JGtm Or). Puis commit.
 
-## [2026-06-10] Root cause : `rating_delta` LUSR = 0.0 sur les matchs récents (JGtm, Madina) — Diagnostic établi
+## [2026-06-10] Root cause : `rating_delta` LUSR = 0.0 sur les matchs récents (JGtm, joueur_075) — Diagnostic établi
 
-**Statut** : Diagnostic (root cause confirmée par lecture base, aucun code modifié). Branche `fix/chart-empty-states`. Question user : pourquoi JGtm et Madina97294 ont un delta LUSR de 0.0 sur énormément de matchs récents.
+**Statut** : Diagnostic (root cause confirmée par lecture base, aucun code modifié). Branche `fix/chart-empty-states`. Question user : pourquoi JGtm et joueur_117 ont un delta LUSR de 0.0 sur énormément de matchs récents.
 
 **Root cause (design, pas bug de pipeline)** : le `rating_delta` écrit dans `match_skill_rank` (`writeCanonicalLUSRRow`, `skill_v2_canonical.go:144`) est `rating_value(courant) − rating_value(précédent du même playlist_group)`. Or `rating_value` n'est PAS une mesure continue du skill : c'est la projection **discrète du sous-palier AFFICHÉ** via `MapTierSubToLegacyRating` (`skill_v2/display_smoothing.go:121`) = `minR + (sub−1)·band`. μ n'entre QUE par le choix du sous-palier. Le `rating_value` ne peut donc prendre que ~20 valeurs fixes (une par tier/sub). Tant que le sous-palier affiché ne change pas, `rating_value` est identique → `delta = x − x = 0.0` (le signe ±0.0 observé = bruit IEEE-754 de la soustraction de deux valeurs égales). Le delta ne « s'allume » qu'au franchissement d'un sous-palier, où il bondit alors d'une bande entière (Bronze/Or ±33, Argent/Diamant ±67, Platine ±100, Onyx jamais).
 
 **Preuve (lecture RO des player DB, serveur arrêté)** :
 - JGtm 914 matchs LUSR : delta=0 sur 234 (26%), mais les 30 derniers sont quasi tous `Or 5` (rv=1533.3) → 0.0 en série. `rating_value` ne prend QUE les valeurs de paliers (1400/1433.3/1466.7/1500/1533.3/1566.7…).
-- Madina 1132 matchs : delta=0 sur 454 (40%) ; 378 matchs **Onyx** (rv=2000, sous-palier unique → delta TOUJOURS 0 entre Onyx). Récents = alternance `Diamant 3` (1933.3, slayer) / `Diamant 1` (1800, objectif), chaque groupe stable → 0.0.
-- `rating_deviation` figé à 60 (= floor `MapSigmaToLegacyDeviation`, σ convergé ×40 < 60) → non discriminant, mais l'historique montre une vraie progression (Madina Silver→…→Onyx), donc μ bouge bien : ce n'est pas un μ figé ni un watermark desync (problème distinct de `project_lusr_v2_watermark_row_desync`).
+- joueur_075 1132 matchs : delta=0 sur 454 (40%) ; 378 matchs **Onyx** (rv=2000, sous-palier unique → delta TOUJOURS 0 entre Onyx). Récents = alternance `Diamant 3` (1933.3, slayer) / `Diamant 1` (1800, objectif), chaque groupe stable → 0.0.
+- `rating_deviation` figé à 60 (= floor `MapSigmaToLegacyDeviation`, σ convergé ×40 < 60) → non discriminant, mais l'historique montre une vraie progression (joueur_075 Silver→…→Onyx), donc μ bouge bien : ce n'est pas un μ figé ni un watermark desync (problème distinct de `project_lusr_v2_watermark_row_desync`).
 
 **Aggravants** : (1) hystérésis `SmoothDisplayedOrdinal` bride la descente à 1 sp/match → fige encore le palier affiché ; (2) σ convergé → micro-mouvement de μ/match → sous-palier quasi immobile ; (3) delta par `playlist_group` ; (4) cas Onyx = aucune granularité au sommet, delta structurellement 0 à vie.
 
@@ -6832,7 +6832,7 @@ Suite revue : les strings inline FR/EN des nouvelles pages (GroupsPage, JoinPage
 
 **Statut** : Résolu + vérifié. Sonde : 9/9 comptes résolus. Build module + tests auth verts.
 
-**Ce qui clochait dans l'entrée précédente** : le parc est MIXTE, pas « tous publics ». 4 comptes principaux (JGtm, Madina97294, Chocoboflor, XxDaemonGamerxX) sont sur une app **CONFIDENTIELLE** (EXIGE le secret, AADSTS70002 sans) ; 5 récents (token-capture, halo-tools 39829f7a) sont **PUBLICS** (REJETTENT le secret, AADSTS90023). Mes 2 « fix » précédents étaient faux et **inversaient juste le groupe cassé** : (a) commenter le secret dans `.env.local` → 5 publics OK mais 4 principaux cassés (régression serveur) ; (b) `IsPublicAzureClient` (allowlist 39829f7a) → idem, le client_id global 39829f7a empêchait d'envoyer le secret aux comptes confidentiels.
+**Ce qui clochait dans l'entrée précédente** : le parc est MIXTE, pas « tous publics ». 4 comptes principaux (JGtm, joueur_117, joueur_165, joueur_291) sont sur une app **CONFIDENTIELLE** (EXIGE le secret, AADSTS70002 sans) ; 5 récents (token-capture, halo-tools 39829f7a) sont **PUBLICS** (REJETTENT le secret, AADSTS90023). Mes 2 « fix » précédents étaient faux et **inversaient juste le groupe cassé** : (a) commenter le secret dans `.env.local` → 5 publics OK mais 4 principaux cassés (régression serveur) ; (b) `IsPublicAzureClient` (allowlist 39829f7a) → idem, le client_id global 39829f7a empêchait d'envoyer le secret aux comptes confidentiels.
 
 **Découverte clé** : `main` (feat/admin-monitoring-dashboard) avait **déjà** la bonne solution — `postTokenExchange` + retry sur `OAuthExchangeError.IsSecretRejected()` (AADSTS90023). Mon worktree avait divergé (version plus ancienne) et c'est lui que le backfill buildait.
 
@@ -6848,7 +6848,7 @@ Suite revue : les strings inline FR/EN des nouvelles pages (GroupsPage, JoinPage
 
 **Statut** : Résolu. Fix config (.env.local) + fix code (IsPublicAzureClient) + patch diagnostic. Build module OK, tous les tests auth verts, 5 comptes re-validés via sonde.
 
-**Symptôme** : `backfill-world -all-tokens` ne résout que 4/9 comptes ([JGtm, Madina97294, Chocoboflor, XxDaemonGamerxX]) alors que les 9 ont un RT valide dans watcher_tokens. Les 5 ajoutés via cmd/token-capture (DankerGlue/GeleJugefi/Trimbutton/QuiteSiren/UppedJoker) skippés « aucun access_token frais ».
+**Symptôme** : `backfill-world -all-tokens` ne résout que 4/9 comptes ([JGtm, joueur_117, joueur_165, joueur_291]) alors que les 9 ont un RT valide dans watcher_tokens. Les 5 ajoutés via cmd/token-capture (joueur_1016/joueur_1017/joueur_1018/QuiteSiren/UppedJoker) skippés « aucun access_token frais ».
 
 **Root cause** (sonde jetable reproduisant resolveAccessToken) : `AADSTS90023: Public clients can't send a client secret`. `.env.local` définit `SPNKR_AZURE_CLIENT_ID=39829f7a` (halo-tools, PUBLIQUE) ET un `SPNKR_AZURE_CLIENT_SECRET`. `oauth_refresh.go:106` + `auth_code.go:66` envoyaient le secret dès que `clientID != LevelUpClientID` — donc à halo-tools (public) → Azure rejette. Les 4 comptes établis esquivent via leur MSAL cache player-DB (silent refresh, sans secret) ; les 5 nouveaux n'ont que le RT → bloqués. Cf. [[reference_env_local_secret_public_client_aadsts90023]].
 
@@ -7182,7 +7182,7 @@ Suite revue : les strings inline FR/EN des nouvelles pages (GroupsPage, JoinPage
 
 **Statut** : Complété (validé local). Go : `go test ./internal/service/` vert (dont nouveaux tests intersection), build module CGO + `go vet ./...` OK. Front : typecheck 0, `npm run lint` 0 erreur, vitest complet 1785 OK. Non commité. Branche `feat/leaderboard-csr-followup`.
 
-**Bug** (user) : page Escouade, après 3 parties avec Chocoboflor, ajouter Madina au multiselect l'ajoutait aux résultats de « la session du jour » alors qu'il n'avait pas joué. Attendu : ajouter/enlever un coéquipier doit re-ancrer sur la dernière session où la composition EXACTE a joué ensemble.
+**Bug** (user) : page Escouade, après 3 parties avec joueur_165, ajouter joueur_075 au multiselect l'ajoutait aux résultats de « la session du jour » alors qu'il n'avait pas joué. Attendu : ajouter/enlever un coéquipier doit re-ancrer sur la dernière session où la composition EXACTE a joué ensemble.
 
 **Cause racine (2 couches, composition-agnostique)** :
 1. Backend `TeammatesService.GetPage` (endpoint legacy `/pages/teammates`, page active = `SquadLayout`) UNIONNAIT les matchs par coéquipier (`allSquadRows`/`allSquadRowsForTimeline` via append par `LoadSquadMatches(main, mate)`), au lieu d'intersecter. Incohérence : le header SessionBriefing, lui, intersectait déjà (`intersectByMatchID`).
@@ -7787,7 +7787,7 @@ i18n : 1 clé ajoutée au TOML + régénérée.
 
 **Diagnostic précis (où vit la donnée)** :
 - PRODUITE : le gamertag est décodé des films (`decodeEventBytes`/`ParseHighlightEvents` → `ev.Gamertag`). FONCTIONNE pour les films récents — preuve : `killer_victim_pairs.{killer,victim}_gamertag` (même `ev.Gamertag`) est rempli à 100% tous mois (juin 1021/1021).
-- ÉCRITE : le gamertag atterrit dans `killer_victim_pairs` (table shared) — ex. xuid 2533274856043389 = "trippysponge". MAIS l'écriture vers `xuid_aliases` s'est arrêtée (shared source highlight_events figée 07/04 ; global xbox_aliases figé 29/04). [JSON abandonné pour raisons techniques — la colonne raw_json n'est plus une source.]
+- ÉCRITE : le gamertag atterrit dans `killer_victim_pairs` (table shared) — ex. xuid 2808881783914865 = "trippysponge". MAIS l'écriture vers `xuid_aliases` s'est arrêtée (shared source highlight_events figée 07/04 ; global xbox_aliases figé 29/04). [JSON abandonné pour raisons techniques — la colonne raw_json n'est plus une source.]
 - LUE : `v_gamertag_lookup` (chokepoint unique) = `xuid_aliases ∪ match_participants.gamertag`. Ne lisait PAS `killer_victim_pairs` → nom présent en base mais invisible au lookup → masqué.
 
 **Décision (fix de la vue, pas d'ATTACH)** : `killer_victim_pairs` est dans la MÊME DB shared que la vue → ajout d'un cascade dans `GamertagLookupViewSQL` (identity.go) : bot → xuid_aliases → match_participants → **killer_victim_pairs (killer ∪ victim)** → masqué. Zéro ATTACH, zéro nouvelle table.
@@ -7802,11 +7802,11 @@ i18n : 1 clé ajoutée au TOML + régénérée.
 
 **Statut** : Complété. Opération de maintenance DB, serveur arrêté puis relancé (HTTP 200).
 
-**Contexte** : après le fix imbalance (ci-dessous), 20 matchs distincts à fort renouvellement de roster (raw 7-16 vs concurrent 4/12) échouent encore l'EP → restent non notés par le backfill. Mais des runs de backfill antérieurs (dont le mauvais run damping/fallback) leur avaient laissé des lignes `match_skill_rank` à valeurs PÉRIMÉES (ex. Madina `cf040013` affiché "Diamant II", JGtm `6bfa4e90` "Bronze VI"). Le user : ça gêne sur les matchs 2026 + fin 2025, à nettoyer.
+**Contexte** : après le fix imbalance (ci-dessous), 20 matchs distincts à fort renouvellement de roster (raw 7-16 vs concurrent 4/12) échouent encore l'EP → restent non notés par le backfill. Mais des runs de backfill antérieurs (dont le mauvais run damping/fallback) leur avaient laissé des lignes `match_skill_rank` à valeurs PÉRIMÉES (ex. joueur_075 `cf040013` affiché "Diamant II", JGtm `6bfa4e90` "Bronze VI"). Le user : ça gêne sur les matchs 2026 + fin 2025, à nettoyer.
 
 **Décision** : ces matchs ne sont PAS ratables proprement par v2 (EP ne converge pas) → aucune valeur de référence n'existe → l'état honnête est "none" (non noté), cohérent avec le traitement des matchs déséquilibrés réels. Supprimé TOUTES les lignes `match_skill_rank` (LUSR + LUSR_V2, tous runs) pour 9 match_id récents (2026 : 034200db, 4013dc34, 6bfa4e90, 83fe35b3, 846044ba, 981a95c0 ; fin 2025 : 10ed320d, 3efe4592, cf040013) sur les 3 player DBs concernées. Outil throwaway `cmd/tmp_orphan_clean` créé puis SUPPRIMÉ (pas de dead code). Backup complet (SELECT *) pris avant suppression. Les matchs plus anciens (≤ avril 2025) laissés tels quels (option A, faible visibilité).
 
-**Résultats** : 65 lignes supprimées (Madina 18, JGtm 29, Choco 18). Vue _latest → 0 ligne sur les 9 = "none" pour les 3 joueurs. Non-régression vérifiée : JGtm 3 juin toujours 11/11. Serveur relancé.
+**Résultats** : 65 lignes supprimées (joueur_075 18, JGtm 29, joueur_901 18). Vue _latest → 0 ligne sur les 9 = "none" pour les 3 joueurs. Non-régression vérifiée : JGtm 3 juin toujours 11/11. Serveur relancé.
 
 **Prochaine étape** : si damping EP ajouté un jour, un backfill supplantera proprement ces "none". Sujet LUSR fermé. Suite : track XUID→gamertag (résolution échouée sur matchs récents + match e6e4ba0b `match_not_found`).
 
@@ -7820,7 +7820,7 @@ i18n : 1 clé ajoutée au TOML + régénérée.
 
 **Décision technique (EP INCHANGÉ — exigence user « on touche pas aux calculs »)** : nouveau helper pur `concurrentTeamSize(team)` qui compte `present_at_beginning=TRUE` (= nb de slots = effectif concurrent), fallback `len(team)` si non backfillé (backfill participation atomique par match). Call site change `len()` → `concurrentTeamSize()`. Aucune modif de l'EP, des facteurs, du sum/count. Les remplaçants restent gérés par le poids temps-joué wᵢ existant. Propriété de sécurité confirmée : un roster que l'EP ne sait pas résoudre renvoie `compute échoué` → skip + WARN nominatif, jamais de note corrompue.
 
-**Résultats** : dry-run puis --commit (serveur arrêté). +632 matchs récupérés (2398 vs ~1766). 20 matchs distincts (~0,8%, gros turnover roster 7-15) échouent encore l'EP → skip safe + log (échouaient déjà avant, en silence ; désormais tracés). **Aucun effondrement** : μ Madina 26-26.7 (σ 0.67) >> JGtm/Choco ~24 >> XxDaemon ~20, conforme aux cibles. Vérif vue _latest : **JGtm 11/11 le 3 juin**, **Madina Diamant III (1933)** (≥ baseline Diamant II 1866). Tests : `TestConcurrentTeamSize` (incl. cas 8 lignes → 4 concurrents = match 0ba4aa2b) + suite `internal/sync` complète OK.
+**Résultats** : dry-run puis --commit (serveur arrêté). +632 matchs récupérés (2398 vs ~1766). 20 matchs distincts (~0,8%, gros turnover roster 7-15) échouent encore l'EP → skip safe + log (échouaient déjà avant, en silence ; désormais tracés). **Aucun effondrement** : μ joueur_075 26-26.7 (σ 0.67) >> JGtm/joueur_901 ~24 >> joueur_639 ~20, conforme aux cibles. Vérif vue _latest : **JGtm 11/11 le 3 juin**, **joueur_075 Diamant III (1933)** (≥ baseline Diamant II 1866). Tests : `TestConcurrentTeamSize` (incl. cas 8 lignes → 4 concurrents = match 0ba4aa2b) + suite `internal/sync` complète OK.
 
 **Prochaine étape** : commit git sur autorisation. Reste : orphans bad-backfill résiduels uniquement sur les ≤20 matchs encore en échec (les matchs ré-admis sont auto-supplantés par latest-wins). Piste future hors scope : damping EP pour absorber les ~20 (commentaire déjà présent dans le code).
 
@@ -7973,7 +7973,7 @@ i18n : 1 clé ajoutée au TOML + régénérée.
 
 **Findings différés (revue, non bloquants)** : atomicité multi-joueurs de l'état v2 (persist non transactionnel ; pré-existant, converge par rotation owner) ; sentinelle dual-row aveugle aux matchs 0-ligne (ajouter un scan « MissingBoth ») ; pas d'alerte/retry borné sur les compteurs (posture expvar ADR 0009) ; taille fichier/fonction (internal/sync exempt funlen). À traiter en passe dédiée si besoin.
 
-**Recovery (faite)** : le 1er backfill (reset global + persist des 2 équipes) n'a recouvré QUE le 1er joueur traité (Madina) — couplage cross-joueur : `persistTeamSkillV2` avance le watermark de TOUS les participants, donc en séquentiel les squad-mates suivants (JGtm/Choco) sautent leurs matchs partagés. Correctif : mode **owner-only persist** (`RunLUSRV2ShadowOwnerOnly` : ne persiste que l'état du joueur traité) + reset **par-joueur** (`DELETE player_skill_state_v2 WHERE xuid=?`) dans le backfill. Re-run : couverture complète des 4 (`skipped_already_seen=0` partout, 1730 matchs). Test `TestRunLUSRV2ShadowOwnerOnly_DoesNotOverwriteTeammateState`. Vérif API : JGtm 3 juin passé de 0 → LUSR (Or IV) sur les matchs éligibles ; les `none` restants = matchs avec quitter/équipes déséquilibrées (`skipped_imbalance`, garde Phase 3d, by-design pour tous). Live INCHANGÉ (`RunLUSRV2Shadow` = persist 2 équipes).
+**Recovery (faite)** : le 1er backfill (reset global + persist des 2 équipes) n'a recouvré QUE le 1er joueur traité (joueur_075) — couplage cross-joueur : `persistTeamSkillV2` avance le watermark de TOUS les participants, donc en séquentiel les squad-mates suivants (JGtm/joueur_901) sautent leurs matchs partagés. Correctif : mode **owner-only persist** (`RunLUSRV2ShadowOwnerOnly` : ne persiste que l'état du joueur traité) + reset **par-joueur** (`DELETE player_skill_state_v2 WHERE xuid=?`) dans le backfill. Re-run : couverture complète des 4 (`skipped_already_seen=0` partout, 1730 matchs). Test `TestRunLUSRV2ShadowOwnerOnly_DoesNotOverwriteTeammateState`. Vérif API : JGtm 3 juin passé de 0 → LUSR (Or IV) sur les matchs éligibles ; les `none` restants = matchs avec quitter/équipes déséquilibrées (`skipped_imbalance`, garde Phase 3d, by-design pour tous). Live INCHANGÉ (`RunLUSRV2Shadow` = persist 2 équipes).
 
 **Différé** : politique imbalance-skip (matchs à quitters non notés) = décision produit séparée ; compaction des doublons append-only après backfills répétés ; replay chronologique global (fix racine du couplage cross-joueur vs owner-only = recovery pragmatique).
 
@@ -8165,9 +8165,9 @@ i18n : 1 clé ajoutée au TOML + régénérée.
 - Flux : `GetBattlePass`/`GetChallenges` → fetch live Halo → si OK persiste snapshot frais + retourne ; **si échec → fallback cache DB (TTL 24h)**. Lecture (`loadTrackSnapshots`) prend le snapshot le plus récent (`ROW_NUMBER ORDER BY snapshot_at DESC`). Parse/calcul/dédup (`state_hash` inclut `partial_progress`) tous **corrects**.
 - `logs/general.log` (actif, root `./logs/` — PAS `apps/go-api/logs/` périmé au 02-06) : `battle_pass fetch failed ... economy.svc.../rewardtracks/operations: HTTP 403` + `challenges fetch failed ... halostats.svc.../decks: HTTP 403 (tokens invalides/expirés)`.
 - **Par joueur, 2 classes d'échec distinctes** :
-  - XxDaemonGamerxX (xuid …833178266) : **HTTP 403 « tokens invalides/expirés »**, 75+ depuis 06-06, **immédiat sans retry** → vrai problème token (attendu : jamais eu de tokens valides selon user).
+  - joueur_291 (xuid …833178266) : **HTTP 403 « tokens invalides/expirés »**, 75+ depuis 06-06, **immédiat sans retry** → vrai problème token (attendu : jamais eu de tokens valides selon user).
   - JGtm (…823110022) : **PAS 403** — `context canceled` après `3 tentatives échouées` (réseau/transport, ex. restart serveur ou déconnexion client en vol), 2 occurrences isolées (20-05, 03-06 22:54), rien depuis. Auth saine : XSTS minté régulièrement, RT re-migré au boot 14:26. **Pas de re-auth nécessaire.**
-  - Madina (…858283686) + Chocoboflor (…789936) = 0 échec.
+  - joueur_075 (…858283686) + joueur_165 (…789936) = 0 échec.
 - **Tell discriminant** : `HTTP 403` immédiat = auth (le doGet ne retry pas un 403) ; `N tentatives échouées — Get "..."` = réseau transitoire (retry exhausted). Un bug URL/wrapper toucherait tous identiquement → confirme auth/réseau par joueur, pas une régression code ni un bug d'affichage (mémoire `feedback_check_api_wrapper_before_blaming_auth` : URL `xuid(NNN)` correcte).
 - Conséquence : BP **et** défis figés sur le dernier snapshot réussi (cache 24h dépassé → données périmées affichées). « Perte silencieuse » au sens directive `project_convergent_sync_direction`.
 - Note : mapping `provider.go:514` conflate 401 ET 403 sous « tokens invalides/expirés » ; le vrai statut est **403** (Forbidden). Migration boot 14:27 a migré 0 token (store inchangé) → condition persiste au prochain chargement.
@@ -8337,14 +8337,14 @@ i18n : 1 clé ajoutée au TOML + régénérée.
 
 **Contexte** : retours user. (1) Rendement/Résist −5 % de largeur → Précision. (2) « LUSR n'a pas de barre ». (3) titres CSR/LUSR insatisfaisants (conseil demandé). (4) tuiles Hero : ne pas centrer verticalement, aligner tous les titres.
 
-**Découverte clé (diagnostic LUSR sur données réelles)** : DB joueur lues directement (serveur tué). XxDaemonGamerxX LUSR pic = **1502.9 → tier « Or IV » (Gold IV)** ; Madina97294 LUSR = **2000 → Onyx**, CSR alltime = 1400 Diamant IV. Donc **le LUSR n'est PAS sur l'échelle de valeur du CSR** (1502.9 = Or IV côté LUSR, alors que 1500 = Onyx côté CSR). Le calcul « rév. 1 » dérivé de la valeur brute + bornes CSR classait à tort le LUSR 1502.9 en Onyx → pas de barre. C'était ça le bug « LUSR sans barre ».
+**Découverte clé (diagnostic LUSR sur données réelles)** : DB joueur lues directement (serveur tué). joueur_291 LUSR pic = **1502.9 → tier « Or IV » (Gold IV)** ; joueur_117 LUSR = **2000 → Onyx**, CSR alltime = 1400 Diamant IV. Donc **le LUSR n'est PAS sur l'échelle de valeur du CSR** (1502.9 = Or IV côté LUSR, alors que 1500 = Onyx côté CSR). Le calcul « rév. 1 » dérivé de la valeur brute + bornes CSR classait à tort le LUSR 1502.9 en Onyx → pas de barre. C'était ça le bug « LUSR sans barre ».
 
 **Décision technique** :
 1. **Bande ORDINALE** : `SkillTierBand(tierEN, subTier)` → progression via le sous-palier stocké (I..VI), `(n-1)/5` (I=0 %, VI=100 %), Onyx → 100 % (sommet). INDÉPENDANTE de l'échelle de valeur → correcte pour CSR ET LUSR (chaque système renseigne tier+sub_tier sur sa propre échelle). Remplace l'approche valeur-brute de la rév. 1. `Tier`/`SubTier` ré-ajoutés à HomeSkillPeakRow + repeuplés (loadCSRAlltimePeak + assemblePeak). Front inchangé (lit `tier_progress_pct`).
 2. **Grille Hero** : Rendement/Résist 11→10.5fr, Précision 3→3.5fr (lg template, somme 48 inchangée).
 3. **Titres alignés** : conteneur tuile Hero `justify-center` → `justify-start` (titres en haut, contenu qui descend) — au lieu du centrage vertical.
 
-**Résultats observés** : test Go SkillTierBand réécrit (Gold IV→60 %, VI→100 %, Onyx→100 %, sub 0/hors-borne→pas de bande). 102 tests front verts. Onyx (Madina LUSR) → barre pleine = cohérence visuelle ; Gold IV (XxDaemon LUSR) → 60 % (corrige le « pas de barre »).
+**Résultats observés** : test Go SkillTierBand réécrit (Gold IV→60 %, VI→100 %, Onyx→100 %, sub 0/hors-borne→pas de bande). 102 tests front verts. Onyx (joueur_075 LUSR) → barre pleine = cohérence visuelle ; Gold IV (joueur_639 LUSR) → 60 % (corrige le « pas de barre »).
 
 **Point ouvert** : style des titres « Meilleur CSR/LUSR » (proposition en cours, 3 pistes). `TestNoUnauthorizedSharedSocialMention` pré-existant toujours hors périmètre. Commit sur autorisation.
 
@@ -8416,7 +8416,7 @@ i18n : 1 clé ajoutée au TOML + régénérée.
 
 **Statut** : Complété. Go build+vet+test (analysis, service) OK ; front typecheck+lint(0 err)+vitest (49 tests) OK.
 
-**Contexte** : sur la card Hero KPI "Rendement / Résist." du Home, deux joueurs au rendement clairement différent (Xxdaemongamerxx 382 dégâts/frag, Madina97294 305) affichaient le **même 82 %**. Cause : le `%` (`avg_offensive_conversion`) était une **moyenne arithmétique des ratios par match** (chaque match pèse pareil → sur-pondère les petits matchs très efficaces, décroche du volume), alors que `dmg_per_kill` était un **agrégat volume-pondéré** (Σdégâts/Σfrags). Second décalage : l'OC officiel crédite les assists (`225·(frags+assists/3)/dégâts`) mais le dégâts/frag affiché les ignorait.
+**Contexte** : sur la card Hero KPI "Rendement / Résist." du Home, deux joueurs au rendement clairement différent (Xxdaemongamerxx 382 dégâts/frag, joueur_117 305) affichaient le **même 82 %**. Cause : le `%` (`avg_offensive_conversion`) était une **moyenne arithmétique des ratios par match** (chaque match pèse pareil → sur-pondère les petits matchs très efficaces, décroche du volume), alors que `dmg_per_kill` était un **agrégat volume-pondéré** (Σdégâts/Σfrags). Second décalage : l'OC officiel crédite les assists (`225·(frags+assists/3)/dégâts`) mais le dégâts/frag affiché les ignorait.
 
 **Décision technique** (validée user, garder les assists) :
 1. **Agrégat volume-pondéré** partout : OC/DR via `ComputeCombatYieldFloat(Σtotaux)` au lieu de la moyenne des ratios.
@@ -8497,7 +8497,7 @@ i18n : 1 clé ajoutée au TOML + régénérée.
 
 **Statut** : Complété. Front typecheck + lint (0 err) + 15 tests HomePage OK. Deploy + vérif Chrome restants.
 
-**Point 1 — emblème/bannière Spartan vides en démo.** L'identité empruntée (career_progression de Chocoboflor) est bien seedée (emblem/banner/backdrop_image_url présents), mais le proxy `/api/v1/assets/spartan/...` renvoyait **502** : le conteneur `levelup-demo` ne montait que `bp-background/bp-track-image/career-rank-image/challenge-badge` en RO — pas `spartan-emblem/spartan-banner/spartan-backdrop`. Cache miss local → fallback CDN gamecms → pas d'auth → `ErrUpstreamUnavailable` (502). Fix : 3 mounts RO ajoutés dans `docker-compose.yml` (les fichiers existent dans le cache prod, ex. olympus_fireteamshark_emblem.png 82913o). Visible aussi page Escouade + narratif médailles (petit emblème).
+**Point 1 — emblème/bannière Spartan vides en démo.** L'identité empruntée (career_progression de joueur_165) est bien seedée (emblem/banner/backdrop_image_url présents), mais le proxy `/api/v1/assets/spartan/...` renvoyait **502** : le conteneur `levelup-demo` ne montait que `bp-background/bp-track-image/career-rank-image/challenge-badge` en RO — pas `spartan-emblem/spartan-banner/spartan-backdrop`. Cache miss local → fallback CDN gamecms → pas d'auth → `ErrUpstreamUnavailable` (502). Fix : 3 mounts RO ajoutés dans `docker-compose.yml` (les fichiers existent dans le cache prod, ex. olympus_fireteamshark_emblem.png 82913o). Visible aussi page Escouade + narratif médailles (petit emblème).
 
 **Point 2 — labels KPI home bruts (total_matches_played, kda, win_rate, accuracy).** PAS demo-only : l'endpoint `/titles/{slug}/field-mappings` est derrière le flag `MULTI_TITLE_API_ENABLED` (off en prod ET démo) → `useFieldMappings` 404 → `fieldMappings` null → `labelOf = fieldMappings?.fields[key]?.label ?? key` retombait sur la **clé canonique brute** au lieu des libellés locaux comme le commentaire le prévoyait. Fix : 4 labels ajoutés à `home.toml` (`matches_label/kda_label/win_rate_label/accuracy_label`, régénéré `home.ts`), exposés dans `kpi.i18n.ts`, et `labelOf` retombe sur une map locale (`?? localKpiLabels[key] ?? key`). Garde l'override backend title-aware quand le flag s'active. Corrige prod + démo. 2 tests HomePage mis à jour (assertaient l'ancienne clé brute).
 
@@ -8644,7 +8644,7 @@ i18n : 1 clé ajoutée au TOML + régénérée.
 
 **Régression identifiée** : depuis `a5ecff46b` (sprint19, **2026-04-15**, port Go initial du sync), `transforms.go` CALCULAIT le KDA `(k+a)/d` et l'accuracy `shots_hit/shots_fired*100` au lieu de lire les champs natifs de l'API. Donc TOUTE la base a un KDA faux (mauvaise formule).
 
-**Preuve** (fixture API réelle `testdata/jgtm_full_match`) : API `KDA` = `Kills + Assists/3 − Deaths` (formule Halo officielle). Ex K19 D12 A4 → API=8.33 vs notre calcul=1.917. Le KDA API peut être **négatif** (K8 D14 A0 → −6.0). L'accuracy API ≈ notre calcul (écart d'arrondi) mais doit aussi venir de l'API. Validé vs l'utilisateur : Chocoboflor 3 juin = 4 à 4.7 (d028a503 K8D5A3→4.0, 0ba4aa2b K7D5A8→4.67 via formule Halo).
+**Preuve** (fixture API réelle `testdata/jgtm_full_match`) : API `KDA` = `Kills + Assists/3 − Deaths` (formule Halo officielle). Ex K19 D12 A4 → API=8.33 vs notre calcul=1.917. Le KDA API peut être **négatif** (K8 D14 A0 → −6.0). L'accuracy API ≈ notre calcul (écart d'arrondi) mais doit aussi venir de l'API. Validé vs l'utilisateur : joueur_165 3 juin = 4 à 4.7 (d028a503 K8D5A3→4.0, 0ba4aa2b K7D5A8→4.67 via formule Halo).
 
 **Fixes livrés (testés, go test sync OK)** :
 - `transforms.go` : `row.KDA = floatPtrFrom(core, "KDA")`, `row.Accuracy = floatPtrFrom(core, "Accuracy")` — soit API, soit nil. Plus aucun calcul.
@@ -8655,7 +8655,7 @@ i18n : 1 clé ajoutée au TOML + régénérée.
 **LIVRÉ** :
 1. Commits poussés sur main (via fix/enrichment-convergence) ; `Deploy lvelup.info` GHA = succès → fix sync actif en prod.
 2. **Backfill prod COMPLÉTÉ** (2026-06-05, VPS, serveur arrêté ~downtime) : `cmd/backfill_kda_accuracy --rps 6` → **1742 matchs fetchés, 26288 rows mises à jour** (KDA+Accuracy API), **0 participant sans valeur API**. Prod redémarrée, health 200.
-2-bis. **Backfill LOCAL COMPLÉTÉ** (2026-06-06) : même commande sur `data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb` (DB locale datée du 3 juin, pré-fix) → **1737 matchs / 26246 rows / 0 api_nil**. Vérifié via `diag_q` : Chocoboflor 3 juin = KDA 4 à 4.66 (0ba4aa2b K7D5A8→4.66, d028a503 K8D5A3→4.0), négatifs OK, accuracy 0..100. Backup `shared_matches_v2.duckdb.bak-prefda` créé. ⚠️ l'auth locale a rotaté le RT de JGtm (compte partagé avec prod) → surveiller `invalid_grant` côté prod. Local ne contient PAS les ~3 jours de matchs synchronisés sur prod après le 3 juin (alignement FDA seulement, pas parité totale).
+2-bis. **Backfill LOCAL COMPLÉTÉ** (2026-06-06) : même commande sur `data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb` (DB locale datée du 3 juin, pré-fix) → **1737 matchs / 26246 rows / 0 api_nil**. Vérifié via `diag_q` : joueur_165 3 juin = KDA 4 à 4.66 (0ba4aa2b K7D5A8→4.66, d028a503 K8D5A3→4.0), négatifs OK, accuracy 0..100. Backup `shared_matches_v2.duckdb.bak-prefda` créé. ⚠️ l'auth locale a rotaté le RT de JGtm (compte partagé avec prod) → surveiller `invalid_grant` côté prod. Local ne contient PAS les ~3 jours de matchs synchronisés sur prod après le 3 juin (alignement FDA seulement, pas parité totale).
 3. **Front** : kdScale gère déjà les négatifs (seuils [1.0, 0.0] → tier-5 rouge), formatKDA OK. Rien à toucher.
 
 **Reste** : fix déploiement démo — job GHA `deploy-demo` échoue depuis le 3 juin (`docker compose run levelup levelup seed-demo` → binaire CLI `levelup` absent de l'image). Fix prêt dans `Dockerfile` (build + COPY du CLI `levelup` dans /usr/local/bin). À committer/déployer.
@@ -8668,7 +8668,7 @@ i18n : 1 clé ajoutée au TOML + régénérée.
 
 **Cause racine** : `match_participants.accuracy` est stockée en pourcentage **0..100** (sync/transforms.go:348 `shots_hit/shots_fired*100`). Historiquement l'accuracy squad était 0..1 ; le sync est passé à 0..100, Timeseries/Home se sont adaptés (commentaires "ne pas re-multiplier") mais le **squad est resté sur la convention 0..1** → ×100 partout → millier.
 
-**Vérité terrain** (lecture directe match_participants, serveur arrêté 30s) : Chocoboflor accuracy = 47.3, 54.7, 49.2… = 0..100 confirmé.
+**Vérité terrain** (lecture directe match_participants, serveur arrêté 30s) : joueur_165 accuracy = 47.3, 54.7, 49.2… = 0..100 confirmé.
 
 **Fixes (aligner squad sur 0..100)** :
 - Backend `teammates_service_kpis.go:170` : retire `* 100` (produisait 0..10000 → radar plafonné).
@@ -8679,7 +8679,7 @@ i18n : 1 clé ajoutée au TOML + régénérée.
 
 **Résultats** : go vet OK, suite service Go OK, 233/233 tests squad front.
 
-**FDA — investigation, PAS de fix (blocage info)** : vérité terrain — les KDA de Chocoboflor EXISTENT (2.1, 2.125, 3.0… sur les 10 derniers, jamais 10). `LoadFor` résout bien par gamertag (corrigé antérieurement). Aucun fallback KDA backend (lit `Self.KDA` brut) ni frontend (`p.kda ?? null`). Le "FDA de 10" ne correspond à aucun match récent → contradiction. Hypothèse : soit le match à FDA 10 n'est pas un match COMMUN avec le main (vue escouade = intersection), soit confusion de formule (Halo `(K+A)/D` vs autre). Question posée à l'utilisateur.
+**FDA — investigation, PAS de fix (blocage info)** : vérité terrain — les KDA de joueur_165 EXISTENT (2.1, 2.125, 3.0… sur les 10 derniers, jamais 10). `LoadFor` résout bien par gamertag (corrigé antérieurement). Aucun fallback KDA backend (lit `Self.KDA` brut) ni frontend (`p.kda ?? null`). Le "FDA de 10" ne correspond à aucun match récent → contradiction. Hypothèse : soit le match à FDA 10 n'est pas un match COMMUN avec le main (vue escouade = intersection), soit confusion de formule (Halo `(K+A)/D` vs autre). Question posée à l'utilisateur.
 
 ---
 
@@ -8810,8 +8810,8 @@ i18n : 1 clé ajoutée au TOML + régénérée.
 **Méthode** : workflow multi-agents (6 angles × vérif adversariale + synthèse) sur code+logs, croisé avec lectures DuckDB directes (serveur down → `OpenReadForQuery` impossible côté agents, fait à la main). L'outil `apps/go-api/cmd/diag_q` (runner SQL read_only générique, build CGO ucrt64) a permis de trancher les hypothèses code.
 
 **Causes racines confirmées (données à l'appui)** :
-- **RC-2 — Chocoboflor player DB legacy SANS PK** : `duckdb_constraints()` = 0 contrainte sur `player_match_enrichment`, `match_citations` ET `match_skill_rank` (les 3 autres joueurs ont les PK). → `INSERT OR IGNORE`/`ON CONFLICT` échouent au Prepare (Binder Error) → `ensurePlayerEnrichmentRows` no-op (gap orphelins 487 shared vs 484 enrichment), citations written:0, 14 perfs NULL. Scope = Chocoboflor uniquement (XxDaemon a ses PK ; ses 10 perfs NULL = chaînes sous le seuil 10, normal). Fix : migration corrective boot-time `repair_*_primary_key` calquée sur `repair_engagement_coefficients_primary_key`.
-- **RC-3 — Madina « pas de LUSR » = bug lecture** : données présentes (5552 LUSR + 4368 LUSR_V2, pic Platine VI) mais `match_skill_rank.start_time` est **100% NULL** sur toutes les rows LUSR/LUSR_V2 (written_at OK). `profile/service.go:545-585` `loadLUSRSnapshot` (ORDER BY start_time DESC NULLS LAST) et `loadMuSeries` (filtre start_time) → row arbitraire / série vide. Fix : ORDER BY written_at + JOIN registry (pattern Q8).
+- **RC-2 — joueur_165 player DB legacy SANS PK** : `duckdb_constraints()` = 0 contrainte sur `player_match_enrichment`, `match_citations` ET `match_skill_rank` (les 3 autres joueurs ont les PK). → `INSERT OR IGNORE`/`ON CONFLICT` échouent au Prepare (Binder Error) → `ensurePlayerEnrichmentRows` no-op (gap orphelins 487 shared vs 484 enrichment), citations written:0, 14 perfs NULL. Scope = joueur_165 uniquement (joueur_639 a ses PK ; ses 10 perfs NULL = chaînes sous le seuil 10, normal). Fix : migration corrective boot-time `repair_*_primary_key` calquée sur `repair_engagement_coefficients_primary_key`.
+- **RC-3 — joueur_075 « pas de LUSR » = bug lecture** : données présentes (5552 LUSR + 4368 LUSR_V2, pic Platine VI) mais `match_skill_rank.start_time` est **100% NULL** sur toutes les rows LUSR/LUSR_V2 (written_at OK). `profile/service.go:545-585` `loadLUSRSnapshot` (ORDER BY start_time DESC NULLS LAST) et `loadMuSeries` (filtre start_time) → row arbitraire / série vide. Fix : ORDER BY written_at + JOIN registry (pattern Q8).
 - **RC-5 — highlight_events arrêté le 2026-05-30** (NOUVEAU, non vu par les agents car base lockée) : `highlight_events`, `weapon_kills`, `killer_victim_pairs` s'arrêtent tous au 30/05. Les 11 matchs du 03/06 sont insérés (participants OK) mais `events_loaded=false`. Le film EST dispo (weapon step `no_film:0`) → `getKillsForPlayer` lit highlight_events vide → 0 frag. Heal events décommissionné le 01/06 (engine_postsync.go:179) → aucun rattrapage. C'est la vraie cause de « frags par arme vide » sur les récents (pas seulement le gate inserted>0 / l'auth). Fix : backfill events récents + ré-activer un heal events borné.
 - **RC-1 — 401 auth sans recovery** : `MarkUnhealthy`/refresh pool jamais câblés hors tests ; `notifyPoolOnHTTPError` ignore 401/403 ; `doGet` ne retry pas sur 401. Sync 18:19 → matches_inserted:0. Dernier insert réel = 03/06 ~21:30. Fix : retry borné + MarkUnhealthy sur 401/403.
 - **RC-4 — pas de LUSR cross-joueur en shared** : `shared.match_csrs` = CSR-only (0 LUSR) ; en-tête scoreboard affiche « LUSR » à tort. Section « Rang & MMR équipe » vide pour les non-owned. Fix A (en-tête honnête) ou B (globaliser LUSR — question produit + vie privée).
@@ -8839,9 +8839,9 @@ i18n : 1 clé ajoutée au TOML + régénérée.
 - `internal/sync/convergence.go` : `selectMatchesMissingEvents` / `selectMatchesMissingWeapons` (réutilisent `FindMatchesMissingData` + `SyncScope{Events|Weapons, MaxMatches:50}`, déjà bitmask-aware), `hasConvergenceBacklog`, `convergeEvents` (boucle `ProcessHighlightEvents`, globalDB=nil best-effort, JAMAIS Replay→clear).
 - `engine_postsync.go` : étape 1.54 convergence events AVANT 1.55 weapons ; gate `len(insertedIDs)>0` délié → `insertedIDs ∪ selectMatchesMissingWeapons` (sélection weapons APRÈS events). `runConditionalPostSync` déclenche le pipeline même sans insert si `hasConvergenceBacklog`. Idempotent + borné (horizon 50) + terminal no-film 30j → converge vers 0. → les 11 matchs bloqués du 03/06 se résorbent en 1-2 cycles, sans backfill manuel.
 
-**Phase 3b LIVRÉE (build/vet/tests profile verts)** : `progression/profile/service.go` `loadLUSRSnapshot` + count + `loadMuSeries` lisent `match_skill_rank_latest` et trient/fenêtrent par `COALESCE(start_time, written_at)` (start_time 100% NULL sur LUSR → ORDER BY arbitraire + série vide). Corrige « Madina pas de LUSR » pour la donnée EXISTANTE sans backfill.
+**Phase 3b LIVRÉE (build/vet/tests profile verts)** : `progression/profile/service.go` `loadLUSRSnapshot` + count + `loadMuSeries` lisent `match_skill_rank_latest` et trient/fenêtrent par `COALESCE(start_time, written_at)` (start_time 100% NULL sur LUSR → ORDER BY arbitraire + série vide). Corrige « joueur_075 pas de LUSR » pour la donnée EXISTANTE sans backfill.
 
-**Build module complet vert** (`go build ./...`). 4/5 symptômes + 2 infra adressés et vérifiés : Flo perfs (PK), reprise ingestion/FDA (RC-1), frags par arme (watcher + convergence), Madina LUSR (reader). 
+**Build module complet vert** (`go build ./...`). 4/5 symptômes + 2 infra adressés et vérifiés : Flo perfs (PK), reprise ingestion/FDA (RC-1), frags par arme (watcher + convergence), joueur_075 LUSR (reader). 
 
 **RC-4 — RÉSOLU SANS CODE (correction user : CSR/LUSR exclusifs par match)** : le scoreboard équipe lit déjà le rang de chaque coéquipier SUIVI depuis SA player DB (`match_view_builders_team.go:127-163` → `friendsExtras.SkillRank` → `GetMatchSkillRank` → `Q22aMatchSkillRankPlayer` qui lit bien `match_skill_rank_latest`, vérifié). Le shared `match_csrs` n'est qu'un fallback non-suivi. Mai marchait car le LUSR de chaque joueur y était calculé. Le « manque LUSR » récent = conséquence de l'enrichment cassé (matchs orphelins sans row → sans LUSR calculé) → réparé par Phases 1-2 (PK → ensure crée la row → needsScoreRefresh → shadow LUSR traite l'orphelin → LUSR en player DB → scoreboard le ressort). Ma proposition de table dédiée était une SUR-INGÉNIERIE. Aucune table shared, aucun changement front.
 
@@ -8853,7 +8853,7 @@ i18n : 1 clé ajoutée au TOML + régénérée.
 
 **VÉRIFICATION FINALE VERTE** : `go build ./...` + `go vet ./...` + `go test ./...` (81 pkg ok, 0 FAIL) + tests integration (migration PK, convergence, pooled 401) + gofmt. Aucune modif front.
 
-**Bilan** : 5/5 symptômes + 2 infra adressés (Flo perfs=PK ; ingestion/FDA=RC-1 ; frags par arme=watcher events + convergence ; Madina LUSR=reader _latest+COALESCE ; LUSR équipe=conséquence enrichment, fixé par Phases 1-2). Mécanisme de sync convergent ART-safe (no_art_patterns vert), idempotent, borné, terminal 30j — la convergence est un filet exceptionnel, pas une béquille récurrente.
+**Bilan** : 5/5 symptômes + 2 infra adressés (Flo perfs=PK ; ingestion/FDA=RC-1 ; frags par arme=watcher events + convergence ; joueur_075 LUSR=reader _latest+COALESCE ; LUSR équipe=conséquence enrichment, fixé par Phases 1-2). Mécanisme de sync convergent ART-safe (no_art_patterns vert), idempotent, borné, terminal 30j — la convergence est un filet exceptionnel, pas une béquille récurrente.
 
 **Attente film au 1er passage LIVRÉE** (`engine_highlight_events.go` `fetchHighlightChunkResilient` + `engine_fetch.go` + test) : un match FRAIS dont le film n'est pas prêt au fetch attend (retry borné) que le film se publie → s'affiche COMPLET (frags par arme inclus) du 1er coup, plutôt qu'à moitié puis rattrapé par la convergence. **Délai par défaut 30s × 3** (valeur de départ, réglable prod via `LEVELUP_FRESH_FILM_RETRY` CSV secondes / `0`=off, sans redéploiement). Choix produit : complétude > latence (~30-90s d'attente sur un match frais). Doc de handoff : `.ai/HANDOFF_ENRICHMENT_CONVERGENCE.md` (état + quoi observer en prod + comment affiner).
 
@@ -8934,7 +8934,7 @@ i18n : 1 clé ajoutée au TOML + régénérée.
 
 **Statut** : Complété. `go test` (ops, service, api/handlers, domain) + `go vet ./internal/...` verts. 3 médias réparés en prod.
 
-**Symptôme** : 3 médias "Replay 2026-05-11" de Madina97294 (ids 217-219) sans association de match après un (ré)index, alors que d'autres médias in-window l'étaient.
+**Symptôme** : 3 médias "Replay 2026-05-11" de joueur_117 (ids 217-219) sans association de match après un (ré)index, alors que d'autres médias in-window l'étaient.
 
 **Diagnostic (preuve par données, serveur arrêté)** :
 - `capture_start_utc` valides, tombant DANS une fenêtre de match synchronisé le 25 mai (matchs 349141cb/48aa9494). Rejeu de `computeAssociations` → les 3 seraient associés. Donc **bug, pas coïncidence**.
@@ -9046,7 +9046,7 @@ i18n : 1 clé ajoutée au TOML + régénérée.
 
 **Prochaine étape** : rebuild + restart serveur Go (fix #1/#2) ; décision user sur le lancement du backfill canonical (#3).
 
-**MAJ exécution (2026-06-03, autorisé par le user)** : kill `air`+`server.exe`, `go build ./...` OK, backfill canonical lancé `--commit` pour tous les joueurs. Piège watermark découvert : le run combiné (truncate `player_skill_state_v2` UNE fois puis boucle joueurs) fait que les coéquipiers de Madina (traitée 1re) sont « already_seen » → écriture canonique partielle (Chocoboflor 6, JGtm 205, XxDaemon 0). L'écriture `expected_win_prob` ne se fait que pour le OWNER. Remède appliqué : **re-run par joueur** (chaque invocation re-truncate l'état → reprocess complet en owner) → couverture pleine : Madina 730, Chocoboflor 337, JGtm 623, XxDaemon 22. Skips restants = `skipped_imbalance` (>1 joueur d'écart) + `skipped_non_two_team` (PvE/FFA/rosters incomplets) = matchs jamais éligibles. `tmp/server.exe` rebuildé. Restart serveur Go laissé au user (env/config de lancement maîtrisée côté Makefile, non devinée). À retenir : `cmd/lusr_v2_canonical_backfill` doit être lancé PAR JOUEUR pour une couverture complète (le mode multi-joueurs sous-couvre les coéquipiers).
+**MAJ exécution (2026-06-03, autorisé par le user)** : kill `air`+`server.exe`, `go build ./...` OK, backfill canonical lancé `--commit` pour tous les joueurs. Piège watermark découvert : le run combiné (truncate `player_skill_state_v2` UNE fois puis boucle joueurs) fait que les coéquipiers de joueur_075 (traitée 1re) sont « already_seen » → écriture canonique partielle (joueur_165 6, JGtm 205, joueur_639 0). L'écriture `expected_win_prob` ne se fait que pour le OWNER. Remède appliqué : **re-run par joueur** (chaque invocation re-truncate l'état → reprocess complet en owner) → couverture pleine : joueur_075 730, joueur_165 337, JGtm 623, joueur_639 22. Skips restants = `skipped_imbalance` (>1 joueur d'écart) + `skipped_non_two_team` (PvE/FFA/rosters incomplets) = matchs jamais éligibles. `tmp/server.exe` rebuildé. Restart serveur Go laissé au user (env/config de lancement maîtrisée côté Makefile, non devinée). À retenir : `cmd/lusr_v2_canonical_backfill` doit être lancé PAR JOUEUR pour une couverture complète (le mode multi-joueurs sous-couvre les coéquipiers).
 
 ---
 
@@ -9150,8 +9150,8 @@ Deux retours UI :
 - Labels « Highest CSR/LUSR » → i18n via `getSpartanIdentityText` (clés `home.spartan.highest_csr/lusr` = « Meilleur CSR/LUSR »).
 - `fillTestId` ajouté + 3 tests (barre visible rang normal, cas Héros non masqué, labels FR). `tsc`/eslint OK, vitest banner 6/6.
 - Suivi (retour user runtime) : non-local CONFIRMÉ OK (rang précédent/suivant visibles). Au rang max, « Rang max » s'affichait 3× (haut-gauche + haut-droite + bout de barre) → ligne du haut MASQUÉE au rang max, un SEUL « Rang max » conservé (bout de barre composite). Test mis à jour (`toHaveLength(1)`). NB : le banner Home (`HomeSpartanIdentityBanner`) porte le même triple « Rang max » au rang max — non aligné pour l'instant (proposé au user, parité [[reference-explorer-banner-forks-home]]).
-- Suivi 2 (retour user runtime) : sur cible Explorer SUIVIE (ex. Chocoboflor) la barre affichait « 0 % / 0 XP » à droite — `xp_for_next` non stocké dans la player DB (`career_progression`=0) et NON enrichi par le chemin local (le chemin live/Home, lui, passe par `CareerLiveRepo.EnrichFromMetadata` qui lit `career_ranks.xp_required`). Fix TOUS-CHEMINS au point d'affichage : `RankEntry.XPRequired` ajouté ([ranks.go](apps/go-api/internal/games/mappings/ranks.go)) + `LoadRankCatalog` lit `career_ranks.xp_required` en best-effort ([halo_ranks_loader.go](apps/go-api/internal/platform/duckdb/halo_ranks_loader.go)) + `buildHomeCareerRank` fallback sur le catalog quand `raw.XPForNextRank<=0` (≠ rang max). Home INCHANGÉ (valeur live déjà correcte → fallback inactif). `go build`/`go vet`/tests (analysis+mappings+duckdb LoadRankCatalog) OK. **NÉCESSITE un rebuild + restart serveur** (catalog rechargé au boot).
-- Suivi 3+4 (retour user runtime) : au rang max (Héros), la gauche affichait « 0 XP ». TESTÉ EN LIVE (throwaway, profile GET `/users/gt(Nilton410)`→xuid puis careerranks) : l'API renvoie `CurrentProgress{Rank:272, PartialProgress:0}` → `current_xp` est RÉELLEMENT 0 au rang max (pas un artefact de rebuild ; le live fetch est inchangé par mes edits backend). Le user veut « le grand nombre qui fait rêver » = l'XP de carrière TOTALE.
+- Suivi 2 (retour user runtime) : sur cible Explorer SUIVIE (ex. joueur_165) la barre affichait « 0 % / 0 XP » à droite — `xp_for_next` non stocké dans la player DB (`career_progression`=0) et NON enrichi par le chemin local (le chemin live/Home, lui, passe par `CareerLiveRepo.EnrichFromMetadata` qui lit `career_ranks.xp_required`). Fix TOUS-CHEMINS au point d'affichage : `RankEntry.XPRequired` ajouté ([ranks.go](apps/go-api/internal/games/mappings/ranks.go)) + `LoadRankCatalog` lit `career_ranks.xp_required` en best-effort ([halo_ranks_loader.go](apps/go-api/internal/platform/duckdb/halo_ranks_loader.go)) + `buildHomeCareerRank` fallback sur le catalog quand `raw.XPForNextRank<=0` (≠ rang max). Home INCHANGÉ (valeur live déjà correcte → fallback inactif). `go build`/`go vet`/tests (analysis+mappings+duckdb LoadRankCatalog) OK. **NÉCESSITE un rebuild + restart serveur** (catalog rechargé au boot).
+- Suivi 3+4 (retour user runtime) : au rang max (Héros), la gauche affichait « 0 XP ». TESTÉ EN LIVE (throwaway, profile GET `/users/gt(joueur_006)`→xuid puis careerranks) : l'API renvoie `CurrentProgress{Rank:272, PartialProgress:0}` → `current_xp` est RÉELLEMENT 0 au rang max (pas un artefact de rebuild ; le live fetch est inchangé par mes edits backend). Le user veut « le grand nombre qui fait rêver » = l'XP de carrière TOTALE.
   Implémenté (tous chemins) : `RankCatalog.CumulativeXPRequired(uptoRank)` (Σ XPRequired des rangs) + `HomeCareerRankSummary.TotalXP` (+ `total_xp` types.ts) ; `buildHomeCareerRank` calcule `TotalXP = current_xp + CumulativeXPRequired(rank-1)`. Banner : au rang max, gauche = `total_xp` (« 9 319 350 XP » pour Nilton) au lieu de current_xp=0. Non-max inchangé. Tests : backend TotalXP cumulatif (350=100+200+50), frontend banner (total affiché, pas « 0 XP »). `go build ./...` OK, vitest banner 6/6.
   ATTENTION exactitude : `total_xp` dépend de `career_ranks.xp_required` COMPLET (272 rangs) dans le catalog. Si des seuils manquent → total sous-estimé. Sanity check au restart : Nilton ≈ 9 319 350 (réf SpartanRecord). **NÉCESSITE rebuild + restart** (catalog + DTO backend).
 
@@ -9161,10 +9161,10 @@ Deux retours UI :
 - LevelUp fait DÉJÀ l'appel IDENTIQUE à Grunt : `GetCareerProgress` ([halo_client_career.go:21](apps/go-api/internal/sync/halo_client_career.go)) = `economy.svc.halowaypoint.com/hi/careerranks/careerRank1?players=xuid(X)`, mêmes headers (`x-343-authorization-spartan` + `343-clearance`), même chaîne OAuth→XBL→XSTS(`prod.xsts.halowaypoint.com`)→Spartan(`urn:343:s3:services`)→clearance. Grunt n'a AUCUN compte de service / client_credentials / relying party alternatif (recherche exhaustive). Son seul cas testé = "moi" (xuid du joueur authentifié).
 - Le 403 cross-joueur est le **gating d'ownership de l'API 343 elle-même**, que Grunt ne franchit pas. SpartanRecord marche via le **service hébergé** HaloDotAPI (infra privilégiée, ABSENTE du source local) — non reproductible.
 - LevelUp documente + gère déjà ça ([career_live_target.go:19-25](apps/go-api/internal/service/career_live_target.go)) : tiers → dégradation identité visuelle via vue PUBLIQUE `/customization?view=public` (200 pour tout xuid), sans rang carrière. Les seuils GameCMS (`careerRank1.json`) sont déjà ingérés (`cmd/refresh-career-ranks`), non gated.
-- **TESTÉ EMPIRIQUEMENT 2026-06-03 (throwaway, token Madina) — LE 403 N'EXISTE PAS** : 3 appels live à `economy…/hi/careerranks/careerRank1` :
-  - A. `players=xuid(Madina)` → 200 Success (Rank 201).
-  - B. `players=xuid(JGtm)` SEUL (= ce que fait LevelUp) → **200 Success, Rank 185** (rang d'un TIERS avec le token de Madina !).
-  - C. `players=xuid(Madina),xuid(JGtm)` → 200, les DEUX en Success.
+- **TESTÉ EMPIRIQUEMENT 2026-06-03 (throwaway, token joueur_075) — LE 403 N'EXISTE PAS** : 3 appels live à `economy…/hi/careerranks/careerRank1` :
+  - A. `players=xuid(joueur_075)` → 200 Success (Rank 201).
+  - B. `players=xuid(JGtm)` SEUL (= ce que fait LevelUp) → **200 Success, Rank 185** (rang d'un TIERS avec le token de joueur_075 !).
+  - C. `players=xuid(joueur_075),xuid(JGtm)` → 200, les DEUX en Success.
   → Le career rank d'un joueur ARBITRAIRE est lisible via l'API officielle. Le « 403 tiers » documenté était FAUX (confondu avec /customization/appearance qui, lui, est gated). Conséquence : `FetchLiveIdentity`→`fetchProgressCached`→`GetCareerProgress` récupère DÉJÀ le rang d'un tiers ; avec le fix Stream A (barre visible dès que careerRank existe), le non-local devrait s'afficher. Commentaire erroné corrigé dans [career_live_target.go](apps/go-api/internal/service/career_live_target.go). RESTE À CONFIRMER en runtime : les tokens Halo sont-ils dans le ctx de la requête Explorer (`ctxkeys.HaloTokens(ctx)` non-nil) ? Si oui → non-local OK ; sinon petit wiring. Skill peaks (CSR/LUSR) non-local : encore `includePeaks=false` (séparé).
 
 **Statut** : Complété (vue corrigée sur les 4 DBs + code + display). Branche `feat/skill-progression-magnitude-scale`.
@@ -9184,7 +9184,7 @@ Deux retours UI :
 - Les migrations sont tracées dans `schema_migrations` et n'exécutent `ApplySchema` qu'UNE fois (registry.go) →
   les deux étant déjà appliquées, AUCUNE ne re-tourne au boot. Corriger le code seul ne répare pas les DBs.
 - La colonne affichait en plus `rating_type` BRUT (`{v ?? '-'}`), sans normalisation.
-- Diag avant fix : `latest` montrait LUSR_V2 = Madina 730 / JGtm 624 / XxDaemon 22 (Choco 0 — ses rows LUSR_V2
+- Diag avant fix : `latest` montrait LUSR_V2 = joueur_075 730 / JGtm 624 / joueur_639 22 (joueur_901 0 — ses rows LUSR_V2
   ont `written_at` NULL, donc l'ancien `written_at DESC` faisait gagner LUSR par chance).
 
 **Fix VUE (cause racine)** :
@@ -9192,8 +9192,8 @@ Deux retours UI :
   `CSR WHEN 0, LUSR WHEN 1, ELSE 2`. Garantit les NOUVELLES DBs correctes (les 2 migrations vue produisent
   désormais le même CASE → plus de clobber possible). `go vet` + `go test ./internal/migration/` OK.
 - DBs existantes (serveur arrêté) : `CREATE OR REPLACE VIEW` direct sur les 4 player DBs (outil throwaway
-  supprimé après usage). Après fix, `latest` : Madina LUSR 1120 / LUSR_V2 **0**, JGtm 895/0, XxDaemon 32/0,
-  Choco 468/0. Fuite éliminée.
+  supprimé après usage). Après fix, `latest` : joueur_075 LUSR 1120 / LUSR_V2 **0**, JGtm 895/0, joueur_639 32/0,
+  joueur_901 468/0. Fuite éliminée.
 
 **Fix DISPLAY (défense en profondeur, garde le principe "métrique connue, pas la stat brute")** :
 - Helper `displayRatingLabel(raw)` (`apps/web/src/lib/formatters/rating.ts`) : famille LUSR → `'LUSR'` ; `CSR`
@@ -9201,8 +9201,8 @@ Deux retours UI :
   session-detail via `toExplorerRow`), `SessionSummaryCard` (« Δ … »), `SessionCompareSkillHeader`.
 
 **Backfill canonical : NON exécuté (dry-run décisif)** :
-- L'« Anomalie B » (matchs LUSR sans audit LUSR_V2 : Madina 390, Choco 131, JGtm 271, XxDaemon 10) = les matchs
-  que v2 NE PEUT PAS scorer. Dry-run Madina : `processed=730`, `skipped_imbalance=364` + `skipped_non_two_team=24`
+- L'« Anomalie B » (matchs LUSR sans audit LUSR_V2 : joueur_075 390, joueur_901 131, JGtm 271, joueur_639 10) = les matchs
+  que v2 NE PEUT PAS scorer. Dry-run joueur_075 : `processed=730`, `skipped_imbalance=364` + `skipped_non_two_team=24`
   ≈ 390. TrueSkill2 exige 2 équipes équilibrées → matchs déséquilibrés/FFA inscorables, restent en valeur legacy
   (affichée `LUSR`, pas de fuite). `--commit` ne ferait que recalculer les 730 déjà-v2 (risque de décaler des
   ratings validés + gonfler la table append-only) sans corriger les 390 → écarté.
@@ -9354,14 +9354,14 @@ après sync = snap ; escouade = `picked_sessions` en label, session cochée). Pu
 **Statut** : Complété (code + tests). Branche `feat/skill-progression-magnitude-scale`, non commité.
 
 **Contexte** : retour user — connecté en JGtm, le dropdown Auteur de la page Médias affiche « Aucun auteur
-disponible » et les médias de Madina n'apparaissent pas, alors que la galerie affiche bien des médias. Hypothèse
+disponible » et les médias de joueur_075 n'apparaissent pas, alors que la galerie affiche bien des médias. Hypothèse
 user « rebuild ? » écartée : `media.go` n'est pas modifié sur la branche, le binaire correspond au code.
 
 **Cause racine** : deux sources de données désynchronisées. La galerie (`POST /pages/media`) lit la DB
 `shared_social.media_files` (colonne `player_slug`, cross-joueurs). Le dropdown auteurs
 (`GET /media/authors`, `handlers/media.go:GetMediaAuthors`) **scannait le filesystem** par gamertag
 (`countMediaInDir(resolveCapturesDir(...))`) — non récursif, dépendant du layout disque local. En multi-user les
-captures de Madina existent en DB mais pas sur le disque de JGtm → 0 auteur, et même JGtm pouvait retomber à 0.
+captures de joueur_075 existent en DB mais pas sur le disque de JGtm → 0 auteur, et même JGtm pouvait retomber à 0.
 
 **Décision technique** : aligner les auteurs sur la DB (même source que la galerie).
 - Repo `MediaRepo.ListMediaAuthors` (`platform/duckdb/media_repo_filters.go`) : `SELECT player_slug, COUNT(*)
@@ -9381,8 +9381,8 @@ captures de Madina existent en DB mais pas sur le disque de JGtm → 0 auteur, e
 **Résultats** : `go build ./...` OK (CGO ucrt64). `go vet` propre. Tests verts — handler (`Authors_OK`,
 `Authors_ServiceError`), service (`ListMediaAuthors_SetsIsSelf`, `_PropagatesError`), repo integration
 (`TestMediaFilters_ListMediaAuthors` = 3 auteurs Alice(2)/HeroPlayer(2)/Bob(1) triés, `_LegacyNoSharedSocial`).
-Validation visuelle dashboard non encore faite (à confirmer côté user : dropdown liste JGtm + Madina, sélection
-Madina affiche ses captures).
+Validation visuelle dashboard non encore faite (à confirmer côté user : dropdown liste JGtm + joueur_075, sélection
+joueur_075 affiche ses captures).
 
 **Prochaine étape** : validation visuelle + commit (en attente autorisation user).
 
@@ -10457,7 +10457,7 @@ evwide2,frbig}. Câblage scanner différé v2 (cf. RESEARCH_THEATER_RE.md §M-te
 ### [2026-06-05] Angle B — cross-link fire-events <-> keyframes (record -> pi via arme+temps)
 
 - **Statut** : Complété (exploration RE, probe-only, aucun code prod touché).
-- **Objectif** : mapper record(keyframe type-2) -> pi(fire-event) -> xuid par accord arme+temps, valider sur ground truth (R0=whiteknight, R1=Javier, R7=VitaminA), puis lire l'arme de JGtm a la keyframe ~355s (Frag Parfait BR75).
+- **Objectif** : mapper record(keyframe type-2) -> pi(fire-event) -> xuid par accord arme+temps, valider sur ground truth (R0=joueur_026, R1=Javier, R7=joueur_602), puis lire l'arme de JGtm a la keyframe ~355s (Frag Parfait BR75).
 - **Décision technique principale** : timeline de tirs pi-resolue (ScanFireEventsV3 FirePi4High+relax3) + extraction records keyframe (clustering littéraux high-32) + matrice de vote record_positionnel x pi.
 - **Bugs/pieges trouvés** :
   1. `weaponv3.ResolveBest` "premier chunk gagnant" est POISONNÉ par chunk_00 (et chunk_27) : ces chunks contiennent les 8 xuids UNE fois, tous avec 5-bits-avant = 0 -> pi=0 pour tout le monde. Résoudre sur les chunks GAMEPLAY (01..26) donne le mapping STABLE et correct : pi0=…760703, pi1=…245250, **pi2=JGtm(…110022)**, pi3=…284321, pi4=…845110, pi5=…793711, pi6=…097883, pi7=…120416 (identique sur 26 chunks).
@@ -10484,7 +10484,7 @@ evwide2,frbig}. Câblage scanner différé v2 (cf. RESEARCH_THEATER_RE.md §M-te
 - **Statut** : Complété (demo.lvelup.info opérationnelle, vérifiée Chrome).
 - **Layout demo** : fausse piste title-agnostic abandonnée. seed-demo écrit en v2.1 (data/demo) ; le fix réel = monter `./data/demo:/app/data/demo` (RW, car metadata ouverte OpenReadWriteShared au boot) + `LEVELUP_DEMO_FIXTURES_DIR=/app/data/demo`. resolveDemoPlayer lit `{dir}/players/DEMO/stats.duckdb` + `{dir}/warehouse/*`.
 - **Schéma seed-demo** : home crashait 500 (match_csrs.written_at / player_csr_snapshots_latest absents). Fix : extraire les tables append-only SANS id/written_at (EXCLUDE) + ajouter match_csrs/player_csr_snapshots + `RunForDB(TargetShared/TargetPlayer)` sur les DB seedées → vues _latest recréées (auto-tracking vs DDL dupliqué). Vérifié : CSR 667 / LUSR 1567 affichés.
-- **Identité Spartan** : DemoPlayer (xuid 0000, jamais sync) n'a pas de customization. seed-demo emprunte l'identité d'un vrai joueur (Chocoboflor : rang 146 Corporal Platinum I, emblem+banner gamecms réels) via INSERT BY NAME + REPLACE(xuid, recorded_at). Lecture bloquée car careerLive filtre `WHERE xuid=ctxkeys.HaloXUID(ctx)` et la démo (sans session) avait HaloXUID="" → fix : `HomeCtxWithAuth` pose `HaloXUID=pdb.XUID` si contexte vide.
+- **Identité Spartan** : DemoPlayer (xuid 0000, jamais sync) n'a pas de customization. seed-demo emprunte l'identité d'un vrai joueur (joueur_165 : rang 146 Corporal Platinum I, emblem+banner gamecms réels) via INSERT BY NAME + REPLACE(xuid, recorded_at). Lecture bloquée car careerLive filtre `WHERE xuid=ctxkeys.HaloXUID(ctx)` et la démo (sans session) avait HaloXUID="" → fix : `HomeCtxWithAuth` pose `HaloXUID=pdb.XUID` si contexte vide.
 - **PIÈGE MAJEUR** : `levelup` et `levelup-demo` sont 2 images Docker distinctes. `docker compose build levelup` ne rebuild PAS le conteneur démo → les fix de CODE démo restaient invisibles. Toujours `docker compose build levelup-demo` + `up -d --force-recreate levelup-demo` pour un fix lu/exécuté côté démo. Cf. [[project_deploy_hazards_demo_regen_lock]].
 - **Fragilité** : serveur tourne sur checkout de branche ; `deploy.sh` reset --hard origin/main écraserait tout. Durable seulement après merge sur main.
 
@@ -11345,14 +11345,14 @@ post-sync ne se terminait pour AUCUN joueur. Diagnostic initial errone ("API
 injoignable") corrige : l'API Halo repond, c'etait un blip reseau transitoire.
 Vraie cause en 2 couches, les deux reparees :
 
-COUCHE 1 — Bug PK engagement_coefficients (DB Chocoboflor).
+COUCHE 1 — Bug PK engagement_coefficients (DB joueur_165).
 saveCoefficient fait INSERT ... ON CONFLICT (xuid, mode_category) DO UPDATE, mais
 la table existait SANS la PRIMARY KEY sur cette DB : la migration
 create_engagement_coefficients_table definit bien la PK mais via CREATE TABLE IF
 NOT EXISTS -> sur une DB ou la table preexistait, IF NOT EXISTS saute la
 recreation, la PK n'est jamais appliquee. DuckDB refuse alors le ON CONFLICT
 ("Binder Error: conflict target not referenced by a UNIQUE/PRIMARY KEY"). Echec a
-CHAQUE post-sync, depuis >=2026-05-31. Verifie sur les 4 DB : seule Chocoboflor
+CHAQUE post-sync, depuis >=2026-05-31. Verifie sur les 4 DB : seule joueur_165
 sans PK (les 3 autres l'ont). Fix : migration corrective
 repair_engagement_coefficients_primary_key (TargetPlayer) qui reconstruit la table
 avec la PK quand elle manque (dedup defensif ROW_NUMBER par (xuid, mode_category),
@@ -11520,7 +11520,7 @@ En attente : timings CTF/Strongholds de l'utilisateur (53ce4390 Behemoth / 7344d
 Vagabond) pour verrouiller la semantique des events objectif th=10.
 
 Suite (meme jour) — ground-truth utilisateur recu, events objectif th=10 VALIDES :
-- b37/b38 = team_id (CONFIRME vs roster DB : team0 Guisy97/CnR/TAURUS/Oilycrusader,
+- b37/b38 = team_id (CONFIRME vs roster DB : team0 joueur_508/CnR/TAURUS/Oilycrusader,
   team1 JGtm/TheRaeSide/Atrezik/Glad). Mon hypothese "grab/secure" precedente ETAIT
   FAUSSE, corrigee par le ground-truth.
 - b[0:32] = gamertag de l'acteur (UTF-16). b36 = slot joueur. prefixe marqueur = 0x2d
@@ -11624,7 +11624,7 @@ Suite (meme jour) — differentielle multi-agent pour le score Strongholds : BLO
      vrai peer TCP avant réécriture ; LoopbackOnly lit ce peer (non spoofable).
      Tests loopback_preserve_test.go (anti-spoofing).
   3. token_Madina97294.txt : déjà absent du disque ; RT présent dans le store
-     canonique (oauth_refresh_token, xuid 2533274858283686) ; gitignored, jamais
+     canonique (oauth_refresh_token, xuid 2623439693412443) ; gitignored, jamais
      committé. Rien à supprimer ; rotation Azure = action externe utilisateur.
   4. Rebuild match_participants transactionnel (swapMatchParticipantsTx) + garde
      anti-perte (rebuilt==before) + recoverOrphanMatchParticipants (répare un
@@ -11836,7 +11836,7 @@ forcé, résolution metadata, statut front.
 
 **FAIL pré-existant (PAS cette tâche)** : `TestNoUnauthorizedSharedSocialMention` échoue sur la branche de base nue (prouvé par stash → run → même FAIL), pointant `cmd/backfill-media-hls/main.go` + `internal/ops/media_hls.go` (chantier HLS, commits `3abd4537`/`20266047`). À corriger séparément : ajouter ces 2 fichiers à `sharedSocialFilesWhitelist` (`no_attach_on_social_test.go`).
 
-**Joueur inconnu (ex. Nilton410) — répondu** : le flux de récupération live (Spartan ID + cosmétiques d'un xuid tiers via `/customization?view=public`) a DÉJÀ été validé en runtime le 2026-05-30 (curl JGtm→Nilton410 : SpartanID "MELG" + emblem/backdrop/banner + career rank 272 « Hero Gold »). Ma PR Phase 1 ne change QUE la sérialisation (DTO snake_case) de cette donnée, pas la récupération. ⚠️ Lever un malentendu : Nilton410 reçoit SA VRAIE bannière (vue publique), PAS une aléatoire ; le pool déterministe (3.6) n'est qu'un filet ultime si banner ET backdrop sont vides (rare). Re-validation live NON rejouable dans cet env (db_profiles/tokens absents) → checklist prête dans le handoff pour la machine de dev de l'utilisateur.
+**Joueur inconnu (ex. joueur_006) — répondu** : le flux de récupération live (Spartan ID + cosmétiques d'un xuid tiers via `/customization?view=public`) a DÉJÀ été validé en runtime le 2026-05-30 (curl JGtm→joueur_006 : SpartanID "MELG" + emblem/backdrop/banner + career rank 272 « Hero Gold »). Ma PR Phase 1 ne change QUE la sérialisation (DTO snake_case) de cette donnée, pas la récupération. ⚠️ Lever un malentendu : joueur_006 reçoit SA VRAIE bannière (vue publique), PAS une aléatoire ; le pool déterministe (3.6) n'est qu'un filet ultime si banner ET backdrop sont vides (rare). Re-validation live NON rejouable dans cet env (db_profiles/tokens absents) → checklist prête dans le handoff pour la machine de dev de l'utilisateur.
 
 **Prochaine étape** : (1) validation live endpoint Explorer + visuel sur la machine de dev (checklist handoff) ; (2) commit (en attente d'autorisation). Détail dans `.ai/HANDOFF_EXPLORER_COMBAT_PROFILE.md`.
 
@@ -12110,7 +12110,7 @@ forcé, résolution metadata, statut front.
 
 **Bug 3 — backup player avorte sur `xuid_aliases`** : `exporter.listTables` (information_schema.tables) remontait `xuid_aliases` du catalogue ATTACHE `global` (conn pool serveur), puis `COPY "xuid_aliases"` echouait ("Table does not exist" dans le catalogue player) → tout le backup du joueur perdu. PAS une vue residuelle dans la player DB (donc pas de migration DROP). Fix : (1) `listTables` scope au catalogue courant `AND table_catalog = current_database() AND table_schema = 'main'` ; (2) echec d'une table = WARN + continue (backup partiel > aucun backup), erreur dure seulement si 0 table exportee. Test `TestListTables_ScopesToCurrentCatalog` (catalogue attache homonyme ignore).
 
-**Bug 4 — `spartan_cron migrate player db Madina97294: open rw`** : contention operationnelle, pas un bug logique. Snapshot live : un `go run lusr_v2_canonical_backfill Madina97294` tenait stats.duckdb en RW (DuckDB mono-writer). Au restart 11:51 un autre process tenait deja la DB → svcProvider Madina KO → cascade 403 economy. Fix code : `IsFileLockError` (db.go, distinct de IsInvalidatedError) + message actionnable dans `ensurePlayerDBMigrations` ("player DB verrouillee par un autre process — fermer le writer concurrent") au lieu d'un "open rw" opaque.
+**Bug 4 — `spartan_cron migrate player db joueur_117: open rw`** : contention operationnelle, pas un bug logique. Snapshot live : un `go run lusr_v2_canonical_backfill joueur_117` tenait stats.duckdb en RW (DuckDB mono-writer). Au restart 11:51 un autre process tenait deja la DB → svcProvider joueur_075 KO → cascade 403 economy. Fix code : `IsFileLockError` (db.go, distinct de IsInvalidatedError) + message actionnable dans `ensurePlayerDBMigrations` ("player DB verrouillee par un autre process — fermer le writer concurrent") au lieu d'un "open rw" opaque.
 
 **Fil rouge** : bugs 1 et 2 = meme cause systemique — les tests montent un schema/topologie DuckDB different de la prod (faux match_registry ; SharedReader=LegacySharedReader(player) avec schema `shared` simule). Correctif durable = corriger les queries + garde-rails sur schema/topologie reels.
 
@@ -12126,7 +12126,7 @@ forcé, résolution metadata, statut front.
 
 ---
 
-## [2026-05-31] Étude volatilité LUSR v2 — protections anti-chutes (a..e) sur JGtm/Madina/Choco
+## [2026-05-31] Étude volatilité LUSR v2 — protections anti-chutes (a..e) sur JGtm/joueur_075/joueur_901
 
 **Statut** : Complété (analyse ; aucune implémentation de protection encore — décision utilisateur en attente).
 
@@ -12138,13 +12138,13 @@ forcé, résolution metadata, statut front.
 - Données v2 initialement TRONQUÉES (22 matchs/joueur, σ=1.26) = reliquat du mp-rebuild du 30/05. Repeuplées full-history via `cmd/lusr_v2_canonical_backfill` en DRY-RUN (repeuple `player_skill_state_v2` SANS toucher `match_skill_rank`/UI). Piège : le backfill séquentiel multi-joueurs avance le watermark des coéquipiers → seul le 1er joueur traité a une trajectoire complète. Contournement : 3 passes ISOLÉES (1 joueur chacune, truncate repart à zéro). air.exe + server.exe tués pour libérer le lock (autorisé), relancés ensuite via `make go-api-dev`. Table renormalisée (no-arg dry-run) en fin d'opération.
 
 **Résultats (full history, σ convergé ~0.67)** :
-- Madina btb 319m → Platine IV (μ25.47) ; |Δμ| méd 0.043 / p80 0.081 / max **2.13** ; 9 chutes tier plein, pire −6 sp.
-- Choco arena_slayer 232m → Or V (μ24.21) ; |Δμ| méd 0.026 / max 0.92 ; 2 chutes tier.
+- joueur_075 btb 319m → Platine IV (μ25.47) ; |Δμ| méd 0.043 / p80 0.081 / max **2.13** ; 9 chutes tier plein, pire −6 sp.
+- joueur_901 arena_slayer 232m → Or V (μ24.21) ; |Δμ| méd 0.026 / max 0.92 ; 2 chutes tier.
 - JGtm arena_slayer 276m → Or IV (μ23.85) ; |Δμ| méd 0.035 / max 0.91 ; 4 chutes tier ; 1 quit à −0.52μ.
 - Constat n°1 : le backfill seul fait chuter σ de 1.26→0.67 et réduit drastiquement la volatilité (Δμ typique 0.03-0.04). Le résiduel = événements de queue (btb max 2.13μ = 16 sp sur Platine épais 0.133μ ; quits).
-- Verdict options : (b) hystérésis descente ≤1sp/match = élimine 100% des chutes abruptes, lag 0-1sp → FIX PRIMAIRE. (a) μ−k·σ baisse le niveau, player-dependent, k≈1 max. (c) grille à uniformiser/élargir (Platine 0.133μ vs Or 0.5μ). (d) cap quit (−2.5μ = 18.7sp sur Platine Madina). (e) placement ~12 matchs (σ<1.0 après ~31).
+- Verdict options : (b) hystérésis descente ≤1sp/match = élimine 100% des chutes abruptes, lag 0-1sp → FIX PRIMAIRE. (a) μ−k·σ baisse le niveau, player-dependent, k≈1 max. (c) grille à uniformiser/élargir (Platine 0.133μ vs Or 0.5μ). (d) cap quit (−2.5μ = 18.7sp sur Platine joueur_075). (e) placement ~12 matchs (σ<1.0 après ~31).
 
-**Conclusion / prochaine étape** : recommandation priorisée = backfill commit → (b) → (c) → (d) → (e) → (a) léger. À investiguer : le match btb Madina Δμ=2.13 (anomalie EP grandes équipes). Implémentation des protections en attente d'arbitrage utilisateur. `cmd/diag_lusr_volatility` non commité (diagnostic jetable, à committer ou supprimer selon décision).
+**Conclusion / prochaine étape** : recommandation priorisée = backfill commit → (b) → (c) → (d) → (e) → (a) léger. À investiguer : le match btb joueur_075 Δμ=2.13 (anomalie EP grandes équipes). Implémentation des protections en attente d'arbitrage utilisateur. `cmd/diag_lusr_volatility` non commité (diagnostic jetable, à committer ou supprimer selon décision).
 
 ---
 
@@ -12154,16 +12154,16 @@ forcé, résolution metadata, statut front.
 
 **Décisions techniques** :
 - **(b) Hystérésis d'affichage** (`skill_v2/display_smoothing.go`, pur) : le palier AFFICHÉ monte immédiatement mais ne descend que d'1 sous-palier/match (demotion protection façon CSR). μ interne jamais bridé. Helpers `TierOrdinal`/`TierSubFromOrdinal` (round-trip), `SmoothDisplayedOrdinal`, `FormatTierSubLabel`, `MapTierSubToLegacyRating`. Câblé dans `writeCanonicalLUSRRow` (skill_v2_canonical.go) + `loadPreviousDisplayedOrdinal` (lit le palier lissé du match précédent → chaînage). rating_value reflète désormais le palier AFFICHÉ (lissé), pas μ brut.
-- **(c) Grille uniformisée SANS toucher les bornes** (tier.go) : réduit les SubTiers des tiers étroits (Argent 6→3, Platine 6→2, Diamant 6→3) → largeur sous-palier ~0.33-0.5 μ partout (vs 0.13-0.2 avant). Calibration tier↔CSR validée préservée (Madina μ26.17 reste Diamond). Front-safe (lookup romain ≤6). FormatTierLabel délègue à FormatTierSubLabel.
+- **(c) Grille uniformisée SANS toucher les bornes** (tier.go) : réduit les SubTiers des tiers étroits (Argent 6→3, Platine 6→2, Diamant 6→3) → largeur sous-palier ~0.33-0.5 μ partout (vs 0.13-0.2 avant). Calibration tier↔CSR validée préservée (joueur_075 μ26.17 reste Diamond). Front-safe (lookup romain ≤6). FormatTierLabel délègue à FormatTierSubLabel.
 - **(d) Cap quit penalty** (trueskill_ep.go) : `QuitPenaltyMuCap=1.5` clampe applyQuitPenaltyPost (unrelated 2.5→1.5, related 1.0 inchangé). −2.5 μ valait jusqu'à ~6 sous-paliers d'un coup.
 - **(e) Placement** : `PlacementMatches=10` — les 10 premiers matchs/groupe ne sont PAS lissés (σ élevé, convergence légitime). Modul l'hystérésis via state.Experience.
-- **Backfill --commit** : 3 passes isolées par joueur (`lusr_v2_canonical_backfill --commit <GT>`) → chaque match_skill_rank joueur réécrit avec la nouvelle logique (Madina 730, Choco 337, JGtm 623). État partagé renormalisé ensuite (dry-run). Serveurs tués/relancés pour le lock.
+- **Backfill --commit** : 3 passes isolées par joueur (`lusr_v2_canonical_backfill --commit <GT>`) → chaque match_skill_rank joueur réécrit avec la nouvelle logique (joueur_075 730, joueur_901 337, JGtm 623). État partagé renormalisé ensuite (dry-run). Serveurs tués/relancés pour le lock.
 
 **Résultats** :
 - Tests : `go test ./...` exit 0 (77 packages OK), `go vet` clean, gofmt clean. Nouveaux tests : display_smoothing_test.go (round-trip ordinal, hystérésis, placement, no-prev), trueskill_ep_quitcap_test.go. Tests existants mis à jour (tier/legacy_mapping pour les nouveaux SubTiers ; shadow quit gap 1.5→0.5).
-- **Vérification END-TO-END** (cmd/diag_lusr_displayed, lit match_skill_rank réel, par groupe) : chutes brutales −≥2 sous-paliers POST-placement = **0 pour les 3 joueurs** (pire −1 sp). Les quelques résidus (Madina 4, JGtm 5) sont confinés à la phase de placement (par design). Choco 0 partout.
+- **Vérification END-TO-END** (cmd/diag_lusr_displayed, lit match_skill_rank réel, par groupe) : chutes brutales −≥2 sous-paliers POST-placement = **0 pour les 3 joueurs** (pire −1 sp). Les quelques résidus (joueur_075 4, JGtm 5) sont confinés à la phase de placement (par design). joueur_901 0 partout.
 
-**Conclusion / prochaine étape** : volatilité d'affichage résolue (0 chute brutale sur rang établi). NEW matchs en live passent automatiquement par la nouvelle logique (canonical défaut LUSR_V2). Reste optionnel : (a) μ−k·σ léger non implémenté (jugé risqué/baisse niveau) ; badge UI "placement" (front) non câblé ; anomalie btb Madina Δμ=2.13 (dépriorisée par l'utilisateur). Outils diag : cmd/diag_lusr_volatility (simulation) + cmd/diag_lusr_displayed (vérif end-to-end).
+**Conclusion / prochaine étape** : volatilité d'affichage résolue (0 chute brutale sur rang établi). NEW matchs en live passent automatiquement par la nouvelle logique (canonical défaut LUSR_V2). Reste optionnel : (a) μ−k·σ léger non implémenté (jugé risqué/baisse niveau) ; badge UI "placement" (front) non câblé ; anomalie btb joueur_075 Δμ=2.13 (dépriorisée par l'utilisateur). Outils diag : cmd/diag_lusr_volatility (simulation) + cmd/diag_lusr_displayed (vérif end-to-end).
 
 ---
 
@@ -12173,11 +12173,11 @@ forcé, résolution metadata, statut front.
 
 **Constats** :
 - **Placement #5 déjà implémenté** sur la carte de rang principale (home skill peak) : `home_repo_skill_peak.go:assemblePeak` gère le seuil interne LUSR=10/groupe → badge unranked + `MeasurementMatchesRemaining`. DTO + front (`HomeSkillPeakCard`/`resolveSkillPeakState`) génériques CSR+LUSR. Seul trou : `buildPlaylistRankItem` (tuiles playlists récentes) ne fait le placement que pour `isRanked` (CSR), pas LUSR — mais code en refacto (péremption 2026-06-22) + point jugé mineur par l'utilisateur (joueur < 11 matchs non classés uniquement). Non touché.
-- **Pics vers le haut mesurés** (cmd/diag_lusr_displayed, post-placement, 4 joueurs, ~1000+ matchs) : CHUTES −≥2sp=0 partout ; PICS +≥2sp = **1 seul** (Madina +2sp). σ convergé (~0.67) → Δμ/match ~0.03-0.08 μ → montée dépasse quasi jamais 1 sous-palier.
+- **Pics vers le haut mesurés** (cmd/diag_lusr_displayed, post-placement, 4 joueurs, ~1000+ matchs) : CHUTES −≥2sp=0 partout ; PICS +≥2sp = **1 seul** (joueur_075 +2sp). σ convergé (~0.67) → Δμ/match ~0.03-0.08 μ → montée dépasse quasi jamais 1 sous-palier.
 
 **Décision** : garder l'**hystérésis ASYMÉTRIQUE** (montée immédiate, descente ≤1 sp/match). Caper les montées ne changerait qu'1 transition sur 4 joueurs → pas justifié vs la perte de récompense immédiate. Standard CSR (monte vite, descend lentement). Si un pic gênant apparaît en prod, la symétrie est 1 ligne dans `SmoothDisplayedOrdinal`.
 
-**Rangs finaux 4 joueurs** (groupe principal) : Madina Diamant II, JGtm Or VI, Choco Or III, XxDaemon Bronze VI. Cohérents cibles validation.
+**Rangs finaux 4 joueurs** (groupe principal) : joueur_075 Diamant II, JGtm Or VI, joueur_901 Or III, joueur_639 Bronze VI. Cohérents cibles validation.
 
 ---
 
@@ -12202,7 +12202,7 @@ forcé, résolution metadata, statut front.
 
 **Statut** : Complété côté code (Go + TS ; build ./... 0, go vet 0, tests duckdb/migration verts, tsc 0, vitest verts). Redéploiement DB (vue bots + seeds traduction) en attente d'un boot write du serveur.
 
-**Demande** : corriger 6 défauts — picker de réassociation (aucune miniature, mode/playlist EN, bots « Joueur N.0) » au lieu de « 343 XXX ») + page Médias (vignettes avec GUID de map, badge « clip » à retirer). Diagnostic vérifié en live (chrome-devtools, Madina97294) AVANT le plan ; solution pérenne + garde-rails testés exigés.
+**Demande** : corriger 6 défauts — picker de réassociation (aucune miniature, mode/playlist EN, bots « Joueur N.0) » au lieu de « 343 XXX ») + page Médias (vignettes avec GUID de map, badge « clip » à retirer). Diagnostic vérifié en live (chrome-devtools, joueur_117) AVANT le plan ; solution pérenne + garde-rails testés exigés.
 
 **4 causes DISTINCTES (PAS un seul enrichment sync)** :
 1. Bots : vue `v_gamertag_lookup` en base = version simplifiée pré-fix (`WHERE gamertag IS NOT NULL`, sans BotSQLCase → exclut les bots). Confirmé via `cmd/diag_bot_resolution` (def réelle + section 4 « résolution bots » vide). Code schema.go déjà corrigé le matin (509021622) mais serveur en read-only → vue jamais recréée. Migrations `repair_..._2026_05_16` déjà `done` → ajout `repair_v_gamertag_lookup_bots_2026_05_30` (applyResolutionViews, CREATE OR REPLACE idempotent).
@@ -12340,11 +12340,11 @@ cette branche (compare/seasons/session-charts).
 
 **Tests** : Go — `buildSeasonServiceRecordURL` (encodage seasonId/isRanked), `extractSeasonNumber`, `groupMatchmadeSeasonsByNumber`, `computeSeasonBreakdown` (live total + CSR + fallback no-auth) ; `go test ./...` + `-race` + `go vet` verts. Front — `buildSeasonMatchesOption` (1 série + markPoint badge) + rendu (mock echarts-for-react) ; `tsc`/`eslint`/`vitest` 50/50.
 
-**Runtime (curl JGtm→Nilton410, joueur inconnu sans DB locale)** : 14 saisons (S1→S13 + Winter 22), totaux réels (S3=1053 Diamond 2, S4=577 Diamond 1, S6=195 Diamond 2, S7=9 Diamond 1, Winter 22=91), **badges CSR par saison** (rangs variant par saison = vraies données). 1,96 s, fiable (GetPlaylistCsr 200, aucun timeout — le player-level `csrs?Season=` 404 a été abandonné).
+**Runtime (curl JGtm→joueur_006, joueur inconnu sans DB locale)** : 14 saisons (S1→S13 + Winter 22), totaux réels (S3=1053 Diamond 2, S4=577 Diamond 1, S6=195 Diamond 2, S7=9 Diamond 1, Winter 22=91), **badges CSR par saison** (rangs variant par saison = vraies données). 1,96 s, fiable (GetPlaylistCsr 200, aucun timeout — le player-level `csrs?Season=` 404 a été abandonné).
 
 **Logging** : `explorer_season_breakdown` (Info : seasons_total/seasons_played).
 
-**Optim CSR (livrée)** : ne requêter le pic CSR que sur les playlists ranked RÉELLEMENT engagées par le joueur — intersection `Subqueries.PlaylistAssetIds` (exposé via `RemoteServiceRecord.PlaylistAssetIDs`) ∩ `rankedplaylists.Active()`. Un joueur social → ∅ → **0 appel CSR** ; sinon ~1-2 playlists/saison au lieu de 4. `SeasonPeakCSR(ctx, xuid, csrSeasonID, engagedPlaylistIDs)`. ATTENTION : ne PAS gater sur la liste CSR de `Subqueries` (elle est TRONQUÉE — S3/S4 de Nilton410 ont un rang Diamond réel mais ne sont pas dans Subqueries CSR ; gater dessus perdrait ces badges). Test `TestComputeSeasonBreakdown_NoEngagedPlaylists_SkipsCSR`. Runtime re-validé : mêmes badges (S3 D2, S4 D1, S6 D2, S7 D1), 1,74 s.
+**Optim CSR (livrée)** : ne requêter le pic CSR que sur les playlists ranked RÉELLEMENT engagées par le joueur — intersection `Subqueries.PlaylistAssetIds` (exposé via `RemoteServiceRecord.PlaylistAssetIDs`) ∩ `rankedplaylists.Active()`. Un joueur social → ∅ → **0 appel CSR** ; sinon ~1-2 playlists/saison au lieu de 4. `SeasonPeakCSR(ctx, xuid, csrSeasonID, engagedPlaylistIDs)`. ATTENTION : ne PAS gater sur la liste CSR de `Subqueries` (elle est TRONQUÉE — S3/S4 de joueur_006 ont un rang Diamond réel mais ne sont pas dans Subqueries CSR ; gater dessus perdrait ces badges). Test `TestComputeSeasonBreakdown_NoEngagedPlaylists_SkipsCSR`. Runtime re-validé : mêmes badges (S3 D2, S4 D1, S6 D2, S7 D1), 1,74 s.
 
 **Conclusion / next** : feature + optim livrées. Le split classé/non-classé n'est pas livrable sur l'API Waypoint brute (seul DotAPI l'offrait). Rien n'est commité (branche `fix/solo-first-events-squad-mode`). `cmd/diag_appearance` (untracked) a servi aux probes — à supprimer ou garder comme sonde.
 
@@ -12418,26 +12418,26 @@ sans toucher `IsLUSRV2Enabled/Canonical` (défaut off conservé → tests + CLI 
 + ANOMALIE B (LUSR sans audit LUSR_V2 = v1 résiduel par match).
 
 **Résultats observés** : build ./... OK, vet OK, tests sync + duckdb + service verts. Diag sur
-snapshot Chocoboflor (seul copiable, serveur tenant le lock RW) : 468 matchs LUSR, 6 matchs
+snapshot joueur_165 (seul copiable, serveur tenant le lock RW) : 468 matchs LUSR, 6 matchs
 LUSR_V2 → **462 matchs LUSR sans audit v2 (anomalie B)**, max written_at=2026-05-27 : le backfill
 canonical annoncé 2026-05-29 n'a PAS couvert l'historique de ces DBs live. Anomalie A = 0 → après
 Fix A, aucune note `LUSR_V2` ne fuit.
 
 **Fix C (data-op) — FAIT 2026-05-30 16:30** : serveur tué pour libérer le lock RW.
 PIÈGE découvert : `lusr_v2_canonical_backfill --commit` avec les 4 GT EN ARGUMENTS d'un seul run
-ne réconcilie QUE le 1er (Madina). Le shadow avance le watermark `player_skill_state_v2` de TOUS
-les participants d'un match (coéquipiers inclus), donc Choco/JGtm passés ensuite ressortaient
+ne réconcilie QUE le 1er (joueur_075). Le shadow avance le watermark `player_skill_state_v2` de TOUS
+les participants d'un match (coéquipiers inclus), donc joueur_901/JGtm passés ensuite ressortaient
 `skipped_already_seen=459/592` et n'écrivaient quasi rien (6/205). FIX OPÉRATIONNEL : relancer le
 cmd **une fois par joueur** (chaque invocation TRUNCATE `player_skill_state_v2` puis reprocesse le
-owner complet). Résultat 4 runs séparés : Madina 730, Choco 337, JGtm 623, Daemon 22 matchs écrits
+owner complet). Résultat 4 runs séparés : joueur_075 730, joueur_901 337, JGtm 623, Daemon 22 matchs écrits
 canonical.
 
 **État final vérifié (`cmd/diag_lusr_slots`)** : anomalie A = **0 partout** (plus aucun label
 LUSR_V2 ne peut fuir → demande utilisateur résolue). Anomalie B (v1 résiduel) = 390/131/271/10
-(Madina/Choco/JGtm/Daemon) — ATTENDU, PAS un bug : ce nombre ≈ les matchs v2-INÉLIGIBLES
+(joueur_075/joueur_901/JGtm/Daemon) — ATTENDU, PAS un bug : ce nombre ≈ les matchs v2-INÉLIGIBLES
 (`skipped_imbalance` BTB |nA-nB|>1 + `skipped_non_two_team` FFA/3+ équipes ; cf.
 isTeamImbalanceTooHigh, ADR 0024 limites Phase 3d). v2 n'a pas d'opinion sur ces matchs → ils
-gardent légitimement leur valeur v1 (slot LUSR correct, jamais label LUSR_V2). Ex Madina : 1120
+gardent légitimement leur valeur v1 (slot LUSR correct, jamais label LUSR_V2). Ex joueur_075 : 1120
 candidats − 730 traités = 390. Vue `match_skill_rank_latest` re-confirmée correcte (def
 `PARTITION BY match_id`, `rows == distinct_match`). Serveur rebuild (`tmp/server.exe` Fix A+B) +
 relancé : HEALTH 200, `logs/sync.log` = `LUSR mode: v2 CANONICAL ... enabled=true canonical=true`.
@@ -12515,7 +12515,7 @@ relancé : HEALTH 200, `logs/sync.log` = `LUSR mode: v2 CANONICAL ... enabled=tr
 
 **Demande** : enrichir l'encart « Profil joueur cible » de l'Explorer à la SpartanRecord, y compris pour des adversaires NON suivis (pas de DB locale). Contrainte explicite de l'utilisateur : « pense bien multi-titres, abstraction et respect de l'architecture en place ». Notre solution, pas de dépendance dotapi.gg (morte).
 
-**Investigation (#3)** : outil jetable `cmd/diag_appearance` avec les vrais tokens JGtm contre Nilton410 (xuid tiers) :
+**Investigation (#3)** : outil jetable `cmd/diag_appearance` avec les vrais tokens JGtm contre joueur_006 (xuid tiers) :
 - `/customization/appearance` → HTTP 403 (player-gated).
 - `/customization?view=public` → HTTP 200 : bloc `Appearance` complet (ServiceTag "MELG", Emblem.EmblemPath, BackdropImagePath) pour n'importe quel xuid.
 - `/careerranks/careerRank1?players=xuid(N)` + servicerecord → 200 (service-token, tout xuid).
@@ -12532,9 +12532,9 @@ Conclusion : l'API officielle sert l'appearance d'un inconnu via la vue publique
 
 **Tests** (5 nouveaux) : `TestGetSpartanCustomization_PublicViewFallback` (httptest : 403 sur /appearance → 200 sur ?view=public → SpartanID/Emblem/Backdrop résolus). `TestCareerLive_FetchLiveIdentity_ThirdPartyAppearance` (tiers sans DB, custom-only → identité non-nil, RankNumber=0, fetch synchrone appelé, 0 persistance) + `_NoAuth` (sans tokens → DB fallback, 0 fetch). Câblage service : `TestExplorerService_TargetProfile_OpponentLiveIdentity` (LocalIdentity nil → fallback `FetchLiveIdentity` + bannière→backdrop) + `_LiveIdentityError` (échec live → identité nil, sample préservé). Suite complète `go test ./...` verte (80 pkg, 0 FAIL), `-race` (sync/service/api) clean, `go vet ./...` clean.
 
-**Logging** : niveau fichier par défaut = INFO (`LEVELUP_LOGS_FILE_LEVEL`), donc les events clés de #3 remontés Debug→Info pour être observables dans `logs/` : `spartan_id: customization via vue publique (joueur tiers)` (sync, +bytes) et `FetchLiveIdentity résolu`/`sans résultat` (service, +has_rank/has_emblem/has_backdrop/has_service_tag). Vérifié au runtime : ligne INFO `FetchLiveIdentity résolu` présente dans `logs/service.log` après curl Nilton410.
+**Logging** : niveau fichier par défaut = INFO (`LEVELUP_LOGS_FILE_LEVEL`), donc les events clés de #3 remontés Debug→Info pour être observables dans `logs/` : `spartan_id: customization via vue publique (joueur tiers)` (sync, +bytes) et `FetchLiveIdentity résolu`/`sans résultat` (service, +has_rank/has_emblem/has_backdrop/has_service_tag). Vérifié au runtime : ligne INFO `FetchLiveIdentity résolu` présente dans `logs/service.log` après curl joueur_006.
 
-**Runtime (serveur :8000, curl JGtm→Nilton410, Origin localhost:5173)** : HTTP 200, `target_profile.identity` = SpartanID "MELG" + emblem + backdrop + banner + career rank 272 « Hero Gold » (careerranks non gated → bonus pour l'inconnu) ; `top_medals` (Double frag ×13118 image/label/desc), `season_csrs`, `matches_per_season` (S13:22), `time_played_seconds`. Carte complète pour un joueur sans DB locale. HighestCSR/LUSR nuls (peaks du propriétaire, omis pour un tiers — voulu).
+**Runtime (serveur :8000, curl JGtm→joueur_006, Origin localhost:5173)** : HTTP 200, `target_profile.identity` = SpartanID "MELG" + emblem + backdrop + banner + career rank 272 « Hero Gold » (careerranks non gated → bonus pour l'inconnu) ; `top_medals` (Double frag ×13118 image/label/desc), `season_csrs`, `matches_per_season` (S13:22), `time_played_seconds`. Carte complète pour un joueur sans DB locale. HighestCSR/LUSR nuls (peaks du propriétaire, omis pour un tiers — voulu).
 
 **Conclusion / next** : encart Explorer pleinement fonctionnel pour les inconnus via API officielle. Frontend inchangé (l'identité transite par le rendu existant `HomeSpartanIdentityRow`). `cmd/diag_appearance` est jetable — à supprimer avant merge si on ne veut pas le garder comme sonde de diag. Rien n'est commité (branche `fix/solo-first-events-squad-mode`).
 
@@ -12703,7 +12703,7 @@ Aucune modif de migration ni de code prod (les colonnes étaient déjà gérées
 4. **Vérifié live** : POST explorer/matches-query JGtm → map_ui=Solitude, mode_ui=Bases, playlist_label=Partie rapide (résolution FR OK).
 
 **Reste (durcissement durable)** :
-- Gamertags : 55 xuid orphelins (diag_orphan_xuids), surtout strangers 1-match (coéquipiers/adv. de Nilton410). Récupération cross-match via `repair_data_consistency` (offline) ; les vrais strangers nécessitent un re-parse du film (gamertag dans le film, écrit seulement si globalDB≠nil). BUG : `engine_postsync.go:209 healEventsForRecentMatches(ctx, sharedDB, nil, …)` passe globalDB=nil → le heal ne ré-alias jamais.
+- Gamertags : 55 xuid orphelins (diag_orphan_xuids), surtout strangers 1-match (coéquipiers/adv. de joueur_006). Récupération cross-match via `repair_data_consistency` (offline) ; les vrais strangers nécessitent un re-parse du film (gamertag dans le film, écrit seulement si globalDB≠nil). BUG : `engine_postsync.go:209 healEventsForRecentMatches(ctx, sharedDB, nil, …)` passe globalDB=nil → le heal ne ré-alias jamais.
 - Hardening anti-récurrence : auto-recover metadata sur « invalidated » (cf. pattern QueryRecovered player DB) + garde mono-instance (PID lock) pour empêcher les serveurs concurrents.
 - Optionnel : cascade FR sur tables read brutes (squad Q30/Q31/Q33, career Q9).
 
@@ -12851,8 +12851,8 @@ Items livrés :
 
 **Fix data-race (bonus, demandé après coup)** : `-race` révélait une race préexistante — `jobs.Store.Create` retournait le pointeur VIVANT de la map ; les handlers (openspartan_import, backfill, sync, settings, setup) lisaient `job.Status`/`job.JobID` hors lock pour la réponse HTTP pendant que la goroutine de fond le mutait via `SetStatus` sous lock. Fix : `Create` renvoie une COPIE (cohérent avec `Get`/`FindActiveJob`) — le `JobID` immuable reste la clé pour les mutations ultérieures. Régression `TestStore_Create_ReturnsCopy`. **`go test -race ./...` désormais 100 % clean sur tout le projet.**
 
-**Vérif runtime + 2 vrais bugs trouvés (le câblage auth seul ne suffisait pas)** : test contre le serveur live (curl endpoint, logs `apps/go-api/logs/service.log`). `auth_available=true` confirmé (Volet A OK), MAIS `career_stats` toujours nil → log `explorer_target_career_failed` : `GET /hi/players/{gamertag}/career-stats → HTTP 404` pour TOUS les joueurs (Chocoboflor inclus).
-- **Bug 1 — endpoint career inexistant** : `/hi/players/{X}/career-stats` n'existe pas dans l'API Halo. Cross-réf Grunt (`Stats_GetPlayerServiceRecord`) → le bon endpoint est `/hi/players/{player}/Matchmade/servicerecord` (schéma : Wins/Losses/MatchesCompleted au top-level, reste sous `CoreStats`). Bug PRÉEXISTANT dans `compare_provider.go` (Sprint 54) que le câblage Explorer a exposé — touchait aussi Compare. Fix : nouveau chemin + `serviceRecordResponse` remappé. Confirmé live : Chocoboflor 460 matchs, Nilton410 6907 matchs, `career_stats` présent.
+**Vérif runtime + 2 vrais bugs trouvés (le câblage auth seul ne suffisait pas)** : test contre le serveur live (curl endpoint, logs `apps/go-api/logs/service.log`). `auth_available=true` confirmé (Volet A OK), MAIS `career_stats` toujours nil → log `explorer_target_career_failed` : `GET /hi/players/{gamertag}/career-stats → HTTP 404` pour TOUS les joueurs (joueur_165 inclus).
+- **Bug 1 — endpoint career inexistant** : `/hi/players/{X}/career-stats` n'existe pas dans l'API Halo. Cross-réf Grunt (`Stats_GetPlayerServiceRecord`) → le bon endpoint est `/hi/players/{player}/Matchmade/servicerecord` (schéma : Wins/Losses/MatchesCompleted au top-level, reste sous `CoreStats`). Bug PRÉEXISTANT dans `compare_provider.go` (Sprint 54) que le câblage Explorer a exposé — touchait aussi Compare. Fix : nouveau chemin + `serviceRecordResponse` remappé. Confirmé live : joueur_165 460 matchs, joueur_006 6907 matchs, `career_stats` présent.
 - **Bug 2 — barre privacy vide** : `PrivacyBanner` (partial) utilisait `text-warning-foreground` (~noir, pour fond plein) sur `bg-warning/10` (tint) en thème sombre → texte invisible. Fix : `text-warning` (couleur forte), aligné sur le variant `full`/`text-destructive`.
 
 Leçon : valider en runtime (curl + logs), pas seulement en tests unitaires mockés. Le logging structuré ajouté a permis le diagnostic immédiat (404 explicite dans service.log).
@@ -12872,7 +12872,7 @@ Leçon : valider en runtime (curl + logs), pas seulement en tests unitaires mock
 - **Budget latence** : ne borne plus que la carrière (identité + sample = local, sur gctx). Identité/sample non bornées.
 - **Nettoyage** : `CareerLiveService.GetSpartanIdentityFromDBOnly` (mort) supprimé + tests associés. `r.newCareerLiveService` retiré du wiring Explorer (toujours utilisé par Home/Career).
 
-**Résultats** : `go build ./...` OK, `go vet` clean, tests `service`+`api`+`handlers` verts, `-race` clean, typecheck front OK. Tests TargetProfile réécrits (résolveur local, plus de privacy). **Validé en runtime** (curl serveur live) : cible LOCALE Chocoboflor → identity complète (SpartanID "OKLM", emblem/banner lus de SA base) + career + sample, **pas** de privacy ; cible NON-locale Nilton410 → pas d'identity (gamertag seul) + career (servicerecord) + sample, **pas** de privacy. Front : libellé identité-nulle reformulé (informatif, non alarmant) + fix `text-warning` du PrivacyBanner conservé.
+**Résultats** : `go build ./...` OK, `go vet` clean, tests `service`+`api`+`handlers` verts, `-race` clean, typecheck front OK. Tests TargetProfile réécrits (résolveur local, plus de privacy). **Validé en runtime** (curl serveur live) : cible LOCALE joueur_165 → identity complète (SpartanID "OKLM", emblem/banner lus de SA base) + career + sample, **pas** de privacy ; cible NON-locale joueur_006 → pas d'identity (gamertag seul) + career (servicerecord) + sample, **pas** de privacy. Front : libellé identité-nulle reformulé (informatif, non alarmant) + fix `text-warning` du PrivacyBanner conservé.
 
 **Prochaine étape** : validation visuelle utilisateur. Pas encore commité (en attente autorisation).
 
@@ -12880,7 +12880,7 @@ Leçon : valider en runtime (curl + logs), pas seulement en tests unitaires mock
 - Logging : ajout debug `explorer_target_identity_not_local` (observabilité cible non suivie, → service.log) ; warn `explorer_local_identity_failed` (erreur lecture DB cible, côté registry) conservé. Aucun fetch/log privacy.
 - Code mort : retrait de la branche `PrivacyBanner` de `ExplorerTargetProfileCard` (jamais déclenchée — privacy supprimée) + import. Test card adapté (le cas « profil privé » devient « ne rend jamais de bannière privacy »).
 - i18n : libellé identité-nulle reformulé (« Identité Spartan non disponible » + « Emblème et rang carrière indisponibles… stats affichées ci-dessous ») dans manifest + généré ; test placeholder mis à jour.
-- Résultats : `go build ./...` OK, `go vet ./...` clean, `go test ./...` tout vert, `-race` clean (service+api), aucun print interdit. Front : `tsc -b` OK, `eslint` 0 erreur, `vitest` 27/27 (ExplorerTargetProfileCard + Home). Fichiers <500 L, fonctions ≤80 L. Runtime reconfirmé (Chocoboflor identity locale ; Nilton410 career-only ; zéro privacy partout).
+- Résultats : `go build ./...` OK, `go vet ./...` clean, `go test ./...` tout vert, `-race` clean (service+api), aucun print interdit. Front : `tsc -b` OK, `eslint` 0 erreur, `vitest` 27/27 (ExplorerTargetProfileCard + Home). Fichiers <500 L, fonctions ≤80 L. Runtime reconfirmé (joueur_165 identity locale ; joueur_006 career-only ; zéro privacy partout).
 
 **Prochaine étape** : validation utilisateur (Explorer cible : carrière live affichée, plus de message, réponse rapide à froid puis instantanée à chaud). Pas encore commité (en attente autorisation).
 
@@ -12924,18 +12924,18 @@ Leçon : valider en runtime (curl + logs), pas seulement en tests unitaires mock
 
 ### Suite — validation réelle + fix ART écritures progression (même jour)
 
-**Validation du fix lecture** : backfill in-process déclenché sur les 3 joueurs. JGtm/Madina immédiatement complets (streak + 15 records + 10-13 milestones), alors qu'avant tout restait à 0. Le fix timeout/finalizer est donc confirmé.
+**Validation du fix lecture** : backfill in-process déclenché sur les 3 joueurs. JGtm/joueur_075 immédiatement complets (streak + 15 records + 10-13 milestones), alors qu'avant tout restait à 0. Le fix timeout/finalizer est donc confirmé.
 
-**Bug ART surfacé** : l'exécution réelle (enfin atteinte) a révélé un bug pré-existant — `StreaksRepo.Upsert` et `MilestoneEarnedRepo.Append` utilisaient `ON CONFLICT`, qui déclenche le chemin "delete from index" de DuckDB → crash `Failed to delete all rows from index` → DB invalidée → `Binder Error` en cascade (Choco bloqué à streak=0/milestone=0, milestone_catalog oscillant 0↔14, `http=000` transitoire). Sites déjà flaggés HAUT risque dans `audit_art_writes.md`.
+**Bug ART surfacé** : l'exécution réelle (enfin atteinte) a révélé un bug pré-existant — `StreaksRepo.Upsert` et `MilestoneEarnedRepo.Append` utilisaient `ON CONFLICT`, qui déclenche le chemin "delete from index" de DuckDB → crash `Failed to delete all rows from index` → DB invalidée → `Binder Error` en cascade (joueur_901 bloqué à streak=0/milestone=0, milestone_catalog oscillant 0↔14, `http=000` transitoire). Sites déjà flaggés HAUT risque dans `audit_art_writes.md`.
 
 **Fix (scope validé utilisateur : streaks + milestone_earned uniquement)** :
 - `StreaksRepo.Upsert` (clé `id`) → `SELECT EXISTS` puis UPDATE-by-id ou INSERT. Plus d'ON CONFLICT.
 - `MilestoneEarnedRepo.Append` (earn-once) → `SELECT EXISTS` puis INSERT si absent.
 - `streak` + `milestone_earned` ajoutées à `tablesProtegees` (`no_art_patterns_test.go`) → verrou anti-régression contre toute réintroduction d'ON CONFLICT.
 
-**Résultats** : `go build ./...` + `go vet` + gofmt clean. Guard-rail ART vert (aucun autre site ON CONFLICT sur ces tables). Tests intégration repos verts (`-tags integration` : 5 streaks + 3 milestone_earned, dont UpsertOverwrites et Append_Idempotent). **Re-validation réelle après rebuild Air + pool frais** : les 3 joueurs complets — Chocoboflor passé de 0/0 à streak=1, records=15, milestone_earned=6. Plus aucune erreur ART sur le chemin progression.
+**Résultats** : `go build ./...` + `go vet` + gofmt clean. Guard-rail ART vert (aucun autre site ON CONFLICT sur ces tables). Tests intégration repos verts (`-tags integration` : 5 streaks + 3 milestone_earned, dont UpsertOverwrites et Append_Idempotent). **Re-validation réelle après rebuild Air + pool frais** : les 3 joueurs complets — joueur_165 passé de 0/0 à streak=1, records=15, milestone_earned=6. Plus aucune erreur ART sur le chemin progression.
 
-**Hors scope (tracé, non corrigé)** : `sync_meta` ON CONFLICT (rotation oauth, `auth/pool/resolver.go`) échoue encore en Binder Error sur la DB de Choco — preuve a contrario que le pattern SELECT-then-UPDATE est robuste là où l'ON CONFLICT casse. À migrer dans une PR ART dédiée. Les seeders metadata (`seedPlaylistsCatalog`, `achievements upsert`) restent aussi à traiter (source d'invalidation metadata).
+**Hors scope (tracé, non corrigé)** : `sync_meta` ON CONFLICT (rotation oauth, `auth/pool/resolver.go`) échoue encore en Binder Error sur la DB de joueur_901 — preuve a contrario que le pattern SELECT-then-UPDATE est robuste là où l'ON CONFLICT casse. À migrer dans une PR ART dédiée. Les seeders metadata (`seedPlaylistsCatalog`, `achievements upsert`) restent aussi à traiter (source d'invalidation metadata).
 
 **État final** : symptôme utilisateur (page Réalisations vide) résolu de bout en bout. Pas encore commité (en attente autorisation). Branche `fix/explorer-target-profile-auth`.
 
@@ -12957,7 +12957,7 @@ Leçon : valider en runtime (curl + logs), pas seulement en tests unitaires mock
 - **B6 orchestration** : `buildTargetProfile` parallèle borné (`explorerTargetLiveBudget`) ; deps via `ExplorerTargetProfileDeps` ; nouveaux champs domaine `TopMedals/SeasonCSRs/MatchesPerSeason` ; wiring `ExplorerCtxWithAuth`.
 - **Frontend** : `ExplorerTargetMedals` (top 5 + expander 20, image/titre/desc/count), `ExplorerTargetSeasonCSR` (liste compacte), KPI time-played (carte) ; career rank rendu par le banner existant ; types TS + i18n (manifest+généré).
 
-**Vérifié runtime (serveur frais, curl)** : pour ADVERSAIRE (Nilton410, non local) ET local (Chocoboflor) → `career_stats` (6907/460 matchs), `time_played_seconds` (1014h/67h), `top_medals` enrichies (ex. « Double frag ×13118 », image, desc FR) ✅. Identité : local OK (emblem/rang) ; adversaire = nil (l'identité live économie ne renvoie rien pour un xuid tiers dans le client actuel — limite documentée, gamertag affiché). CSR : ne renvoie que les playlists ranked ENGAGÉES de la saison courante (vide pour ces joueurs en CsrSeason13-1).
+**Vérifié runtime (serveur frais, curl)** : pour ADVERSAIRE (joueur_006, non local) ET local (joueur_165) → `career_stats` (6907/460 matchs), `time_played_seconds` (1014h/67h), `top_medals` enrichies (ex. « Double frag ×13118 », image, desc FR) ✅. Identité : local OK (emblem/rang) ; adversaire = nil (l'identité live économie ne renvoie rien pour un xuid tiers dans le client actuel — limite documentée, gamertag affiché). CSR : ne renvoie que les playlists ranked ENGAGÉES de la saison courante (vide pour ces joueurs en CsrSeason13-1).
 
 **Tests** : `parseISO8601DurationSeconds` (8 cas), `buildTargetTopMedals` (tri/cap/nil), `CachedStatsProvider` (FetchServiceRecord), tests service Explorer mis à jour (deps struct + FetchServiceRecord). Front : card vitest 5/5. `go build/vet ./...` (mes packages) + `-race` service clean ; typecheck + eslint 0 erreur.
 
@@ -13022,9 +13022,9 @@ Findings positifs : nil-safety carte OK, tokens couleur OK, BadgeImageURL CSR di
 
 **Statut** : Complété · Branche `fix/explorer-target-profile-auth`
 
-**#1 Matchs par saison** : le servicerecord par-saison officiel exige un chemin CMS (`Seasons/SeasonN.json`) absent du repo (fragile à énumérer). Choix robuste : **bucketing local** des start_times du joueur (shared.match_participants) dans les plages de saison (`SeasonsCatalog`, dates Start/End). Joueur local = historique complet ; adversaire = matchs observés (communs). Nouveau repo `GetMatchStartTimesForXUID` (timezone canonique COALESCE start_time_utc), helper pur `buildMatchesPerSeason`, dep `Seasons` injectée depuis `SeasonsCatalog`. Front : `ExplorerTargetSeasonMatches` (barres flat horizontales, token chart-series-1). **Runtime** : Chocoboflor 5 saisons (S3:1,S5:9,S6:1,S12:63,S13:4) ; Nilton410 S13:22 (commun).
+**#1 Matchs par saison** : le servicerecord par-saison officiel exige un chemin CMS (`Seasons/SeasonN.json`) absent du repo (fragile à énumérer). Choix robuste : **bucketing local** des start_times du joueur (shared.match_participants) dans les plages de saison (`SeasonsCatalog`, dates Start/End). Joueur local = historique complet ; adversaire = matchs observés (communs). Nouveau repo `GetMatchStartTimesForXUID` (timezone canonique COALESCE start_time_utc), helper pur `buildMatchesPerSeason`, dep `Seasons` injectée depuis `SeasonsCatalog`. Front : `ExplorerTargetSeasonMatches` (barres flat horizontales, token chart-series-1). **Runtime** : joueur_165 5 saisons (S3:1,S5:9,S6:1,S12:63,S13:4) ; joueur_006 S13:22 (commun).
 
-**#2 CSR parité + badge** : le provider CSR (registry) complète `GetPlayerCSRs` (engagées) via `rankedplaylists.Active()` + `GetPlaylistCsr` (playlists ranked actives manquantes), comme `sync.augmentWithActiveRankedCSRs`. Badge image résolu via `halo_infinite.NewAssetURLAdapter().CSRRankImageURL/Onyx` (mappé sur `CareerCSRRank.BadgeImageURL`). Front `ExplorerTargetSeasonCSR` affiche le badge. **Runtime** : Chocoboflor/Nilton410 → 4 playlists ranked actives (état placement value=-1, 5 matchs restants → « — »).
+**#2 CSR parité + badge** : le provider CSR (registry) complète `GetPlayerCSRs` (engagées) via `rankedplaylists.Active()` + `GetPlaylistCsr` (playlists ranked actives manquantes), comme `sync.augmentWithActiveRankedCSRs`. Badge image résolu via `halo_infinite.NewAssetURLAdapter().CSRRankImageURL/Onyx` (mappé sur `CareerCSRRank.BadgeImageURL`). Front `ExplorerTargetSeasonCSR` affiche le badge. **Runtime** : joueur_165/joueur_006 → 4 playlists ranked actives (état placement value=-1, 5 matchs restants → « — »).
 
 **Tests** : `buildMatchesPerSeason` (bucketing/empty), `ExplorerTargetSeasonMatches.test` + `ExplorerTargetSeasonCSR.test` — front 47/47 (9 fichiers explorer). `go build ./...` OK, vet OK ; `halo`/`api`/`handlers`/`duckdb`/`port` verts ; typecheck + eslint 0 erreur. i18n régénéré via `build_i18n_manifests.mjs`.
 
@@ -13046,7 +13046,7 @@ Findings positifs : nil-safety carte OK, tokens couleur OK, BadgeImageURL CSR di
 
 **Conclusion initiale (révisée ci-dessous)** : on pensait dotapi.gg+token nécessaire. FAUX.
 
-**RÉVISION — diagnostic `cmd/diag_appearance` (tokens JGtm réels → appearance de Nilton410 inconnu)** :
+**RÉVISION — diagnostic `cmd/diag_appearance` (tokens JGtm réels → appearance de joueur_006 inconnu)** :
 - `/customization/appearance` (player-gated, utilisé par notre `GetSpartanCustomization`) → **HTTP 403** pour un inconnu → explique notre nil.
 - **`/customization?view=public` → HTTP 200** : renvoie le bloc Appearance d'un inconnu (`ServiceTag:"MELG"`, `Emblem.EmblemPath`, `BackdropImagePath`) — IDENTIQUE à ce que dotapi.gg sert, mais via l'**API officielle + nos propres tokens**. Zéro dépendance externe.
 - LevelUp avait abandonné `view=public` le 2026-05-14 (timeout temporaire) → revenu (200). Bonus : le servicerecord renvoie `Subqueries.SeasonIds` (vraie liste des saisons jouées, utile pour #1 lifetime un jour).
@@ -13057,17 +13057,17 @@ Findings positifs : nil-safety carte OK, tokens couleur OK, BadgeImageURL CSR di
 
 ---
 
-## [2026-05-30] fix(auth): WriteOAuthRefreshToken ON CONFLICT → Binder Error sur sync_meta legacy (Chocoboflor) — Complété
+## [2026-05-30] fix(auth): WriteOAuthRefreshToken ON CONFLICT → Binder Error sur sync_meta legacy (joueur_165) — Complété
 
 **Statut** : Complété · Branche `fix/explorer-target-profile-auth`
 
-**Symptôme (logs prod)** : à chaque rotation RT Microsoft de Chocoboflor, `[ERROR] duckdb exec failed op=OpenReadWriteShared` + `[WARN] pool/resolver: persistance RT rotaté échouée err="Binder Error: The specified columns as conflict target are not referenced by a UNIQUE/PRIMARY KEY CONSTRAINT"` + `[WARN] backup export échoué err="database is closed"`.
+**Symptôme (logs prod)** : à chaque rotation RT Microsoft de joueur_165, `[ERROR] duckdb exec failed op=OpenReadWriteShared` + `[WARN] pool/resolver: persistance RT rotaté échouée err="Binder Error: The specified columns as conflict target are not referenced by a UNIQUE/PRIMARY KEY CONSTRAINT"` + `[WARN] backup export échoué err="database is closed"`.
 
-**Cause racine (vérifiée par inspection DB)** : le `sync_meta` de Chocoboflor n'avait AUCUNE contrainte (legacy créé par l'ancien sync Python, colonne `updated_at` en plus), alors que Madina97294 a `PRIMARY KEY`+`NOT NULL`. L'ancien `WriteOAuthRefreshToken` (queries_auth.go) faisait `INSERT ... ON CONFLICT(key) DO UPDATE` → DuckDB rejette le conflict target car `key` n'est pas UNIQUE/PK. Le double-write DuckDB est un chemin de compat (ADR 0023) ; la source unique (MultiUserTokenStore) écrite en premier réussissait → auth NON cassée, mais logs bruités + ligne DuckDB legacy figée + échec backup collatéral (ref-count du handle caché fermé par le `defer db.Close()` de onRotated).
+**Cause racine (vérifiée par inspection DB)** : le `sync_meta` de joueur_165 n'avait AUCUNE contrainte (legacy créé par l'ancien sync Python, colonne `updated_at` en plus), alors que joueur_117 a `PRIMARY KEY`+`NOT NULL`. L'ancien `WriteOAuthRefreshToken` (queries_auth.go) faisait `INSERT ... ON CONFLICT(key) DO UPDATE` → DuckDB rejette le conflict target car `key` n'est pas UNIQUE/PK. Le double-write DuckDB est un chemin de compat (ADR 0023) ; la source unique (MultiUserTokenStore) écrite en premier réussissait → auth NON cassée, mais logs bruités + ligne DuckDB legacy figée + échec backup collatéral (ref-count du handle caché fermé par le `defer db.Close()` de onRotated).
 
-**Décision technique** : pattern SELECT-then-UPDATE-or-INSERT (cf. CLAUDE.md règle écritures legacy auth) au lieu d'ON CONFLICT → robuste quel que soit le schéma, protège les 4 joueurs + toute future DB legacy. + repair one-off du schéma de Chocoboflor (recréation `sync_meta` avec PK via swap transactionnel, DuckDB ne supportant pas `ALTER ADD PRIMARY KEY`).
+**Décision technique** : pattern SELECT-then-UPDATE-or-INSERT (cf. CLAUDE.md règle écritures legacy auth) au lieu d'ON CONFLICT → robuste quel que soit le schéma, protège les 4 joueurs + toute future DB legacy. + repair one-off du schéma de joueur_165 (recréation `sync_meta` avec PK via swap transactionnel, DuckDB ne supportant pas `ALTER ADD PRIMARY KEY`).
 
-**Résultats** : code fix dans `queries_auth.go` + test de non-régression `queries_auth_test.go` (cas `avec_pk` ET `legacy_sans_pk` reproduisant le bug, + INSERT/UPDATE/no-doublon/token-vide) → PASS (`-tags=integration`). `go vet` OK. Repair appliqué : Chocoboflor `sync_meta` a désormais `PRIMARY KEY`+`NOT NULL`, 12 lignes préservées (dont `oauth_refresh_token`). Outils d'inspection/migration jetables supprimés.
+**Résultats** : code fix dans `queries_auth.go` + test de non-régression `queries_auth_test.go` (cas `avec_pk` ET `legacy_sans_pk` reproduisant le bug, + INSERT/UPDATE/no-doublon/token-vide) → PASS (`-tags=integration`). `go vet` OK. Repair appliqué : joueur_165 `sync_meta` a désormais `PRIMARY KEY`+`NOT NULL`, 12 lignes préservées (dont `oauth_refresh_token`). Outils d'inspection/migration jetables supprimés.
 
 **Prochaine étape** : commit (en attente autorisation utilisateur). Note : Phase 5 du refactor ADR 0023 supprimera entièrement ce double-write DuckDB.
 
@@ -13230,7 +13230,7 @@ Couleurs 100 % tokens (`resolveToken` pour le canvas ECharts), 0 hex. Tests : `b
 
 **Résultats** :
 - Tests : `CareerRepo` (tag integration) + service `Career` + adapter `halo_infinite` verts. Nouveau test de non-régression `TestCareerRepo_GetLatestRank_RecoversXPFromPartialRow` (rang frais + XP récupérées malgré partial NULL récent). `go vet` propre.
-- Vérif live (serveur :8000, HTTP 200) : Madina r201 → progress_pct **20.44%**, hero **27.88%**, xp_for_next **42500** ; Chocoboflor r147 → **54.73%** / **10.81%** / **15000**. (Étaient tous 0.)
+- Vérif live (serveur :8000, HTTP 200) : joueur_075 r201 → progress_pct **20.44%**, hero **27.88%**, xp_for_next **42500** ; joueur_165 r147 → **54.73%** / **10.81%** / **15000**. (Étaient tous 0.)
 - Échec **pré-existant** constaté (vérifié identique sur HEAD propre) : `TestE2EPipeline_CareerCSRs_MergeCatalogPlusSnapshots` (want 3 playlists, got 7) — chemin CSR, sans rapport avec ce fix.
 
 **Note / dette repérée** : `ops/seed.go::SeedCareerRanks` crée un schéma `career_ranks` plus pauvre (`tier`, `icon_path`, pas de `tier_type`/`adornment_icon_path`) que le schéma réel de la prod metadata (qui a `tier_type`, `grade`, `xp_required`, `adornment_icon_path` — `EnrichFromMetadata` y réussit). Si un environnement neuf est seedé via `SeedCareerRanks`, l'enrichissement carrière (home ET page) casserait. Hors scope ici.
@@ -13520,7 +13520,7 @@ Couleurs 100 % tokens (`resolveToken` pour le canvas ECharts), 0 hex. Tests : `b
 - Sibling même bug : `csr_coverage_repo.go` lisait aussi `measurement_matches_remaining` depuis match_skill_rank (non-fatal, erreur avalée → compteurs à 0) → logique basée sur `tier` (qui existe). La query renvoie désormais de vrais comptes.
 - 0 migration, 0 backfill, historique complet immédiatement.
 
-**Résultats observés** : home 200 pour Chocoboflor/Madina97294/JGtm (curl + Chrome : rendu complet, plus d'« Accueil indisponible » ; toutes les routes API 200). `go build` CGO OK, `go vet` clean, gofmt clean. Suite core non-CGO (domain/analysis/contracttest) verte. `TestPlayerMatchesRepo*` integration verts. Suite intégration duckdb complète : 1 seul échec = `TestNoUnauthorizedSharedSocialMention` — **pré-existant et hors sujet** (sentinel ADR 0021 ; `types.gen.go:1522` contient un commentaire généré `shared_social.player_records` depuis le commit `1cf192f43`, whitelist non mise à jour ; fichier non touché par ce fix).
+**Résultats observés** : home 200 pour joueur_165/joueur_117/JGtm (curl + Chrome : rendu complet, plus d'« Accueil indisponible » ; toutes les routes API 200). `go build` CGO OK, `go vet` clean, gofmt clean. Suite core non-CGO (domain/analysis/contracttest) verte. `TestPlayerMatchesRepo*` integration verts. Suite intégration duckdb complète : 1 seul échec = `TestNoUnauthorizedSharedSocialMention` — **pré-existant et hors sujet** (sentinel ADR 0021 ; `types.gen.go:1522` contient un commentaire généré `shared_social.player_records` depuis le commit `1cf192f43`, whitelist non mise à jour ; fichier non touché par ce fix).
 
 **Restes signalés (NON corrigés)** :
 1. Sentinel rouge pré-existant : whitelister `internal/api/gen/types.gen.go` dans `sharedSocialFilesWhitelist` (mention = doc-comment généré, pas un site d'écriture), OU retirer « shared_social » du commentaire de schéma dans openapi.yaml.
@@ -14181,7 +14181,7 @@ Tests analysis verts. **Découverte** : le site legacy nécessiterait un ajout d
 ### Point 1 — recalcul LUSR v2 sur données corrigées (§4.B)
 **Investigation** : le shadow LUSR v2 est (a) incrémental par watermark (last_match_at) → un match traité n'est jamais reprocessé, (b) consomme last_leave_time (TZ-corrigé) + time_played_seconds (backfillé Phase 4). État existant : 9781 lignes player_skill_state_v2_latest (jusqu'au 2026-05-26), calculé sur données stale. **v2 N'EST PAS canonical** par défaut (LEVELUP_LUSR_CANONICAL non défini) → n'écrit pas match_skill_rank → **non lu par l'UI** (shadow/validation Phase 1d).
 **Action** : `cmd/lusr_v2_replay --reset` (DELETE player_skill_state_v2 + replay full history, playerDB=nil → garanti shadow-only). Backup restic `5318b296` préalable. Replay des 4 joueurs trackés.
-**Validation** : tiers cohérents avec les cibles (reference_lusr_target_levels) : Madina Diamant II/Platine VI (cible fin Platine/début Diamant), Chocoboflor + JGtm Or III/IV (cible milieu/bas Or), XxDaemonGamerxX Bronze VI (cible Bronze). Ordonnancement correct → corrections time_played/last_leave n'ont pas dégradé le modèle.
+**Validation** : tiers cohérents avec les cibles (reference_lusr_target_levels) : joueur_075 Diamant II/Platine VI (cible fin Platine/début Diamant), joueur_165 + JGtm Or III/IV (cible milieu/bas Or), joueur_291 Bronze VI (cible Bronze). Ordonnancement correct → corrections time_played/last_leave n'ont pas dégradé le modèle.
 
 ### Point 2 — audit consommateurs time_played_seconds
 Backfill Phase 4 a réduit time_played du countdown (~T0) + corrigé latecomers. Audit des consommateurs :
@@ -14274,10 +14274,10 @@ Suite à l'activation LUSR v2 canonical (.env.local) qui n'est que forward-only,
 
 **Backup** : backup-once ne couvre QUE la shared (vérifié) → copie fichier manuelle des 4 stats.duckdb dans `data/backups/lusr_canonical_pre_2026-05-29/` (app éteinte, DBs au repos) + restic shared `6aa94473`. match_skill_rank est append-only → rollback aussi possible en supprimant les lignes appendées.
 
-**Exécution** : 888 matchs écrits (Madina 718, JGtm 165, Choco 5, Daemon 0).
+**Exécution** : 888 matchs écrits (joueur_075 718, JGtm 165, joueur_901 5, Daemon 0).
 
 **Validation non-dégradation** (vue _latest LUSR = ce que lit l'UI, v1 backup vs v2) :
-- Madina arena_slayer : v1 1515.4 Gold4 → v2 1513.5 Gold4.
+- joueur_075 arena_slayer : v1 1515.4 Gold4 → v2 1513.5 Gold4.
 - JGtm arena_slayer : v1 1590.1 Gold6 → v2 1590.1 Gold6.
 → ratings legacy quasi identiques, aucune régression d'affichage.
 
@@ -14299,7 +14299,7 @@ Point indiqué par un collègue (commentaire `ep/sum_factor.go:10`) : le sum-fac
 
 **Tests** : `TestTS2_TimePlayedWeight_PartialPlayerMovesLess` (joueur partiel bouge moins ; poids égaux = identique). Non-régression : counts/quit verts. Schéma test shadow : +real_start_time.
 
-**Re-validation (replay --reset)** : ordre/tiers conformes aux cibles — Madina Diamant II/III, Choco+JGtm Or, Daemon Bronze. Effet modéré (full-match → w≈1).
+**Re-validation (replay --reset)** : ordre/tiers conformes aux cibles — joueur_075 Diamant II/III, joueur_901+JGtm Or, Daemon Bronze. Effet modéré (full-match → w≈1).
 
 **Reste (différé, "ensuite")** : re-exécuter le backfill canonical (`cmd/lusr_v2_canonical_backfill`) pour propager les nouveaux ratings v2 dans match_skill_rank (l'actuel porte encore les valeurs pré-pondération). Possible recalibration μ→legacy si on veut la granularité v2 visible sur l'échelle UI.
 
@@ -14311,9 +14311,9 @@ Point indiqué par un collègue (commentaire `ep/sum_factor.go:10`) : le sum-fac
 
 Après le branchement de la pondération TS2, re-exécution de `cmd/lusr_v2_canonical_backfill --commit` pour propager les nouveaux ratings v2 pondérés dans match_skill_rank. Backup préalable des player DBs : `data/backups/lusr_canonical_pre_reweight_2026-05-29/`.
 
-**Résultat** : 901 matchs écrits (Madina 730, JGtm 165, Choco 6, Daemon 0). Vue _latest LUSR peuplée (390/727 matchs). Legacy inchangé à l'affichage (Madina 1513.5 / JGtm 1590.1 Gold — compression μ→legacy ; la pondération a bougé μ légèrement, ex Madina slayer 26.10→26.17, mais le mapping arrondit au même rating legacy).
+**Résultat** : 901 matchs écrits (joueur_075 730, JGtm 165, joueur_901 6, Daemon 0). Vue _latest LUSR peuplée (390/727 matchs). Legacy inchangé à l'affichage (joueur_075 1513.5 / JGtm 1590.1 Gold — compression μ→legacy ; la pondération a bougé μ légèrement, ex joueur_075 slayer 26.10→26.17, mais le mapping arrondit au même rating legacy).
 
-**Note (dette légère)** : match_skill_rank a accumulé les lignes des 2 runs de backfill (pre + post pondération) — LUSR_V2 rows doublées (Madina 1448). La vue _latest prend la plus récente (written_at) → correct, mais lignes superseded présentes. Cleanup optionnel : `DELETE FROM match_skill_rank WHERE id NOT IN (SELECT id FROM match_skill_rank_latest)` (ou garder, append-only par design).
+**Note (dette légère)** : match_skill_rank a accumulé les lignes des 2 runs de backfill (pre + post pondération) — LUSR_V2 rows doublées (joueur_075 1448). La vue _latest prend la plus récente (written_at) → correct, mais lignes superseded présentes. Cleanup optionnel : `DELETE FROM match_skill_rank WHERE id NOT IN (SELECT id FROM match_skill_rank_latest)` (ou garder, append-only par design).
 
 **CLI committée** : `cmd/lusr_v2_canonical_backfill` (dry-run par défaut + --commit, --data-root).
 
@@ -14336,18 +14336,18 @@ Couvertures : timeline 97.7%, narrative 94%, skill_v2 85.8%, domain 84.6%, canon
 
 ## [2026-05-29] Fix : LUSR_V2 (audit) masquait LUSR dans match_skill_rank_latest
 
-**Statut** : Complété. **Correction d'un mauvais diagnostic** : j'avais cru à un problème de frontières de tiers (μ→legacy) nécessitant une "recalibration". FAUX — les DefaultTierBoundaries sont correctes (Diamond à μ≥25.8) et les rows LUSR brutes SONT bien Diamond (1833-1866 pour Madina). La recalibration tentée (loader lusr_hyperparams_v2_latest) était un no-op (aucun tier_boundary seedé) → revertée.
+**Statut** : Complété. **Correction d'un mauvais diagnostic** : j'avais cru à un problème de frontières de tiers (μ→legacy) nécessitant une "recalibration". FAUX — les DefaultTierBoundaries sont correctes (Diamond à μ≥25.8) et les rows LUSR brutes SONT bien Diamond (1833-1866 pour joueur_075). La recalibration tentée (loader lusr_hyperparams_v2_latest) était un no-op (aucun tier_boundary seedé) → revertée.
 
-**Vrai bug** : Stratégie C écrit 2 rows/match dans le même batch (même written_at) — `LUSR` (UI) + `LUSR_V2` (audit). La vue `match_skill_rank_latest` départageait par `written_at DESC, id DESC` ; `LUSR_V2` (inséré après → id plus grand) gagnait ROW_NUMBER=1. Donc l'UI (`WHERE rating_type='LUSR'`) récupérait une row LUSR PÉRIMÉE (Madina Gold 1513 au lieu de Diamond 1833). Preuve : `_latest LUSR_V2` max=2000, `_latest LUSR` max=1513, raw LUSR max=1866.
+**Vrai bug** : Stratégie C écrit 2 rows/match dans le même batch (même written_at) — `LUSR` (UI) + `LUSR_V2` (audit). La vue `match_skill_rank_latest` départageait par `written_at DESC, id DESC` ; `LUSR_V2` (inséré après → id plus grand) gagnait ROW_NUMBER=1. Donc l'UI (`WHERE rating_type='LUSR'`) récupérait une row LUSR PÉRIMÉE (joueur_075 Gold 1513 au lieu de Diamond 1833). Preuve : `_latest LUSR_V2` max=2000, `_latest LUSR` max=1513, raw LUSR max=1866.
 
 **Fix** :
 - Nouvelle migration `player_msr_view_lusr_over_v2_v1` : vue priorise `CASE CSR=0, LUSR=1, LUSR_V2=2` → LUSR_V2 audit ne masque plus LUSR.
 - Sentinel `RunDualRowSentinel` : lit la table RAW `match_skill_rank` (pas `_latest` qui collapse à 1 row/match et faisait des faux positifs OnlyLUSRV2).
 - Vue appliquée aux 4 DB joueur actuelles (one-off CREATE OR REPLACE) + migration pour les futures/boot.
 
-**Vérif** : Madina arena_slayer `_latest LUSR` = 2000 (Diamond/Onyx) ✓ (était 1513 Gold). Choco/JGtm Gold conformes. Build + tests migration/sync verts.
+**Vérif** : joueur_075 arena_slayer `_latest LUSR` = 2000 (Diamond/Onyx) ✓ (était 1513 Gold). joueur_901/JGtm Gold conformes. Build + tests migration/sync verts.
 
-**Note** : XxDaemonGamerxX a 0 match v2 écrit (matchs non LUSR-éligibles/2-team) → garde ses valeurs v1 ; sujet distinct.
+**Note** : joueur_291 a 0 match v2 écrit (matchs non LUSR-éligibles/2-team) → garde ses valeurs v1 ; sujet distinct.
 
 ---
 
@@ -14441,7 +14441,7 @@ Couvertures : timeline 97.7%, narrative 94%, skill_v2 85.8%, domain 84.6%, canon
 **Résultats observés** :
 - `lefthook install` : `sync hooks: ✔️ (pre-commit, pre-push)`
 - `.git/hooks/pre-commit` + `pre-push` + `prepare-commit-msg` créés
-- Tous les binaires Go installés dans `C:/Users/GuillaumeSITBON/go/bin/` (air, gopls, lefthook, govulncheck, golangci-lint)
+- Tous les binaires Go installés dans `<poste>/go/bin/` (air, gopls, lefthook, govulncheck, golangci-lint)
 
 **Conclusion** : les hooks se déclenchent maintenant à chaque commit (gofmt, go-vet, golangci-lint, lint TS × 3, check-merge-conflict) et avant push (go test -short, govulncheck, deploy-dry-run). Prochaine étape : lancer `npm run knip` une première fois pour établir la baseline du code mort TS.
 
@@ -14499,7 +14499,7 @@ Couvertures : timeline 97.7%, narrative 94%, skill_v2 85.8%, domain 84.6%, canon
 - **make** : non installé sur ce PC. Installé via `pacman -S make` dans MSYS2. Ajouté `C:\msys64\usr\bin` au PATH utilisateur.
 - **Node.js** : installé via `winget install OpenJS.NodeJS.LTS` (v24.16.0). Présent dans machine PATH avec trailing backslash.
 - **Go** : installé via `winget install GoLang.Go` (v1.26.3). Dans machine PATH.
-- **air** : installé via `go install github.com/air-verse/air@latest`. Dans `C:\Users\GuillaumeSITBON\go\bin` (user PATH).
+- **air** : installé via `go install github.com/air-verse/air@latest`. Dans `<poste>\go\bin` (user PATH).
 - **Playwright** : browsers installés via `npx playwright install` (Chromium v1217 uniquement, conforme au `playwright.config.ts`).
 
 **Résultats observés** :
@@ -14964,8 +14964,8 @@ Vérification finale demandée par l'utilisateur (complétude + logging + tests)
 **Statut** : Complété
 
 **Contexte** : Audit exhaustif de l'auth (cmd/refresh-career-ranks pour 4 joueurs avec
-override ON) prouve que 3/4 RTs store sont émis pour `39829f7a-` (JGtm, Chocoboflor, XxDaemon)
-et 1/4 pour `e1cb35ab-` (Madina, capturée via cmd/token-capture quand override absent).
+override ON) prouve que 3/4 RTs store sont émis pour `39829f7a-` (JGtm, joueur_165, joueur_639)
+et 1/4 pour `e1cb35ab-` (joueur_075, capturée via cmd/token-capture quand override absent).
 
 **Décision technique** : `cmd/token-capture/main.go::defaultClientID` change de `e1cb35ab-`
 vers `39829f7a-` pour aligner toute capture future sur l'override `.env.local`.
@@ -14976,7 +14976,7 @@ hors scope).
 **Résultats observés** :
 - Tests `internal/platform/auth/...` PASS (auth + capturecli + pool)
 - Le commentaire en haut du `.env.local` documente le tableau de vérité prouvé par player
-- Madina marche encore via le fallback legacy DuckDB tant qu'elle n'est pas re-captured
+- joueur_075 marche encore via le fallback legacy DuckDB tant qu'elle n'est pas re-captured
 
 **Validation runtime end-to-end** via nouveau CLI `cmd/diag_live_economy` (RT → Spartan
 → Economy player-gated `/hi/careerranks/careerRank1?players=xuid(X)` + `/hi/players/xuid(X)/customization/appearance`) :
@@ -14984,14 +14984,14 @@ hors scope).
 | Joueur          | Auth | Career rank XP live    | Customization live |
 |-----------------|------|------------------------|---------------------|
 | JGtm            | OK   | rank 185, xp 3360      | OK |
-| Chocoboflor     | OK   | rank 147, xp 8210      | OK |
-| Madina97294     | OK   | rank 201, xp 8685      | OK |
-| XxDaemonGamerxX | OK   | rank 20, xp 1560       | NIL (joueur sans Spartan customisé) |
+| joueur_165     | OK   | rank 147, xp 8210      | OK |
+| joueur_117     | OK   | rank 201, xp 8685      | OK |
+| joueur_291 | OK   | rank 20, xp 1560       | NIL (joueur sans Spartan customisé) |
 
 Conclusion : `client_id 39829f7a-` est viable en runtime pour TOUS les endpoints
 Halo Economy player-gated (les seuls qui nous intéressent côté produit).
 
-**Prochaine étape** : User va probablement re-capturer Madina via le nouveau token-capture
+**Prochaine étape** : User va probablement re-capturer joueur_075 via le nouveau token-capture
 pour aligner son store RT sur `39829f7a-` et éliminer le fallback legacy. Pas commité encore.
 
 ---
@@ -15027,7 +15027,7 @@ pour aligner son store RT sur `39829f7a-` et éliminer le fallback legacy. Pas c
 
 **Statut** : Complété
 
-**Contexte** : Phase 3e v1 plaçait Madina (μ=26.12, p75 de la pop trackée) en Platine I, mais l'utilisateur a constaté en jeu que Madina avait été Diamant 4-5 voire Onyx en CSR Halo 5. Discussion révèle que LUSR v2 mesure le skill social (population large, plus de joueurs occasionnels) vs CSR (population sweat auto-sélectionnée), donc les tiers ne sont pas directement comparables.
+**Contexte** : Phase 3e v1 plaçait joueur_075 (μ=26.12, p75 de la pop trackée) en Platine I, mais l'utilisateur a constaté en jeu que joueur_075 avait été Diamant 4-5 voire Onyx en CSR Halo 5. Discussion révèle que LUSR v2 mesure le skill social (population large, plus de joueurs occasionnels) vs CSR (population sweat auto-sélectionnée), donc les tiers ne sont pas directement comparables.
 
 L'utilisateur a validé l'option B (CSR-aligned moderate inflation) : Onyx descend à top ~10 % de la pop v2 au lieu de top 1 %.
 
@@ -15045,7 +15045,7 @@ Grille tier v2 (post-feedback) — largeurs non uniformes :
 | Onyx | [27, ∞[ | ouvert | top ~10% | accessible (vs top 1% CSR classique — défendable pour pop sociale) |
 
 Update tests `tier_test.go` :
-- `TestInferTier_ReferencePlayers` : Madina BTB/Slayer → Diamond, Madina arena_objectif → Platinum, autres inchangés.
+- `TestInferTier_ReferencePlayers` : joueur_075 BTB/Slayer → Diamond, joueur_075 arena_objectif → Platinum, autres inchangés.
 - `TestInferTier_Boundaries` : nouvelles bornes.
 - `TestInferTier_SubTiers_DistributesEvenly` : Or [22, 25[ avec sub_width 0.5 (JGtm 23.52 → Or IV).
 - `TestInferTier_Onyx_NoSubTier` : Onyx commence à 27 maintenant.
@@ -15055,14 +15055,14 @@ Update tests `tier_test.go` :
 
 | Joueur | Cible | μ | Tier inféré | Verdict |
 |---|---|---:|---|---|
-| Madina BTB | Diamant 4-5 (CSR Halo 5) | 26.17 | **Diamant II** | ⚠ un peu sous cible mais ✓ tier Diamant |
-| Madina Slayer | idem | 26.12 | Diamant I | ⚠ idem |
-| Madina arena_objectif | idem | 25.75 | Platine VI | proche Diamant |
-| Chocoboflor Slayer | Or IV (CSR) | 23.81 | **Or IV** | ✓ pile poil |
+| joueur_075 BTB | Diamant 4-5 (CSR Halo 5) | 26.17 | **Diamant II** | ⚠ un peu sous cible mais ✓ tier Diamant |
+| joueur_075 Slayer | idem | 26.12 | Diamant I | ⚠ idem |
+| joueur_075 arena_objectif | idem | 25.75 | Platine VI | proche Diamant |
+| joueur_165 Slayer | Or IV (CSR) | 23.81 | **Or IV** | ✓ pile poil |
 | JGtm Slayer | Or IV (CSR) | 23.52 | **Or IV** | ✓ pile poil |
-| XxDaemon Slayer | Bronze | 20.38 | **Bronze VI** | ✓ haut Bronze |
+| joueur_169 | Bronze | 20.38 | **Bronze VI** | ✓ haut Bronze |
 
-**Trade-off assumé** : Madina à Diamant II au lieu de IV-V parce que son μ=26 reste seulement à p75 de notre data ; la pousser à IV-V exigerait soit μ > 26.5 (plus de wins), soit une inflation Onyx top 20-25% (ridicule). Diamant II est un bon compromis : Madina est dans le tier Diamant comme attendu.
+**Trade-off assumé** : joueur_075 à Diamant II au lieu de IV-V parce que son μ=26 reste seulement à p75 de notre data ; la pousser à IV-V exigerait soit μ > 26.5 (plus de wins), soit une inflation Onyx top 20-25% (ridicule). Diamant II est un bon compromis : joueur_075 est dans le tier Diamant comme attendu.
 
 `go test ./internal/analysis/skill_v2/` PASS. `go vet ./...` clean.
 
@@ -15105,7 +15105,7 @@ Ajout de graphes de progression `TimeseriesSkillProgression` dans l'onglet Progr
 - Manifest i18n regénéré : 71 clés (7 nouvelles `timeseries.skill_progression.*`)
 - Composant affiché conditionnellement : `return null` si aucun match avec skill data (pas de bruit si filtre non classé + LUSR absent)
 
-**Prochaine étape** : vérification visuelle sur joueurs classés (CSR) — Madina97294 (Platine/Diamant) est le bon candidat pour valider les ruptures de saison et l'affichage placement.
+**Prochaine étape** : vérification visuelle sur joueurs classés (CSR) — joueur_117 (Platine/Diamant) est le bon candidat pour valider les ruptures de saison et l'affichage placement.
 
 ---
 
@@ -15113,13 +15113,13 @@ Ajout de graphes de progression `TimeseriesSkillProgression` dans l'onglet Progr
 
 **Statut** : Complété ⭐ — 4 joueurs trackés dans leur tier cible
 
-**Contexte** : Phase 3d a produit des μ posteriors corrects relativement (ordre Madina > Choco > JGtm > XxDaemon) mais sur une plage très serrée (20-26) inadaptée à la grille tier indicative `cmd/lusr_v2_replay` (qui mettait tout le monde en Gold). Phase 3e calibre les seuils μ → Bronze/Argent/Or/Platine/Diamant/Onyx sur la distribution observée.
+**Contexte** : Phase 3d a produit des μ posteriors corrects relativement (ordre joueur_075 > joueur_901 > JGtm > joueur_639) mais sur une plage très serrée (20-26) inadaptée à la grille tier indicative `cmd/lusr_v2_replay` (qui mettait tout le monde en Gold). Phase 3e calibre les seuils μ → Bronze/Argent/Or/Platine/Diamant/Onyx sur la distribution observée.
 
 **Décision technique principale** :
 
 1. **Analyse empirique** ([cmd/lusr_v2_tier_analysis/](../apps/go-api/cmd/lusr_v2_tier_analysis/main.go)) — query `player_skill_state_v2_latest` (9700+ joueurs agrégés sur 4 groupes), percentiles par playlist_group :
    - p10 ≈ 21.8, p25 ≈ 23.1, p50 ≈ 24.6, p75 ≈ 26.1, p90 ≈ 28.0, p95 ≈ 29.0, p99 ≈ 31.0, max ≈ 33-45 (queue longue BTB).
-   - Joueurs trackés : Madina ~p75 (26.1), Choco/JGtm ~p35-40 (23.5-23.8), XxDaemon ~p10 (20.4).
+   - Joueurs trackés : joueur_075 ~p75 (26.1), joueur_901/JGtm ~p35-40 (23.5-23.8), joueur_639 ~p10 (20.4).
 
 2. **Seuils retenus** (Phase 3e initial, à ré-estimer Phase 5 batch) :
    | Tier | MinMu | Couverture % | Sub-tiers |
@@ -15137,7 +15137,7 @@ Ajout de graphes de progression `TimeseriesSkillProgression` dans l'onglet Progr
    - `InferTier(μ, boundaries) (TierBoundary, sub_tier int)` — sub-tier 1-based, Onyx = 0 (rang unique)
    - `FormatTierLabel(μ, boundaries) string` — ex. "Platine I", "Or VI", "Onyx"
 
-4. **Convention sub-tier** : sub I = bas du tier, sub VI = haut (aligné avec LUSR v1 et Halo CSR). Bronze VI signifie "haut Bronze, proche Argent" (XxDaemon μ=20.4 → Bronze VI).
+4. **Convention sub-tier** : sub I = bas du tier, sub VI = haut (aligné avec LUSR v1 et Halo CSR). Bronze VI signifie "haut Bronze, proche Argent" (joueur_639 μ=20.4 → Bronze VI).
 
 5. **Update [cmd/lusr_v2_replay](../apps/go-api/cmd/lusr_v2_replay/main.go)** : `inferredTier(μ)` délègue au helper. Plus de mapping en dur côté cmd.
 
@@ -15147,12 +15147,12 @@ Ajout de graphes de progression `TimeseriesSkillProgression` dans l'onglet Progr
 
 | Joueur | Cible | μ groupe le plus joué | Tier inféré |
 |---|---|---:|---|
-| Madina97294 | fin Platine / début Diamant | 26.17 BTB | **Platine I** ✓ |
-| Chocoboflor | milieu/bas Or | 23.81 Slayer | **Or I** ✓ |
+| joueur_117 | fin Platine / début Diamant | 26.17 BTB | **Platine I** ✓ |
+| joueur_165 | milieu/bas Or | 23.81 Slayer | **Or I** ✓ |
 | JGtm | milieu/bas Or | 23.52 Slayer | **Or I** ✓ |
-| XxDaemonGamerxX | Bronze | 20.38 Slayer | **Bronze VI** ✓ |
+| joueur_291 | Bronze | 20.38 Slayer | **Bronze VI** ✓ |
 
-**Tous les 4 joueurs sont dans leur tier cible.** La nuance "fin Platine / début Diamant" pour Madina vs "Platine I" inféré suggère que le modèle est un peu plus conservateur que l'estimation utilisateur — mais c'est directionnellement correct.
+**Tous les 4 joueurs sont dans leur tier cible.** La nuance "fin Platine / début Diamant" pour joueur_075 vs "Platine I" inféré suggère que le modèle est un peu plus conservateur que l'estimation utilisateur — mais c'est directionnellement correct.
 
 Tests `go test ./internal/analysis/skill_v2/` PASS, `go vet ./...` clean. 17 non-convergences EP résiduelles (inchangé par rapport au commit précédent — c'est le bruit structurel des 4v5/5v4).
 
@@ -15204,7 +15204,7 @@ Ajout de 3 champs à `SessionMatchPoint` (backend + frontend) et création de 6 
 **Résultats observés** :
 
 - **17 non-convergences au lieu de 239** (-93%) sur le re-replay.
-- **Ordre relatif inchangé** : Madina 26.17 > Choco 23.81 > JGtm 23.52 > XxDaemon 20.38 (écarts < 0.2 vs Phase 3d initial).
+- **Ordre relatif inchangé** : joueur_075 26.17 > joueur_901 23.81 > JGtm 23.52 > joueur_639 20.38 (écarts < 0.2 vs Phase 3d initial).
 - Skipped imbalance : 444 matchs (surtout chaos). Acceptable — les chaos déséquilibrés n'ont jamais été convergents.
 - `go test ./internal/sync/ ./internal/analysis/skill_v2/...` PASS.
 
@@ -15232,12 +15232,12 @@ Comparaison Phase 1d (avant counts) vs Phase 3d (avec counts) sur le groupe le p
 
 | Joueur | Cible | Phase 1d | Phase 3d | Verdict |
 |---|---|---:|---:|---|
-| Madina97294 | Fort (Platine/Diamant) | μ=23.98 BTB **#1 mais sous-évaluée** | μ=**25.96** BTB **#1** ✓ | Reprise tête correcte |
-| Chocoboflor | Moyen (Or) | μ=31.27 Slayer **#1 sur-évaluée** ❌ | μ=23.87 Slayer **#2** ✓ | Redescend au bon niveau |
+| joueur_117 | Fort (Platine/Diamant) | μ=23.98 BTB **#1 mais sous-évaluée** | μ=**25.96** BTB **#1** ✓ | Reprise tête correcte |
+| joueur_165 | Moyen (Or) | μ=31.27 Slayer **#1 sur-évaluée** ❌ | μ=23.87 Slayer **#2** ✓ | Redescend au bon niveau |
 | JGtm | Moyen (Or) | μ=28.25 Slayer **#2 sur-évaluée** ❌ | μ=23.46 Slayer **#3** ✓ | Redescend au bon niveau |
-| XxDaemonGamerxX | Faible (Bronze) | μ=18.06 Slayer **#4** ✓ | μ=20.29 Slayer **#4** ✓ | Reste bas |
+| joueur_291 | Faible (Bronze) | μ=18.06 Slayer **#4** ✓ | μ=20.29 Slayer **#4** ✓ | Reste bas |
 
-**Le problème intra-squad du verdict Phase 1d est résolu.** Madina > Choco > JGtm > XxDaemon, dans le bon ordre. Le signal individuel kills/deaths permet enfin de départager les coéquipiers récurrents (Madina, Choco, JGtm jouent ensemble dans 40-75% de leurs matchs).
+**Le problème intra-squad du verdict Phase 1d est résolu.** joueur_075 > joueur_901 > JGtm > joueur_639, dans le bon ordre. Le signal individuel kills/deaths permet enfin de départager les coéquipiers récurrents (joueur_075, joueur_901, JGtm jouent ensemble dans 40-75% de leurs matchs).
 
 **Limitations observées** :
 
@@ -15256,7 +15256,7 @@ Comparaison Phase 1d (avant counts) vs Phase 3d (avec counts) sur le groupe le p
 
 **Statut** : Complété (math + tests)
 
-**Contexte** : le verdict Phase 1d a démontré que le LUSR v2 classique ne discriminait pas les coéquipiers d'un même squad (Madina, Choco, JGtm bougeaient à l'identique parce qu'ils gagnaient/perdaient ensemble — pas de signal individuel). Phase 3c implémente la section 8 du paper TS2 : kills/deaths comme observations Bayésiennes ajoutées au factor graph.
+**Contexte** : le verdict Phase 1d a démontré que le LUSR v2 classique ne discriminait pas les coéquipiers d'un même squad (joueur_075, joueur_901, JGtm bougeaient à l'identique parce qu'ils gagnaient/perdaient ensemble — pas de signal individuel). Phase 3c implémente la section 8 du paper TS2 : kills/deaths comme observations Bayésiennes ajoutées au factor graph.
 
 **Décision technique principale** :
 
@@ -15286,7 +15286,7 @@ Comparaison Phase 1d (avant counts) vs Phase 3d (avec counts) sur le groupe le p
 
 **Limitation MVP** : le `max(0, ...)` du paper (count = max(0, normal)) n'est PAS implémenté — on traite l'observation comme Gaussienne pure. Pour les counts > 2 (cas dominant en pratique), c'est mathématiquement équivalent. Pour count = 0, l'intercept `bias` couvre le cas majoritaire. Un facteur tronqué propre pourrait être ajouté en Phase 3e si on observe des artefacts sur des matchs très courts (peu de kills/deaths).
 
-**Prochaine étape (Phase 3d)** : câbler le shadow runner (`internal/sync/skill_v2_shadow.go`) pour passer les counts à `UpdateTwoTeamWithCountsEP` au lieu de l'API plain. Puis re-run le replay (`cmd/lusr_v2_replay --reset`) et comparer aux cibles Madina/Choco/JGtm. Attendu : Madina remonte au-dessus de Choco/JGtm, ordre correct restauré.
+**Prochaine étape (Phase 3d)** : câbler le shadow runner (`internal/sync/skill_v2_shadow.go`) pour passer les counts à `UpdateTwoTeamWithCountsEP` au lieu de l'API plain. Puis re-run le replay (`cmd/lusr_v2_replay --reset`) et comparer aux cibles joueur_075/joueur_901/JGtm. Attendu : joueur_075 remonte au-dessus de joueur_901/JGtm, ordre correct restauré.
 
 ---
 
@@ -15323,7 +15323,7 @@ Comparaison Phase 1d (avant counts) vs Phase 3d (avec counts) sur le groupe le p
                           death_count_i ~ truncated(N((w_p·perf_i + w_o·perf_opp_i)·t_i, v·t_i))
 ```
 
-avec `w_p, w_o, v` comme hyperparamètres par groupe (initialisés sur defaults Halo 5, ré-estimés Phase 5). C'est cette extension qui devrait corriger le verdict Phase 1d (Madina sous-évaluée vs Choco/JGtm sur-évalués — discrimination intra-squad impossible sans signal individuel par match).
+avec `w_p, w_o, v` comme hyperparamètres par groupe (initialisés sur defaults Halo 5, ré-estimés Phase 5). C'est cette extension qui devrait corriger le verdict Phase 1d (joueur_075 sous-évaluée vs joueur_901/JGtm sur-évalués — discrimination intra-squad impossible sans signal individuel par match).
 
 ---
 
@@ -15363,7 +15363,7 @@ avec `w_p, w_o, v` comme hyperparamètres par groupe (initialisés sur defaults 
 
 **Contexte** : suite du seuil hybride (30s + 15% du match) livré plus tôt, le collègue a finalisé la mini-Phase 0.5 LUSR v2 (cf. [steps_shared_add_participation_info.go](apps/go-api/internal/migration/steps_shared_add_participation_info.go)) : 4 colonnes BOOLEAN sur `match_participants` (`present_at_beginning`, `joined_in_progress`, `left_in_progress`, `present_at_completion`) avec backfill historique. Ces colonnes ciblent primairement LUSR v2 §9 quit penalty mais permettent aussi un raffinement de `had_bot_teammate`.
 
-**Cas réel observé** (diag tool étendu pour afficher ParticipationInfo) : Madina/615b3ebc — bot `bid(18.0)`, `joined_in_progress=TRUE`, `present_at_completion=TRUE`, `time_played=6s` sur match 390s. Sémantique : humain quitté 6 secondes avant la fin, bot remplaçant pour la touche finale. Impact strictement nul.
+**Cas réel observé** (diag tool étendu pour afficher ParticipationInfo) : joueur_075/615b3ebc — bot `bid(18.0)`, `joined_in_progress=TRUE`, `present_at_completion=TRUE`, `time_played=6s` sur match 390s. Sémantique : humain quitté 6 secondes avant la fin, bot remplaçant pour la touche finale. Impact strictement nul.
 
 **Raffinement décidé** : un bot `joined_in_progress=TRUE` dont `time_played / duration_seconds < botLateJoinIgnoreRatio (30%)` est **ignoré dans la SUM polluante** (CASE WHEN dans le SQL). Les bots `present_at_beginning=TRUE` continuent d'être comptés intégralement (déséquilibre dès le début reste pénalisant même brièvement).
 
@@ -15382,13 +15382,13 @@ avec `w_p, w_o, v` comme hyperparamètres par groupe (initialisés sur defaults 
   - `_LateJoinBrief_FALSE` : late-join 80s/480s (16.6% < 30%) → ignoré → FALSE.
   - `_LateJoinLong_TRUE` : late-join 200s/480s (41.6% ≥ 30%) → compté → TRUE.
   - `_FromStartBrief_PassesNormalThresholds` : from-start 100s/480s (20.8%) → compté normalement → TRUE.
-  - `_MadinaRealCase_FALSE` : reproduit exactement Madina/615b3ebc (bot late-join 6s/390s) → FALSE après recompute.
+  - `_MadinaRealCase_FALSE` : reproduit exactement joueur_075/615b3ebc (bot late-join 6s/390s) → FALSE après recompute.
 - Total : **17/17 PASS** (`go test -tags=integration ./internal/sync/ -run TestComputeAndPersistHadBotTeammate -v`).
 - `go test ./...` : PASS. `go vet ./...` : OK.
 
 **Diag tool** ([cmd/diag_highlight_match/main.go](apps/go-api/cmd/diag_highlight_match/main.go)) : nouvelle section "ParticipationInfo des bots teammates" qui liste pour chaque bot les 4 BOOLEAN + son time_played. Indispensable pour diagnostiquer les cas marginaux.
 
-**Vérification terrain** : diag relancé sur Madina/615b3ebc confirme `joined_in_progress=TRUE`, time_played=6s, ratio 1.5%. Avec le raffinement, ce bot est ignoré dans la SUM → flag passera à FALSE au prochain sync de Madina. Pas de backfill manuel : le post-sync hook recompute pour chaque joueur à son rythme.
+**Vérification terrain** : diag relancé sur joueur_075/615b3ebc confirme `joined_in_progress=TRUE`, time_played=6s, ratio 1.5%. Avec le raffinement, ce bot est ignoré dans la SUM → flag passera à FALSE au prochain sync de joueur_075. Pas de backfill manuel : le post-sync hook recompute pour chaque joueur à son rythme.
 
 **Hors scope** :
 - Usage des 4 BOOLEAN pour LUSR v2 §9 quit penalty (autre PR du collègue).
@@ -15435,7 +15435,7 @@ avec `w_p, w_o, v` comme hyperparamètres par groupe (initialisés sur defaults 
 
 **Statut** : Complété (cmd livré, run en attente — DB hold par le serveur en cours)
 
-**Contexte** : valider qualitativement le LUSR v2 sur les 4 joueurs trackés AVANT de greffer le moindre reader UI. Les cibles sont connues (memory/reference_lusr_target_levels.md) : Madina97294 = fin Platine/début Diamant, Chocoboflor + JGtm = milieu/bas Or, XxDaemonGamerxX = mauvais.
+**Contexte** : valider qualitativement le LUSR v2 sur les 4 joueurs trackés AVANT de greffer le moindre reader UI. Les cibles sont connues (memory/reference_lusr_target_levels.md) : joueur_117 = fin Platine/début Diamant, joueur_165 + JGtm = milieu/bas Or, joueur_291 = mauvais.
 
 **Décision technique principale** :
 
@@ -15477,7 +15477,7 @@ avec `w_p, w_o, v` comme hyperparamètres par groupe (initialisés sur defaults 
 - **Tests unitaires manquants sur le shadow runner** : `internal/sync/skill_v2_shadow.go` (326L) n'avait pas de test dédié — couvert seulement de bout-en-bout via le replay Phase 1d sur DB réelle.
 - **2 fichiers cmd dépassent 500L** : `cmd/lusr_v2_phase0/main.go` (518L) et `replay.go` (583L). cmd/ exploratoire, à split si on les garde long-terme.
 - **Migrations visibles dans les logs** : `shared_add_participation_info_booleans` (18:10:56) et `shared_create_skill_v2_tables` (18:34:39) appliquées.
-- **Incident opérationnel** : mon `taskkill /F` durant le run du replay a corrompu `data/titles/halo_infinite/players/Chocoboflor/stats.duckdb` (DB DuckDB invalidée, WAL replay échoue). Restic backups disponibles dans `data/backups/restic-repo/` — restauration à faire par l'utilisateur.
+- **Incident opérationnel** : mon `taskkill /F` durant le run du replay a corrompu `data/titles/halo_infinite/players/joueur_165/stats.duckdb` (DB DuckDB invalidée, WAL replay échoue). Restic backups disponibles dans `data/backups/restic-repo/` — restauration à faire par l'utilisateur.
 
 **Décision technique principale** :
 
@@ -15501,7 +15501,7 @@ avec `w_p, w_o, v` comme hyperparamètres par groupe (initialisés sur defaults 
 
 **Prochaine étape** : Phase 3b — reconstruction de `UpdateTwoTeam` sur EP (assemblage du factor graph N-vs-M depuis Phase 3a) avec régression test contre le closed-form Phase 1a.
 
-**Action utilisateur requise** : restaurer `Chocoboflor/stats.duckdb` depuis le restic backup le plus récent. Cf. `data/backups/restic-repo/snapshots/`.
+**Action utilisateur requise** : restaurer `joueur_165/stats.duckdb` depuis le restic backup le plus récent. Cf. `data/backups/restic-repo/snapshots/`.
 
 ---
 
@@ -15509,7 +15509,7 @@ avec `w_p, w_o, v` comme hyperparamètres par groupe (initialisés sur defaults 
 
 **Statut** : Complété
 
-**Contexte** : la validation Phase 1d a démontré que le LUSR v2 classique (closed-form sans signal individuel par match) ne peut PAS départager les coéquipiers récurrents (Madina/Choco/JGtm jouent énormément en squad, leurs μ bougent ensemble). Le seul moyen propre est TS2 §8 (kills/deaths comme observations Bayésiennes), qui requiert un factor graph + Expectation Propagation.
+**Contexte** : la validation Phase 1d a démontré que le LUSR v2 classique (closed-form sans signal individuel par match) ne peut PAS départager les coéquipiers récurrents (joueur_075/joueur_901/JGtm jouent énormément en squad, leurs μ bougent ensemble). Le seul moyen propre est TS2 §8 (kills/deaths comme observations Bayésiennes), qui requiert un factor graph + Expectation Propagation.
 
 **Décision technique principale** :
 
@@ -15535,7 +15535,7 @@ Nouveau sous-package [internal/analysis/skill_v2/ep/](../apps/go-api/internal/an
 - `go vet ./...` clean, `go build ./...` OK.
 - ~900 lignes (4 fichiers source + 1 fichier test).
 
-**Prochaine étape (Phase 3b, session suivante)** : reconstruire `UpdateTwoTeam` sur EP (assemblage du match factor graph N-vs-M) avec régression test : mêmes résultats numériques que le closed-form Phase 1a. Puis Phase 3c : ajout du TruncatedGaussianCountFactor pour kills/deaths comme observations (TS2 §8). Puis Phase 3d : re-run validation sur les 4 joueurs, attente que Madina remonte au-dessus de Choco/JGtm grâce au signal kills/deaths individuel.
+**Prochaine étape (Phase 3b, session suivante)** : reconstruire `UpdateTwoTeam` sur EP (assemblage du match factor graph N-vs-M) avec régression test : mêmes résultats numériques que le closed-form Phase 1a. Puis Phase 3c : ajout du TruncatedGaussianCountFactor pour kills/deaths comme observations (TS2 §8). Puis Phase 3d : re-run validation sur les 4 joueurs, attente que joueur_075 remonte au-dessus de joueur_901/JGtm grâce au signal kills/deaths individuel.
 
 ---
 
@@ -15566,7 +15566,7 @@ Nouveau sous-package [internal/analysis/skill_v2/ep/](../apps/go-api/internal/an
 - Avec flag off : aucune écriture, pas de log info, identique à avant.
 - Avec flag on : log info "LUSR v2 shadow terminé processed=N skipped_chain=X skipped_already_seen=Y skipped_non_two_team=Z" par sync.
 
-**Prochaine étape** : Phase 1d — `cmd/lusr_v2_replay` qui parcourt l'historique des 4 joueurs trackés en simulant le shadow (avec LEVELUP_LUSR_V2_ENABLED=1) et compare les ratings finaux aux cibles `memory/reference_lusr_target_levels.md` (Madina = fin Platine/début Diamant, Choco/JGtm = milieu/bas Or, XxDaemon = mauvais). C'est le test "le modèle est-il utile" avant de greffer le moindre reader UI.
+**Prochaine étape** : Phase 1d — `cmd/lusr_v2_replay` qui parcourt l'historique des 4 joueurs trackés en simulant le shadow (avec LEVELUP_LUSR_V2_ENABLED=1) et compare les ratings finaux aux cibles `memory/reference_lusr_target_levels.md` (joueur_075 = fin Platine/début Diamant, joueur_901/JGtm = milieu/bas Or, joueur_639 = mauvais). C'est le test "le modèle est-il utile" avant de greffer le moindre reader UI.
 
 **Discussion migration (concern utilisateur)** : actuellement v1 et v2 cohabitent dans des tables séparées. Quand on voudra basculer v2 en source unique, l'idée est de **dual-writer** : v2 écrira aussi dans `match_skill_rank` avec `rating_type='LUSR_V2'` (la table accepte déjà ce discriminator + est append-only). UI reads basculent via feature flag de lecture, jamais d'écriture interrompue → aucune cellule vide possible.
 
@@ -15598,7 +15598,7 @@ Nouveau sous-package [internal/analysis/skill_v2/ep/](../apps/go-api/internal/an
 - `go vet ./...` clean.
 - ~250 lignes ajoutées (5 nouveaux fichiers + le test).
 
-**Prochaine étape** : Phase 1c — intégrer le service dans le pipeline sync (probablement post-batch, gated par `LEVELUP_LUSR_V2_ENABLED`), en réutilisant `sync.GetLUSRChain` pour le mapping pair_name → playlist_group. Puis Phase 1d : cmd de replay shadow sur l'historique des 3 joueurs de référence (Madina/Chocoboflor/JGtm) pour valider les ratings finaux vs les cibles `memory/reference_lusr_target_levels.md`.
+**Prochaine étape** : Phase 1c — intégrer le service dans le pipeline sync (probablement post-batch, gated par `LEVELUP_LUSR_V2_ENABLED`), en réutilisant `sync.GetLUSRChain` pour le mapping pair_name → playlist_group. Puis Phase 1d : cmd de replay shadow sur l'historique des 3 joueurs de référence (joueur_075/joueur_165/JGtm) pour valider les ratings finaux vs les cibles `memory/reference_lusr_target_levels.md`.
 
 ---
 
@@ -15684,7 +15684,7 @@ Asymétrie : la SOMME agrège si plusieurs bots ont traversé la team. Un bot 25
 
 **Diag tool** ([cmd/diag_highlight_match/main.go](apps/go-api/cmd/diag_highlight_match/main.go)) : nouvelle section "Présence bots dans la team du joueur (seuil hybride)" qui affiche `bot_seconds_cumulés`, `match_duration_sec`, ratio en %, et les seuils. Aide les futurs diagnostics "pourquoi ce match est/n'est pas marqué bot".
 
-**Vérification terrain** : diag relancé sur Madina/615b3ebc — bot présent **6s sur 390s = 1.5%**, complètement anecdotique. Au prochain sync de Madina (post-sync hook recompute automatiquement), le flag passera de TRUE à FALSE → la pill "bot" disparaitra du match dans best_matches. Pas de backfill global à lancer : chaque joueur sera recalculé à son prochain sync.
+**Vérification terrain** : diag relancé sur joueur_075/615b3ebc — bot présent **6s sur 390s = 1.5%**, complètement anecdotique. Au prochain sync de joueur_075 (post-sync hook recompute automatiquement), le flag passera de TRUE à FALSE → la pill "bot" disparaitra du match dans best_matches. Pas de backfill global à lancer : chaque joueur sera recalculé à son prochain sync.
 
 **Hors scope** : ALTER TABLE (rien de notre côté), exposition `bot_presence_seconds` dans la réponse API, backfill manuel global, raffinement via les 4 BOOLEAN du collègue (PR séparée à venir).
 
@@ -15773,7 +15773,7 @@ Branche : `refactor/split-god-files-1000plus` (continuité demandée). Fix débl
    - **Experience** : # matchs LUSR-éligibles joués avant le courant (toutes chaines).
    - **Kill rate** : kills/min du match PRÉCÉDENT (évite data leak du match courant).
 
-3. **Périmètre** : 4 joueurs trackés (Madina97294, Chocoboflor, JGtm, XxDaemonGamerxX) = 2513 observations LUSR-éligibles totales.
+3. **Périmètre** : 4 joueurs trackés (joueur_117, joueur_165, JGtm, joueur_291) = 2513 observations LUSR-éligibles totales.
 
 **Résultats observés** :
 
@@ -15786,7 +15786,7 @@ Branche : `refactor/split-god-files-1000plus` (continuité demandée). Fix débl
 
 GO pour Phase 1 (TrueSkill classique propre, isolé du LUSR v1 dans `internal/analysis/skill_v2/` + `internal/service/skill_v2_service.go` + tables `*_v2` séparées + feature flag `LEVELUP_LUSR_V2_ENABLED`). Phase 2 (squadOffset) en suivant. Phase 3 (kills/deaths observations) à fort ROI vu le signal kill rate. Branche actuelle : `feat/lusr-v2-phase0-metrics`. À valider par l'utilisateur avant de commit + démarrer Phase 1.
 
-Documents source : `C:\Users\Guillaume\Downloads\Menke_Josh_Significantly_Improving_your.pdf` + `C:\Users\Guillaume\Downloads\trueskill2.pdf` (textes extraits dans `.ai/menke.txt` et `.ai/trueskill2.txt` pour référence future).
+Documents source : `<poste>\Downloads\Menke_Josh_Significantly_Improving_your.pdf` + `<poste>\Downloads\trueskill2.pdf` (textes extraits dans `.ai/menke.txt` et `.ai/trueskill2.txt` pour référence future).
 
 ---
 
@@ -15794,7 +15794,7 @@ Documents source : `C:\Users\Guillaume\Downloads\Menke_Josh_Significantly_Improv
 
 **Statut** : Complété
 
-**Contexte** : utilisateur reporte que la page Media n'affiche aucun média pour les 4 comptes (Chocoboflor, Madina97294, JGtm, XxDaemonGamerxX). Logs en boucle : `pool: ouverture SharedSocial échouée (dégradation: socialDB=nil) … err="INTERNAL Error: Failure while replaying WAL file …shared_social.duckdb.wal: Calling DatabaseManager::GetDefaultDatabase"`. Bug DuckDB upstream #7659.
+**Contexte** : utilisateur reporte que la page Media n'affiche aucun média pour les 4 comptes (joueur_165, joueur_117, JGtm, joueur_291). Logs en boucle : `pool: ouverture SharedSocial échouée (dégradation: socialDB=nil) … err="INTERNAL Error: Failure while replaying WAL file …shared_social.duckdb.wal: Calling DatabaseManager::GetDefaultDatabase"`. Bug DuckDB upstream #7659.
 
 Cascade vers le symptôme : `socialDB = nil` → [media_repo_q37_pipeline.go:78-82](../apps/go-api/internal/platform/duckdb/media_repo_q37_pipeline.go#L78-L82) retourne `(nil, nil)` → galerie vide pour TOUS les joueurs.
 
@@ -16133,7 +16133,7 @@ Implémentation :
 
 **Pourquoi solide** : le test asymétrie verrouille le contrat ; toute future modification de Q9TopMatchesPlayer obligera à mettre à jour AUSSI ce test (impossible désormais d'oublier `GetTopMatches` quand on touche à la query partagée).
 
-**Prochaine étape** : vérifier en prod (logs / curl `/players/Madina97294/pages/career/top-matches`) que la réponse 200 OK contient bien les meilleurs/pires matchs attendus.
+**Prochaine étape** : vérifier en prod (logs / curl `/players/joueur_117/pages/career/top-matches`) que la réponse 200 OK contient bien les meilleurs/pires matchs attendus.
 
 ---
 
@@ -16143,10 +16143,10 @@ Implémentation :
 
 **Branche** : `fix/career-xp-history-monotone`
 
-**Symptômes rapportés** (joueur Madina97294, page Carrière, graphe "Historique XP") :
+**Symptômes rapportés** (joueur joueur_117, page Carrière, graphe "Historique XP") :
 1. Un seul ami affiché parmi 3 configurés, courbe plate à 0.
 2. Aucune projection rendue (ni "Projection Héros" ni "Projection optimiste").
-3. Courbe XP de Madina retombe à 0 le 25 mai 2026 (régression cumulative impossible normalement).
+3. Courbe XP de joueur_075 retombe à 0 le 25 mai 2026 (régression cumulative impossible normalement).
 
 **Cause racine unique** (les 3 symptômes ont la même origine) :
 
@@ -16195,12 +16195,12 @@ Le fallback `rank * 1000` est destructeur post-migration `fix_career_xp_total_de
 
 **Note collatérale** : `TestCareerRepo_GetTopMatches_WithData` cassé pré-existant ("expected 4 destination arguments not 3") introduit par commit `ec6efd2b feat(career): bot teammate asymmetry` — `loadTopMatchPMERows` ([career_repo.go:370](apps/go-api/internal/platform/duckdb/career_repo.go#L370)) scan 3 colonnes mais `Q9TopMatchesPlayer` en retourne 4 (`had_bot_teammate` ajouté). Hors scope ce PR (regression non liée XP history).
 
-**Prochaine étape** : vérification visuelle E2E à faire après merge (front sur /players/Madina97294/career) :
+**Prochaine étape** : vérification visuelle E2E à faire après merge (front sur /players/joueur_117/career) :
 - Courbe XP monotone du début à aujourd'hui
 - 2 projections visibles
-- Réponse `GET /players/Madina97294/pages/career` : `projections.xp_per_day_active > 0` et `xp_history` strictement croissant
+- Réponse `GET /players/joueur_117/pages/career` : `projections.xp_per_day_active > 0` et `xp_history` strictement croissant
 
-Surveiller `friends_xp: skipped, *` (DEBUG) en prod pour identifier les amis avec sync career chroniquement échoué (XxDaemonGamerxX en 403 documenté).
+Surveiller `friends_xp: skipped, *` (DEBUG) en prod pour identifier les amis avec sync career chroniquement échoué (joueur_291 en 403 documenté).
 
 ---
 
@@ -16210,7 +16210,7 @@ Surveiller `friends_xp: skipped, *` (DEBUG) en prod pour identifier les amis ave
 
 **Branche** : `refactor/shared-social-collect-persist`
 
-**Symptôme rapporté** : Match `615b3ebc-b3cc-4749-b656-2afa15996163` du 19/04/2026 de Madina97294 (WIN, 25 kills / 0 deaths, perf 97.5, dominance DOMINATION) n'apparait pas dans les "meilleures performances" de la page Carrière, alors que des matchs moins impressionnants y figurent.
+**Symptôme rapporté** : Match `615b3ebc-b3cc-4749-b656-2afa15996163` du 19/04/2026 de joueur_117 (WIN, 25 kills / 0 deaths, perf 97.5, dominance DOMINATION) n'apparait pas dans les "meilleures performances" de la page Carrière, alors que des matchs moins impressionnants y figurent.
 
 **Diagnostic** (via outil `cmd/diag_highlight_match` créé pour l'occasion) :
 
@@ -16248,11 +16248,11 @@ Implémentation :
 - `npm run typecheck` + `npm run lint` (apps/web) : 0 erreur.
 - Vitest `ExplorerMatchesTable` : 4/4 PASS.
 
-**Vérif end-to-end via diag tool** : match cible passe maintenant les filtres et apparait en **position 2 / 528 wins** dans le top 15 de Madina (juste après un autre match perf=100). Tous les top 25 wins de Madina ont `dominance_flag=1 (DOMINATION)` — c'est le `perf_score` qui les ordonne.
+**Vérif end-to-end via diag tool** : match cible passe maintenant les filtres et apparait en **position 2 / 528 wins** dans le top 15 de joueur_075 (juste après un autre match perf=100). Tous les top 25 wins de joueur_075 ont `dominance_flag=1 (DOMINATION)` — c'est le `perf_score` qui les ordonne.
 
 **Outil créé** : `cmd/diag_highlight_match/main.go` — prend gamertag + match_id en args, affiche l'état du match dans Phase A (pme) + Phase B (shared), verdict de chaque filtre selon la politique A2, et le rang exact dans le tri Go (incluant top 25 avec dominance flags). Réutilisable pour tout incident futur "match X n'apparait pas chez le joueur Y".
 
-**Prochaine étape** : redémarrer le serveur, vérifier visuellement dans le navigateur que le match 615b3ebc est bien dans la section best_matches de la page carrière de Madina avec la pill "bot" affichée.
+**Prochaine étape** : redémarrer le serveur, vérifier visuellement dans le navigateur que le match 615b3ebc est bien dans la section best_matches de la page carrière de joueur_075 avec la pill "bot" affichée.
 
 ---
 
@@ -16262,7 +16262,7 @@ Implémentation :
 
 **Branche** : `refactor/shared-social-collect-persist`
 
-**Symptôme rapporté** : Madina97294 clique sur la tuile du match `615b3ebc-b3cc-4749-b656-2afa15996163` (Custom Game, 2026-04-19) depuis la Home → "erreur 502" dans le browser. Bug récurrent observé sur d'autres joueurs/matchs sans pattern net.
+**Symptôme rapporté** : joueur_117 clique sur la tuile du match `615b3ebc-b3cc-4749-b656-2afa15996163` (Custom Game, 2026-04-19) depuis la Home → "erreur 502" dans le browser. Bug récurrent observé sur d'autres joueurs/matchs sans pattern net.
 
 **Diagnostic via logs** (`logs/handlers.log` + `logs/general.log` du 2026-05-26 11:47-48) :
 
@@ -16313,12 +16313,12 @@ Le NaN source ne vient donc pas de ces sites visibles ; probablement de `analysi
 - Modifiés : `internal/api/handlers/helpers.go` (nouvelle signature + path tracking + log warn), `internal/api/handlers/helpers_test.go` (+5 tests).
 
 **Hors scope (volontairement reporté)** :
-- Patch source du NaN : sera fait après redémarrage du serveur, en lisant le path précis remonté par `slog.Warn("writeJSON: NaN/Inf neutralized")` au prochain clic Madina sur la tuile match. Pas de patch à l'aveugle.
+- Patch source du NaN : sera fait après redémarrage du serveur, en lisant le path précis remonté par `slog.Warn("writeJSON: NaN/Inf neutralized")` au prochain clic joueur_075 sur la tuile match. Pas de patch à l'aveugle.
 - Pas de touche aux migrations `participants_loaded=FALSE` ni aux gamertags NULL (symptômes d'autre chose, le fix doit faire qu'avec ces données partielles la réponse soit toujours sérialisable).
 
 **Conclusion / prochaine étape** :
 1. Redémarrer le serveur Go.
-2. Madina re-clique sur la tuile match `615b3ebc-...` → `logs/handlers.log` doit montrer `WARN writeJSON: NaN/Inf neutralized paths=[...]` ET la requête doit répondre 200 OK avec body JSON valide (NaN remplacés par 0).
+2. joueur_075 re-clique sur la tuile match `615b3ebc-...` → `logs/handlers.log` doit montrer `WARN writeJSON: NaN/Inf neutralized paths=[...]` ET la requête doit répondre 200 OK avec body JSON valide (NaN remplacés par 0).
 3. Lire le `paths=...` reporté pour identifier le builder fautif → ajouter `sanitizeF64()` ou un guard `if denom == 0` à la source.
 4. Vérifier que le bug ne se reproduit plus sur 2-3 autres matchs.
 
@@ -16330,7 +16330,7 @@ Le NaN source ne vient donc pas de ces sites visibles ; probablement de `analysi
 
 **Branche** : `refactor/shared-social-collect-persist`
 
-**Contexte** : Suite à l'incident 2026-05-27 (Madina/Choco/XxDaemon non syncés alors qu'ils jouaient avec JGtm), le diag a identifié que leur PlayerWatcher restait `Idle` car la présence Xbox via le tracker (token JGtm) ne signalait pas fiablement les autres joueurs comme `in-game Halo`. Seul JGtm passait `Watching` → MatchPoller actif uniquement pour lui → seuls ses matchs étaient détectés.
+**Contexte** : Suite à l'incident 2026-05-27 (joueur_075/joueur_901/joueur_639 non syncés alors qu'ils jouaient avec JGtm), le diag a identifié que leur PlayerWatcher restait `Idle` car la présence Xbox via le tracker (token JGtm) ne signalait pas fiablement les autres joueurs comme `in-game Halo`. Seul JGtm passait `Watching` → MatchPoller actif uniquement pour lui → seuls ses matchs étaient détectés.
 
 **Décision design** : ajouter un broadcast simple — quand UN joueur passe `OnPresenceActive` (titre tracké), propager l'état à TOUS les autres PlayerWatcher. Cost marginal : 4× appels `GET /matches?count=25` toutes les 30s pendant la session de groupe (endpoint public PolicyAnyPublic, ~25 IDs × 4 KB par réponse). Idempotent côté FSM (pas de re-transition si déjà Watching, pas de cascade).
 
@@ -16367,9 +16367,9 @@ Le NaN source ne vient donc pas de ces sites visibles ; probablement de `analysi
 
 **Branche** : `refactor/shared-social-collect-persist`
 
-**Symptôme** : Après les 3 fix du matin, le `/api/v1/_diag/auto-sync/run` retournait toujours `matches_inserted:0` pour Madina/Choco/XxDaemon avec `writeSessionAssignmentsBatch planned:8 affected:0` — 8 matchs détectés en shared mais 0 row UPDATE. Toutes les pages UI restaient vides pour ces joueurs sur les 8 matchs joués avec JGtm.
+**Symptôme** : Après les 3 fix du matin, le `/api/v1/_diag/auto-sync/run` retournait toujours `matches_inserted:0` pour joueur_075/joueur_901/joueur_639 avec `writeSessionAssignmentsBatch planned:8 affected:0` — 8 matchs détectés en shared mais 0 row UPDATE. Toutes les pages UI restaient vides pour ces joueurs sur les 8 matchs joués avec JGtm.
 
-**Cause racine** : `loadKnownMatchIDs` (engine.go:618-631) considère qu'un match est "connu" dès qu'il apparaît dans `shared.match_participants` pour le xuid. Quand JGtm sync via le watcher, il INSERT les 8 matchs en shared avec TOUS les participants (Madina, Choco, XxDaemon). Au sync delta suivant côté Madina, `loadKnownMatchIDs` voit ces match_id pour elle → arrête le delta → `PlayerPersister.Persist` jamais appelé → **aucune row dans son `player_match_enrichment`**. Tous les UPDATE post-sync (perf, lusr, sessions, citations, dominance) sont des no-op silencieux car les rows à updater n'existent pas. Le commentaire engine.go affirmait que "le post-sync UPSERT naturellement les rows manquantes" — FAUX, j'ai vérifié `post_sync_enrichment_persister.go:83+158` ce sont des `UPDATE` purs.
+**Cause racine** : `loadKnownMatchIDs` (engine.go:618-631) considère qu'un match est "connu" dès qu'il apparaît dans `shared.match_participants` pour le xuid. Quand JGtm sync via le watcher, il INSERT les 8 matchs en shared avec TOUS les participants (joueur_075, joueur_901, joueur_639). Au sync delta suivant côté joueur_075, `loadKnownMatchIDs` voit ces match_id pour elle → arrête le delta → `PlayerPersister.Persist` jamais appelé → **aucune row dans son `player_match_enrichment`**. Tous les UPDATE post-sync (perf, lusr, sessions, citations, dominance) sont des no-op silencieux car les rows à updater n'existent pas. Le commentaire engine.go affirmait que "le post-sync UPSERT naturellement les rows manquantes" — FAUX, j'ai vérifié `post_sync_enrichment_persister.go:83+158` ce sont des `UPDATE` purs.
 
 **Fix** : nouvelle fonction `ensurePlayerEnrichmentRows(ctx, playerDB, sharedDB, xuid)` dans `internal/sync/ensure_enrichment_rows.go`. INSERT une row vide `player_match_enrichment(match_id)` pour chaque match_id présent dans `shared.match_participants WHERE xuid=?` mais absent de `player_match_enrichment`. Appelée au tout début de `runPostSyncPipeline` (étape -2, AVANT les heals). Le post-sync UPDATE existant remplit ensuite les scores naturellement.
 
@@ -16377,10 +16377,10 @@ Le NaN source ne vient donc pas de ces sites visibles ; probablement de `analysi
 
 **Validation runtime** :
 - `curl -X POST http://127.0.0.1:8000/api/v1/_diag/auto-sync/run` à 10:44:41
-- Madina : `enrichment rows créées: 8` + perf updated:8 + citations written:8 + sessions affected:8 + dominance:8 + weapon healed:3
-- Chocoboflor : `enrichment rows créées: 8` + perf updated:8 + citations written:8 + sessions affected:8 + dominance:8 + weapon healed:1
+- joueur_075 : `enrichment rows créées: 8` + perf updated:8 + citations written:8 + sessions affected:8 + dominance:8 + weapon healed:3
+- joueur_165 : `enrichment rows créées: 8` + perf updated:8 + citations written:8 + sessions affected:8 + dominance:8 + weapon healed:1
 - JGtm : 0 row créée (cas stationnaire, rows déjà persistées par le sync watcher hier soir)
-- XxDaemonGamerxX : 0 row créée (n'a pas participé aux 8 matchs JGtm)
+- joueur_291 : 0 row créée (n'a pas participé aux 8 matchs JGtm)
 - 0 panic, 0 `Conflict on update`, 0 `aggregates: échec shared view`
 
 **Tests** (7 dans `ensure_enrichment_rows_test.go`) : CreatesMissingRows, Idempotent, PreservesExistingRows, FiltersByXUID, NilSharedDB, EmptyXUID, **PlayerHistoryLargerThanShared** (anti-régression panic cap).
@@ -16391,7 +16391,7 @@ Le NaN source ne vient donc pas de ces sites visibles ; probablement de `analysi
 - Créés : `internal/sync/ensure_enrichment_rows.go`, `internal/sync/ensure_enrichment_rows_test.go`
 - Modifiés : `internal/sync/engine_postsync.go` (étape -2 ajoutée en début de runPostSyncPipeline)
 
-**Conclusion / prochaine étape** : recharger l'UI Home/Match detail pour Madina et Chocoboflor — les 8 matchs de hier soir doivent désormais afficher perf, sessions, citations, weapon-kills, dominance correctement. Si OK : commit. Sinon : diag UI side. Bug skill_heal RO à investiguer séparément.
+**Conclusion / prochaine étape** : recharger l'UI Home/Match detail pour joueur_075 et joueur_165 — les 8 matchs de hier soir doivent désormais afficher perf, sessions, citations, weapon-kills, dominance correctement. Si OK : commit. Sinon : diag UI side. Bug skill_heal RO à investiguer séparément.
 
 ---
 
@@ -16401,7 +16401,7 @@ Le NaN source ne vient donc pas de ces sites visibles ; probablement de `analysi
 
 **Branche** : `refactor/shared-social-collect-persist`
 
-**Contexte** : Après le fix d'hier (Trigger câble SharedProvider), le sync watcher pour JGtm passe (8 matchs insérés à 23:38-23:40). Mais 3 erreurs persistent dans `logs/sync.log` 23:57-23:58 (cycle scheduler V2). L'utilisateur signale aussi que les UI Home/Match detail pour Madina/Choco/XxDaemon n'affichent pas les enrichments (sessions, perf, xuid, citations, weapon-frags) sur les matchs de ce soir — diag : les 3 joueurs n'ont pas eu de sync watcher (présence Xbox ne les a pas signalés in-game), donc leur `player_match_enrichment` est vide pour ces match_ids — comportement attendu mais frustrant.
+**Contexte** : Après le fix d'hier (Trigger câble SharedProvider), le sync watcher pour JGtm passe (8 matchs insérés à 23:38-23:40). Mais 3 erreurs persistent dans `logs/sync.log` 23:57-23:58 (cycle scheduler V2). L'utilisateur signale aussi que les UI Home/Match detail pour joueur_075/joueur_901/joueur_639 n'affichent pas les enrichments (sessions, perf, xuid, citations, weapon-frags) sur les matchs de ce soir — diag : les 3 joueurs n'ont pas eu de sync watcher (présence Xbox ne les a pas signalés in-game), donc leur `player_match_enrichment` est vide pour ces match_ids — comportement attendu mais frustrant.
 
 **3 bugs adressés** (par ordre de complexité croissante) :
 
@@ -16414,7 +16414,7 @@ Le NaN source ne vient donc pas de ces sites visibles ; probablement de `analysi
 
 ### Bug #2 — achievements race "TransactionContext Error: Conflict on update!"
 
-- **Symptôme** : `logs/sync.log 23:58:11 achievements: sync échouée gamertag=Madina97294 err="achievements: upsert definitions: upsert definition 1: TransactionContext Error: Conflict on update!"`. Pré-existant, vu depuis 15:15.
+- **Symptôme** : `logs/sync.log 23:58:11 achievements: sync échouée gamertag=joueur_117 err="achievements: upsert definitions: upsert definition 1: TransactionContext Error: Conflict on update!"`. Pré-existant, vu depuis 15:15.
 - **Cause** : `xbox_achievement_definitions` (table metadata) est globale (1 row par achievement_id, 144 communs aux 4 joueurs). 2 SyncEngine en parallèle (`Coordinator parallel_slots:2` + scheduler errgroup) faisaient un upsert (conflict clause) sur la même row → DuckDB lève l'erreur.
 - **Fix** : sérialisation applicative dans `runAchievementsSync` (engine_postsync.go) — `dblease.AcquireWriterCtx(ctx, nil, e.metadataDBPath, dblease.KindMetadata)` AVANT l'ouverture du handle. Le 2ème caller bloque jusqu'au Release du 1er, sans contention DuckDB.
 - **Tests** (3 dans `achievements_race_test.go`) : sérialisation 2 goroutines (assert B acquis APRÈS A released), kinds indépendantes (KindMetadata ne bloque pas KindPlayer), ctx.Done respecté (timeout 50ms vs lease 500ms → erreur).
@@ -16436,14 +16436,14 @@ Le NaN source ne vient donc pas de ces sites visibles ; probablement de `analysi
 - Test golden `TestPostSyncDoesNotCallRefreshSharedViews` empêche la régression code-shape
 
 **Découvertes secondaires (non corrigées)** :
-1. **Madina/Choco n'ont pas eu de sync ce soir** alors qu'ils ont joué avec JGtm. Cause probable : présence Xbox via `userpresence.xboxlive.com` ne les signale pas `in-game Halo` → `PlayerWatcher.FSM` reste `Idle` → `MatchPoller` ne démarre pas → 0 enqueue. Le sync delta scheduler à 23:57 retourne `matches_inserted:0` pour les 3, alors qu'ils ont effectivement joué. À investiguer : token TitleId scope, latence présence, ou bug parser PresenceEvent.
+1. **joueur_075/joueur_901 n'ont pas eu de sync ce soir** alors qu'ils ont joué avec JGtm. Cause probable : présence Xbox via `userpresence.xboxlive.com` ne les signale pas `in-game Halo` → `PlayerWatcher.FSM` reste `Idle` → `MatchPoller` ne démarre pas → 0 enqueue. Le sync delta scheduler à 23:57 retourne `matches_inserted:0` pour les 3, alors qu'ils ont effectivement joué. À investiguer : token TitleId scope, latence présence, ou bug parser PresenceEvent.
 2. **Suggestion utilisateur** : déclencher un sync MatchPoller pour tous les joueurs dès qu'UN au moins est `in-game Halo`. Coût marginal (les API calls retournent 25 matchs, dont peu nouveaux pour les autres). À discuter avant implémentation : conflit potentiel avec l'optimisation actuelle "per-player presence-gated".
 
 **Fichiers** :
 - Créés : `internal/sync/refresh_shared_views_boot_test.go`, `internal/sync/refresh_shared_views_ro_repro_test.go`, `internal/sync/achievements_race_test.go`, `internal/platform/duckdb/citations_repo_q38_test.go`
 - Modifiés : `internal/sync/schema.go` (EnsureSharedSchema + sharedViewsSQL), `internal/sync/engine_postsync.go` (retrait refreshSharedViews call + dblease KindMetadata), `internal/sync/aggregates.go` (refreshSharedViews reste exposé mais plus appelé en post-sync), `internal/platform/duckdb/citations_repo.go` (LoadMatchCitationsForView split), `internal/platform/duckdb/queries_home_citations.go` (Q38MatchViewCitationsPlayer remplace Q38MatchViewCitations)
 
-**Conclusion / prochaine étape** : redémarrer le serveur, refaire un sync ce soir. Vérifier dans `logs/sync.log` qu'il n'y a plus de `aggregates: échec shared view` ni de `achievements: TransactionContext Error: Conflict on update!`. Pour les citations Match detail Choco/Madina : ça reste vide tant que ces 2 joueurs ne syncent pas eux-mêmes — à traiter via la piste "présence Xbox" ou en implémentant le broadcast trigger suggéré par l'utilisateur.
+**Conclusion / prochaine étape** : redémarrer le serveur, refaire un sync ce soir. Vérifier dans `logs/sync.log` qu'il n'y a plus de `aggregates: échec shared view` ni de `achievements: TransactionContext Error: Conflict on update!`. Pour les citations Match detail joueur_901/joueur_075 : ça reste vide tant que ces 2 joueurs ne syncent pas eux-mêmes — à traiter via la piste "présence Xbox" ou en implémentant le broadcast trigger suggéré par l'utilisateur.
 
 ---
 
@@ -16536,7 +16536,7 @@ Toutes étaient activement appelées mais dégradaient en silence (pas de log Er
 **Filet pérenne** : nouveau test `TestSharedReader_NoSharedPrefixViaSharedReader` dans `shared_reader_routing_test.go` — parsing AST de chaque .go non-test, scan des `BasicLit` (SQL inline) ET des références const dans les fonctions qui appellent `.SharedReadDB().Get(`. Fail si l'un d'eux contient `FROM shared.X` ou `JOIN shared.X`. Complète le test existant `TestSharedReader_AllHomeRepoCallsRouted` (qui ne checkait que le pattern ReadDB côté player conn).
 
 **Résultats observés** : 
-- Query weapon_kills sur Madina97294 retourne 20 armes (MK50 Sidekick: 2035, BR75: 1724, MA40 AR: 1485, ...).
+- Query weapon_kills sur joueur_117 retourne 20 armes (MK50 Sidekick: 2035, BR75: 1724, MA40 AR: 1485, ...).
 - `go test -tags integration ./internal/platform/duckdb/` : 72.5s, full suite OK.
 - Test anti-régression vert.
 
@@ -16640,7 +16640,7 @@ Toutes étaient activement appelées mais dégradaient en silence (pas de log Er
 
 **Branche** : `refactor/shared-social-collect-persist`
 
-**Symptôme** : Graphe "Historique XP" page Carrière affiche des chutes à 0 XP (visible chez Madina97294). Valeur impossible métier.
+**Symptôme** : Graphe "Historique XP" page Carrière affiche des chutes à 0 XP (visible chez joueur_117). Valeur impossible métier.
 
 **Cause racine** :
 `career_progression` définissait `xp_total INTEGER DEFAULT 0`. Lors des syncs de personnalisation uniquement (bannière/emblem/spartan_id), `InsertCareerProgressionPartial` n'inclut pas `xp_total` dans l'INSERT (guard `if progress.XPTotal > 0`). DuckDB applique alors `DEFAULT 0` → ligne insérée avec `xp_total = 0`. Q7 utilisait `COALESCE(cp.xp_total, cp.rank * 1000)` qui ne traite pas le 0 → l'UI lit 0 et dessine une chute.
@@ -16652,7 +16652,7 @@ Toutes étaient activement appelées mais dégradaient en silence (pas de log Er
 
 **Résultats attendus** : au prochain boot, la migration corrige les données existantes et le graph ne peut plus afficher 0 XP.
 
-**Prochaine étape** : Redémarrer le serveur pour appliquer la migration, vérifier visuellement le graphe Madina97294.
+**Prochaine étape** : Redémarrer le serveur pour appliquer la migration, vérifier visuellement le graphe joueur_117.
 
 ---
 
@@ -16700,7 +16700,7 @@ La migration `add_weapon_kills_reconciled_as` crée `v_weapon_kills` dans le sch
 **Résultats** :
 - T1-T16 passent, suite complète `go test ./...` : OK
 - `go vet ./...` : clean
-- Recompute lancé et terminé : 4/4 joueurs — invariants V1-V4 OK (Chocoboflor 468, JGtm 896, Madina97294 1152, XxDaemonGamerxX 32 matchs).
+- Recompute lancé et terminé : 4/4 joueurs — invariants V1-V4 OK (joueur_165 468, JGtm 896, joueur_117 1152, joueur_291 32 matchs).
 - Corrections collatérales :
   - `recreateCitationsTable` (DROP+CREATE) remplace N DELETE individuels pour force=true : contourne le bug ART DuckDB sur les lignes `value IS NULL`.
   - Check V1 exclut désormais le sentinel `_processed` (value=0 intentionnel pour matchs sans citation).
@@ -17114,7 +17114,7 @@ Nouveau `components/ui/tips-ticker.tsx` (<150L) — ticker horizontal défilant 
 
 **Test ajouté** : `TestE2EPipeline_HomeRecentPlaylists_NullPlaylistIdGroupedByName` — vérifie que les matchs avec `playlist_id=NULL` + `playlist_name` non-null sont correctement regroupés et retournés (3 playlists au lieu de 1 avant le fix).
 
-**Prochaine étape** : Vérification visuelle sur xxdaemongamerxx (playlists récentes + classements carrière).
+**Prochaine étape** : Vérification visuelle sur joueur_291 (playlists récentes + classements carrière).
 
 ---
 
@@ -17290,11 +17290,11 @@ Le REST poll partagé couvrant les 4 joueurs avec un seul token, le RTA WebSocke
 
 **Décision technique** : `fullSessionCompute` (fallback quand un match comblé est antérieur à l'ancre de sync) recalculait toutes les sessions de l'historique et tentait de mettre à jour ~500 rows existantes via `writeSessionAssignmentsBatch`. Ce bulk UPDATE sur des rows avec PK index déclenche le bug ART DuckDB "duplicate key on append" (FatalException, exit 0xc0000409). Fix : ajout de `onlyNewRows bool` sur `deltaSessionAssignments` + `writeSessionAssignmentsBatch`. Quand `fullSessionCompute` passe `true`, seules les rows avec `session_id IS NULL` sont écrites — les sessions existantes ne sont pas retouchées (léger décalage de numéros accepté pour éviter le crash).
 
-**Résultats** : `go test ./...` PASS, `go vet ./...` propre. Nouveau test `TestWriteSessionAssignmentsBatch_OnlyNewRows_SkipsExisting`. Run `sync-full --all --max-matches 500` : 4/4 success, 0 crash, fallback full compute déclenché sur Chocoboflor (planned=9 affected=0), JGtm (planned=59 affected=20), Madina (planned=46 affected=0).
+**Résultats** : `go test ./...` PASS, `go vet ./...` propre. Nouveau test `TestWriteSessionAssignmentsBatch_OnlyNewRows_SkipsExisting`. Run `sync-full --all --max-matches 500` : 4/4 success, 0 crash, fallback full compute déclenché sur joueur_165 (planned=9 affected=0), JGtm (planned=59 affected=20), joueur_075 (planned=46 affected=0).
 
-**Observation Madina97294** : 0 inserted/1152 skipped — les matchs d'avril 19 sont déjà dans `match_participants` shared (synced via d'autres joueurs). Vérifier si `player_match_enrichment` a bien des rows pour ces matchs.
+**Observation joueur_117** : 0 inserted/1152 skipped — les matchs d'avril 19 sont déjà dans `match_participants` shared (synced via d'autres joueurs). Vérifier si `player_match_enrichment` a bien des rows pour ces matchs.
 
-**Prochaine étape** : vérifier enrichments des 20 matchs JGtm et 49 matchs Chocoboflor en DB.
+**Prochaine étape** : vérifier enrichments des 20 matchs JGtm et 49 matchs joueur_165 en DB.
 
 ---
 
@@ -17313,7 +17313,7 @@ Quand Xbox renvoie `state:Online + title:"Online" (id=1022622766, dashboard Xbox
 `OnPresenceInactive` stoppait le MatchPoller instantanément + transitionnait vers Idle. Or l'API Halo expose un match terminé en ~30-60s après la fin de la partie. Conséquence : sur une partie courte, on rate le dernier match si le user ferme Halo immédiatement après le résultat. Fix : timer `postExitGrace` (90s par défaut) avant le vrai stop. Si `OnPresenceActive` arrive entre temps (retour en jeu), le timer est annulé. `finalizeExit` est la fonction exécutée par le timer (mutex bien tenu, double-check `inGame`). `WithPostExitGrace(0)` désactive le mécanisme pour les tests qui veulent du stop immédiat. Choix de 90s = 1.5× le cycle MatchPoller (60s) + marge, garantit la capture du dernier match.
 
 **Bug C — REST poll seulement pour JGtm** :
-Le REST poller était spawn uniquement dans `AddUserClient` (PR 2.5c, multi-user SSO). Les 3 amis (Madina97294, Chocoboflor, XxDaemonGamerxX) n'avaient donc que le RTA legacy (snapshot only, 0 push). Fix : 1 `trackerRestClient` partagé créé dans `Start()`, et 1 `RESTPoller` par player spawné dans `initPlayers`. Le client partagé permet un seul `UpdateAuth` atomic pour tous les pollers quand le tracker rafraîchit son XSTS. Doublon JGtm (2 pollers : tracker + dédié SSO) accepté car les transitions FSM sont idempotentes ; coût = 1 req/30s additionnelle = négligeable.
+Le REST poller était spawn uniquement dans `AddUserClient` (PR 2.5c, multi-user SSO). Les 3 amis (joueur_117, joueur_165, joueur_291) n'avaient donc que le RTA legacy (snapshot only, 0 push). Fix : 1 `trackerRestClient` partagé créé dans `Start()`, et 1 `RESTPoller` par player spawné dans `initPlayers`. Le client partagé permet un seul `UpdateAuth` atomic pour tous les pollers quand le tracker rafraîchit son XSTS. Doublon JGtm (2 pollers : tracker + dédié SSO) accepté car les transitions FSM sont idempotentes ; coût = 1 req/30s additionnelle = négligeable.
 
 **Files modifiés** :
 - `internal/watcher/daemon.go` (+30L) — champ `trackerRestClient`, init dans `Start()`, REST poller par joueur dans `initPlayers`, `UpdateAuth` propage les 2 clients, handler `makePresenceHandler` appelle `OnPresenceInactive` sur titre non tracké.
@@ -17342,9 +17342,9 @@ Le REST poller était spawn uniquement dans `AddUserClient` (PR 2.5c, multi-user
 
 **Résultats** : `go build ./cmd/levelup/...` propre.
 
-**Usage** : `go run ./cmd/levelup sync-full --all` ou `--gamertag Madina97294`
+**Usage** : `go run ./cmd/levelup sync-full --all` ou `--gamertag joueur_117`
 
-**Prochaine étape** : lancer `sync-full --all` pour combler les trous d'avril, puis re-lancer `AssociateMediaWithMatches` pour Madina97294.
+**Prochaine étape** : lancer `sync-full --all` pour combler les trous d'avril, puis re-lancer `AssociateMediaWithMatches` pour joueur_117.
 
 ---
 
@@ -17372,7 +17372,7 @@ Le REST poller était spawn uniquement dans `AddUserClient` (PR 2.5c, multi-user
 
 ---
 
-## [2026-05-26] Diagnostic Bug 3 — captures Madina97294 sans association
+## [2026-05-26] Diagnostic Bug 3 — captures joueur_117 sans association
 
 **Statut** : Complété (diagnostic Phase 2/3)
 
@@ -17385,7 +17385,7 @@ Le REST poller était spawn uniquement dans `AddUserClient` (PR 2.5c, multi-user
 | Q1 : type id | INTEGER ✓ (cause D écartée) |
 | Q2 : capture_start_utc | **2026-04-23 21:04:xx** — mtime serveur, PAS les timestamps des noms de fichiers |
 | Q3 : associations totales | 67 (59 auto + 8 manuelles) — système fonctionne pour les autres |
-| Q4 : Madina non-associés | 5 candidats avec capture_start_utc (mais valeur incorrecte) |
+| Q4 : joueur_075 non-associés | 5 candidats avec capture_start_utc (mais valeur incorrecte) |
 | Q5 : fenêtres match | 1569/1569 ont end_time + end_time_utc ✓ (cause C écartée) |
 | Q8 : matchs 18-21 avril | **0 match dans match_registry** — session du 19 avril jamais syncée |
 | Q9 : timestamps corrigés | 0 match même avec les bons timestamps → confirme Q8 |
@@ -17396,7 +17396,7 @@ Le REST poller était spawn uniquement dans `AddUserClient` (PR 2.5c, multi-user
 
 **Fix nécessaire (3 étapes séquentielles)** :
 1. Corriger `capture_start_utc` via UPDATE SQL (nouveau CLI) — mettre les 5 fichiers à leurs vraies valeurs extraites du nom
-2. Syncer les matchs du 19 avril pour Madina97294
+2. Syncer les matchs du 19 avril pour joueur_117
 3. Re-lancer `AssociateMediaWithMatches` (via `/settings/media/scan` ou route reassociate)
 
 ---
@@ -17411,7 +17411,7 @@ Le REST poller était spawn uniquement dans `AddUserClient` (PR 2.5c, multi-user
 
 **Résultats** : typecheck propre. Comportement par défaut inchangé (médias du joueur courant), label désormais aligné.
 
-**Prochaine étape** : Phase 2 — diagnostic Bug 3 (Madina97294, captures sans association) via inspect_bp sur shared_social.duckdb.
+**Prochaine étape** : Phase 2 — diagnostic Bug 3 (joueur_117, captures sans association) via inspect_bp sur shared_social.duckdb.
 
 ---
 
@@ -17433,7 +17433,7 @@ Le REST poller était spawn uniquement dans `AddUserClient` (PR 2.5c, multi-user
 2-3. **INSERT partial field-aware** : `CareerProgressionPartial` struct (champs pointers nil/set), `InsertCareerProgressionPartial` SQL dynamique, `PartialFromLive(progress, custom)` avec règles strictes (Rank>0 ou IsMaxRank pour écrire progress, TrimSpace+non-empty pour custom, CurrentXP=0 valide si Rank>0)
 4. **SwR strict** : suppression du `persistIfChanged` du path sync `GetSpartanIdentity` — seul `kickoffBackgroundRefresh` écrit en DB
 5. **Diag kickoff** : log structuré "kickoff fired/skipped" avec raison (no_auth_tokens, cache_warm) ; suppression diags ad-hoc §12 (token mismatch hors scope, mis de côté)
-6. **last_fetch_status** : colonne nullable + enum FetchStatus (ok / api_empty / forbidden_403 / auth_missing / failed), toujours écrit pour tracer "j'ai essayé" (debug XxDaemonGamerxX 403)
+6. **last_fetch_status** : colonne nullable + enum FetchStatus (ok / api_empty / forbidden_403 / auth_missing / failed), toujours écrit pour tracer "j'ai essayé" (debug joueur_291 403)
 7. **Tests E2E hyper solides** : 8 scénarios couvrant tous les retours API partiels — live silent, custom-only, progress-only, Rank=0 explicite, début palier (XP=0), single custom field, home toujours servie depuis DB fallback, no-auth
 8. **SpartanCustomizationCron 8h** : nouveau scheduler indépendant qui itère sur tous les joueurs du pool, appelle `CareerLiveService.GetSpartanIdentity` avec leurs tokens — garantit qu'un joueur qui n'ouvre jamais l'app a quand même sa customisation populée
 
@@ -17460,7 +17460,7 @@ Le REST poller était spawn uniquement dans `AddUserClient` (PR 2.5c, multi-user
 - `2a1f9ab8` feat: SwR strict + last_fetch_status + E2E tests (Phase 4-7)
 - `d6cc84a7` feat: SpartanCustomizationCron 8h (Phase 8)
 
-**Prochaine étape** : tester en live au prochain démarrage serveur, vérifier que la home n'a plus de flicker pour les 4 joueurs (JGtm, Chocoboflor, Madina97294, XxDaemonGamerxX) ; lancer `cmd/diag_customization_population` après 1 cycle 8h pour comparer avant/après. Le bug §12 (token mismatch suspect) reste à investiguer séparément.
+**Prochaine étape** : tester en live au prochain démarrage serveur, vérifier que la home n'a plus de flicker pour les 4 joueurs (JGtm, joueur_165, joueur_117, joueur_291) ; lancer `cmd/diag_customization_population` après 1 cycle 8h pour comparer avant/après. Le bug §12 (token mismatch suspect) reste à investiguer séparément.
 
 ---
 
@@ -17555,17 +17555,17 @@ Le REST poller était spawn uniquement dans `AddUserClient` (PR 2.5c, multi-user
 
 ---
 
-## [2026-05-26] fix(halo_auth): invalid_grant Madina97294 — priorité DuckDB avant env var — Complété
+## [2026-05-26] fix(halo_auth): invalid_grant joueur_117 — priorité DuckDB avant env var — Complété
 
 **Statut** : Complété · Branche : `refactor/shared-social-collect-persist`
 
-**Contexte** : Madina97294 obtient `invalid_grant AADSTS70000` même avec un token fraîchement généré via `go run ./cmd/token-capture/ Madina97294`. JGtm et Chocoboflor fonctionnent avec leurs tokens depuis 6 mois.
+**Contexte** : joueur_117 obtient `invalid_grant AADSTS70000` même avec un token fraîchement généré via `go run ./cmd/token-capture/ joueur_117`. JGtm et joueur_165 fonctionnent avec leurs tokens depuis 6 mois.
 
-**Root cause** : Air hot-reload déclenche un boot complet à chaque modification. Au boot, le Pool lit l'env var de Madina (DuckDB vide), appelle Microsoft, reçoit `(access_token, rotated_RT)`, sauve `rotated_RT` en DuckDB via `onRotated`. Token original brûlé chez Microsoft. Quelques ms plus tard, une requête HTTP → `refreshTokensFromDB` → lisait l'env var en premier (original déjà consommé) → `invalid_grant`. JGtm/Chocoboflor non affectés car leurs DuckDB ont un RT valide depuis des mois — le Pool lit DuckDB, pas l'env var.
+**Root cause** : Air hot-reload déclenche un boot complet à chaque modification. Au boot, le Pool lit l'env var de joueur_075 (DuckDB vide), appelle Microsoft, reçoit `(access_token, rotated_RT)`, sauve `rotated_RT` en DuckDB via `onRotated`. Token original brûlé chez Microsoft. Quelques ms plus tard, une requête HTTP → `refreshTokensFromDB` → lisait l'env var en premier (original déjà consommé) → `invalid_grant`. JGtm/joueur_165 non affectés car leurs DuckDB ont un RT valide depuis des mois — le Pool lit DuckDB, pas l'env var.
 
 **Décision** : Inversion de priorité dans `registry.go::refreshTokensFromDB` : DuckDB d'abord, env var en seed bootstrap uniquement. Ajout de `TryOAuthRefreshWithRotation` + `WriteOAuthRefreshToken` pour auto-réparation.
 
-**Prochaine étape** : Générer un nouveau token Madina via `token-capture`, redémarrer proprement une fois, vérifier `source=duckdb` sur la deuxième requête.
+**Prochaine étape** : Générer un nouveau token joueur_075 via `token-capture`, redémarrer proprement une fois, vérifier `source=duckdb` sur la deuxième requête.
 
 ---
 
@@ -17573,7 +17573,7 @@ Le REST poller était spawn uniquement dans `AddUserClient` (PR 2.5c, multi-user
 
 **Statut** : En cours · Branche worktree : `refactor/auth-tokens-single-source` (créée depuis HEAD de `refactor/shared-social-collect-persist`)
 
-**Contexte** : Le hotfix précédent (priorité DuckDB) corrige Madina mais perpétue l'anti-pattern "DuckDB OLAP utilisé comme credential store". 4 sources concurrentes coexistent (env.local, sync_meta DuckDB, MultiUserTokenStore, watcher_tokens.json mono-user) et 4 CLI tools brûlent des tokens sans persister la rotation. Refactor demandé par l'utilisateur pour avoir une source unique.
+**Contexte** : Le hotfix précédent (priorité DuckDB) corrige joueur_075 mais perpétue l'anti-pattern "DuckDB OLAP utilisé comme credential store". 4 sources concurrentes coexistent (env.local, sync_meta DuckDB, MultiUserTokenStore, watcher_tokens.json mono-user) et 4 CLI tools brûlent des tokens sans persister la rotation. Refactor demandé par l'utilisateur pour avoir une source unique.
 
 **Décision technique** (validée par l'utilisateur après audit cross-features) :
 `MultiUserTokenStore` (`data/auth/watcher_tokens/{xuid}.json`) devient la source autoritaire. Migration en 6 phases (audit → extend store → migration boot → read path → write path → cleanup). Audit exhaustif vérifié sur Spartan ID live fetch, career rank/XP live fetch, token provider abstraction, Pool architecture — aucun chemin contourne les abstractions identifiées.
@@ -17619,9 +17619,9 @@ Le REST poller était spawn uniquement dans `AddUserClient` (PR 2.5c, multi-user
 
 **Phase 5 différée** : suppression des lectures legacy (env var + sync_meta DuckDB) attend ~1 semaine de stabilisation prod avec les phases 2-4 actives. Phase 6 (cleanup code mort + suppression `duckdb.WriteOAuthRefreshToken` et `Read*`) suit Phase 5.
 
-**Conclusion** : Bug Madina résolu architecturalement. UX `token-capture` zéro-friction (plus de copy-paste env.local). 4 CLI cessent de brûler des tokens. SSO Xbox web persiste enfin le RT au store.
+**Conclusion** : Bug joueur_075 résolu architecturalement. UX `token-capture` zéro-friction (plus de copy-paste env.local). 4 CLI cessent de brûler des tokens. SSO Xbox web persiste enfin le RT au store.
 
-**Prochaine étape** : merger la branche dans `refactor/shared-social-collect-persist` après revue. Tester Madina en prod : `go run ./cmd/token-capture/ Madina97294` → redémarrage propre serveur → vérifier `source=duckdb` ou `source=store` dans les logs `halo_auth: tokens obtenus via OAuth refresh`. Une fois validé, lancer Phase 5 dans une session ultérieure.
+**Prochaine étape** : merger la branche dans `refactor/shared-social-collect-persist` après revue. Tester joueur_075 en prod : `go run ./cmd/token-capture/ joueur_117` → redémarrage propre serveur → vérifier `source=duckdb` ou `source=store` dans les logs `halo_auth: tokens obtenus via OAuth refresh`. Une fois validé, lancer Phase 5 dans une session ultérieure.
 
 ---
 
@@ -17635,7 +17635,7 @@ Le REST poller était spawn uniquement dans `AddUserClient` (PR 2.5c, multi-user
 - **T1** (commit `f5d8844f`) — Extraction `internal/platform/auth/capturecli/` : 4 helpers testables sans cgo (`ResolveXUIDByGamertag`, `ParseRefreshTokenStdin`, `PersistRefreshToken` avec `CacheInvalidator` callback, `ResolveXUIDForRotation`). 39 tests verts. cmd/token-capture/import/server délèguent maintenant à capturecli.
 - **T2** (commit `592360cd`) — `multi_user_token_store_concurrency_test.go` : 13 tests avec `-race` (100 writes concurrents, race-condition Upsert+Update, corruption JSON, .tmp orphelin, 11 path-traversal patterns, validation xuid digits-only, permissions strict 0700/0600, roundtrip 10 champs, JSON structure régression).
 - **T7** (commit `645a0c2b` + `1111d274`) — `sentinel_test.go` : 4 guards anti-régression (env var readers + duckdb writers + txt file regression + client_secret leak). Allowlist baseline 27 sites legacy documentés avec justification.
-- **T8 PIVOT** (commit `b2bc1cfa`) — `tests/e2e/air_restart_cycle_test.go` : 4 tests bout-en-bout avec `rotationProvider` qui mime strictement la rotation Microsoft (RT invalidé après usage). Scénario complet : capture → boot → résolve → 10 cycles Air restart → 0 invalid_grant. Reproduit le bug Madina résolu architecturalement.
+- **T8 PIVOT** (commit `b2bc1cfa`) — `tests/e2e/air_restart_cycle_test.go` : 4 tests bout-en-bout avec `rotationProvider` qui mime strictement la rotation Microsoft (RT invalidé après usage). Scénario complet : capture → boot → résolve → 10 cycles Air restart → 0 invalid_grant. Reproduit le bug joueur_075 résolu architecturalement.
 - **T3b** (commit `8ce3889e`) — `pool/discovery_priority_test.go` : 7 tests sur la priorité store-first (RT/MSAL/combiné, env var fallback avec warn log, multi-joueurs hétérogènes).
 - **T6** (commit `69b3a15e`) — `cmd/server/migration_boot_test.go` : 6 tests sur le wiring `migrateLegacyAuthTokensAtBoot` (env var only, idempotence, multi-players, no-players, DB profiles missing, store entry preservation).
 - **T5** (commit `12fe0aaf`) — `watcher_refresh_multistore_test.go` : 10 tests sur le path multi-store priorité (vs legacy TokenStore vs env var), rotation persistée double, error recovery.
@@ -17646,7 +17646,7 @@ Le REST poller était spawn uniquement dans `AddUserClient` (PR 2.5c, multi-user
 - **0 FAIL**
 - Couverture par package (estimée via tests existants + nouveaux) : auth ≥ 90%, pool ≥ 85%, capturecli ≥ 95%, handlers ≥ 80%
 
-**Test pivot T8** : 10 cycles Air restart consécutifs avec rotation stricte, **0 invalid_grant détecté**. Le bug Madina ne peut plus revenir architecturalement.
+**Test pivot T8** : 10 cycles Air restart consécutifs avec rotation stricte, **0 invalid_grant détecté**. Le bug joueur_075 ne peut plus revenir architecturalement.
 
 **Sentinel T7** : protège contre 4 types de régressions futures (env var readers, DuckDB writes, txt file regression, client_secret leaks). Tout nouveau call doit être ajouté à l'allowlist avec justification documentée.
 
@@ -17658,7 +17658,7 @@ Le REST poller était spawn uniquement dans `AddUserClient` (PR 2.5c, multi-user
 - T4a/b/c/d et T9/T10 partiellement non écrits — pivot T8 couvre l'essentiel
 - Phase 5 (suppression legacy reads) : différée à session ultérieure post-stabilisation prod
 
-**Prochaine étape** : commit final, merger branche dans `refactor/shared-social-collect-persist`. Tester en prod avec Madina. Si OK 1 semaine, lancer Phase 5 (suppression env var + sync_meta DuckDB legacy reads).
+**Prochaine étape** : commit final, merger branche dans `refactor/shared-social-collect-persist`. Tester en prod avec joueur_075. Si OK 1 semaine, lancer Phase 5 (suppression env var + sync_meta DuckDB legacy reads).
 
 ---
 
@@ -17670,14 +17670,14 @@ Le REST poller était spawn uniquement dans `AddUserClient` (PR 2.5c, multi-user
 
 **Root cause réelle** (3 bugs distincts) :
 1. `cmd/token-capture` hardcodait `e1cb35ab` mais le serveur lit `SPNKR_AZURE_CLIENT_ID` (env var différente) → tokens capturés avec le mauvais client_id → `invalid_grant: different client_id` dès le premier refresh.
-2. `refreshTokensFromDB` ne tentait DuckDB que si l'env var était VIDE. Si l'env var était présente mais invalide (mauvais client_id), DuckDB n'était jamais essayé → faux "aucun token disponible" pour XxDaemonGamerxX qui avait un RT valide en DuckDB.
+2. `refreshTokensFromDB` ne tentait DuckDB que si l'env var était VIDE. Si l'env var était présente mais invalide (mauvais client_id), DuckDB n'était jamais essayé → faux "aucun token disponible" pour joueur_291 qui avait un RT valide en DuckDB.
 3. `TryOAuthRefresh` (DEPRECATED) jetait silencieusement le RT rotaté → après 100 min (2 cycles cache 50 min), l'ancien RT révoqué → warning.
 
 **Fixes** :
 - `cmd/token-capture`: lire `SPNKR_AZURE_CLIENT_ID` en priorité (fallback `e1cb35ab`) — même logique que `oauth_refresh.go`.
 - `registry.go/refreshTokensFromDB`: boucle env→DuckDB avec `TryOAuthRefreshWithRotation` + persistance RT rotaté + WARN intermédiaire rétrogradé en DEBUG (pas de bruit si DuckDB réussit en fallback).
 
-**Action utilisateur requise** : recapturer les tokens Madina97294 + XxDaemonGamerxX avec le `cmd/token-capture` mis à jour.
+**Action utilisateur requise** : recapturer les tokens joueur_117 + joueur_291 avec le `cmd/token-capture` mis à jour.
 
 **Tests** : `go test ./internal/api/... ./cmd/token-capture/...` + `go vet` → OK.
 
@@ -17689,7 +17689,7 @@ Le REST poller était spawn uniquement dans `AddUserClient` (PR 2.5c, multi-user
 
 **Branche** : `refactor/shared-social-collect-persist`
 
-**Root cause** : `refreshTokensFromDB` utilisait la méthode DEPRECATED `TryOAuthRefresh` qui appelle `TryOAuthRefreshWithRotation` en interne mais jette silencieusement le RT rotaté (`_, err := ...`). Microsoft rotate le refresh_token à chaque usage. Le premier cache-miss (TTL 50 min) consommait le RT sans persister le nouveau — le second cache-miss (~T+100min) utilisait un RT déjà révoqué → `invalid_grant` → WARN "aucun token disponible" pour Madina97294 et xxdaemongamerxx.
+**Root cause** : `refreshTokensFromDB` utilisait la méthode DEPRECATED `TryOAuthRefresh` qui appelle `TryOAuthRefreshWithRotation` en interne mais jette silencieusement le RT rotaté (`_, err := ...`). Microsoft rotate le refresh_token à chaque usage. Le premier cache-miss (TTL 50 min) consommait le RT sans persister le nouveau — le second cache-miss (~T+100min) utilisait un RT déjà révoqué → `invalid_grant` → WARN "aucun token disponible" pour joueur_117 et joueur_291.
 
 **Fix** : `internal/api/registry.go` — remplacer `TryOAuthRefresh` par `TryOAuthRefreshWithRotation` + appel immédiat à `duckdb.WriteOAuthRefreshToken` si `rotatedRT != ""`. Pattern identique au `pool/resolver.go:tryOAuthRefreshAndPropagateRotation` déjà existant.
 
@@ -17726,11 +17726,11 @@ Le REST poller était spawn uniquement dans `AddUserClient` (PR 2.5c, multi-user
 
 **Branche** : `fix/art-eradication-and-home-resilience`
 
-**Décision technique** : Utiliser le Device Code Flow Microsoft (login.microsoftonline.com, même Azure app `e1cb35ab-...` que le serveur) en HTTP pur stdlib — pas de MSAL, pas de dépendance externe. Flow : Guillaume lance le CLI sur sa machine, obtient un URL+code, les envoie à Madina par message, elle s'authentifie dans son navigateur normal, le CLI poll et écrit le refresh_token dans `token_Madina97294.txt` prêt à coller dans `.env.local`.
+**Décision technique** : Utiliser le Device Code Flow Microsoft (login.microsoftonline.com, même Azure app `e1cb35ab-...` que le serveur) en HTTP pur stdlib — pas de MSAL, pas de dépendance externe. Flow : Guillaume lance le CLI sur sa machine, obtient un URL+code, les envoie à joueur_075 par message, elle s'authentifie dans son navigateur normal, le CLI poll et écrit le refresh_token dans `token_Madina97294.txt` prêt à coller dans `.env.local`.
 
 **Résultat** : Premier test réel → Microsoft a retourné un code valide (`DQR8XWN8`, `https://www.microsoft.com/link`). Build et polling fonctionnels.
 
-**Prochaine étape** : Builder l'exe avec `GOOS=windows go build -o token-capture.exe ./cmd/token-capture/` et tester avec Madina.
+**Prochaine étape** : Builder l'exe avec `GOOS=windows go build -o token-capture.exe ./cmd/token-capture/` et tester avec joueur_075.
 
 ---
 
@@ -17976,7 +17976,7 @@ export LEVELUP_SYNC_PIPELINE=v2
 - **Phase 6** — retrait logs DIAG temporaires (`progress fetch DIAG/RESULT`, `custom fetch DIAG/RESULT`) ajoutés en début de session pour l'investigation §12
 
 **Diag §12 bug token mismatch — RÉFUTÉ par les logs live** :
-- Lancé serveur diag à 17:19, visite home JGtm + Chocoboflor
+- Lancé serveur diag à 17:19, visite home JGtm + joueur_165
 - `xuid_mismatch: false` pour les deux joueurs → pas de bug de tokens
 - API renvoie rang 184 (Cadet Diamond 3) pour JGtm → persisted à 17:20:43
 - Le rang « stale 179 » du matin venait du restore DB après ART bug du 24/05 (corruption pré-existante), pas d'un bug actuel
@@ -18132,7 +18132,7 @@ export LEVELUP_SYNC_PIPELINE=v2
 2. **Algorithme identique à V1** réimplémenté dans `v2/known_loader.go` (~100 lignes) :
    - Source 1 : `SELECT match_id FROM player_match_enrichment`.
    - Source 2 : `SELECT DISTINCT match_id FROM match_participants WHERE xuid || '' = ?`.
-   - Cast défensif `xuid || ''` conservé (incident XxDaemonGamerxX 2026-05-24 sur drift de type VARCHAR vs UBIGINT).
+   - Cast défensif `xuid || ''` conservé (incident joueur_291 2026-05-24 sur drift de type VARCHAR vs UBIGINT).
    - Erreur source 1 absente → DEBUG (table peut manquer en schéma frais).
    - Erreur source 2 → WARN explicite (known set partiel → dégrade dedup).
    - Source 2 désactivée si `sharedDB == nil` OU `xuid trim == ""`.
@@ -18209,7 +18209,7 @@ Par ailleurs, le commentaire historique dans `insertMediaFile` justifiait l'abse
 
 **Branche** : `fix/art-eradication-and-home-resilience`
 
-**Symptôme** : "Aucun média récent disponible" sur la home page malgré 77 fichiers vidéo présents sur disque dans `C:\Users\Guillaume\Videos\Captures\{Player}\`. La rail média était vide pour tous les joueurs depuis le matin (alors qu'elle fonctionnait depuis >1 mois).
+**Symptôme** : "Aucun média récent disponible" sur la home page malgré 77 fichiers vidéo présents sur disque dans `<poste>\Videos\Captures\{Player}\`. La rail média était vide pour tous les joueurs depuis le matin (alors qu'elle fonctionnait depuis >1 mois).
 
 **Investigation** (via `logs/duckdb.log`) : au boot du serveur, le pool échoue à ouvrir `shared_social.duckdb` :
 ```
@@ -18280,7 +18280,7 @@ Conséquence : `pdb.SharedSocial = nil` pour TOUS les joueurs → `LoadRecentMed
 - `go build ./...` OK
 - `go vet ./internal/sync/v2/` clean
 - `go test ./internal/sync/v2/` : 56/56 PASS en 1.20s (47 phases isolation + 9 cycle integration)
-- Le perf test confirme que le pipeline V2 est ~3000× plus rapide en logique pure (171ms vs 510s pour Madina97294 en V1) — l'écart se réduira avec les vrais I/O des adapters V1-bridge en D6.2+.
+- Le perf test confirme que le pipeline V2 est ~3000× plus rapide en logique pure (171ms vs 510s pour joueur_117 en V1) — l'écart se réduira avec les vrais I/O des adapters V1-bridge en D6.2+.
 
 **Conclusion / prochaine étape** : D6.1 livrable. La logique V2 est complète et orchestrée. Prochaines étapes (D6.2 à D6.5) :
 - D6.2 : adapter `KnownLoader` (wrap `loadKnownMatchIDs` de engine.go).
@@ -18298,7 +18298,7 @@ Ces 4 sous-deliverables D6 touchent à V1 — risque plus élevé. Approche : li
 
 **Branche** : `fix/art-eradication-and-home-resilience`
 
-**Contexte** : suite de D4. D5 livre la dernière phase logique du pipeline V2 : post-sync parallèle par joueur. C'est la phase qui débloque le gain perf maximal — Madina97294 attendait 6 min 30 sur 8 min 30 totales JUSTE pour avoir le shared lease pour son post-sync en V1. En V2 cette contention disparaît : Phase 5 a déjà tout commit, le shared lease n'est plus contesté, les heals lisent shared concurremment.
+**Contexte** : suite de D4. D5 livre la dernière phase logique du pipeline V2 : post-sync parallèle par joueur. C'est la phase qui débloque le gain perf maximal — joueur_117 attendait 6 min 30 sur 8 min 30 totales JUSTE pour avoir le shared lease pour son post-sync en V1. En V2 cette contention disparaît : Phase 5 a déjà tout commit, le shared lease n'est plus contesté, les heals lisent shared concurremment.
 
 **Décisions techniques** :
 
@@ -18393,7 +18393,7 @@ Estimation D6 : ~3 jours, c'est la phase à plus grand risque car elle touche au
 - `go vet ./internal/sync/v2/` clean
 - `go test ./internal/sync/v2/` : 39/39 PASS (16 D1 + 8 D2 + 7 D3 + 8 D4)
 
-**Conclusion / prochaine étape** : D4 livrable. Phase 5 codée, testée pour sémantique transactionnelle + invariant single-call + isolation. Prochaine étape : **D5 — Phase 6 (Post-sync parallèle)** : pour chaque joueur, errgroup interne sur les heals + films + citations + dominance + LUSR. C'est la phase où le gain perf maximal va se voir (Madina97294 attendait 6 min 30 du shared lease en V1 — V2 supprime totalement cette contention).
+**Conclusion / prochaine étape** : D4 livrable. Phase 5 codée, testée pour sémantique transactionnelle + invariant single-call + isolation. Prochaine étape : **D5 — Phase 6 (Post-sync parallèle)** : pour chaque joueur, errgroup interne sur les heals + films + citations + dominance + LUSR. C'est la phase où le gain perf maximal va se voir (joueur_117 attendait 6 min 30 du shared lease en V1 — V2 supprime totalement cette contention).
 
 ---
 
@@ -18526,7 +18526,7 @@ Estimation D6 : ~3 jours, c'est la phase à plus grand risque car elle touche au
 - `go test ./internal/sync/v2/ -count=1 -v` : 16/16 PASS en 0.30s
 - Aucun changement runtime (Phase 1/2 pas câblées dans l'orchestrator — encore le stub `ErrNotImplemented`).
 
-**Détail trouvé pendant la session** : `.gitignore` ligne 115 (`apps/go-api/[A-Z]*/`) bloque les nouveaux fichiers dans `apps/go-api/internal/*` à cause du `core.ignorecase=true` Windows. Workaround : `git add -f` pour les nouveaux fichiers. Fix propre à proposer ultérieurement : remplacer par `apps/go-api/Users*/` (intention initiale d'attraper les directories parasites `UsersGuillaumeDownloads.../`).
+**Détail trouvé pendant la session** : `.gitignore` ligne 115 (`apps/go-api/[A-Z]*/`) bloque les nouveaux fichiers dans `apps/go-api/internal/*` à cause du `core.ignorecase=true` Windows. Workaround : `git add -f` pour les nouveaux fichiers. Fix propre à proposer ultérieurement : remplacer par `apps/go-api/Users*/` (intention initiale d'attraper les directories parasites `UsersposteDownloads.../`).
 
 **Conclusion / prochaine étape** : D1 livrable. Phase 1+2 codées et testées en isolation. Prochaine étape : **D2 — Phase 3 (Fetch shared parallèle)** : errgroup(8) qui prend `DedupResult.UniqueMatches` et appelle `GetMatchStats` via HaloClient (un adapter par canonical fetcher). Buffer en mémoire pour Phase 5.
 
@@ -18554,7 +18554,7 @@ Estimation D6 : ~3 jours, c'est la phase à plus grand risque car elle touche au
 
 **Contexte** : Diagnostic cycle 13:59 a révélé 3 problèmes archi :
 1. Cross-player dedup cassée en parallèle (worker BatchQueue monothread async — writes pas visibles avant 60s).
-2. Sérialisation post-sync catastrophique sur shared writer lease (Madina97294 attend 6 min 30 s sur 8 min 30 s totales).
+2. Sérialisation post-sync catastrophique sur shared writer lease (joueur_117 attend 6 min 30 s sur 8 min 30 s totales).
 3. Drain timeout fixe 60s atteint systématiquement sur tous les joueurs.
 
 Plan global : refonte cycle-level (ADR 0020) en 9 deliverables (D0→D8, ≈ 3 semaines).
@@ -18597,7 +18597,7 @@ Plan global : refonte cycle-level (ADR 0020) en 9 deliverables (D0→D8, ≈ 3 s
 
 2. **`buildHomeCareerRank` (analysis/home_kpis.go)** : la priorité 1 (catalog `career_rank_translations`) retournait le label brut sans passer par `rankSubRoman`. Le fallback RankName l'appliquait déjà — incohérence silencieuse. Fix : `rankSubRoman(lookupRankLabel(...))` + `rankSubRoman(nextTitle)`.
 
-**Résultats** : build OK, tests `TestFormatCSRTierLabel_*` passent. Migration `cmd/migrate-roman-ranks --apply` : 9 lignes mises à jour (Madina 7, Chocoboflor 1, JGtm 1 — toutes dans `match_skill_rank`). `match_csrs` shared : 0 ligne à corriger.
+**Résultats** : build OK, tests `TestFormatCSRTierLabel_*` passent. Migration `cmd/migrate-roman-ranks --apply` : 9 lignes mises à jour (joueur_075 7, joueur_165 1, JGtm 1 — toutes dans `match_skill_rank`). `match_csrs` shared : 0 ligne à corriger.
 
 **Prochaine étape** : commit.
 
@@ -18754,7 +18754,7 @@ ADRs prêts. La cohérence philosophique avec Prestige est garantie par 5 invari
 - `cmd/backup-once/main.go` créé pour lancer un cycle unique sans démarrer le serveur complet.
 
 **Résultats observés** : Premier backup lancé avec succès en 3.14s.
-- 9 DBs exportées : `xbox_aliases` + 5 warehouse (`shared_matches_v2`, `metadata`, `shared_pve`, `shared_social`) + 4 players (Chocoboflor, JGtm, Madina97294, XxDaemonGamerxX).
+- 9 DBs exportées : `xbox_aliases` + 5 warehouse (`shared_matches_v2`, `metadata`, `shared_pve`, `shared_social`) + 4 players (joueur_165, JGtm, joueur_117, joueur_291).
 - Structure staging : `staging/halo_infinite/{db}/`, `staging/halo_infinite/player/{gamertag}/` ← isolation par title confirmée.
 - Snapshot restic `6ba84d2b`, 9.97 MiB Parquet+zstd.
 - Scheduler Go planifié toutes les 6h avec rétention 7j/4sem/12mois.
@@ -18926,7 +18926,7 @@ Restauration depuis `E:\halo_infinite` (snapshot 24/05 16:34, pré-crash ART 20:
 **Résultats observés** :
 - Warehouse + 4 players restaurés depuis backup pré-crash
 - `apply_shared_migrations` : 1 migration shared appliquée, 0 migration player supplémentaire
-- Backfill CSR : 50 CSR insérés (Chocoboflor 8, JGtm 8, Madina97294 34) ; XxDaemonGamerxX skippé (no_refresh_token)
+- Backfill CSR : 50 CSR insérés (joueur_165 8, JGtm 8, joueur_117 34) ; joueur_291 skippé (no_refresh_token)
 - Backup post-restore : `data/backups/2026-05-25_1126/` (warehouse 342MB + 4 players 85MB)
 
 **Prochaine étape** : Relancer le serveur et vérifier visuellement les CSR affichés
@@ -19072,7 +19072,7 @@ Sites laissés (CLI one-shot, validation, tests, implem cache) : tous `cmd/*` + 
 
 **Statut** : Complété. Phase 5 ART désormais complète (résilience handle DB + status honnête).
 
-**Tâche** : Compléter Phase 5 ART en éliminant le mensonge `status:"success"` quand le post-sync a planté avec un FATAL DuckDB. Scénario prod 2026-05-24 20:41:08 sur Chocoboflor : LUSR FATAL ART → cascade friends/aggregates/achievements toutes échouent → `result.Errors` reste vide → `Status()` renvoie `success` → le monitoring ne voit rien.
+**Tâche** : Compléter Phase 5 ART en éliminant le mensonge `status:"success"` quand le post-sync a planté avec un FATAL DuckDB. Scénario prod 2026-05-24 20:41:08 sur joueur_165 : LUSR FATAL ART → cascade friends/aggregates/achievements toutes échouent → `result.Errors` reste vide → `Status()` renvoie `success` → le monitoring ne voit rien.
 
 **Décisions techniques** :
 
@@ -19089,7 +19089,7 @@ Sites laissés (CLI one-shot, validation, tests, implem cache) : tous `cmd/*` + 
 **Résultats observés** :
 
 - 10 tests verts sur les status (`domain/sync_test.go` 5 + `sync/engine_postsync_track_fatal_test.go` 5).
-- Test sentinelle `TestSyncResult_Status_PostSyncFatalDegradesStatus` reproduit exactement la cascade Chocoboflor 20:41 (3 FatalErrors → Status = `partial_success`).
+- Test sentinelle `TestSyncResult_Status_PostSyncFatalDegradesStatus` reproduit exactement la cascade joueur_165 20:41 (3 FatalErrors → Status = `partial_success`).
 - Test `TestTrackFatalErr_MultipleSites_Cascade` valide la sémantique multi-sites.
 - `go vet ./...` propre. Aucune nouvelle régression sur la suite `internal/sync/` (les 9 fails préexistants restent inchangés).
 
@@ -19150,7 +19150,7 @@ Sites laissés (CLI one-shot, validation, tests, implem cache) : tous `cmd/*` + 
 
 **Phase 4 — NaN sanitize** : helper `persist.SanitizeBatch(batch)` qui parcourt explicitement les structs du batch (Match, Participants, MatchCSRs, Enrichment, SkillRank, LUSRComponents) et applique `analysis.SanitizeNullableFloat`/`SanitizeFloat` (helpers déjà livrés en A.6). 2 couches de défense : appel dans `submitMatchAsBatch` (point de production, garantit le path SYNC sans queue) ET dans `queue.Submit` (defensif avant marshal). Idempotent. 8 tests verts couvrent : nil batch, empty, NaN participant→nil, NaN enrichment→nil, NaN LUSRComponent→0, idempotence, marshal regression prod (match `508bd2fb` reproduit).
 
-**Phase 5 — Post-sync gating** : pre-check `SELECT EXISTS FROM match_registry` dans `submitMatchAsBatch` AVANT incrément MatchesInserted. Si match déjà en registry → `MatchesSkipped++` au lieu de `MatchesInserted++`, et NE PUSH PAS dans `InsertedMatchIDs`. Le SharedPersister continue de no-op idempotent (Submit toujours fait), mais le compteur reflète enfin la vérité. Conséquence : `runConditionalPostSync` ne déclenche plus de pipeline (events heal, weapon kills, perf scores) sur des matchs déjà traités. XxDaemonGamerxX inactif passe de 285s → ~1-5s par cycle. 2 sentinelles verts (E.3 pre-check distinguishes new vs existing, E.5 InsertedMatchIDs scope).
+**Phase 5 — Post-sync gating** : pre-check `SELECT EXISTS FROM match_registry` dans `submitMatchAsBatch` AVANT incrément MatchesInserted. Si match déjà en registry → `MatchesSkipped++` au lieu de `MatchesInserted++`, et NE PUSH PAS dans `InsertedMatchIDs`. Le SharedPersister continue de no-op idempotent (Submit toujours fait), mais le compteur reflète enfin la vérité. Conséquence : `runConditionalPostSync` ne déclenche plus de pipeline (events heal, weapon kills, perf scores) sur des matchs déjà traités. joueur_291 inactif passe de 285s → ~1-5s par cycle. 2 sentinelles verts (E.3 pre-check distinguishes new vs existing, E.5 InsertedMatchIDs scope).
 
 **Phase 6 — Drain circuit-breaker** : `BatchQueue` track `consecutiveFailures atomic.Int32`. Worker.handle appelle `queue.RecordPersistResult(success)` après chaque Persist (alimente CB). `Drain` check `consecutiveFailures >= 5` ET `pending > 0` → fail fast avec `ErrDrainCircuitBreaker` (au lieu d'attendre le timeout 60s). Gain pratique : 60s → ~1s sur worker cassé. Hooks `OnPersistOK`/`OnPersistError` préservés (indépendants du CB, pour expvar). 5 tests verts (tracking, trip on threshold, no trip below, no trip on empty pending, reset by one success).
 
@@ -19172,7 +19172,7 @@ Sites laissés (CLI one-shot, validation, tests, implem cache) : tous `cmd/*` + 
 - Bug #3 (inflation MatchesInserted) : éliminé Phase 5
 - Bug NaN (2 matchs perdus/cycle) : éliminé Phase 4
 
-**Prochaine étape** : surveiller le prochain cycle auto-sync prod, vérifier que les WARN `lease_wait_ms` restent < 1s en nominal et que les sentinelles C.4 + E.3 + E.5 restent VERTES. Phase 8 (backfill rattrapage) reportée à PR séparé si nécessaire (data Chocoboflor + XxDaemonGamerxX historiques).
+**Prochaine étape** : surveiller le prochain cycle auto-sync prod, vérifier que les WARN `lease_wait_ms` restent < 1s en nominal et que les sentinelles C.4 + E.3 + E.5 restent VERTES. Phase 8 (backfill rattrapage) reportée à PR séparé si nécessaire (data joueur_165 + joueur_291 historiques).
 
 ---
 
@@ -19204,7 +19204,7 @@ Sites laissés (CLI one-shot, validation, tests, implem cache) : tous `cmd/*` + 
 
 **Branche** : `fix/art-eradication-and-home-resilience` (14 commits depuis `refactor/collect-persist`).
 
-**Tâche** : Suite au crash home post-sync 2026-05-24 20:41:04 (LUSR persister DELETE+INSERT déclenche bug ART DuckDB sur Chocoboflor → invalide la player DB → cascade 500 `sql: database is closed` sur la home de JGtm), éradiquer tous les chemins runtime à risque ART identifiés par l'audit `.ai/audit_art_writes.md`.
+**Tâche** : Suite au crash home post-sync 2026-05-24 20:41:04 (LUSR persister DELETE+INSERT déclenche bug ART DuckDB sur joueur_165 → invalide la player DB → cascade 500 `sql: database is closed` sur la home de JGtm), éradiquer tous les chemins runtime à risque ART identifiés par l'audit `.ai/audit_art_writes.md`.
 
 **Décisions de design adoptées** :
 
@@ -19239,11 +19239,11 @@ Sites laissés (CLI one-shot, validation, tests, implem cache) : tous `cmd/*` + 
 
 **Statut** : Complété (document de référence créé)
 
-**Tâche** : Synthétiser dans un document dédié l'ensemble des investigations sur la chute en rang LUSR de Madina97294 (carry agressif sous-évalué). Session précédente perdue, reconstruction depuis thought_log + code.
+**Tâche** : Synthétiser dans un document dédié l'ensemble des investigations sur la chute en rang LUSR de joueur_117 (carry agressif sous-évalué). Session précédente perdue, reconstruction depuis thought_log + code.
 
 **Décision technique** : Création de `.ai/LUSR_CARRY_ISSUE.md` — bilan complet : cause racine (kills_vs_expected indexé MMR Halo = 51% du composite), 5 variantes de formule testées (toutes insatisfaisantes), 2 fixes livrés (carry adj asymétrique + muOpp branché), 5 pistes non explorées, piste recommandée (LUSR_recent fenêtré 50 matchs).
 
-**Résultats observés** : Aucun fix formule connu ne comble l'écart (~500 pts) sans régresser Choco/JGtm. L'écart est principalement dû à la fenêtre temporelle (mauvaises perfs début de carrière) et non à un défaut de formule.
+**Résultats observés** : Aucun fix formule connu ne comble l'écart (~500 pts) sans régresser joueur_901/JGtm. L'écart est principalement dû à la fenêtre temporelle (mauvaises perfs début de carrière) et non à un défaut de formule.
 
 **Prochaine étape** : Explorer piste LUSR_recent (50 derniers matchs, lecture seule, endpoint dédié).
 
@@ -19257,7 +19257,7 @@ Sites laissés (CLI one-shot, validation, tests, implem cache) : tous `cmd/*` + 
 
 **Analyse** (chronologie validée uniquement post-restart 20:18:30) :
 
-1. Sync Chocoboflor à 20:41:04 → FATAL ART exact `"Failed to delete all rows from index. Only deleted 0 out of 1 rows"` sur `match_skill_rank` (player DB). Chunk 14 colonnes, presque entièrement NULL sauf match_id + rating_type=LUSR + chain=arena_objectif.
+1. Sync joueur_165 à 20:41:04 → FATAL ART exact `"Failed to delete all rows from index. Only deleted 0 out of 1 rows"` sur `match_skill_rank` (player DB). Chunk 14 colonnes, presque entièrement NULL sauf match_id + rating_type=LUSR + chain=arena_objectif.
 2. Cascade : friends recompute, achievements, drop des vues mv_player_matches/mv_map_stats — toutes invalidées par le FATAL.
 3. Sync se déclare `status:"success"` malgré `lusr_updated:0` et `warnings:8`. **Le statut ment.**
 4. À partir de 20:38, la home de JGtm renvoie 500 en continu — handle `*sql.DB` détenue par `PlayerMatchesRepo` est fermée mais réutilisée.
@@ -19460,7 +19460,7 @@ Sites laissés (CLI one-shot, validation, tests, implem cache) : tous `cmd/*` + 
 **Tâche** : Bug ART DuckDB "Failed to delete all rows from index. Only deleted 0 out of 704 rows" sur `player_match_enrichment` lors du recalcul des sessions post-sync. Tous les 4 joueurs touchés → "post-sync: sessions échoué".
 
 **Cause racine** :
-- `recalculateSessionsInline` charge TOUS les matchs historiques (ex: 704 pour Chocoboflor) sans LIMIT.
+- `recalculateSessionsInline` charge TOUS les matchs historiques (ex: 704 pour joueur_165) sans LIMIT.
 - `writeSessionAssignmentsBatch` → `BatchUpdateMulti` faisait 1 seul `UPDATE FROM (VALUES ...)` avec 704 rows → DuckDB devait supprimer 704 entrées ART en une seule opération → crash.
 - C'était le seul post-sync sans delta filter : performance/engagement/dominance/bot/friends ont tous un `WHERE IS NULL` ou `WHERE = FALSE` naturel.
 
@@ -19519,10 +19519,10 @@ Sites laissés (CLI one-shot, validation, tests, implem cache) : tous `cmd/*` + 
 **Résultats** : DBs propres, zéro match corrompu. Prêt pour syncs frais monitorés.
 
 **Premier cycle post-restore (2026-05-24T16:10:59)** :
-- Chocoboflor : +15 matchs, 154s, SUCCESS
+- joueur_165 : +15 matchs, 154s, SUCCESS
 - JGtm : +39 matchs, 374s, SUCCESS
-- Madina97294 : +15 matchs, 538s, SUCCESS
-- XxDaemonGamerxX : +9 matchs, 674s, SUCCESS
+- joueur_117 : +15 matchs, 538s, SUCCESS
+- joueur_291 : +9 matchs, 674s, SUCCESS
 - ART bug : 0 nouveau probe run, 0 dblease timeout
 - Backup copie vers E:\halo_infinite_2026-05-24 (429 MB, robocopy OK)
 
@@ -19552,17 +19552,17 @@ Sites laissés (CLI one-shot, validation, tests, implem cache) : tous `cmd/*` + 
 
 ---
 
-## [2026-05-24] Fix média Chocoboflor + UI tuile Ascension
+## [2026-05-24] Fix média joueur_165 + UI tuile Ascension
 
 **Statut** : Complété
 
-**Tâche** : (1) Page médias Chocoboflor retournait 500 "Table media_files does not exist". (2) Tuile Ascension home doit s'aligner en hauteur avec Prestige et afficher un background.
+**Tâche** : (1) Page médias joueur_165 retournait 500 "Table media_files does not exist". (2) Tuile Ascension home doit s'aligner en hauteur avec Prestige et afficher un background.
 
-**Root cause** : `pdb.SharedSocial` était nil dans le pool de Chocoboflor (échec transitoire `OpenReadWriteShared` au boot mis en cache). `socialDB()` tombait en fallback sur Player DB qui n'a plus `media_files` depuis `drop_media_from_player_db`. DuckDB suggérait `milestone_earned` confirmant la query sur player DB.
+**Root cause** : `pdb.SharedSocial` était nil dans le pool de joueur_165 (échec transitoire `OpenReadWriteShared` au boot mis en cache). `socialDB()` tombait en fallback sur Player DB qui n'a plus `media_files` depuis `drop_media_from_player_db`. DuckDB suggérait `milestone_earned` confirmant la query sur player DB.
 
 **Décision technique** : Guard `if r.pdb.SharedSocial == nil { return nil, nil }` dans `loadMediaCandidates` (même pattern que `HomeRepo.LoadRecentMedia`) et `LoadMatchCandidatesForMedia`. UI : suppression `self-start` et `xl:items-start`, ajout background `auntie-dot.webp` (copié dans `apps/web/public/`) sur la tuile Ascension.
 
-**Résultats** : Build propre. La page médias affiche état vide au lieu de 500. La tuile Ascension prend la hauteur de Prestige et affiche le background. Un redémarrage serveur pour Chocoboflor devrait recréer la connexion SharedSocial correctement.
+**Résultats** : Build propre. La page médias affiche état vide au lieu de 500. La tuile Ascension prend la hauteur de Prestige et affiche le background. Un redémarrage serveur pour joueur_165 devrait recréer la connexion SharedSocial correctement.
 
 **Prochaine étape** : Si le problème persiste après redémarrage, investiguer pourquoi `OpenReadWriteShared(shared_social.duckdb)` échoue pour ce joueur (vérifier les logs "pool: ouverture SharedSocial échouée").
 
@@ -19582,10 +19582,10 @@ Sites laissés (CLI one-shot, validation, tests, implem cache) : tous `cmd/*` + 
 - `ForceComebackBadges` géré via `force_rescan`
 
 **Résultats** :
-- Chocoboflor : 379 matchs backfillés
+- joueur_165 : 379 matchs backfillés
 - JGtm : 778 matchs backfillés
-- Madina97294 : 1076 matchs backfillés
-- XxDaemonGamerxX : 32 matchs backfillés
+- joueur_117 : 1076 matchs backfillés
+- joueur_291 : 32 matchs backfillés
 - **Total : 2265 matchs** — tous les matchs depuis l'origine jusqu'au 7 avr. 2026 qui n'avaient jamais eu de flag
 
 **Prochaine étape** : Les futurs matchs sont couverts par post-sync 1.7 (commit précédent). Plus de gap.
@@ -19832,9 +19832,9 @@ Le bug ART corruption qui hantait LevelUp depuis le 2026-05-20 est **résolu str
 
 | Cycle | Etat avant | Résultat |
 |---|---|---|
-| **1** | ART héritée (corruption pré-existante) | 2/4 FATAL : Chocoboflor `writeSessionAssignmentsBatch` (410 rows), Madina97294 `upsertLUSRRatingsBatch` (21 rows) |
+| **1** | ART héritée (corruption pré-existante) | 2/4 FATAL : joueur_165 `writeSessionAssignmentsBatch` (410 rows), joueur_117 `upsertLUSRRatingsBatch` (21 rows) |
 | **Force_rebuild_art --all** | — | Rebuild OK pour `match_participants` + `player_match_enrichment` (4 player DBs) |
-| **2** | PME rebuilt | Sessions/Perf batch OK pour tous, mais **LUSR Upsert toujours FATAL** sur Madina+Chocoboflor |
+| **2** | PME rebuilt | Sessions/Perf batch OK pour tous, mais **LUSR Upsert toujours FATAL** sur joueur_075+joueur_165 |
 | **Diagnostic + fix** | match_skill_rank ART non couverte | Ajout `RebuildMatchSkillRankART` (`internal/migration/steps_player_rebuild_match_skill_rank.go`) + intégration dans `force_rebuild_art` (PME puis MSR par player DB) |
 | **Re-rebuild --all** | — | 4 player DBs rebuilt MSR (1109 + 832 + 419 + 32 rows, 0 perte) |
 | **3, 4, 5** | ART complète rebuilt (3 tables) | **3 cycles × 4 joueurs = 12 syncs, 0 FATAL ART** |
@@ -19855,10 +19855,10 @@ Le bug ART corruption qui hantait LevelUp depuis le 2026-05-20 est **résolu str
 - `go build ./...` clean
 - `go test ./internal/sync/... ./internal/persist/...` : GREEN (10.4s + 1s)
 - Performance cycle 5 (sequentiel 4 joueurs) :
-  - Madina97294 : 94s (1115 enrichments, 1109 LUSR/CSR)
+  - joueur_117 : 94s (1115 enrichments, 1109 LUSR/CSR)
   - JGtm : 76s (832 rows)
-  - Chocoboflor : 20s (419 rows)
-  - XxDaemonGamerxX : 6s (32 rows)
+  - joueur_165 : 20s (419 rows)
+  - joueur_291 : 6s (32 rows)
   - Total : ~3 min 30 (sous le seuil 8 min visé)
 - 4 fichiers logs `logs/smoke_phase4/cycle{1,2,3,4,5}_*.out` (preuves empiriques archivées)
 
@@ -20036,12 +20036,12 @@ LEVELUP_PERSIST_BATCH=1 LEVELUP_POSTSYNC_INSERT_ONLY=1 ./bin/levelup-api
 **Résultats observés** :
 
 - ✅ Boot serveur clean : `pool_size=4` (E.v1 watcher stores fait son job)
-- ✅ Path `submitMatchAsBatch` VALIDÉ : 10 matchs persistés pour XxDaemonGamerxX, **0 FATAL Error** sur ce path
+- ✅ Path `submitMatchAsBatch` VALIDÉ : 10 matchs persistés pour joueur_291, **0 FATAL Error** sur ce path
 - ✅ Métriques expvar : `persist_batch_committed_total=10`, `persist_shared_total_ok=10`, `persist_player_total_ok=10`
-- ✅ Cycle XxDaemonGamerxX : 107s (sous le seuil 8min)
+- ✅ Cycle joueur_291 : 107s (sous le seuil 8min)
 - ✅ Logs multi-module : `logs/pool.log`, `logs/sync.log` créés avec event_id propagé
 - ⚠️ **`art_corruption_detected_shared_medals_earned=1`** : BootARTGuard a détecté une corruption pré-existante (pas causée par notre path)
-- ❌ **MAIS** : post-sync compute déclenche encore le bug ART en chaîne sur Chocoboflor et Madina97294 :
+- ❌ **MAIS** : post-sync compute déclenche encore le bug ART en chaîne sur joueur_165 et joueur_117 :
 
 ```
 upsertLUSRRatings: exec LUSR update failed err="FATAL Error: Invalid Input Error: Failed to delete all rows…"
@@ -20069,15 +20069,15 @@ post-sync: friends recompute échoué : updateIsWithFriendsBatch: FATAL Error
 - **Autonomie limite assumée** : impossible de "conclure proprement" Phase 5 sans Phase 4 préalable. La Phase 4 est un sprint dédié non livrable en session courante (6-10h + smoke test prod multi-cycles).
 
 **Pragmatique pour le user** :
-- Le path Collect→Persist apporte un **bénéfice net immédiat** : 10 matchs persistés sans FATAL pour XxDaemonGamerxX (avant : ces 10 matchs auraient déclenché les UPSERT concurrents → FATAL ART probable).
+- Le path Collect→Persist apporte un **bénéfice net immédiat** : 10 matchs persistés sans FATAL pour joueur_291 (avant : ces 10 matchs auraient déclenché les UPSERT concurrents → FATAL ART probable).
 - Le mode "partiel" est déployable : `LEVELUP_PERSIST_BATCH=1` peut rester actif. Le sync se termine `status=success` malgré les warnings post-sync. Le legacy auto-heal continue de masquer le problème post-sync (comme avant le refactor).
 - Le bug ART n'est pas pire qu'avant — il a juste été déplacé du path insert vers le path post-sync (où le legacy mitigation reste actif).
 
 **Résultats observés (recap)** :
 
-- Smoke test : 4 cycles complétés (Chocoboflor 12s, XxDaemonGamerxX 107s, JGtm 180s, Madina97294 253s)
-- 1 cycle 100% succès (XxDaemonGamerxX avec 10 nouveaux matchs)
-- 3 cycles "success avec warnings post-sync" (Chocoboflor, JGtm, Madina97294 — 0 nouveaux matchs, post-sync compute échoue sur DB déjà invalidée)
+- Smoke test : 4 cycles complétés (joueur_165 12s, joueur_291 107s, JGtm 180s, joueur_117 253s)
+- 1 cycle 100% succès (joueur_291 avec 10 nouveaux matchs)
+- 3 cycles "success avec warnings post-sync" (joueur_165, JGtm, joueur_117 — 0 nouveaux matchs, post-sync compute échoue sur DB déjà invalidée)
 - Pas de régression vs legacy : status sync globalement "success"
 
 **Prochaine étape** :
@@ -20680,7 +20680,7 @@ Effort total estimé : ~18h sur 2-3 jours.
 |---|---|---|
 | Premier rebuild manuel via `force_rebuild_art` sur shared (25069 rows préservées) | déjà committé `3e178df9` | Débloque shared, 446 UPSERT OK au cycle suivant |
 | Tests TDD `art_upsert_patterns_test.go` comparant ON CONFLICT / INSERT OR REPLACE / SELECT-then-UPDATE | non-committé (gardé en `internal/sync/`) | **Démontre que Option A est INVALIDE** : les 3 patterns ont 49 erreurs identiques en `:memory:` (TransactionContext, pas le FATAL ART). Le bug est dans la persistence ART, pas dans le pattern SQL. |
-| `RebuildPlayerMatchEnrichmentART` + `force_rebuild_art --all` étendu | `487eea4e` | Couvre player DBs ; 4 player DBs rebuild OK (Chocoboflor 410, JGtm 815, Madina 1106, XxDaemon 22) |
+| `RebuildPlayerMatchEnrichmentART` + `force_rebuild_art --all` étendu | `487eea4e` | Couvre player DBs ; 4 player DBs rebuild OK (joueur_165 410, JGtm 815, joueur_075 1106, joueur_639 22) |
 | Plan J : `CHECKPOINT` post-sync (Phase 4.1.c) | `ae82901e` | Hypothèse : compaction WAL DuckDB évite l'accumulation d'entries ART fantômes. EN VALIDATION. |
 
 **Pistes invalidées dans la session** :
@@ -20752,7 +20752,7 @@ Effort total estimé : ~18h sur 2-3 jours.
 
 3. **Phase 5.1 + 2.3 — Stress test TDD + singleflight `InsertParticipants`** (commit aef47968, ~2h) : 3 tests intégration `-race` (SameKey_NoCrash_OneRow, DifferentKeys_AllPresent, BatchPerCall). **TDD strict** : tests rouges baseline (49 + 1061 + 28 failures sans singleflight), verts post-impl. Wrapper `participantsSF singleflight.Group` package-level, dédupe par `"match_id|xuid"`. Perfs : 8.3s → 0.7s sur même-clé grâce au dedupe.
 
-4. **Phase 3.0 — Paralléliser `processWeaponKillsInline` en TDD** (commit fc772f80, ~2h) : c'est le gain le plus impactant identifié par Agent 3 (~150-200s/cycle Madina). **TDD strict** : 4 tests écrits AVANT impl (Concurrent_NoRace, LatencyParallelFasterThanSequential, Idempotent, CancelMidRun). Le test perf échouait baseline (1.6s vs <700ms) puis passe post-impl. Pattern : `errgroup.SetLimit(healParallelism=8)` + `mu.Mutex` sur compteurs + best-effort par-match + cancel propagé via ctx.Err(). 4 tests existants `TestProcessWeaponKillsInline_*` toujours verts post-refactor.
+4. **Phase 3.0 — Paralléliser `processWeaponKillsInline` en TDD** (commit fc772f80, ~2h) : c'est le gain le plus impactant identifié par Agent 3 (~150-200s/cycle joueur_075). **TDD strict** : 4 tests écrits AVANT impl (Concurrent_NoRace, LatencyParallelFasterThanSequential, Idempotent, CancelMidRun). Le test perf échouait baseline (1.6s vs <700ms) puis passe post-impl. Pattern : `errgroup.SetLimit(healParallelism=8)` + `mu.Mutex` sur compteurs + best-effort par-match + cancel propagé via ctx.Err(). 4 tests existants `TestProcessWeaponKillsInline_*` toujours verts post-refactor.
 
 5. **Consolidation des fixes 20-22 mai dans HEAD** (commit 53fc48da) : URL endpoint xuid(NNN), delta loop stopAfterFlush, ART tolerance, double zlib fix, dominance flag wiring, parallel heal loops (Action B), debug.SetCrashOutput, heartbeat 30s, defer recover post-sync. Tous déjà testés en prod (83 matchs insérés post-fix URL).
 
@@ -20770,7 +20770,7 @@ Effort total estimé : ~18h sur 2-3 jours.
 
 **Prochaines étapes (à valider par user avant exécution)** :
 - **Phase 4.1** — ART rebuild runtime : pattern swap-table `CREATE TABLE _rebuild AS SELECT *` + `DROP + RENAME` atomic, déclenché par `BootARTGuard` étendu en runtime (pas que au boot). Risque MOYEN-HAUT (lock writer ~1s pendant le swap).
-- **Phase 4.4** — Recompute force=true post-rebuild : recalcule LUSR/perf/sessions/dominance pour les joueurs dont les matchs étaient ART-corrompus (cf. LUSR Madina figé Argent IV).
+- **Phase 4.4** — Recompute force=true post-rebuild : recalcule LUSR/perf/sessions/dominance pour les joueurs dont les matchs étaient ART-corrompus (cf. LUSR joueur_075 figé Argent IV).
 - **Phase 3.4** — Parallel scheduler RunOnce : errgroup sur la boucle joueurs, gain 15min → 5-8min sur cycle 3 joueurs.
 
 **Conclusion** : majeure partie de la P0 livrée, en sécurité (TDD, plan-review, commits atomiques). La P1 (recovery + parallel scheduler) attend la validation utilisateur car risque non-trivial (lock writer, deadlock potentiel).
@@ -20809,7 +20809,7 @@ Helpers `hasMatchParticipantsARTDivergence(report)` + `tryAutoHealMatchParticipa
 **Scope volontairement restreint** : auto-heal AU BOOT UNIQUEMENT. Le mode runtime périodique (cf. plan §4.1 trigger "automatic au boot ET sur détection runtime via Phase 4.3") est défer en sous-phase **4.1.b** car requiert coordination avec le scheduler de sync actif (drain readers en pleine charge, risque deadlock). Au boot, no concurrent writers → trivialement safe.
 
 **Prochaines étapes** :
-- **Phase 4.4** — Recompute force=true post-rebuild (LUSR Madina figé Argent IV à recalculer).
+- **Phase 4.4** — Recompute force=true post-rebuild (LUSR joueur_075 figé Argent IV à recalculer).
 - **Phase 3.4** — Parallel scheduler RunOnce (gain 15min → 5-8min).
 - **Phase 4.2** — SIGABRT handler pour capture FatalException C++.
 - **Phase 4.1.b** — Runtime periodic ART rebuild (plus complexe, drain readers en charge).
@@ -20822,7 +20822,7 @@ Helpers `hasMatchParticipantsARTDivergence(report)` + `tryAutoHealMatchParticipa
 
 **Statut** : Phase 4.4 step 1/2 livrée en 1 commit (`b65e0417`). Step 2/2 (trigger : CLI tool ou auto post-rebuild) défer en sub-phase 4.4.b pour validation utilisateur sur scope.
 
-**Contexte** : Phase 4.1 répare l'ART au boot mais les valeurs dérivées (LUSR/performance/dominance/is_with_friends) restent figées sur l'état corrompu. Exemple documenté : LUSR Madina figé Argent IV au lieu de Platine attendu. Audit Agent 2 risque résiduel #6.
+**Contexte** : Phase 4.1 répare l'ART au boot mais les valeurs dérivées (LUSR/performance/dominance/is_with_friends) restent figées sur l'état corrompu. Exemple documenté : LUSR joueur_075 figé Argent IV au lieu de Platine attendu. Audit Agent 2 risque résiduel #6.
 
 **Livré (TDD strict)** : nouvelle fonction publique `sync.RecomputeAfterARTRebuild(ctx, playerDB, sharedDB, xuid, friendGamertags) (report, error)`. Orchestre :
 1. `BatchComputeLUSR(force=true)` — nouveau wrapper public exposé pour callers hors-package
@@ -20848,7 +20848,7 @@ Suite intégration sync complète reste verte (36s, aucune régression sur les a
 
 **Trigger step 2/2** : reporté en sub-phase 4.4.b. Plusieurs options à discuter avec l'utilisateur :
 - (a) Auto-trigger post-rebuild boot : élégant mais touche tous les joueurs trackés à chaque rebuild, risqué si la fonction a un bug.
-- (b) CLI tool dédié `cmd/recompute_after_art_rebuild/` : l'utilisateur l'invoque manuellement pour les joueurs affectés (Madina en priorité).
+- (b) CLI tool dédié `cmd/recompute_after_art_rebuild/` : l'utilisateur l'invoque manuellement pour les joueurs affectés (joueur_075 en priorité).
 - (c) Hook dans le sync engine : recompute à la fin du prochain cycle sync (1× par joueur après détection de corruption).
 
 **Conclusion** : Phase 4.4 step 1/2 livrée. La fonction publique est dès maintenant callable depuis n'importe quel caller futur. Le wiring reste à décider — mieux vaut valider le scope hors-bande car ça touche aux données utilisateur. Suite logique pour la prochaine session : décider du trigger ou passer à Phase 3.4 (parallel scheduler) qui n'a pas ce risque data.
@@ -21006,7 +21006,7 @@ Plan de stabilisation finalisé. Reste uniquement P3 : tests régression complé
 
 **Origine** : Lapsus dans le sprint initial 2026-05-22. L'utilisateur avait écrit explicitement "c'est tout le traitement et les calculs qu'il faut optimisier niveau perf". J'avais parallélisé inter-match (Phase 3.0) mais loupé intra-film. Le user a relevé l'omission à la fin de la session — phase rattrapée en TDD strict comme demandé.
 
-**Constat** : `GetMatchFilm` téléchargeait les 10-30 chunks d'un film en boucle `for` séquentielle. À 200-500ms RTT CDN par chunk → 3-15s wall-time par film. Sur cycle Madina 21 films × ~6s gaspillés intra-film = ~120s perdus EN PLUS du gain Phase 3.0 (150-200s sur l'inter-match).
+**Constat** : `GetMatchFilm` téléchargeait les 10-30 chunks d'un film en boucle `for` séquentielle. À 200-500ms RTT CDN par chunk → 3-15s wall-time par film. Sur cycle joueur_075 21 films × ~6s gaspillés intra-film = ~120s perdus EN PLUS du gain Phase 3.0 (150-200s sur l'inter-match).
 
 **Livré** : `errgroup.SetLimit(filmChunkParallelism=8)` dans `GetMatchFilm`. Architecture race-free sans mutex :
 - Phase 1 séquentielle : cache check + accumulation des misses dans `toDownload[]`.
@@ -21029,7 +21029,7 @@ Le test `CompletesAllBeforeReturn` verrouille cette propriété : compteur HTTP 
 - Phase 3.4 : 15min → 5-8min (scheduler parallèle, mesuré 4× speedup test)
 - Phase 3.6 : healParallelism 8→24 sur network-only (gain marginal absorbé par rate limiter)
 
-Sur cycle Madina, ces 4 optims devraient passer un cycle complet de ~15 min à **<4 min** (perte de fond capped par rate limiter HTTP et latence DuckDB CGO). C'est le passage de "cycle inutilisable" à "cycle confortable" sur 3 joueurs.
+Sur cycle joueur_075, ces 4 optims devraient passer un cycle complet de ~15 min à **<4 min** (perte de fond capped par rate limiter HTTP et latence DuckDB CGO). C'est le passage de "cycle inutilisable" à "cycle confortable" sur 3 joueurs.
 
 **Conclusion** : opportunité ratée corrigée. Reste à observer en prod (`/debug/vars` + chrono des cycles). Phase 3.1bis a bouclé toutes les optims perf significatives du plan de stabilisation. P3 (tests régression 5.2-5.5) reste optionnel.
 
@@ -21074,7 +21074,7 @@ Directive utilisateur : "on se disperse pas, continue à traiter le plan initial
 **Compteur cumulé final des gains du plan** :
 - Phase 0a (driver bump v1.5.3) : potentiel fix root cause ART
 - Phase 2.3 (singleflight) : protection defensive concurrence
-- Phase 3.0 (parallel weapon kills inter-match) : ~150-200s/cycle Madina
+- Phase 3.0 (parallel weapon kills inter-match) : ~150-200s/cycle joueur_075
 - Phase 3.1bis (parallel chunks intra-film) : ~120s/cycle estimé
 - Phase 3.4 (parallel scheduler) : 15min → 5-8min (4× mesuré)
 - Phase 3.6 (healParallelism bump 8→24) : marginal
@@ -21245,7 +21245,7 @@ Plan stabilisation **CLOS**. Le rebuild prod confirmera (ou pas) que les couches
 **Contexte** : suite à la sync réussie du 22 mai (83 matchs insérés), l'utilisateur reporte 3 problèmes :
 1. La page match view → onglet détail rend aucun graphique pour le dernier match commun à tous les joueurs (highlight_events vide).
 2. Le post-sync prend 8 min pour 21 matchs malgré le bump RPS et le pool de tokens.
-3. Choco devrait être quasi-instantané sur les matchs partagés avec Madina mais re-fetch tout.
+3. joueur_901 devrait être quasi-instantané sur les matchs partagés avec joueur_075 mais re-fetch tout.
 
 **Fix #1 — Double zlib decompression dans le pipeline highlight_events** :
 
@@ -21271,7 +21271,7 @@ Const `healParallelism = 8` partagée (déclarée dans events_heal.go) : pool_si
 
 **Fix #3 — Cross-player dedup (Action A)** :
 
-Avant : `loadKnownMatchIDs(playerDB)` lisait uniquement `player_match_enrichment` du joueur courant. Quand Madina ingérait 21 matchs, ils étaient dans `shared.match_registry` + `shared.match_participants` (avec rows pour CHAQUE participant incl. Choco/JGtm), mais le set "known" de Choco ne les voyait pas → Choco re-fetchait les 21 matchs depuis Halo API (84 calls inutiles).
+Avant : `loadKnownMatchIDs(playerDB)` lisait uniquement `player_match_enrichment` du joueur courant. Quand joueur_075 ingérait 21 matchs, ils étaient dans `shared.match_registry` + `shared.match_participants` (avec rows pour CHAQUE participant incl. joueur_901/JGtm), mais le set "known" de joueur_901 ne les voyait pas → joueur_901 re-fetchait les 21 matchs depuis Halo API (84 calls inutiles).
 
 Fix : `loadKnownMatchIDs(playerDB, sharedDB, xuid)` étendu pour UNION avec `SELECT DISTINCT match_id FROM shared.match_participants WHERE xuid = ?`. Le post-sync (perf scores, LUSR, citations) UPSERT naturellement les rows enrichment manquantes pour les matchs déjà en shared — pas besoin de pré-création explicite. Signature updatée sur 7 call-sites (1 prod + 6 tests). 2 tests régression : `TestLoadKnownMatchIDs_UnionWithSharedParticipants` (3 shared + 1 player + 1 other-xuid → 4 known) et `TestLoadKnownMatchIDs_NilSharedFallsBackToPlayer` (rétro-compat).
 
@@ -21288,7 +21288,7 @@ Fix : `loadKnownMatchIDs(playerDB, sharedDB, xuid)` étendu pour UNION avec `SEL
 - `go test ./internal/analysis/...` : PASS (incl. TestParseHighlightEvents_PlainBytes_FreshDownloadPath nouveau + TestParseHighlightEvents_RealV41Fixture 275 events OK)
 
 **Effet attendu au prochain cycle** :
-- Choco pagination : 9s → <1s sur les matchs partagés avec Madina (skip API via shared-aware known).
+- joueur_901 pagination : 9s → <1s sur les matchs partagés avec joueur_075 (skip API via shared-aware known).
 - Post-sync heal steps : ~5× plus rapide (parallel 8 vs séquentiel).
 - Highlight events : les 41 matchs JGtm seront recovery'd via events_heal au prochain tick (idempotent, `events_loaded=FALSE` les re-target).
 
@@ -21306,7 +21306,7 @@ Fix : `loadKnownMatchIDs(playerDB, sharedDB, xuid)` étendu pour UNION avec `SEL
 
 **Statut** : Complété (build + vet + tests sync/scheduler verts). Code dans HEAD via les commits cleanup parallèles.
 
-**Contexte** : suite à l'incident 2026-05-20 (fix URL `xuid(NNN)` + fix delta loop `goto done`), le sync auto a réussi son premier cycle complet le 22 mai à 18:31-18:41 — **83 nouveaux matchs insérés** (Madina 21, Chocoboflor 21, JGtm 41). MAIS le post-sync pipeline JGtm a été tué silencieusement à 18:41:19 après l'étape `had_bot_teammate` (étape 0e/14) : aucun panic Go capturé, aucun stack trace, le serveur s'est juste arrêté de logger. User signale en plus que LUSR + dominance flags (DOMINATION / HUMILIATION / REMONTADA) sont absents pour les 83 nouveaux matchs.
+**Contexte** : suite à l'incident 2026-05-20 (fix URL `xuid(NNN)` + fix delta loop `goto done`), le sync auto a réussi son premier cycle complet le 22 mai à 18:31-18:41 — **83 nouveaux matchs insérés** (joueur_075 21, joueur_165 21, JGtm 41). MAIS le post-sync pipeline JGtm a été tué silencieusement à 18:41:19 après l'étape `had_bot_teammate` (étape 0e/14) : aucun panic Go capturé, aucun stack trace, le serveur s'est juste arrêté de logger. User signale en plus que LUSR + dominance flags (DOMINATION / HUMILIATION / REMONTADA) sont absents pour les 83 nouveaux matchs.
 
 **4 instrumentations appliquées** :
 
@@ -21421,7 +21421,7 @@ Stoppe via `schedulerCtx.Done()` (graceful shutdown ok).
 
 **Investigation upstream `duckdb-go`** : reportée à la prochaine montée de version DuckDB. Repro minimal disponible via `cmd/diag_lusr_player` + backup `data/backups/phase1-2026-05-22/`.
 
-**Prochaine étape** : push branche `docs/post-stabilisation`. Clôture du plan stabilisation. Sous-tâches restantes : Phase 3.bis (Q26 split cross-DB) et investigation gap LUSR Madina (1.bis suite — sigma/breakdown).
+**Prochaine étape** : push branche `docs/post-stabilisation`. Clôture du plan stabilisation. Sous-tâches restantes : Phase 3.bis (Q26 split cross-DB) et investigation gap LUSR joueur_075 (1.bis suite — sigma/breakdown).
 
 ---
 
@@ -21429,23 +21429,23 @@ Stoppe via `schedulerCtx.Done()` (graceful shutdown ok).
 
 **Statut** : Complété (branche `fix/duckdb-art-corruption-rebuild`).
 
-**Contexte** : Madina97294 (Diamond estimé) reste Argent III (1286) malgré carry adjustment + muOpp. Simulation des pistes A/B/C/A+C via `--compare-formulas` pour identifier si la formule seule peut corriger l'écart vs JGtm (Or II, 1444).
+**Contexte** : joueur_117 (Diamond estimé) reste Argent III (1286) malgré carry adjustment + muOpp. Simulation des pistes A/B/C/A+C via `--compare-formulas` pour identifier si la formule seule peut corriger l'écart vs JGtm (Or II, 1444).
 
 **Décision technique** : Création de `skill_formula_sim.go` avec 5 variantes (baseline / piste-C : DvE 0.24→0.12 / piste-A : ajuste DE × Kills/KE / piste-A+C : combiné / piste-B : KDA fusionné). Méthode : repart de InitialMU=1500 pour chaque variante, fenêtre configurable `--last-n`.
 
 **Résultats — arena_slayer, 3 joueurs, full history** :
-- baseline : Madina=1286 (Arg III), JGtm=1444 (Or II), Choco=1451 (Or II) — gap 158
-- piste-C : Madina=1344 (+58), JGtm=1467 (+23), Choco=1393 (-58) — réduit l'écart, pénalise Choco
-- piste-A : Madina=1309 (+23), JGtm=1492 (+48), Choco=1412 (-39) — empire le gap
-- piste-A+C : Madina=1355 (+69), JGtm=1492 (+48), Choco=1373 (-78) — meilleure option formule
-- piste-B : Madina=1339, JGtm=1656 (!), Choco=1691 (!) — inflation massive, éliminé
+- baseline : joueur_075=1286 (Arg III), JGtm=1444 (Or II), joueur_901=1451 (Or II) — gap 158
+- piste-C : joueur_075=1344 (+58), JGtm=1467 (+23), joueur_901=1393 (-58) — réduit l'écart, pénalise joueur_901
+- piste-A : joueur_075=1309 (+23), JGtm=1492 (+48), joueur_901=1412 (-39) — empire le gap
+- piste-A+C : joueur_075=1355 (+69), JGtm=1492 (+48), joueur_901=1373 (-78) — meilleure option formule
+- piste-B : joueur_075=1339, JGtm=1656 (!), joueur_901=1691 (!) — inflation massive, éliminé
 
 **Diagnostic fenêtre temporelle (arena_slayer, baseline)** :
-- 20 matchs depuis 1500 : Madina=1483, JGtm=1474, Choco=1466 → Madina DEVANT
-- 100 matchs depuis 1500 : Madina=1432, JGtm=1449, Choco=1466 → quasi-égaux
-- Tous les matchs depuis 1500 : Madina=1286, JGtm=1444 → gap de 158 pts
+- 20 matchs depuis 1500 : joueur_075=1483, JGtm=1474, joueur_901=1466 → joueur_075 DEVANT
+- 100 matchs depuis 1500 : joueur_075=1432, JGtm=1449, joueur_901=1466 → quasi-égaux
+- Tous les matchs depuis 1500 : joueur_075=1286, JGtm=1444 → gap de 158 pts
 
-**Conclusion** : ce n'est pas la formule — c'est la fenêtre temporelle. Sur 100 matchs récents, Madina est quasi-égal à JGtm. L'écart full-history reflète des performances plus faibles en début de carrière (plusieurs centaines de matchs). Aucune variante de formule ne corrige ça structurellement.
+**Conclusion** : ce n'est pas la formule — c'est la fenêtre temporelle. Sur 100 matchs récents, joueur_075 est quasi-égal à JGtm. L'écart full-history reflète des performances plus faibles en début de carrière (plusieurs centaines de matchs). Aucune variante de formule ne corrige ça structurellement.
 
 **Prochaine étape recommandée** : introduire un `LUSR_recent` fenêtré (50 derniers matchs par chaîne) en lecture seule à côté du LUSR full-history. Ce serait la métrique à afficher prioritairement dans le UI.
 
@@ -21457,7 +21457,7 @@ Stoppe via `schedulerCtx.Done()` (graceful shutdown ok).
 
 **Décision technique** : Remplacement des valeurs hardcodées `-ss 5 -t 3 fps=10` par un calcul proportionnel via `thumbnailWindow()` : skip=20%, extract=20% de la durée réelle du clip (bornes [3s-15s] et [3s-8s]), fps passé à 12. Probe via `probeVideoDuration()` déjà disponible dans le package ; fallback `-ss 5 -t 3` si ffprobe échoue.
 
-**Résultats** : 113 WebP régénérés (JGtm=108, Madina97294=5). Pour un clip de 30s : skip=6s, extract=6s — double de la durée précédente avec un point de départ plus représentatif.
+**Résultats** : 113 WebP régénérés (JGtm=108, joueur_117=5). Pour un clip de 30s : skip=6s, extract=6s — double de la durée précédente avec un point de départ plus représentatif.
 
 **Conclusion** : Sujet clos. Aucune régression DB (92 paths reliés, delta = vidéos sans correspondance match).
 
@@ -21476,13 +21476,13 @@ Stoppe via `schedulerCtx.Done()` (graceful shutdown ok).
 
 **Résultats dry-run** :
 - JGtm (758 matchs) : arena_slayer 1443, arena_objectif 1466, chaos 1460 → Or II-III ✓
-- Chocoboflor (381 matchs) : arena_slayer 1450, arena_objectif 1439 → Or I-II ✓
-- Madina97294 (1045 matchs) : arena_slayer 1286 (Arg V), arena_objectif 1386 (Arg VI), btb **1078 Bronze II** ✗
-- XxDaemonGamerxX (22 matchs) : ~1490-1497, sigma élevé (trop peu de matchs)
+- joueur_165 (381 matchs) : arena_slayer 1450, arena_objectif 1439 → Or I-II ✓
+- joueur_117 (1045 matchs) : arena_slayer 1286 (Arg V), arena_objectif 1386 (Arg VI), btb **1078 Bronze II** ✗
+- joueur_291 (22 matchs) : ~1490-1497, sigma élevé (trop peu de matchs)
 
-**Problème persistant** : Madina reste sous JGtm/Chocoboflor en arena malgré les deux correctifs. BTB 1078 / 526 matchs est statistiquement solide (sigma 115 = confiant). Le système croit sincèrement que Madina est Argent. Suspect principal : `deaths_vs_expected` (poids 0.24) — style carry agressif → morts > DeathsExpected → composante systématiquement < 0.5 qui contre-balance kills_vs_expected.
+**Problème persistant** : joueur_075 reste sous JGtm/joueur_165 en arena malgré les deux correctifs. BTB 1078 / 526 matchs est statistiquement solide (sigma 115 = confiant). Le système croit sincèrement que joueur_075 est Argent. Suspect principal : `deaths_vs_expected` (poids 0.24) — style carry agressif → morts > DeathsExpected → composante systématiquement < 0.5 qui contre-balance kills_vs_expected.
 
-**Prochaine étape** : Inspecter la table `lusr_component_history` (ou dry-run avec breakdown) pour voir les moyennes par composante pour Madina vs JGtm. Confirmer ou infirmer l'hypothèse deaths_vs_expected avant tout nouveau correctif.
+**Prochaine étape** : Inspecter la table `lusr_component_history` (ou dry-run avec breakdown) pour voir les moyennes par composante pour joueur_075 vs JGtm. Confirmer ou infirmer l'hypothèse deaths_vs_expected avant tout nouveau correctif.
 
 ---
 
@@ -21490,7 +21490,7 @@ Stoppe via `schedulerCtx.Done()` (graceful shutdown ok).
 
 **Statut** : Complété (branche `fix/duckdb-art-corruption-rebuild`).
 
-**Contexte** : Madina97294 (niveau Diamant estimé) stagnait en Argent malgré des performances 2× supérieures à ses coéquipiers JGtm et Chocoboflor. Analyse de la formule composite LUSR : le carry adjustment utilisait `teammateAvgKE` comme référence, pénalisant le joueur pour la faiblesse de ses alliés plutôt que pour la faiblesse de ses adversaires.
+**Contexte** : joueur_117 (niveau Diamant estimé) stagnait en Argent malgré des performances 2× supérieures à ses coéquipiers JGtm et joueur_165. Analyse de la formule composite LUSR : le carry adjustment utilisait `teammateAvgKE` comme référence, pénalisant le joueur pour la faiblesse de ses alliés plutôt que pour la faiblesse de ses adversaires.
 
 **Décisions techniques** :
 - **Référence carry adjustment** : `teammateAvgKE` → `enemyAvgKE`. La difficulté réelle d'un match est déterminée par les adversaires, pas les coéquipiers. Un carry qui fait face à une opposition forte ne devrait pas être pénalisé.
@@ -21503,7 +21503,7 @@ Stoppe via `schedulerCtx.Done()` (graceful shutdown ok).
 - Suite `go test ./internal/sync/...` complète PASS. `go vet ./internal/sync/...` propre.
 - 2 échecs pré-existants (`TestContractRoutesDocumented`, `TestLoadCSRSeasonID_*`) inchangés — hors scope.
 
-**Prochaine étape** : Rebuild LUSR Madina97294 avec `force=true` pour recomputer les ratings depuis zéro avec la nouvelle formule. Valider via dry-run que les cibles (fin Platine/début Diamant) sont atteintes.
+**Prochaine étape** : Rebuild LUSR joueur_117 avec `force=true` pour recomputer les ratings depuis zéro avec la nouvelle formule. Valider via dry-run que les cibles (fin Platine/début Diamant) sont atteintes.
 
 ---
 
@@ -21561,22 +21561,22 @@ Stoppe via `schedulerCtx.Done()` (graceful shutdown ok).
 
 **Statut** : En cours (Phase 1.1-1.8 livrés, 1.9 validation runtime à suivre).
 
-**Contexte** : Plan de stabilisation post-merge citations en 5 phases (cf. .ai/AUDIT_*.md + docs/INCIDENT_*.md). Phase 1 cible la corruption d'index ART confirmée sur shared_matches_v2.match_participants (LUSR Madina97294 figé en Argent IV au lieu de fin Platine/Diamant attendu) et étend la couverture à toutes les tables PK VARCHAR.
+**Contexte** : Plan de stabilisation post-merge citations en 5 phases (cf. .ai/AUDIT_*.md + docs/INCIDENT_*.md). Phase 1 cible la corruption d'index ART confirmée sur shared_matches_v2.match_participants (LUSR joueur_117 figé en Argent IV au lieu de fin Platine/Diamant attendu) et étend la couverture à toutes les tables PK VARCHAR.
 
 **Décisions techniques** :
 - Migration `rebuild_match_participants_defeat_art_corruption` (TargetShared, idempotent via sentinel `match_participants_rebuilt_v1`) — pattern identique à `rebuild_career_progression_defeat_art_corruption` (commits 2e0f0247 + 651b9de6). Swap CTAS via PRAGMA table_info pour préserver les colonnes ajoutées via ALTER. Recrée vues (`applyResolutionViews` + `applyMvPlayerMatchesView`) et 6 indexes idx_mp_*.
 - Helper générique `ProbeARTDivergences(db, sampleSize)` dans `internal/platform/duckdb/art_probe.go` : enumère via `information_schema` toutes les tables avec PK VARCHAR, compare `WHERE pk = ?` (filter pushdown) vs `WHERE pk || '' = ?` (table-scan forcé) sur N samples par table. Reporte les divergences.
 - Filet de garde au boot `BootARTGuard(ctx, db, dbLabel, sampleSize)` câblé dans `cmd/server/main.go` après ouverture metaDB + sharedReader. Non-bloquant : log WARN structuré par divergence + métrique expvar `art_corruption_detected_<db>_<table>`. Démarrage serveur continue même si corruption détectée — le rebuild migration s'applique au boot suivant si nécessaire.
-- Dry-run LUSR `RunBackfillLUSRDryRun` + CLI `levelup backfill --lusr --dry-run` : compute force=true sans écriture, diff par playlist_group (OldMU/NewMU + delta). Permet de valider l'impact post-rebuild ART avant write réel. Cibles de validation sauvegardées en mémoire utilisateur (Madina ≈ Platine/Diamant, Choco+JGtm ≈ Or).
+- Dry-run LUSR `RunBackfillLUSRDryRun` + CLI `levelup backfill --lusr --dry-run` : compute force=true sans écriture, diff par playlist_group (OldMU/NewMU + delta). Permet de valider l'impact post-rebuild ART avant write réel. Cibles de validation sauvegardées en mémoire utilisateur (joueur_075 ≈ Platine/Diamant, joueur_901+JGtm ≈ Or).
 - Diagnostic JGtm `cmd/diag_player_schemas/` : confirme que media_files absente est **comportement attendu** post-migration `drop_media_from_player_db` (data déplacée vers shared_social). Le vrai bug = Q28RecentMedia + 3 régressions audit exécutées sur player conn = Phase 3 SharedReader routing.
 
 **Résultats observés** :
-- Bug repro baseline confirmé : Chocoboflor 10/10 ✓, JGtm 10/10 ✓, Madina97294 1/10 ✗ (corruption isolée à Madina, déclenchée par sa liste IN de 1079 match_ids).
+- Bug repro baseline confirmé : joueur_165 10/10 ✓, JGtm 10/10 ✓, joueur_117 1/10 ✗ (corruption isolée à joueur_075, déclenchée par sa liste IN de 1079 match_ids).
 - Tests : migration rebuild 6/6 PASS, probe ART 5/5 PASS (incl. dataset 100 rows), dry-run LUSR 3/3 PASS, anti-régression `TestART_FilterPushdown_NoTruncation` PASS.
 - Backup complet vers `data/backups/phase1-2026-05-22/` (warehouse + 4 players, 341 MB).
 - Fix collateral : 3 tests cassés par signature `EnsureSharedSchema(ctx, db)` de la branche citations — corrigés.
 - Fonction dupliquée `openSharedForBackfill` (collision merge) — renommée en `openSharedForCSRBackfill` côté csr.
-- ⚠️ Chocoboflor `stats.duckdb.wal` orphelin détecté (replay impossible en RO) — à traiter par restart serveur ou suppression manuelle.
+- ⚠️ joueur_165 `stats.duckdb.wal` orphelin détecté (replay impossible en RO) — à traiter par restart serveur ou suppression manuelle.
 
 **Dettes pré-existantes documentées** (à traiter Phase 5) :
 - 5 tests `internal/platform/duckdb` failing (TestMatchViewRepo + 4 TestHomeRepo) — schémas test pas updatés pour `weapon_kills` namespace + `season_id` column. Origine = merge citations sans validation CGO.
@@ -21586,9 +21586,9 @@ Stoppe via `schedulerCtx.Done()` (graceful shutdown ok).
 
 **Phase 1.9 résultats (validation runtime)** :
 - Migration `rebuild_match_participants_defeat_art_corruption` appliquée sur `shared_matches_v2.duckdb` prod via `cmd/apply_shared_migrations` : 24617 rows préservées, 32 colonnes, 220ms.
-- Diag post-rebuild : **Madina 1/10 → 10/10 visibles** ✓ (corruption ART défaite). Chocoboflor et JGtm restent à 10/10.
+- Diag post-rebuild : **joueur_075 1/10 → 10/10 visibles** ✓ (corruption ART défaite). joueur_165 et JGtm restent à 10/10.
 - Aussi appliquées : 2 migrations citations en attente (`shared_backfill_is_ranked_and_season` + `add_shared_match_csrs`).
-- ⚠️ **Découverte majeure** : dry-run LUSR post-rebuild montre Madina **EN BAISSE** (arena_slayer 1412.4 → 1303.8, btb 1289.3 → 1076.7) au lieu de remonter vers ses cibles Platine/Diamant attendues (~1700-1900). Chocoboflor (~1466 arena_slayer) et JGtm (~1515) restent dans leur cible Or — légère baisse de 20-40 pts. Le rebuild ART révèle un 2e bug caché : le `carry-adj` de TrueSkill 2 pénalise les bons joueurs qui carry leur équipe (kills/KE ≈ 1 sur lobby plus faible → score compressé vers 0.5). Exactement ce que `docs/INCIDENT_2026-05-20_match_participants_index.md` §Étape 1 craignait après que le bug ART soit corrigé.
+- ⚠️ **Découverte majeure** : dry-run LUSR post-rebuild montre joueur_075 **EN BAISSE** (arena_slayer 1412.4 → 1303.8, btb 1289.3 → 1076.7) au lieu de remonter vers ses cibles Platine/Diamant attendues (~1700-1900). joueur_165 (~1466 arena_slayer) et JGtm (~1515) restent dans leur cible Or — légère baisse de 20-40 pts. Le rebuild ART révèle un 2e bug caché : le `carry-adj` de TrueSkill 2 pénalise les bons joueurs qui carry leur équipe (kills/KE ≈ 1 sur lobby plus faible → score compressé vers 0.5). Exactement ce que `docs/INCIDENT_2026-05-20_match_participants_index.md` §Étape 1 craignait après que le bug ART soit corrigé.
 - **Décision** : LUSR NON écrit en prod. Le rebuild ART est livré, le dry-run est en place. L'utilisateur doit arbitrer : (A) accepter recompute actuel + investiguer carry-adj séparément, (B) garder LUSR actuel intact et investiguer carry-adj avant write, (C) investiguer carry-adj maintenant avant tout write.
 
 **Prochaine étape** : push branche `fix/duckdb-art-corruption-rebuild`, attendre décision utilisateur sur carry-adj, puis enchaîner Phase 2 (cleanup logs Air).
@@ -21811,10 +21811,10 @@ skill_rating_loaders puis round 3 sur writes.go (+ tests).
 **Investigation logs locaux** (sync.log, scheduler.log, auth.log) :
 
 1. Scheduler **tourne bien aux 15 min** comme configuré (`interval:900s`).
-2. Sync delta s'exécute pour les joueurs in-pool — Chocoboflor + JGtm pré-fix.
+2. Sync delta s'exécute pour les joueurs in-pool — joueur_165 + JGtm pré-fix.
 3. À chaque cycle, l'API Halo retourne **toujours `b8c1b220-5ef4-4dee-9e92-77d3ff55d6d3`** (= dernier match inséré le 6 mai) en tête → delta s'arrête immédiatement → `inserted:0, skipped:1`.
 
-**Diagnostic initial erroné** : OAuth pool cassé (probe JGtm : `discovered_in_pool:false`, Madina97294 : `invalid_grant`). Recommandation re-login → corrigé par le user qui m'a indiqué que les refresh tokens sont bons en prod (mêmes tokens VPS). À retenir : `invalid_grant` local ≠ token mort, peut être un effet de bord dev (rotation race entre serveurs locaux/prod sur la même DB).
+**Diagnostic initial erroné** : OAuth pool cassé (probe JGtm : `discovered_in_pool:false`, joueur_117 : `invalid_grant`). Recommandation re-login → corrigé par le user qui m'a indiqué que les refresh tokens sont bons en prod (mêmes tokens VPS). À retenir : `invalid_grant` local ≠ token mort, peut être un effet de bord dev (rotation race entre serveurs locaux/prod sur la même DB).
 
 **Vraie cause #1 — endpoint URL** (suite challenge user "tu as regardé Grunt ?") :
 
@@ -21842,7 +21842,7 @@ skill_rating_loaders puis round 3 sur writes.go (+ tests).
 - Cycle 23:17:31 (post-fix URL seulement) : `first_match_id: cd89b091 (2026-05-11)` ✓ — URL fix marche.
 - `inserted: 0` malgré le 1er match nouveau → confirmé bug delta loop (fix #2 appliqué après).
 
-**Pourquoi JGtm n'a rien rendu malgré les fix** : le for-loop `RunOnce` itère séquentiellement (4 joueurs). Chocoboflor passe en 5 sec sur le sync delta MAIS son post-sync pipeline (heal events + weapon + perf scores + achievements + friends recompute) tourne 1-5 min derrière. Quand air rebuild pendant ce post-sync, le processus est tué et **JGtm n'est jamais appelé**. Depuis hier 23:17, **JGtm n'a strictement jamais eu un sync sous le nouveau code**. Le watcher RTA pour JGtm s'init bien (XSTS frais à 08:24, 08:25, 08:26, 08:39 aujourd'hui) mais aucun event MatchEnded reçu (probablement parce que les fenêtres serveur up sont trop courtes vs. timing de jeu).
+**Pourquoi JGtm n'a rien rendu malgré les fix** : le for-loop `RunOnce` itère séquentiellement (4 joueurs). joueur_165 passe en 5 sec sur le sync delta MAIS son post-sync pipeline (heal events + weapon + perf scores + achievements + friends recompute) tourne 1-5 min derrière. Quand air rebuild pendant ce post-sync, le processus est tué et **JGtm n'est jamais appelé**. Depuis hier 23:17, **JGtm n'a strictement jamais eu un sync sous le nouveau code**. Le watcher RTA pour JGtm s'init bien (XSTS frais à 08:24, 08:25, 08:26, 08:39 aujourd'hui) mais aucun event MatchEnded reçu (probablement parce que les fenêtres serveur up sont trop courtes vs. timing de jeu).
 
 **Prochaines étapes (quand le tree sera stable)** :
 
@@ -22014,7 +22014,7 @@ Séquencement choisi : implémenter Option 1, valider Option 2 par bench multi-t
 - Adapté 3 call sites prod (`scheduler/auto_sync.go`, `cmd/levelup/cmd_sync.go`) + 11 call sites tests (`pooled_client_test.go`).
 - Test concurrent `TestPooledHaloClient_FallbackLimiter` valide l'invariant sous 10 goroutines parallèles à 20 RPS (~450ms wall-clock = (n-1)/rps).
 
-**Phase 3b — bench multi-token mode `real-multi`** ajouté à `cmd/bench-rps`. Exchange MSAL+Halo des tokens via `auth.NewMSALProvider().TryOAuthRefresh()` + `auth.ExchangeAccessToken()` pour chaque gamertag du flag `-gamertags NAME:XUID,...`. Validation sur 3 tokens réels (JGTM, CHOCOBOFLOR, MADINA97294, 153 appels API) :
+**Phase 3b — bench multi-token mode `real-multi`** ajouté à `cmd/bench-rps`. Exchange MSAL+Halo des tokens via `auth.NewMSALProvider().TryOAuthRefresh()` + `auth.ExchangeAccessToken()` pour chaque gamertag du flag `-gamertags NAME:XUID,...`. Validation sur 3 tokens réels (JGTM, JOUEUR_165, JOUEUR_117, 153 appels API) :
 
 | Tokens | RPS par-token | RPS effectif global | Wall-clock | 429 |
 |--------|---------------|---------------------|------------|-----|
@@ -22048,16 +22048,16 @@ L'API Microsoft tolère 15 RPS depuis 1 IP / 3 identités distinctes sans thrott
 
 **Statut** : Complété (branche `fix/media-paths-portable`).
 
-**Contexte** : malgré l'overlay défensif livré la veille (commit `8ae11a64`), l'utilisateur a constaté visuellement (screenshot home Mission Control) que la bannière reste absente pour les 3 joueurs et que Madina97294 ressort une identité Spartan complètement vide (CSR/LUSR seuls — pas de spartan_id, banner, emblem, ni career_rank). Verdict : *« c'est toujours pas assez solide et toujours pas UX first »*.
+**Contexte** : malgré l'overlay défensif livré la veille (commit `8ae11a64`), l'utilisateur a constaté visuellement (screenshot home Mission Control) que la bannière reste absente pour les 3 joueurs et que joueur_117 ressort une identité Spartan complètement vide (CSR/LUSR seuls — pas de spartan_id, banner, emblem, ni career_rank). Verdict : *« c'est toujours pas assez solide et toujours pas UX first »*.
 
 **Diagnostic** : tracé end-to-end depuis le screenshot.
 
 1. `curl /api/v1/players/JGtm/pages/home` → banner présent ✓
-2. `curl /api/v1/players/Madina97294/pages/home` → `spartan_identity` ne contient que `highest_csr` + `highest_lusr`. Pas de banner. Pas de spartan_id. Pas de career_rank. ✗
-3. Vérification DB read-only via Go cmd dédié (server stoppé) : Madina A 74 rows dans `career_progression` avec banner non-vide (123 caractères) sur les snapshots du 2026-05-20.
-4. **Reproduction du bug** : la même requête `SELECT ... FROM career_progression WHERE xuid = '2533274858283686'` retourne **65 rows** au lieu de **74**. Workaround `WHERE xuid || '' = '...'` (defeat filter pushdown) retourne bien les 74.
+2. `curl /api/v1/players/joueur_117/pages/home` → `spartan_identity` ne contient que `highest_csr` + `highest_lusr`. Pas de banner. Pas de spartan_id. Pas de career_rank. ✗
+3. Vérification DB read-only via Go cmd dédié (server stoppé) : joueur_075 A 74 rows dans `career_progression` avec banner non-vide (123 caractères) sur les snapshots du 2026-05-20.
+4. **Reproduction du bug** : la même requête `SELECT ... FROM career_progression WHERE xuid = '2623439693412443'` retourne **65 rows** au lieu de **74**. Workaround `WHERE xuid || '' = '...'` (defeat filter pushdown) retourne bien les 74.
 5. Toutes les 9 rows manquantes sont les snapshots récents (2026-05-20) qui portent la bannière. Les FILTER `ARG_MAX(banner_image_url) WHERE NOT NULL` pickaient un snapshot 2026-05-08 sans banner.
-6. **Diag étendu** : JGtm 86/106 visibles, Chocoboflor 67/78, Madina 65/74. **Les 3 player_db sont corrompus**.
+6. **Diag étendu** : JGtm 86/106 visibles, joueur_165 67/78, joueur_075 65/74. **Les 3 player_db sont corrompus**.
 
 **Root cause** : corruption d'index ART (Adaptive Radix Tree) sur la primary key implicite de `career_progression`. Même classe de bug que `shared.match_participants` documenté dans [docs/INCIDENT_2026-05-20_match_participants_index.md](docs/INCIDENT_2026-05-20_match_participants_index.md), mais sur les player DBs. Le filter pushdown sur l'index ART retourne un sous-ensemble strict des rows réellement présentes.
 
@@ -22074,8 +22074,8 @@ L'API Microsoft tolère 15 RPS depuis 1 IP / 3 identités distinctes sans thrott
 | Joueur | Avant migration | Après migration | Stress test 5x |
 |--------|-----------------|-----------------|----------------|
 | JGtm | banner OK (le seul) | banner OK | 5/5 stable |
-| Chocoboflor | banner manquant | banner OK | 5/5 stable |
-| Madina97294 | identité vide | identité complète | 5/5 stable |
+| joueur_165 | banner manquant | banner OK | 5/5 stable |
+| joueur_117 | identité vide | identité complète | 5/5 stable |
 
 Log de migration au boot : `migration rebuild_career_progression: table rebuilt (ART corruption defeated) rows_before_scan=74 rows_after_rebuild=74`.
 
@@ -22137,7 +22137,7 @@ Log de migration au boot : `migration rebuild_career_progression: table rebuilt 
 | D | `match_skill_rank.CSR` vide partout (cascade de B) | 3 (backfill CLI, opérationnel) |
 | E | `player_csr_snapshots` vide partout (cascade de A) | 4 (sync auto après config) |
 | F | Seuil placement hardcode 10 (vrai = 5 depuis S3 mars 2023) | 5 (table) + 6 (BE display) + 7 (FE) |
-| G | DB Chocoboflor WAL corrompu | 8 (opérationnel) |
+| G | DB joueur_165 WAL corrompu | 8 (opérationnel) |
 | H | Aucune visibilité coverage CSR | 9 (endpoint diag) |
 
 **8 commits livrés sur la branche** :
@@ -22168,10 +22168,10 @@ Log de migration au boot : `migration rebuild_career_progression: table rebuilt 
 
 1. Restart `make dev` → migrations Phase 1 + Phase 5 actives au boot + warn Phase 10 si config absente.
 2. `cd apps/go-api && go run ./cmd/populate-playlists-catalog/ --from-match-registry --title halo_infinite` (Phase 2).
-3. `levelup backfill --gamertag JGtm --csr --force` (idem Chocoboflor, Madina97294) — Phase 3.
+3. `levelup backfill --gamertag JGtm --csr --force` (idem joueur_165, joueur_117) — Phase 3.
 4. Sync delta → snapshots auto via post-sync (Phase 4).
 5. `curl /api/v1/_diag/csr-coverage/JGtm | jq` → validation needs_backfill=false.
-6. DB Chocoboflor : restart serveur (replay WAL en RW) ou suppression manuelle du .wal orphelin (Phase 8).
+6. DB joueur_165 : restart serveur (replay WAL en RW) ou suppression manuelle du .wal orphelin (Phase 8).
 
 **Hors-scope future PR** :
 
@@ -22184,7 +22184,7 @@ Log de migration au boot : `migration rebuild_career_progression: table rebuilt 
 
 - **Option A : table shared.match_csrs** (commit `feat(sync,shared): capture CSR de TOUS les participants ranked`) — comble le trou "CSR jeté pour les autres joueurs du match". Migration `add_shared_match_csrs` (TargetShared) + table PK=(match_id, xuid). Sync engine étendu : `ExtractAllSharedCSRRows` itère sur skillData[xuid] + `UpsertSharedCSRs` batch UPSERT. 10 tests (unit + integration + E2E sync simulé 4 joueurs). Permet désormais comparaisons CSR cross-joueurs (Squad, "qui était mieux classé", coéquipiers en placement) — fondement data prêt, à consommer par futures features front.
 
-- **Backfill historique `--shared-csr` + dry-run** (commit `feat(sync,cli): backfill historique shared.match_csrs + --dry-run`) — rattrape `shared.match_csrs` pour les matchs ranked déjà en DB. `BackfillSharedCSRsFromAPI` + `SyncEngine.RunBackfillSharedCSR` + CLI `--shared-csr [--force] [--dry-run]`. 7 tests (idempotence, dry-run no-API, force, partial coverage, error tolerance, context cancel). Dry-run validé sur les 3 joueurs réels : 50 matchs ranked détectés (JGtm 8 + Madina 34 + Chocoboflor 8 + DaemonGamer 0).
+- **Backfill historique `--shared-csr` + dry-run** (commit `feat(sync,cli): backfill historique shared.match_csrs + --dry-run`) — rattrape `shared.match_csrs` pour les matchs ranked déjà en DB. `BackfillSharedCSRsFromAPI` + `SyncEngine.RunBackfillSharedCSR` + CLI `--shared-csr [--force] [--dry-run]`. 7 tests (idempotence, dry-run no-API, force, partial coverage, error tolerance, context cancel). Dry-run validé sur les 3 joueurs réels : 50 matchs ranked détectés (JGtm 8 + joueur_075 34 + joueur_165 8 + DaemonGamer 0).
 
 ---
 
@@ -22285,7 +22285,7 @@ Résultat observable : un fetch live qui rend `cachedCustom != nil` mais `Banner
    - `TestOverlayIdentityFromFallback` : matrice 5 cas (nil/non-nil × identity/fallback × champs présents/absents) — cadenasse la sémantique du merge.
    - `TestCareerLive_GetIdentity_LiveBannerNil_DBHasOne` : test end-to-end qui simule le scénario de prod (mock fetcher retourne `custom != nil` mais `BannerImageURL = ""`, DB porte une bannière historique) → vérifie que l'API retourne la bannière DB. C'est LE test du bug « les bannières vont et viennent ».
 
-**Validation live** : 3 joueurs (JGtm, Chocoboflor, Madina97294), 5 appels rapides successifs au home endpoint → bannière stable à chaque appel. Smoke endpoint `/api/v1/healthz/home` retourne `banner=ok` une fois le cache warm.
+**Validation live** : 3 joueurs (JGtm, joueur_165, joueur_117), 5 appels rapides successifs au home endpoint → bannière stable à chaque appel. Smoke endpoint `/api/v1/healthz/home` retourne `banner=ok` une fois le cache warm.
 
 **Note hors scope** : un bug de migration `purge_data_health_warning_notifs` (cf. autres modifs uncommitted) cause une invalidation DuckDB pendant ~5 s au cold-restart, ce qui rend même le DB fallback indisponible pendant cette fenêtre. À investiguer séparément — pas le sujet de ce commit qui se concentre sur le contrat UX banner.
 
@@ -22299,9 +22299,9 @@ Résultat observable : un fetch live qui rend `cachedCustom != nil` mais `Banner
 
 **Statut** : Complété (diag — fix non appliqué, action destructive en attente de validation user).
 
-**Contexte** : MAdina97294 (perçu comme le meilleur joueur du squad de 4) sort Argent IV en arena_slayer LUSR alors que les autres sont Or. User précise que les 4 amis jouent toujours ensemble (jamais contre).
+**Contexte** : joueur_175 (perçu comme le meilleur joueur du squad de 4) sort Argent IV en arena_slayer LUSR alors que les autres sont Or. User précise que les 4 amis jouent toujours ensemble (jamais contre).
 
-**Première hypothèse (rétractée)** : carry-adj `kills_vs_expected` (`apps/go-api/internal/sync/skill_rating.go:160-168`) pénalisant les joueurs identifiés forts. Démentie empiriquement par le replay : retirer le carry-adj donne Madina 1327→1331 (toujours Argent IV).
+**Première hypothèse (rétractée)** : carry-adj `kills_vs_expected` (`apps/go-api/internal/sync/skill_rating.go:160-168`) pénalisant les joueurs identifiés forts. Démentie empiriquement par le replay : retirer le carry-adj donne joueur_075 1327→1331 (toujours Argent IV).
 
 **Bug réel identifié** : **l'index ART (Adaptive Radix Tree) de la PK `(match_id, xuid)` sur `match_participants` dans `shared_matches_v2.duckdb` est corrompu.**
 
@@ -22382,8 +22382,8 @@ Le concat `match_id || ''` défait le filter-pushdown et révèle que les rows e
 | Joueur | Cfg équipée | URL nameplate générée | HTTP |
 |--------|-------------|-----------------------|------|
 | JGtm | -809699482 | `nameplates/104-001-olympus-campa-2ddbe23b_n809699482.png` | 200 (10359 B) |
-| Chocoboflor | 1114182596 | `nameplates/104-001-olympus-firet-9a5826c3_1114182596.png` | 200 (8775 B) |
-| Madina97294 | -1498857697 | `nameplates/104-001-olympus-stuck-3d208338_n1498857697.png` | 200 (17928 B) |
+| joueur_165 | 1114182596 | `nameplates/104-001-olympus-firet-9a5826c3_1114182596.png` | 200 (8775 B) |
+| joueur_117 | -1498857697 | `nameplates/104-001-olympus-stuck-3d208338_n1498857697.png` | 200 (17928 B) |
 
 Smoke endpoint `/api/v1/healthz/home?player=X` retourne `banner=ok` pour les 3.
 
@@ -22437,22 +22437,22 @@ La catégorie `data_health_warning` **reste déclarée** côté front (i18n.ts, 
 
 ---
 
-## [2026-05-20] diag(lusr) — MAdina97294 Argent IV en arena_slayer : pas le carry-adj, c'est `kills_vs_expected`
+## [2026-05-20] diag(lusr) — joueur_175 Argent IV en arena_slayer : pas le carry-adj, c'est `kills_vs_expected`
 
 **Statut** : Complété (diag — pas de fix livré).
 
-**Contexte** : utilisateur signale que MAdina97294 (perçu comme le meilleur joueur du squad de 4) sort Argent IV en arena_slayer LUSR. Première hypothèse théorique : le bloc carry-adj (`apps/go-api/internal/sync/skill_rating.go:160-168`) compresse le score `kills_vs_expected` vers 0.5 d'autant plus fort que le joueur est noté fort par Halo (`KE > teammateAvgKE`). Cette pénalité asymétrique pénalise mécaniquement le joueur identifié comme "porteur".
+**Contexte** : utilisateur signale que joueur_175 (perçu comme le meilleur joueur du squad de 4) sort Argent IV en arena_slayer LUSR. Première hypothèse théorique : le bloc carry-adj (`apps/go-api/internal/sync/skill_rating.go:160-168`) compresse le score `kills_vs_expected` vers 0.5 d'autant plus fort que le joueur est noté fort par Halo (`KE > teammateAvgKE`). Cette pénalité asymétrique pénalise mécaniquement le joueur identifié comme "porteur".
 
-**Validation empirique** : nouveau cmd `cmd/diag_lusr_player/` qui replaye TrueSkill deux fois (avec/sans carry-adj) sur tout l'historique des 3 joueurs (Chocoboflor, Madina97294, JGtm) et tabule les 15 derniers matchs communs.
+**Validation empirique** : nouveau cmd `cmd/diag_lusr_player/` qui replaye TrueSkill deux fois (avec/sans carry-adj) sur tout l'historique des 3 joueurs (joueur_165, joueur_117, JGtm) et tabule les 15 derniers matchs communs.
 
 **Résultats** : l'hypothèse théorique ne tient PAS empiriquement.
-- Madina arena_slayer : 1327.3 (Argent IV) avec carry-adj → 1331.8 (Argent IV) sans. Δ = +4.5, aucun changement de tier.
+- joueur_075 arena_slayer : 1327.3 (Argent IV) avec carry-adj → 1331.8 (Argent IV) sans. Δ = +4.5, aucun changement de tier.
 - JGtm arena_slayer : 1538.3 (Or V) → 1485.6 (Or III). Δ = −52.7, le carry-adj **aide** JGtm (et non l'inverse).
-- Chocoboflor arena_slayer : 1476.0 (Or III) → 1481.3 (Or III). Δ = +5.3, neutre.
+- joueur_165 arena_slayer : 1476.0 (Or III) → 1481.3 (Or III). Δ = +5.3, neutre.
 
-**Pourquoi le carry-adj n'agit jamais contre Madina** : dans les 15 matchs communs, Madina a systématiquement `teammateAvgKE = 0` (les autres joueurs de son team ont `kills_expected = 0` — bots ou MMR absent). Les 3 amis ne sont pas dans la même team dans ces matchs — Madina est en équipe adverse de Chocoboflor+JGtm. La condition `teammateAvgKE > 0` du carry-adj n'est jamais remplie pour lui.
+**Pourquoi le carry-adj n'agit jamais contre joueur_075** : dans les 15 matchs communs, joueur_075 a systématiquement `teammateAvgKE = 0` (les autres joueurs de son team ont `kills_expected = 0` — bots ou MMR absent). Les 3 amis ne sont pas dans la même team dans ces matchs — joueur_075 est en équipe adverse de joueur_165+JGtm. La condition `teammateAvgKE > 0` du carry-adj n'est jamais remplie pour lui.
 
-**Cause racine réelle** : la composante `kills_vs_expected` (poids 0.27 du composite, + `deaths_vs_expected` 0.24 → 51 % du composite) est basée sur l'attendu **personnel** fourni par l'API Halo (`StatPerformances.Kills.Expected`), qui est lui-même indexé sur le MMR. Madina, avec un MMR Halo élevé, reçoit des KE de 13-21 dans les matchs Slayer ; même quand il fait 17-19 kills (top du lobby), son `kills/KE ≈ 1.0` → `sigmoidRatio → 0.5` → composite ≈ 0.5 → mu stagne. JGtm avec KE 7-12 sur les mêmes matchs sur-performe plus facilement son attendu → mu monte. Le LUSR mesure la consistance vs son propre MMR, pas la dominance en lobby.
+**Cause racine réelle** : la composante `kills_vs_expected` (poids 0.27 du composite, + `deaths_vs_expected` 0.24 → 51 % du composite) est basée sur l'attendu **personnel** fourni par l'API Halo (`StatPerformances.Kills.Expected`), qui est lui-même indexé sur le MMR. joueur_075, avec un MMR Halo élevé, reçoit des KE de 13-21 dans les matchs Slayer ; même quand il fait 17-19 kills (top du lobby), son `kills/KE ≈ 1.0` → `sigmoidRatio → 0.5` → composite ≈ 0.5 → mu stagne. JGtm avec KE 7-12 sur les mêmes matchs sur-performe plus facilement son attendu → mu monte. Le LUSR mesure la consistance vs son propre MMR, pas la dominance en lobby.
 
 **Conséquence** : un joueur sur-coté par Halo qui joue avec des amis moins bons (situation typique d'un squad fixe) est mécaniquement plafonné, voire descend si quelques matchs sous-performent son attendu très élevé.
 
@@ -22526,7 +22526,7 @@ La catégorie `data_health_warning` **reste déclarée** côté front (i18n.ts, 
 5. **Test mis à jour** `TestGetCareerRank_BannerEmptyWhenNoNameplate` → renommé `TestGetCareerRank_BannerDerivedFromEmblemNameplate` : assert URL nameplate dérivée `/hi/Waypoint/file/images/nameplates/<stem>_<cfg>.png` au lieu de "" (le scenario du test a cfg=372285867 > 0 → URL directe).
 
 **Résultats vérifiés** :
-- Backfill `--csr --force --all` : Chocoboflor **8 inserted** (au lieu de 0), JGtm **8 inserted** (au lieu de 1), Madina97294 SKIP (token rotaté, AADSTS70000 invalid_grant), XxDaemonGamerxX SKIP (no token).
+- Backfill `--csr --force --all` : joueur_165 **8 inserted** (au lieu de 0), JGtm **8 inserted** (au lieu de 1), joueur_117 SKIP (token rotaté, AADSTS70000 invalid_grant), joueur_291 SKIP (no token).
 - `/api/v1/healthz/home?player=JGtm` : **{"ok":true,"empty_sections":[]}** — 5/5 sections OK.
 - `/api/v1/players/JGtm/pages/home` : `banner_image_url` = nameplate dérivée 651339664, `highest_csr` = rating 667 + unranked_8.png + placement_remaining=2, `highest_lusr` = "Or VI" rating 1590.1 matured, `favorite_weapon_name` = "MK50 Sidekick" 2233 kills.
 - `go test -tags cgo ./...` ✅, `go vet ./...` ✅.
@@ -22617,7 +22617,7 @@ Toutes les queries home (`shared.match_registry`, `shared.match_participants`, `
 - `match_registry.is_ranked = FALSE` pour 1569/1569 lignes (régression sync connue depuis 2026-05-10, déjà documentée).
 - `playlist_id` rempli à 100% → playlists vides côté front venait d'ailleurs (à creuser ultérieurement).
 - `match_skill_rank` : 2206 rows mais **tous LUSR**, jamais CSR — l'API Halo (GetMatchSkill.RankRecap) n'a jamais été fetchée pour ce joueur. Sans tokens OAuth `SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>` dans l'env, le CSR backfill est no-op silencieux.
-- Tokens trouvés dans `.env.local` pour 3 joueurs sur 4 (JGtm, Chocoboflor, Madina97294 — XxDaemonGamerxX manquant).
+- Tokens trouvés dans `.env.local` pour 3 joueurs sur 4 (JGtm, joueur_165, joueur_117 — joueur_291 manquant).
 - LUSR : 2188 candidats, calcul local pur ~10s.
 
 **Décisions techniques** :
@@ -22632,7 +22632,7 @@ Toutes les queries home (`shared.match_registry`, `shared.match_participants`, `
 9. **CSR backfill** : `loadRankedMatchesForCSRBackfill` étendu avec heuristique fallback (`playlist_name LIKE 'ranked' OR pair_name LIKE 'ranked'`) pour contourner la régression `is_ranked=FALSE`. Sans cela, backfill `--csr` aurait été no-op pour tous les joueurs touchés. Cf. nouveau test `csr_backfill_test.go` non committé (révoqué par user en cours de session).
 10. **Smoke endpoint `/api/v1/healthz/home?player=<slug>`** : nouveau handler qui appelle `GetHomePage` et inspecte les 5 sections critiques (banner, highest_csr, highest_lusr, recent_playlists, favorite_weapon). Retourne 200 + checks si OK, 503 + `empty_sections: [...]` si régression. Pensé pour CI post-backfill + alerte dev. Documenté dans openapi.yaml.
 
-**Backfill exécuté** : `levelup backfill --lusr --force --all` → 2206 rows recalculées (XxDaemonGamerxX 22 + Chocoboflor 381 + JGtm 758 + Madina97294 1045), 0 erreur, ~16s total. CSR backfill non exécuté (out of scope, dépend de WIP user sur engine.go).
+**Backfill exécuté** : `levelup backfill --lusr --force --all` → 2206 rows recalculées (joueur_291 22 + joueur_165 381 + JGtm 758 + joueur_117 1045), 0 erreur, ~16s total. CSR backfill non exécuté (out of scope, dépend de WIP user sur engine.go).
 
 **Filet anti-régression posé (multi-niveaux)** :
 - **Go unit** : `TestHomeRepo_LoadHomeSkillPeak_CSR_InPlacement`, `TestHomeRepo_LoadHomeSkillPeak_LUSR_InPlacement`, `TestHomeRepo_LoadHomeSkillPeak_Matured`, `TestHomeRepo_LoadFavoriteWeapon_TableMissing` dans `player_repos_test.go`. Helper `seedMaturedSkillRankGroups` extrait du seed pour ne pas casser les tests LUSR history existants.
@@ -23273,7 +23273,7 @@ Les tests media-filters passaient toujours parce que le mock `newTestPlayerDBFor
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 20 — finalisation logging, console lisible sans surcharger le terminal).
 
-**Contexte** : la chaîne `slog.NewTextHandler` natif produit `time=2026-05-19T14:30:08.123+02:00 level=INFO msg="sync.postSync: pipeline démarré" event_id=sync.RunDelta:abc123 source.function=… source.file=… source.line=… gamertag=Madina97294 matches_inserted=3` — illisible en flux temps réel. L'utilisateur a explicitement demandé : "j'aime bien ce que tu as fait ici `14:30:08 [INFO] sync.postSync: pipeline démarré matches_inserted=3`, c'est court et clair".
+**Contexte** : la chaîne `slog.NewTextHandler` natif produit `time=2026-05-19T14:30:08.123+02:00 level=INFO msg="sync.postSync: pipeline démarré" event_id=sync.RunDelta:abc123 source.function=… source.file=… source.line=… gamertag=joueur_117 matches_inserted=3` — illisible en flux temps réel. L'utilisateur a explicitement demandé : "j'aime bien ce que tu as fait ici `14:30:08 [INFO] sync.postSync: pipeline démarré matches_inserted=3`, c'est court et clair".
 
 **Livré** :
 
@@ -23302,7 +23302,7 @@ Les tests media-filters passaient toujours parce que le mock `newTestPlayerDBFor
 **Validation visuelle (preview)** :
 
 ```
-10:04:11 [INFO]  sync.postSync: pipeline démarré gamertag=Madina97294 matches_inserted=3
+10:04:11 [INFO]  sync.postSync: pipeline démarré gamertag=joueur_117 matches_inserted=3
 10:04:11 [WARN]  halo_api: GET HTTP error status=429 url=https://halo.api/spnkr retry_after=30s
 10:04:11 [ERROR] provider.swap: reopen RO failed attempts=3 path=C:\Users\… err="file locked by other process"
 10:04:11 [DEBUG] scheduler.tick: tour terminé players_evaluated=5 skipped=2 duration_ms=125
@@ -23318,7 +23318,7 @@ Les tests media-filters passaient toujours parce que le mock `newTestPlayerDBFor
 
 **Tests** : `internal/observability/...` tous verts (33 tests). Build module entier (`go build ./...`) OK. Build serveur runtime KO sur ce poste pour cause MSYS2 link CGO (pré-existant, indépendant du commit).
 
-**Conclusion / prochaine étape** : commit 20 finalise la suite logging de la branche. Le terminal est désormais lisible pendant les runs sync/watcher/auto_sync. Si user veut ajuster (color on, max_line plus long, format text pour debug), les env vars couvrent tout. Prochaine étape côté user : runtime test du sync sur Madina97294 pour valider que les nouvelles instrumentations 16-19 produisent bien les logs cross-module attendus dans `logs/*.log`.
+**Conclusion / prochaine étape** : commit 20 finalise la suite logging de la branche. Le terminal est désormais lisible pendant les runs sync/watcher/auto_sync. Si user veut ajuster (color on, max_line plus long, format text pour debug), les env vars couvrent tout. Prochaine étape côté user : runtime test du sync sur joueur_117 pour valider que les nouvelles instrumentations 16-19 produisent bien les logs cross-module attendus dans `logs/*.log`.
 
 ---
 
@@ -23551,16 +23551,16 @@ logs orphelins sans corrélation cross-module.
 
 **Hiérarchie typique d'un event_id** :
 
-Quand auto_sync tick → syncPlayer pour Madina97294 → engine.RunDelta →
+Quand auto_sync tick → syncPlayer pour joueur_117 → engine.RunDelta →
 Provider.AcquireWriter → pool callback, on aura **6 event_ids différents
 dans les logs**, chacun identifiant son niveau :
 
 ```
 event_id="scheduler.tick:a1b2..."          (logs/scheduler.log)
-event_id="scheduler.sync:Madina97294:..."  (logs/scheduler.log)
-event_id="auth.resolve:Madina97294:..."    (logs/auth.log)
+event_id="scheduler.sync:joueur_117:..."  (logs/scheduler.log)
+event_id="auth.resolve:joueur_117:..."    (logs/auth.log)
 event_id="sync.RunDelta:..."               (logs/sync.log)
-event_id="auth.refresh:Madina97294:..."    (logs/auth.log, si 401 mid-sync)
+event_id="auth.refresh:joueur_117:..."    (logs/auth.log, si 401 mid-sync)
 ```
 
 Chaque sous-event est créé via `logging.WithEvent(ctx, ...)` qui PRÉSERVE
@@ -23803,7 +23803,7 @@ OpenSpartan).
 - ⚠️ Pas de vrai sync end-to-end testé contre la vraie API SPNKr (uniquement
   mocks)
 - ⚠️ Pas de stress test prod avec dizaines/centaines de users concurrents
-- ⚠️ Pas de validation manuelle Madina97294 dans le scenario originel
+- ⚠️ Pas de validation manuelle joueur_117 dans le scenario originel
 
 **Branche désormais à 50 commits ahead d'origin. Livrable senior-quality
 sur tout ce que les tests automatisés et le dry run peuvent prouver.**
@@ -24023,7 +24023,7 @@ docs cohérentes.
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 11 — fix des 3 blockers identifiés par la revue de code).
 
 **Contexte** : la revue de code senior post-10c a identifié 3 chemins prod
-qui court-circuitaient le SharedDBProvider — donc le bug initial Madina97294
+qui court-circuitaient le SharedDBProvider — donc le bug initial joueur_117
 restait latent sur ces paths, alors que les E2E tests passaient en faux positif
 (les tests construisaient l'env sans ces chemins).
 
@@ -24074,7 +24074,7 @@ restait latent sur ces paths, alors que les E2E tests passaient en faux positif
 **Scénario** : reproduction du flow auto_sync prod — plusieurs users dont les
 RunDelta sont lancés en parallèle par le scheduler, tous partagent le même
 Provider shared (un seul fichier `shared_matches_v2.duckdb`). C'est le pattern
-multi-tenant qui peut amplifier le bug initial Madina97294 si la coordination
+multi-tenant qui peut amplifier le bug initial joueur_117 si la coordination
 n'est pas robuste.
 
 **Livré** :
@@ -24146,7 +24146,7 @@ dblease `shared_matches` à la ligne 651, puis appelait `acquireSharedWriter` �
 `Provider.AcquireWriter` qui **reprend le même dblease** (provider.go:231). Le
 `sync.Mutex` Go étant non-réentrant, la même goroutine attendait son propre lock
 jusqu'à expiration du contexte. Tout `RunDelta` en mode B-swap (commit 8i, le
-fix officiel du bug Madina97294) deadlockait en silence.
+fix officiel du bug joueur_117) deadlockait en silence.
 
 **Pourquoi non détecté avant** : aucun test existant n'exerçait
 `engine.RunDelta(ctx)` + `WithSharedProvider(provider)` simultanément.
@@ -24178,7 +24178,7 @@ duckdb (39s) + sharedprovider (8s) + scheduler (5s) vertes. Zéro régression.
 
 **Impact prod** : avec ce fix, `auto_sync.RunDelta` peut effectivement s'exécuter
 en mode B-swap sans deadlock. Sans ce fix, le sprint B1 traitait à moitié le bug
-Madina97294 — le path code "B-swap activé" était bloqué silencieusement.
+joueur_117 — le path code "B-swap activé" était bloqué silencieusement.
 
 ---
 
@@ -24374,7 +24374,7 @@ phase achève la Phase 1 (tests pour 0% coverage migrated methods) initiée en 9
 
 | Phase | Statut |
 |---|---|
-| Bug initial fixé (auto_sync sur Madina97294) | ✅ |
+| Bug initial fixé (auto_sync sur joueur_117) | ✅ |
 | SharedDBProvider + ADR 0016 | ✅ |
 | 14 repos shared-only migrés | ✅ |
 | 5 repos cross-DB split+merge | ✅ |
@@ -24603,7 +24603,7 @@ Ces méthodes ont été MIGRÉES (le code path est valide) mais aucun test ne le
 
 **Récapitulatif sprint B1 (commits 8c → 9b)** :
 
-- **Bug initial fixé** : `auto_sync RunDelta` ne plante plus avec "different configuration" sur Madina97294.
+- **Bug initial fixé** : `auto_sync RunDelta` ne plante plus avec "different configuration" sur joueur_117.
 - **Architecture** : SharedDBProvider documenté ADR 0016, métriques expvar opérationnelles, kill-switch flag.
 - **Migration** : 14 repos migrés vers SharedReader, dont 5 cross-DB en split+merge.
 - **Validation** : T5 burst dual (legacy=96% Catalog Errors documentés, migrated=0 erreur sur 5 runs), T9 chain, sync engine burst suite.
@@ -24624,7 +24624,7 @@ Ces méthodes ont été MIGRÉES (le code path est valide) mais aucun test ne le
 - **Avant** : `== "1"` (default OFF, legacy mode).
 - **Après** : `!= "0"` (default ON, Provider mode). "0" devient kill-switch d'urgence.
 
-**Bénéfice** : la prod utilise désormais le SharedDBProvider par défaut. Le bug initial (`auto_sync RunDelta` qui plantait avec "different configuration" sur Madina97294) est définitivement éliminé. Les fenêtres de swap RW sont gérées proprement.
+**Bénéfice** : la prod utilise désormais le SharedDBProvider par défaut. Le bug initial (`auto_sync RunDelta` qui plantait avec "different configuration" sur joueur_117) est définitivement éliminé. Les fenêtres de swap RW sont gérées proprement.
 
 **Garde-fou** : flag `LEVELUP_USE_SHARED_PROVIDER=0` reste documenté comme kill-switch pour repli legacy en cas de régression critique constatée en prod. Monitoring suggéré : `shared_provider_swap_failures_total` (expvar) avant rollback.
 
@@ -24676,7 +24676,7 @@ Assertions :
 **Livré** :
 
 1. **`docs/adr/0016-shared-db-provider-b-swap.md`** : ADR complet documentant l'architecture SharedDBProvider :
-   - Context : bug "different configuration" auto_sync RunDelta sur Madina97294 (log 2026-05).
+   - Context : bug "different configuration" auto_sync RunDelta sur joueur_117 (log 2026-05).
    - Decision : Provider + state machine RO/Draining/RW/Reopening/Error + Subscribe API + métriques expvar.
    - DuckDB-Go quirks documentés (DETACH vs Reopen via POC S5).
    - Migration scope : 14 repos migrés (commits 8c-8k.13), 5 squad_repo cross-DB queries reportés.
@@ -25164,7 +25164,7 @@ Commit 8j livré tel quel : le bug initial est fixé pour sync, la limitation HT
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8i.1 du sprint B3).
 
-**Le bug initial du sprint est techniquement fixé** pour l'`auto_sync` qui plantait sur `Madina97294` avec "different configuration".
+**Le bug initial du sprint est techniquement fixé** pour l'`auto_sync` qui plantait sur `joueur_117` avec "different configuration".
 
 **Modifications** :
 
@@ -28399,7 +28399,7 @@ Total final v2.2 : 6 axes × (1 ingame + 1-3 tactical + 1-5 strategic + 0-2 sett
 Total v2.3 : **~45 tips** FR/EN, ~400 lignes. Sources de référence documentées en en-tête du fichier (transparence).
 
 **Itération v2.4 — pépites Onyx / Pro depuis Reddit (sources locales)** :
-- L'utilisateur a sauvegardé les 7 threads Reddit en local (`C:\Users\GuillaumeSITBON\Downloads\Perso\*.html`) après avoir constaté que Reddit était bloqué par WebFetch. Un sous-agent `general-purpose` a parsé les HTML via PowerShell (regex sur `post-rtjson-content` + strip tags + decode entités) et synthétisé ~78 000 caractères de texte utile.
+- L'utilisateur a sauvegardé les 7 threads Reddit en local (`<poste>\Downloads\Perso\*.html`) après avoir constaté que Reddit était bloqué par WebFetch. Un sous-agent `general-purpose` a parsé les HTML via PowerShell (regex sur `post-rtjson-content` + strip tags + decode entités) et synthétisé ~78 000 caractères de texte utile.
 - Tips issus du consensus pluri-threads + pépites Onyx (Marathon RB CSR 1658, THEFuentes, autres D5-D6) :
   - **Combat ingame.4** : Halo Infinite est un jeu de visée au stick gauche (guide réticule via mouvement Spartan, stick droit pour micro-ajustements). Inverse de l'instinct CoD.
   - **Combat tactical.3** : Ne saute pas en duel — consensus le plus fort (5 mentions). Sauter coupe l'aim assist, trajectoire prévisible.
@@ -28521,7 +28521,7 @@ Total final v2.4 : **~60 tips** FR/EN, ~500 lignes.
 
 **Statut** : Complété (révision de [.ai/SPRINT_OPENSPARTAN_IMPORT.md](.ai/SPRINT_OPENSPARTAN_IMPORT.md), pas de code).
 
-**Contexte** : L'utilisateur a demandé une revue du plan d'import OpenSpartan, en indiquant disposer de DBs réelles dans `C:\Users\GuillaumeSITBON\Downloads\Perso\OpenSpartan`. Inspection du fichier `{xuid}.db` (27 MB, 451 matchs) via `sqlite3` CLI a révélé 3 incohérences majeures entre les hypothèses du plan v1 et le format réel :
+**Contexte** : L'utilisateur a demandé une revue du plan d'import OpenSpartan, en indiquant disposer de DBs réelles dans `<poste>\Downloads\Perso\OpenSpartan`. Inspection du fichier `{xuid}.db` (27 MB, 451 matchs) via `sqlite3` CLI a révélé 3 incohérences majeures entre les hypothèses du plan v1 et le format réel :
 
 1. **Extension `.osdb` inventée** — le fichier est un SQLite standard `.db`, nommé par XUID.
 2. **`PRAGMA user_version` = 0** — la stratégie "détecter la version via user_version" du plan ne marche pas. Détection à faire par signature de tables.
@@ -28754,7 +28754,7 @@ Quand Guillaume relance le sprint title-agnostic, démarrer par Phase 0 (4 ADRs 
 
 **Statut** : Complété.
 
-**Contexte** : User a remarqué un dossier `data/titles/halo_infinite/players/JGtm/media/` qui n'aurait pas dû exister (sa config `media_captures_base_dir = C:\Users\Guillaume\Videos\Captures` externalise les médias hors du repo). Audit révèle **3 chemins de code divergents** pour résoudre le dossier captures d'un joueur :
+**Contexte** : User a remarqué un dossier `data/titles/halo_infinite/players/JGtm/media/` qui n'aurait pas dû exister (sa config `media_captures_base_dir = <poste>\Videos\Captures` externalise les médias hors du repo). Audit révèle **3 chemins de code divergents** pour résoudre le dossier captures d'un joueur :
 
 | Call-site | `media_captures_base_dir` rempli | Fallback (settings vide) |
 |---|---|---|
@@ -29522,7 +29522,7 @@ Ajout d'une **garde-fou stricte au début de `ExtractCSRRowIfRanked`** : si `Pos
 - Suite `internal/sync` complète (skip du `TestPooledHaloClient*` flaky pré-existant qui dépend de l'API live) : verte en 133s.
 - Build `levelup.exe` OK avec la sous-commande `restore-csr` opérationnelle.
 - Suite frontend complète (vitest) : **147 fichiers, 1372 tests verts, 0 fail, 14 skip** en 51s — pas de régression sur les consumers de `rating_type` (Career charts, MatchHeader, HomeRecentPlaylistsCard, MatchScoreboard, etc.).
-- **Audit backups** : aucun CSR par-match restaurable trouvé. Ni `shared_matches_v2.duckdb` (backup partagé, contient seulement registry/participants/medals/weapons — pas de `match_skill_rank`) ni l'ancienne player DB Python `LevelUp/data/.../Chocoboflor/stats.duckdb` (table `match_skill_rank` présente mais 0 ligne). Seule trace CSR : `skill_history` (1 snapshot global de saison, pas par-match). La player DB Go actuelle a 381 lignes `match_skill_rank` toutes en LUSR — aucun CSR encore présent.
+- **Audit backups** : aucun CSR par-match restaurable trouvé. Ni `shared_matches_v2.duckdb` (backup partagé, contient seulement registry/participants/medals/weapons — pas de `match_skill_rank`) ni l'ancienne player DB Python `LevelUp/data/.../joueur_165/stats.duckdb` (table `match_skill_rank` présente mais 0 ligne). Seule trace CSR : `skill_history` (1 snapshot global de saison, pas par-match). La player DB Go actuelle a 381 lignes `match_skill_rank` toutes en LUSR — aucun CSR encore présent.
 
 **Conclusion / prochaine étape** :
 - Le fix est **préventif** : il n'y avait apparemment pas de CSR par-match à protéger dans les backups disponibles (le legacy Python ne semble pas avoir persisté les CSR par-match non plus). Mais la garde reste essentielle dès qu'un futur sync persistera des CSR par-match (par exemple via l'endpoint Halo `GetMatchSkill` qui retourne CSR pre/post par match).
@@ -29943,7 +29943,7 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 
 - **Statut** : Code complet (validé local : go build + go test + tsc + eslint), pushé sur fix/enrichment-convergence. NON déployé (un seul deploy propre à la fin, à la demande user).
 - **Procédure** (cadrée avec user) : code validé EN LOCAL + pushé + déployé proprement (merge main → pipeline). Reseed des BDD démo = manip serveur acceptée. Plus de `docker compose build` manuel sur VPS.
-- **Corpus** : seed-demo passe de 50 matchs récents → **3 dernières sessions en escouade** (~29 matchs) du joueur source (JGtm + Chocoboflor + Madina = vrai stack à 3). `selectSquadSessionCorpus` (sessions.start_time + is_with_friends).
+- **Corpus** : seed-demo passe de 50 matchs récents → **3 dernières sessions en escouade** (~29 matchs) du joueur source (JGtm + joueur_165 + joueur_075 = vrai stack à 3). `selectSquadSessionCorpus` (sessions.start_time + is_with_friends).
 - **Anonymisation universelle** (`seed_demo_corpus.go`) : remappe TOUS les xuid+gamertag du shared via un roster (`_xuid_map` + UPDATE FROM) — source→DemoPlayer/0000, top-2 coéquipiers→DemoPlayer2/3 (0001/0002), autres→Player N. Couvre match_participants, xuid_aliases, medals_earned, weapon_kills, highlight_events, killer_victim_pairs (killer+victim). Corrige : médailles/arme/frags vides (tables gardaient le xuid source réel), Face-à-face "JGtm" (alias 0000→DemoPlayer), fuite des vrais gamertags coéquipiers.
 - **Seed multi-joueur** : 3 player DB (DEMO/DEMO2/DEMO3) filtrées sur le corpus + anonymisées vers leur xuid démo + db_profiles 3 profils. Coéquipiers résolus par xuid (resolvePlayerDBByXUID).
 - **Câblage squad** (perf/LUSR coéquipiers) : la page lit la perf depuis la player DB de CHAQUE joueur via `squadLoader.LoadFor → resolveByGT → LoadPlayers → ResolvePlayer`. En démo, LoadPlayers renvoyait 1 seul DemoPlayer hardcodé + resolveDemoPlayer figé sur DEMO → tous les coéquipiers tombaient sur la DB du main. Fix : `DemoRoster` constant (config) + LoadPlayers (démo) renvoie les 3 + resolveDemoPlayer(slug) ouvre DEMO/DEMO2/DEMO3.
@@ -30030,7 +30030,7 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 ### [2026-06-10] Graphes Escouade vides (radar/perf/médailles/engagement) — diagnostic + fix 2 régressions backend
 
 - **Statut** : Complété (validé : `go test ./internal/service/` OK + vet OK + build OK ; vitest squad+engagement 241 verts ; tsc 0 erreur ; **vérification empirique API avant/après** sur le serveur dev). Branche `fix/chart-empty-states` (suite du commit états vides). NON commit (attente autorisation).
-- **Symptôme** (user) : page Escouade, session 09/06 21:14–22:23 (7 matchs, squad JGtm+Chocoboflor+Madina97294) — Radar synergie, les ~12 charts performance (Frags/Morts, Assistances, Précision, FDA, Durée de vie, Performance, Rang/MMR, Folie, Tirs tête/Parfaits, Rendement & Résistance), Engagement et Médailles tous vides ; per-minute/intensité/armes/premiers événements OK. Rendus visibles par la refonte états vides (avant : disparition silencieuse).
+- **Symptôme** (user) : page Escouade, session 09/06 21:14–22:23 (7 matchs, squad JGtm+joueur_165+joueur_117) — Radar synergie, les ~12 charts performance (Frags/Morts, Assistances, Précision, FDA, Durée de vie, Performance, Rang/MMR, Folie, Tirs tête/Parfaits, Rendement & Résistance), Engagement et Médailles tous vides ; per-minute/intensité/armes/premiers événements OK. Rendus visibles par la refonte états vides (avant : disparition silencieuse).
 - **Fausse piste écartée (sync)** : le delta multi-joueurs skippe bien les matchs déjà insérés en shared par un autre joueur du squad (course de qq secondes, `match connu rencontré`), MAIS la convergence post-sync fonctionne : logs du 09/06 21:25-21:26 montrent `batchComputePerformanceScores updated=1` pour les 3 joueurs après chaque match, y compris les skippés. Aucune perte de données. (Le commentaire de `loadKnownMatchIDs` documente ce design.)
 - **Régression n°1 (cause des 3 champs nil)** : commit `851e10ef5` (09/06, « composition exacte ») — `intersectSquadRowsByMatchID` déduplique `allSquadRows` à 1 row/match, mais 3 builders gardaient l'heuristique d'occurrences `n >= len(selectedGamertags)` (ère « union avec doublons ») → avec ≥2 coéquipiers sélectionnés, `1 >= 2` toujours faux → `synergy_radar`/`performance_series`/`medal_digest` = **nil silencieux (zéro log)**. Avec 1 seul coéquipier ça marchait (`1>=1`) → jamais vu en test. Reproduit via POST `/pages/teammates` (354 matchs, tous scopes) : 3 champs null.
 - **Fix n°1** : `teammates_squad_charts_synergy.go` + `_weapons_perf.go` (buildSquadPerformanceSeries) + `_medal_digest.go` (collectSharedMatchIDsForDigest, param `minTeammates` supprimé) — remplacement du comptage d'occurrences par une dédup `match_id` simple (l'input EST déjà l'intersection). 3 tests de régression ajoutés (input dédupliqué + 2 coéquipiers → séries non vides).
@@ -30087,7 +30087,7 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 
 - **Backfills de données exécutés** (serveur arrêté = verrous libres) :
   1. `backfill_registry_names` : 24 noms réparés (10/11 pairs, 8/9 maps, 5/6 variants, 1/6 playlists) → invariant `pair_name_uuid` 12 → **1** (le restant n'a pas de traduction au catalogue metadata — attendu).
-  2. `lusr_v2_canonical_backfill --commit` : **2436 matchs écrits** (JGtm 879, Madina 1059, Choco 467, XxDaemon 31), 0 échec d'écriture. `skill_rank_missing` en baisse ; le reliquat (5-11/joueur) = matchs non-2-équipes/déséquilibrés légitimement skippés par EP.
+  2. `lusr_v2_canonical_backfill --commit` : **2436 matchs écrits** (JGtm 879, joueur_075 1059, joueur_901 467, joueur_639 31), 0 échec d'écriture. `skill_rank_missing` en baisse ; le reliquat (5-11/joueur) = matchs non-2-équipes/déséquilibrés légitimement skippés par EP.
 - **Gate concurrent** : `TestGate_ConcurrentSquadSync_Converges_integration` — 3 RunDelta SIMULTANÉS sur le même match squad (course réelle des watchers) + passe 2 d'idempotence (0 réinsertion) + registry unique + zéro FAIL par joueur. VERT.
 - **Affinages invariants** : `skill_rank_missing` exclut désormais le PvE (`mode_category='firefight'`) ; `xuid_alias_missing` lit la source canonique `global.xuid_aliases` via la connexion player (ATTACH AS global — l'attache `shared` ayant été retirée de cette conn par ADR 0016, le diff se fait en Go entre les 2 connexions), avec fallback legacy étiqueté dans la description.
 - **Expvar** : `observability.SetInt` ajouté (sémantique gauge) ; `RunDataInvariants` publie `invariants_runs_total` / `invariants_fail_last` / `invariants_warn_last` + WARN log si FAIL détectés.
@@ -30655,7 +30655,7 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 - **Écriture shared ~114 ms/match** (~180 lignes insérées ligne-par-ligne, ~0,6 ms/ligne) ; player ~4 ms ; swaps ~24-105 ms/match (logs/provider.log, `drain_ms`≈0 local).
 - **Le coût dominant est l'écriture ligne-par-ligne, PAS le swap.** Coût ~linéaire au nombre de lignes → overhead par-INSERT, pas un coût fixe.
 
-**Conclusion / prochaine étape** : nouvelle priorité = (1) écriture groupée / Appender DuckDB (plus gros coût, aide le cas 1-match dominant, auto-contenu) ; (2) coalescing des swaps (rafales, code délicat) ; (3) guard Submit + `json.Marshal`. Plan complet : `C:\Users\Guillaume\.claude\plans\un-coll-gue-vient-de-misty-rossum.md`. Garde-fous non-régression (test différentiel, garde ART, injection de fautes) à appliquer avant tout changement. Test de mesure conservé : [persist_writecost_bench_test.go](../apps/go-api/internal/persist/persist_writecost_bench_test.go) (tag `integration`, supprimable).
+**Conclusion / prochaine étape** : nouvelle priorité = (1) écriture groupée / Appender DuckDB (plus gros coût, aide le cas 1-match dominant, auto-contenu) ; (2) coalescing des swaps (rafales, code délicat) ; (3) guard Submit + `json.Marshal`. Plan complet : `<poste>\.claude\plans\un-coll-gue-vient-de-misty-rossum.md`. Garde-fous non-régression (test différentiel, garde ART, injection de fautes) à appliquer avant tout changement. Test de mesure conservé : [persist_writecost_bench_test.go](../apps/go-api/internal/persist/persist_writecost_bench_test.go) (tag `integration`, supprimable).
 
 ## [2026-06-20] Campagne APPEND-ONLY (éradication ART) — player_notifications converti — Complété (non déployé)
 
@@ -30849,7 +30849,7 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 
 **Décision** : analyse 728k tokens distillée en spec turnkey dans .ai/PLAN_PME_ART_HARDENING.md (design vérifié + 16 fixes + roadmap POC-first incrément engagement + 2 PRs + garde-rails + tests + critère de succès engagement-coefs --with-scores ×3). Implémentation POC à exécuter en session fraîche (qualité > grid : refonte multi-PR de la pièce la plus délicate + raffinement merge-par-groupe à éprouver). Question ouverte pour le POC : syntaxe DuckDB exacte du pivot par-groupe (any_value/arg_max FILTER pour préserver NULL).
 
-**Prochaine étape** : POC incrément 1 (migration transactionnelle + vue merge-par-groupe + cluster engagement converti) ; valider EXPLAIN + engagement-coefs ×3 sur copie Madina/JGtm.
+**Prochaine étape** : POC incrément 1 (migration transactionnelle + vue merge-par-groupe + cluster engagement converti) ; valider EXPLAIN + engagement-coefs ×3 sur copie joueur_075/JGtm.
 
 ## [2026-06-21] P3 PME — substrat append-only + vue merge-on-read VALIDÉ (POC) — En cours
 
@@ -31418,8 +31418,8 @@ l'utilisateur, investiguées par fan-out d'agents Explore + vérif directe.
   Ajouté seed migration `seed_custom_vengeur_medal` (id 9000000001, Vengeur/Avenger,
   is_custom) dans medal_definitions Infinite (native H5). Audit FR coverage différé (metadata
   DB tenue RW par le serveur dev).
-- **#3 Chocoboflor identité/LUSR Onyx** : AUDIT read-only (DB locale, server dev tournant) :
-  career_progression = 1 SEUL xuid (Chocoboflor, 803 rows) → AUCUNE contamination (user avait
+- **#3 joueur_165 identité/LUSR Onyx** : AUDIT read-only (DB locale, server dev tournant) :
+  career_progression = 1 SEUL xuid (joueur_165, 803 rows) → AUCUNE contamination (user avait
   raison). La vraie cause : `Q26ePeakPhaseAPlayer` lisait `match_skill_rank` BRUT → exposait
   les rows périmées + LUSR_V2 (4628 rows à 2000=Onyx). RAW max LUSR=2000 (Onyx) vs LATEST
   max=1732.6 (Platine II). Fix : lire `match_skill_rank_latest` (priorité CSR>LUSR>LUSR_V2,
@@ -31439,7 +31439,7 @@ touchés), vitest 469 passed (57 fichiers, dont gradient 14). Go build/vet ./...
 PlaylistName/migrations) verts. Seul échec restant = `TestNoUnauthorizedSharedSocialMention`
 PRÉ-EXISTANT (cmd/levelup/*, seed_demo_media_h5.go — non touchés par ce lot).
 
-**Prochaine étape** : commit (en attente d'autorisation user). Vérif live #3 (Chocoboflor →
+**Prochaine étape** : commit (en attente d'autorisation user). Vérif live #3 (joueur_165 →
 Platine au lieu d'Onyx) nécessite rebuild+restart du serveur dev (port 8000 actif) — non fait
 sans accord. Audit FR médailles #5 à compléter serveur arrêté si l'anglais persiste.
 

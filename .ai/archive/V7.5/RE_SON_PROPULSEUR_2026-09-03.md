@@ -169,7 +169,7 @@ deux rendus soient identiques. Un geste qui se livre en trois fichiers ne pouvai
 rendre avec l'outil canonique. Le drapeau **`-variante <rang>`** a ete ajoute (defaut 0 =
 comportement d'origine, hors bornes = erreur explicite, nom du fichier intermediaire suffixe
 pour ne pas se recouvrir). Cet outil vit hors du depot
-(`C:\Users\Guillaume\Downloads\Halo Infinite - Sons v75\_outils\rendu\`) ; la sauvegarde
+(`<poste>\Downloads\Halo Infinite - Sons v75\_outils\rendu\`) ; la sauvegarde
 `main.go.bak` porte l'etat d'avant.
 
 ## 7. CE QUE LE LOT DE CABLAGE DEVRA DECLARER — et l'avertissement qui va avec

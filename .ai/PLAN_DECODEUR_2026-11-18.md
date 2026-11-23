@@ -12,7 +12,7 @@ Plan frère : `.ai/PLAN_BACKLOG_2026-11-18.md` (même pilote). Plan maître de l
 
 Abréviations : `DEC` = dépôt `JGtm/halo-infinite-film-decoder` (PUBLIC), lu pour l'instruction à sa version
 v1.4.1 dans le cache des modules Go ; `LU` = ce dépôt ; « témoin » = libfilmshell (décodeur de Den, MIT,
-copie locale `C:\Users\Guillaume\Downloads\Scripts\libfilmshell\`), lu pour LOCALISER, jamais traduit.
+copie locale `<poste>\Downloads\Scripts\libfilmshell\`), lu pour LOCALISER, jamais traduit.
 
 ## 0. Objectif et critère de succès
 
@@ -587,7 +587,7 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
   LevelUp. Le document ne porte aujourd'hui aucune marque par élimination.
 - 2026-11-22 — REPRISE APRÈS INCIDENT. Le clone `C:/t/dec/main` et ses sept commits jamais poussés ont été supprimés
   le 22/11 par la tâche de ménage du disque (`C:/t` vidé après 72 h). Les cinq commits de code ont été RECONSTRUITS
-  depuis les transcripts des agents dans un clone neuf, `C:/Users/Guillaume/Downloads/Scripts/dec-v150`, branche
+  depuis les transcripts des agents dans un clone neuf, `<poste>/Downloads/Scripts/dec-v150`, branche
   `feat/v1.5.0` POUSSÉE sur GitHub : `e3e3141` (J), `0dc2f54` (J.7), `cde2917` (A), `7ecc4da` (C.2), `586afe4` (C.3) ;
   mêmes fichiers et mêmes volumes que les originaux, fichiers d'horloge régénérés à l'octet. INTÉGRATION AU SCHÉMA
   126 refaite en une fois (`e8d6856`, poussée) : chronique 126 à cinq apports, révisions `grammar-2026-11-22` et

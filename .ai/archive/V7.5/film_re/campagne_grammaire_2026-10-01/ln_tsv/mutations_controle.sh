@@ -1,9 +1,9 @@
 #!/bin/bash
 # mut.sh : mutations du controle, appliquees par -overlay sur la source du lot (git archive 3031a2b25) ;
 # survivante = TOUTE la suite du paquet grammar (hors research) reste verte.
-C=/c/Users/GUILLA~1/AppData/Local/Temp/claude/c--Users-Guillaume-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad/v2-LN
-source $C/env.sh; export GOCACHE=C:/Users/Guillaume/AppData/Local/go-build-cg2-ln
-API=/c/Users/Guillaume/Downloads/Scripts/LevelUp-wt-cg2-ln/apps/go-api
+C=/c/Users/utilisateur/AppData/Local/Temp/claude/c--Users-poste-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad/v2-LN
+source $C/env.sh; export GOCACHE=C:/Users/utilisateur/AppData/Local/go-build-cg2-ln
+API=/c/Users/utilisateur/Downloads/Scripts/LevelUp-wt-cg2-ln/apps/go-api
 G=$API/internal/games/halo_infinite/film/internal/grammar
 M=$C/mutc
 cd $API

@@ -10,9 +10,9 @@
 > ⭐⭐⭐ **2026-06-12 — ARME À FEU PAR KILL RÉSOLUE *OFFLINE* & SCALABLE → voir `.ai/V7.5/killweapon/FIREARM_PER_KILL_OFFLINE_SOLVED.md`.**
 > Le record de dégât (`0xd2`) porte l'**attaquant** en clair = un **R5 (5 bits) au bit 36, lu AVANT le slot**
 > (le décodeur du projet lisait le slot d'abord → champ désaligné → fausse conclusion « pas d'attaquant »).
-> `joueur = R5>>1` (8 valeurs paires {0..14}), mapping identité (ancre live IKE=slot4=pi4). Pipeline : décoder
+> `joueur = R5>>1` (8 valeurs paires {0..14}), mapping identité (ancre live JOUEUR_502=slot4=pi4). Pipeline : décoder
 > 0xd2 (attaquant·arme·temps) + kill-feed chunk_27 + cross-corrélation des bases de temps → arme du kill = tick de
-> l'attaquant=tueur le plus proche. **50/93 kills firearm attribués offline, validé IKE→LORD=Disruptor (= vérité
+> l'attaquant=tueur le plus proche. **50/93 kills firearm attribués offline, validé JOUEUR_502→LORD=Disruptor (= vérité
 > live).** Le live n'est plus qu'une **ancre de validation**, PLUS une dépendance. Outil : `cmd/tmp_killweaponoffline`.
 > La bannière live ci-dessous reste l'historique du déblocage (utile, mais supplantée par l'offline).
 
@@ -23,7 +23,7 @@
 > - **Le BON handler = `FUN_1407e00ac`** (apply du dégât, REPLAY-ACTIF — `FUN_1406730c4` résolvait `high` en
 >   owner/équipe, fausse piste). Hook LECTURE PURE à l'entrée (RVA 0x7E00AC) : **attaquant = `*(param_3+0x0c)`**
 >   (`0xEC50_0000+idx*0x10002`), **victime = `*param_2`** (biped), **arme id64 = `param_3+0x10` (high-32 FAMILLE) |
->   `param_3+0x14` (low-32 0x42c9679f)**. VALIDÉ : IKE 1er kill = 0x84BD29ED|42c9679f = Disruptor (= catalogue + narration).
+>   `param_3+0x14` (low-32 0x42c9679f)**. VALIDÉ : JOUEUR_502 1er kill = 0x84BD29ED|42c9679f = Disruptor (= catalogue + narration).
 > - **Marqueur finishing-blow = `FUN_1406730c4`** (kill-event, RVA 0x6730C4, replay-actif) : tueur `[event+0x08]` /
 >   victime `[event+0x04]` (`0xE15x+idx*0x10002`). Entrelacé avec les ticks → arme du kill = dernier tick du tueur avant.
 > - **RÉSULTAT 000d5950** : 98 kills (93+5 outro), **totaux/tueur EXACTS**, **17 familles = celles du décode offline**
@@ -96,7 +96,7 @@ Table grenade_id (32 bits) :
 | `0x9212E428` | Spike   |
 
 **Résultat probe `cmd/tmp_meleegrenade`** : **70 grenades** décodées, **player index 0-7 tous valides**
-(distribution cohérente, IKE/pi4 ~x20, etc.). Le temps vient du ts du paquet conteneur (`tsAtBit`).
+(distribution cohérente, JOUEUR_502/pi4 ~x20, etc.). Le temps vient du ts du paquet conteneur (`tsAtBit`).
 ⇒ La recette grenade est **fiable** ; sert de patron de référence pour fire/melee.
 
 ---
@@ -121,7 +121,7 @@ player_index = bits[anchor+20 .. +5]  ← ❌ FAUX (lit toujours 0). OFFSET À R
 **Statut** : marqueur + anchor + type 0x47 + weapon offset = **confirmés** (events marteau présents près
 du kill narré 355.7s : markers 0x535 type 0x47 à 356.9/357.9/358.6s). **Le seul résidu = l'offset du
 player index** (anchor+20 lit 0, donc faux). À retrouver en scannant les offsets autour du weapon pour un
-champ 5b cohérent avec IKE/pi4 sur les events proches des kills marteau IKE→JGtm (115.5/292.5/355.7/375.1s).
+champ 5b cohérent avec JOUEUR_502/pi4 sur les events proches des kills marteau JOUEUR_502→JGtm (115.5/292.5/355.7/375.1s).
 
 ---
 
@@ -175,13 +175,13 @@ avait tué la voie record-de-dégât (faux positif Stalker sur frag marteau, nar
 
 Cibles connues (pi → xuid) :
 - `pi2 = 2533274823110022` JGtm
-- `pi4 = 2533274815845110` IKE ILYA
-- `pi5 = 2535444178793711` Akatsuki fire17
+- `pi4 = 2742063072864889` JOUEUR_417
+- `pi5 = 2812089420052706` joueur_700 fire17
 
 Kills à retrouver :
-- **Marteau IKE ILYA → JGtm** (mêlée) : kills narrés 115.5 / 292.5 / 355.7 / 375.1 s → events melee
-  type 0x47 (Gravity Hammer) avec player_index = pi4 (IKE) près de ces temps.
-- **BR75 JGtm → Akatsuki fire17** (tir) : kills narrés 112.9 / 329.8 s → events fire high32=BR75 avec
+- **Marteau JOUEUR_417 → JGtm** (mêlée) : kills narrés 115.5 / 292.5 / 355.7 / 375.1 s → events melee
+  type 0x47 (Gravity Hammer) avec player_index = pi4 (JOUEUR_502) près de ces temps.
+- **BR75 JGtm → joueur_700 fire17** (tir) : kills narrés 112.9 / 329.8 s → events fire high32=BR75 avec
   player_index = pi2 (JGtm) près de ces temps.
 
 Succès = ≥ ces narrés retrouvés avec le BON auteur, ≥1 mêlée + ≥1 tir + ≥1 grenade attribués correctement.
@@ -206,12 +206,12 @@ Succès = ≥ ces narrés retrouvés avec le BON auteur, ≥1 mêlée + ≥1 tir
 
 **ACQUIS SOLIDES :**
 - **Bijection player_index ↔ slot tueur = ÉTABLIE et VALIDE** (via chunk_27 `b36` duo + `b37` team,
-  8 combos distincts). xuid↔pi = identité roster stable. **Réutilisable** : pi0 whiteknight=(duo3,team0),
-  pi1 JAVIER=(3,1), pi2 JGtm=(1,0), pi3 LORD PEINX13=(2,0), pi4 IKE=(1,1), pi5 Akatsuki=(2,1),
-  pi6 aldusbroncus=(0,1), pi7 VitaminA1688=(0,0).
+  8 combos distincts). xuid↔pi = identité roster stable. **Réutilisable** : pi0 joueur_026=(duo3,team0),
+  pi1 JOUEUR_1043=(3,1), pi2 JGtm=(1,0), pi3 JOUEUR_731=(2,0), pi4 JOUEUR_502=(1,1), pi5 joueur_700=(2,1),
+  pi6 joueur_389=(0,1), pi7 joueur_362=(0,0).
 - **MÊLÉE player_index offset = anchor+23** (5 bits), PAS anchor+20 (l'ancien était hérité du patron
   grenade, décalé de 3 bits). SEUL offset de [anchor-16..+120] donnant une distribution canonique 0-7
-  (8 valeurs, bien réparties, stable hammer/autres). IKE(pi4) = porteur de marteau 7× dans le match.
+  (8 valeurs, bien réparties, stable hammer/autres). JOUEUR_502(pi4) = porteur de marteau 7× dans le match.
 - **FIRE : player_index = bitsAt(bp-4, 5)** — PRÉCÈDE le weapon_id (≠ grenade où il suit). Ancre =
   weapon_id 64b (high32 famille ∈ catalogue + low32 0x42c9679f, **même suffixe que melee/grenade →
   co-localisation CONFIRMÉE**). Validation forte : la **rafale BR75 (0x2b1824d5) 151.6→157.0s = 25 records
@@ -222,10 +222,10 @@ Succès = ≥ ces narrés retrouvés avec le BON auteur, ≥1 mêlée + ≥1 tir
    sur les instants kill. Pire : certains "fire records" ont un `tsAtBit` qui déborde (~1.8e13) ⇒ le scan
    du motif 0x42c9679f matche AUSSI des données HORS paquets type-0 (records d'entités-armes + bruit).
    Les 1061 "fire records" sont donc un MÉLANGE (events de tir réels + snapshots d'état d'entité-arme).
-2. **Narration 0/2.** Marteau IKE→JGtm (115.5/292.5/355.7/375.1s) : les 7 events mêlée de pi4 existent
+2. **Narration 0/2.** Marteau JOUEUR_502→JGtm (115.5/292.5/355.7/375.1s) : les 7 events mêlée de pi4 existent
    (75.0/271.9/274.9/307.3/324.5/335.1/462.6s) mais à 14-40s des kills narrés, et leur **famille @anchor+86
    décode "Diminisher of Hope" et non "Gravity Hammer"** (offset weapon mêlée FAUX pour type 0x47, à recaler).
-   BR75 JGtm→Akatsuki (112.9/329.8s) : les 28 fire BR75 de pi2 sont TOUS dans la rafale 151-158s, jamais
+   BR75 JGtm→joueur_700 (112.9/329.8s) : les 28 fire BR75 de pi2 sont TOUS dans la rafale 151-158s, jamais
    près des kills. ⇒ "event d'action à T" ≠ "kill à T".
 3. **Couverture 21/93** (event auteur dans [-400ms,+2.5s]) dont la majorité à dt 1-2s = coïncidences.
    Attribution arme+auteur CORRECTS par kill ≈ **nulle / non démontrable**.
@@ -248,7 +248,7 @@ records" se répartissent : **792 en paquets type-0 (events réels) + 255 en typ
 d'arme-tenue)**. ⇒ confirme que le scan brut mélangeait events de tir et snapshots d'état d'entité-arme.
 
 **Distribution player_index propre (ts-valides) :** grenade = tous joueurs ; melee = tous ; **fire = seulement
-pi2(105)/pi3(174)/pi6(311)/pi7(310)** (pi0/pi1/pi4/pi5 = 0 fire). pi4 IKE = 0 fire / 7 melee / 20 grenade
+pi2(105)/pi3(174)/pi6(311)/pi7(310)** (pi0/pi1/pi4/pi5 = 0 fire). pi4 JOUEUR_502 = 0 fire / 7 melee / 20 grenade
 (marteau+grenade, cohérent). Réserve : fire ne couvre que 4 joueurs → soit ce sont les 4 gunners actifs,
 soit le champ bp-4 n'est pas un player_index propre pour le fire (à surveiller).
 
@@ -257,13 +257,13 @@ soit le champ bp-4 n'est pas un player_index propre pour le fire (à surveiller)
 - **MODÈLE B (held-weapon carry-forward = dernier fire/melee du tueur ≤ T) = 80/93.** ← Voie A directe.
 
 **NARRATION (modèle B) :**
-- ✅ **Marteau IKE(pi4)→JGtm, 4/4 FAMILLE CORRECTE.** Aux 4 kills (115.5/292.5/355.7/375.1s, tous appariés
-  à un vrai kill chunk_27 à ±37ms) l'arme tenue d'IKE = **Rushdown Hammer** (famille marteau 0x841ac5e5).
+- ✅ **Marteau JOUEUR_502(pi4)→JGtm, 4/4 FAMILLE CORRECTE.** Aux 4 kills (115.5/292.5/355.7/375.1s, tous appariés
+  à un vrai kill chunk_27 à ±37ms) l'arme tenue d'JOUEUR_502 = **Rushdown Hammer** (famille marteau 0x841ac5e5).
   Le dt arme→kill est grand (-17 à -40s = le dernier coup de marteau capté avant le kill) mais la FAMILLE
   est bonne. ⇒ **le décode mêlée + held-weapon FONCTIONNE pour la mêlée.** (Bonus : sur le scan propre,
   l'arme mêlée type 0x47 lit bien un marteau — le "Diminisher of Hope" rapporté par le workflow était de
   la contamination.)
-- ❌ **BR75 JGtm(pi2)→Akatsuki, 2/2 ÉCHEC.** Arme tenue = M41 SPNKr@51.9s (T=112.9s) / Energy Sword@272.5s
+- ❌ **BR75 JGtm(pi2)→joueur_700, 2/2 ÉCHEC.** Arme tenue = M41 SPNKr@51.9s (T=112.9s) / Energy Sword@272.5s
   (T=329.8s). La rafale BR75 de JGtm est à 151-157s, APRÈS le 1er kill et loin du 2e. ⇒ **capture fire trop
   ÉPARSE** (792 events type-0 pour TOUT le match = pas du per-shot ; probablement des events draw/equip ou
   state-périodique, pas chaque balle) → l'arme-tenue-gun n'est pas densément suivie → held-weapon non fiable
@@ -303,11 +303,11 @@ corroborés plafonne à **9** quelle que soit la fenêtre — élargir n'ajoute 
 ni l'identité (bonne) ni la corrélation (bonne quand serrée) mais **LA DENSITÉ DE CAPTURE des fire events**.
 Les 792 fire events type-0 ne couvrent pas chaque tir → l'arme-à-feu-par-kill reste partielle (~9-13/93 fiables).
 
-**État par type :** MÊLÉE = attribuable (held=marteau, IKE→JGtm 4/4 famille hammer ; 39 kills) ; GRENADE =
+**État par type :** MÊLÉE = attribuable (held=marteau, JOUEUR_502→JGtm 4/4 famille hammer ; 39 kills) ; GRENADE =
 attribuable (lanceur connu) ; ARME À FEU = **CORRECTE mais éparse** (~9-13/93 fiables, plafond capture).
 
-**Narration (confirme) :** Marteau IKE→JGtm = held=Gravity/Rushdown Hammer aux 4 kills ✓ (records vides =
-normal, mêlée). BR75 JGtm→Akatsuki = held=SPNKr/Energy Sword aux 2 kills, **0 record BR75 à ±1.5s** : ni le
+**Narration (confirme) :** Marteau JOUEUR_502→JGtm = held=Gravity/Rushdown Hammer aux 4 kills ✓ (records vides =
+normal, mêlée). BR75 JGtm→joueur_700 = held=SPNKr/Energy Sword aux 2 kills, **0 record BR75 à ±1.5s** : ni le
 held ni les records ne voient un BR75 à ces kills (la rafale BR75 de JGtm est à 151-157s, ailleurs). ⇒ soit le
 temps de narration est faux (narration ≠ ground-truth), soit ces 2 kills ne sont pas au BR75. Ne PAS forcer.
 
@@ -327,7 +327,7 @@ le *suffixe partagé* mais **il n'y a pas de marqueur fire dédié** à scanner 
 post-id 32b = `0x760x_xxxx` (tag de classe d'arme : Disruptor→03, Ravager→04), pas un hit/miss propre.
 
 **(3) bp-4 N'EST PAS un player_index propre :** distribution sur ancre stricte = seulement **{2,3,6,7}** ;
-sur ancre élargie = **{2,3,4,5,6,7}** mais **JAMAIS 0 ni 1**. Or pi0 (whiteknight) et pi1 (JAVIER) = les 2
+sur ancre élargie = **{2,3,4,5,6,7}** mais **JAMAIS 0 ni 1**. Or pi0 (joueur_026) et pi1 (JOUEUR_1043) = les 2
 joueurs PASSIFS (victimes fréquentes, ~0 kill). Donc bp-4 porte un **signal tireur réel mais PARTIEL** (cohérent
 avec la corrob 75% à ±500ms de A.0 pour les joueurs actifs) — soit ces 2 joueurs n'ont quasi pas tiré d'arme
 trackée, soit bp-4 n'est pas exactement le player_index. **Non concluant comme index 0-7 fiable.**
@@ -428,7 +428,7 @@ biped→joueur non partagée d'Acurtis**.
 
 | Type de kill | Attribution par AUTEUR offline | Fiabilité | Mécanisme |
 |---|---|---|---|
-| **Mêlée** | ✅ OUI | **Fiable** | event melee 0x534/0x535, player_index @anchor+23 (couvre les 8 joueurs), arme @anchor+86. IKE→JGtm hammer **4/4**. |
+| **Mêlée** | ✅ OUI | **Fiable** | event melee 0x534/0x535, player_index @anchor+23 (couvre les 8 joueurs), arme @anchor+86. JOUEUR_502→JGtm hammer **4/4**. |
 | **Grenade** | ✅ OUI | **Fiable** | event 0x4c0c00, grenade_id 32b, player_index 5b. 70 events, 0-7 tous présents. |
 | **Arme à feu** | ⚠️ PARTIEL | **~9-13/93** | fire event (weapon_id 64b, bp-4 signal tireur partiel) : correct à 75% quand serré (±500ms) mais capture éparse + bp-4 incomplet. |
 | (cross-check) | — | — | 519 records de dégât = **famille + temps EXACTS, SANS auteur** : corrobore les fire serrés, mais ne désambiguïse pas l'auteur en Fiesta. |

@@ -1,6 +1,6 @@
 #!/bin/bash
 # analyser.sh <film> : sonde C4, base contre tete.
-C4=/c/Users/GUILLA~1/AppData/Local/Temp/claude/c--Users-Guillaume-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad/L2/c4
+C4=/c/Users/utilisateur/AppData/Local/Temp/claude/c--Users-poste-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad/L2/c4
 f=$1; D=$C4/dump; O=$C4/out; mkdir -p $O
 for v in base head; do
   awk -F'\t' '$1=="P"' $D/$v.$f.tsv | sort -u > $O/$v.$f.P

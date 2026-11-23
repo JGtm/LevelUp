@@ -33,7 +33,7 @@ Vide/absent si la cible n'a aucun match PvP → la section graphes doit se masqu
 
 ```bash
 curl -s -X POST http://localhost:8000/api/v1/players/JGtm/pages/explorer/player-query \
-  -H 'Content-Type: application/json' -d '{"target_gamertag":"Madina97294"}' \
+  -H 'Content-Type: application/json' -d '{"target_gamertag":"joueur_117"}' \
   | jq '.target_profile.combat_profile[0]'
 ```
 

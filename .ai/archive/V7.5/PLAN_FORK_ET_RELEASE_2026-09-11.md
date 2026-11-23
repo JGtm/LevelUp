@@ -143,8 +143,8 @@
   `backfill --all --citations-recompute-all` (journal `lot_d_chaine.log`).
 - 2026-09-12 : lot D clos. `backfill-killsource` 12:10 -> 14:50 (1 210 films décodés, 1 384 matchs
   crédités, 138 806 morts), `seed citation-mappings` (2 insérées, 104 mises à jour),
-  `backfill --all --citations-recompute-all` (JGtm 1 147, Madina97294 1 268, Chocoboflor 580,
-  XxDaemonGamerxX 39 matchs ; V1-V4 OK ; 5 profils sans base sautés). Serveur relancé (health
+  `backfill --all --citations-recompute-all` (JGtm 1 147, joueur_117 1 268, joueur_165 580,
+  joueur_291 39 matchs ; V1-V4 OK ; 5 profils sans base sautés). Serveur relancé (health
   200). Notion 6, 7, 8 cochés avec les chiffres. **Contrôle `_latest` : 27 807 morts sans source,
   INCHANGÉ** (12 047 = 10,3 % sur le décodeur courant ; 15 326 sur 102 matchs restés en
   `killsource-2026-07-31`, sans film en cache, datés 2023 -> 03/2026, films expirés). Les 223

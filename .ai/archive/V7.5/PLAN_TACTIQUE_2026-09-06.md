@@ -16,10 +16,10 @@
 
 ## Regles d'environnement (memes que l'audit v2 — un seul poste, un seul cache par lot)
 
-- Worktree DEDIE `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-tactique`, branche
+- Worktree DEDIE `<poste>\Downloads\Scripts\LevelUp-wt-tactique`, branche
   `feat/tactique` depuis `feat/v75`. Checkout principal : lecture seule, jamais d'ecriture.
 - Commandes `go` en SERIE (jamais deux a la fois), cache propre au lot :
-  `GOCACHE=C:\Users\Guillaume\AppData\Local\go-build-tactique`, `CGO_ENABLED=1`, gcc msys64
+  `GOCACHE=<poste>\AppData\Local\go-build-tactique`, `CGO_ENABLED=1`, gcc msys64
   ucrt64 dans le PATH, depuis `apps/go-api`. Integration : `-tags=integration -p 1`.
 - Gates en AVANT-PLAN uniquement (aucun run d'arriere-plan, aucun outil d'attente).
 - Web : `npm --prefix apps/web run typecheck`, `npm --prefix apps/web run lint`, vitest via

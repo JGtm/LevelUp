@@ -73,9 +73,9 @@ corrigé, comme contrôle de non-régression sur les cinq autres familles (§4).
 | xuid | parc s20 | HEAD 43 | écart | HEAD 45 |
 |---|---|---|---|---|
 | `2533274823110022` | 441 (3 portages) | 441 (3) | — | **441 (3)** |
-| `2533274858283686` | 358 (2) | **282 (2)** | **−76** | **358 (2)** |
-| `2535429985869093` | 96 (10) | **86 (1)** | **−10** | **96 (10)** |
-| `2535469190789936` | 53 (1) | 53 (1) | — | **53 (1)** |
+| `2623439693412443` | 358 (2) | **282 (2)** | **−76** | **358 (2)** |
+| `2669605393856835` | 96 (10) | **86 (1)** | **−10** | **96 (10)** |
+| `2547408409520575` | 53 (1) | 53 (1) | — | **53 (1)** |
 | **total** | **948** | **862** | **−86** | **948** |
 
 **Par drapeau** :
@@ -87,12 +87,12 @@ corrigé, comme contrôle de non-régression sur les cinq autres familles (§4).
 
 ### A.2 La cause, sur pièces
 
-Le porteur `2535429985869093` occupe le **slot de bipède 536**. Au parc, ce slot porte UNE piste
+Le porteur `2669605393856835` occupe le **slot de bipède 536**. Au parc, ce slot porte UNE piste
 `[1370..3464]`, 1 943 points, nommée. Au HEAD, il en porte **deux** :
 
 | | intervalle | points | identité |
 |---|---|---|---|
-| vie 1 | `[1370..2736]` | 1 284 | **`2535429985869093`** (nommée par la mort qui la termine) |
+| vie 1 | `[1370..2736]` | 1 284 | **`2669605393856835`** (nommée par la mort qui la termine) |
 | vie 2 | `[2795..3464]` | 659 | **ANONYME** |
 
 1 284 + 659 = **1 943** : la lecture du film n'a rien perdu, seule la SEGMENTATION a changé
@@ -109,7 +109,7 @@ NOMMÉE ne couvre l'intervalle » y était lu « le porteur est ABSENT », alors
 est une **présence sans identité publiée**.
 
 **Cascade mesurée sur un dixième portage.** L'élagage de ces 9 portages bruts déplaçait aussi
-l'attribution de drapeau du portage `[1675..1751]` de `2533274858283686` : du drapeau de
+l'attribution de drapeau du portage `[1675..1751]` de `2623439693412443` : du drapeau de
 l'équipe 0 (parc, et HEAD corrigé) vers celui de l'équipe 1, où la fermeture du portage
 précédent le tronquait à UNE frame et posait un `dropped` de 1676 à 1751 devant une rentrée
 `home` à 1752 — le document se contredisait alors lui-même. Le mécanisme exact à l'intérieur
@@ -169,7 +169,7 @@ Le slot 620 porte au parc UNE piste `[2842..3732]`, 835 points. Au HEAD il en po
 | | intervalle | points | identité |
 |---|---|---|---|
 | vie 1 | `[2842..3120]` | 275 | **ANONYME** |
-| vie 2 | `[3173..3732]` | 560 | `2533274806581989` |
+| vie 2 | `[3173..3732]` | 560 | `2784271098469446` |
 
 275 + 560 = **835** — **le même nuage de points, au point près**. Seule la segmentation change,
 sur un trou de réplication de 52 frames (5,2 s, au-dessus de `lifeGapUS`).
@@ -201,7 +201,7 @@ propre trace.
   n'a été supprimé. Les 9 points que le film perd au total (111 956 → 111 947) et les bornes de
   scène assainies (`maxX` 202,97 → 43,03, `maxZ` 205,81 → 115,27) concernent le **slot 539**, et
   c'est le **fait n° 5 de `INSTRUCTION_RESIDUS_2026-09-06.md`**, déjà instruit et clos (« ancien
-  artefact FAUX »). La perte de vie nommée `tracks/vies-par-xuid/2533274806581989` 6 → 5 que le
+  artefact FAUX »). La perte de vie nommée `tracks/vies-par-xuid/2784271098469446` 6 → 5 que le
   gate signale sur le même match est CE fait-là (slot 539, piste `[559..2739]` réduite à 50
   points par un point à `z = -370`), pas celui-ci : sur le slot 620, le même joueur **garde** sa
   vie nommée.

@@ -26,8 +26,8 @@
 |---|---|---|---|---|
 | 1 | Ghost : aucun tir, aucun son, aucun éclair (81c02726) | Défaut du **décodeur**, pas du rendu | Le décodeur des tirs ne lit que l'événement de TÊTE des paquets `0xD2`, à offsets fixes, variante longue seule `[V]`. Aucune arme à tir continu n'entre dans le document : Ghost, canons de la Banshee, Chopper, LAAG, LMG du Falcon, tourelle du Wraith — et, à pied, le Rayon de Sentinelle. Parc : **0 tir de Ghost publié** pour 1 522 s de pilotage (40 épisodes, 15 documents) et 63 frags au Ghost. | P1, L1.5, M4a, M4b |
 | 2 | Mongoose qui part seul à 0:06 et finit hors zone jouable | Faux positif du balayage + interpolation sans borne | L'échantillon de t=983 (−201,16 ; 88,24 ; z −235) n'est pas une position : la même suite de bits revient sur des cartes aux quantifications différentes. Le client interpole 70 s vers lui, puis le plaque au bord de l'écran `[V]`. | M1 |
-| 3 | Madina97294 réapparaît hors carte et « vole » jusqu'au spawn | Même famille | Son premier point (t=645, z −325) précède de 4,65 s le record de création de son corps ; la création coïncide avec le vrai placement (t=692) `[V]`. | M1 |
-| 4 | Fiche de XxDaemonGamerxX sans armes à 2:08 | Défaut du décodeur (image-clé) + canal jamais branché | L'unique image-clé de sa vie (t 1494) a perdu le début de sa table : 1 joueur lu sur 8 `[V]`. Les armes de naissance ne sont lues nulle part. Parc : 213 images-clés trouées sur 2 868 (7,4 %, 69 documents), 18,9 % des vies sans aucune arme publiée. | P2, P3, M3 |
+| 3 | joueur_117 réapparaît hors carte et « vole » jusqu'au spawn | Même famille | Son premier point (t=645, z −325) précède de 4,65 s le record de création de son corps ; la création coïncide avec le vrai placement (t=692) `[V]`. | M1 |
+| 4 | Fiche de joueur_291 sans armes à 2:08 | Défaut du décodeur (image-clé) + canal jamais branché | L'unique image-clé de sa vie (t 1494) a perdu le début de sa table : 1 joueur lu sur 8 `[V]`. Les armes de naissance ne sont lues nulle part. Parc : 213 images-clés trouées sur 2 868 (7,4 %, 69 documents), 18,9 % des vies sans aucune arme publiée. | P2, P3, M3 |
 | 5 | b1ad85eb : Eagle à 3 au départ, à 5 à 2:14, les deux équipes à 5 à 6:24 | **Vous avez raison** : 4 contre 4 à tout instant | Web : un joueur parti reste affiché tant que personne ne s'assoit sur SON siège `[V]`. Go : siège = index de participant (un remplaçant n'en hérite presque jamais), équipe agrégée par index (les 3 bots partagent l'index 8, dans deux équipes → aucune équipe), corps de bots jamais nommés. Le bot « 343 Hundy », présent au coup d'envoi, n'a donc aucune fiche. | P4, M2 |
 | 6 | « Sprint » sur les fiches — nouveau ? jamais demandé ? | Nouveau (21/09), **jamais demandé** | Affichage décidé par le pilote le 21/09 (« l'utilisateur les veut »), commit `b832320d4` étiqueté à tort « DECISION UTILISATEUR » ; annoncé deux fois comme « un libellé minimal sur la fiche », sans votre accord. | L1.1 |
 | 7 | Tactique : tout se recharge quand on change de question ou de filtre | Défaut web | Le fond de carte est rendu SOUS la condition « données prêtes » (`TacticalAnalysisView.tsx:146`) et aucune des trois lectures ne garde sa donnée précédente (`queries.ts`, pas de `placeholderData`) `[V]` : chaque changement démonte et remonte tout, fond compris. | L2 |
@@ -41,7 +41,7 @@
 
 ### 1.1 Tirs de véhicule (annexe `RAPPORT_tirs_vehicules.md`)
 
-- 81c02726 : G MONEY 2123 pilote le Ghost de 0:08.4 à 1:26.1 puis de 3:03.7 à 4:24.2 (78 s et 80 s) ; ses
+- 81c02726 : JOUEUR_374 pilote le Ghost de 0:08.4 à 1:26.1 puis de 3:03.7 à 4:24.2 (78 s et 80 s) ; ses
   6 frags au Ghost (`source_tag f712c64a` = `veh_cv_ghost`) tombent tous dans ces épisodes. Les faits
   persistés portent 1 063 événements de tir, **tous d'armes personnelles** ; zéro tir de l'index 2
   pendant ses épisodes, zéro dans les 2 s avant chacun des 6 frags. Épisodes, pont slot → joueur et
@@ -82,7 +82,7 @@
   `Point.g`, pourtant publié pour dire « ne pas interpoler au travers » `[V]` (974 lacunes au parc,
   222 déplacent le pion de plus de 10 m à travers la carte).
 - Grammaire mesurée sur les faits : aucune position de corps n'est écrite avant sa création (sauf
-  Madina, 2 cas sur 416 ouvertures) ; aucun véhicule ne se déplace pendant un silence de plus de 5 s
+  joueur_075, 2 cas sur 416 ouvertures) ; aucun véhicule ne se déplace pendant un silence de plus de 5 s
   (21 cas sur 565, tous aberrants).
 - Parc : 33 documents sur 111 ; affichage fautif des véhicules 1 344 s (allers-retours) + 1 948 s (vies
   fantômes) + 3 684 s (faux spawns).
@@ -103,9 +103,9 @@
 
 ### 1.4 Équipes b1ad85eb (annexe `RAPPORT_equipes_b1ad85eb.md`)
 
-- Rejeu fidèle de la logique web : Eagle {MONEY x BUTTER, Namikidori, DRghie} au départ ;
-  + « Joueur inconnu » (Hanover Cat, 2535449383340628, parti à 1:16) + Claudors à 2:14 ; Cobra à 6:24
-  avec FairyNectar5788 (partie à 5:22) + 343 Brew Dog.
+- Rejeu fidèle de la logique web : Eagle {MONEY x BUTTER, joueur_1013, joueur_595} au départ ;
+  + « Joueur inconnu » (joueur_270, 2700529065230693, parti à 1:16) + Claudors à 2:14 ; Cobra à 6:24
+  avec joueur_539 (partie à 5:22) + 343 Brew Dog.
 - C1 web : `seatOccupantAt` rend `present` un occupant fini sans successeur sur le même siège `[V]`.
 - C2 Go : `seat = filmIndex` ; l'appariement de repli ne chaîne presque jamais (0 sur ce match).
 - C3 Go : `ScanPlayerTeams` agrège le désignateur d'équipe par INDEX ; l'index 8 porte trois bots de
@@ -518,7 +518,7 @@ hors de ce périmètre.
 - S3 si S1 et S2 sont négatifs : Ghidra en lecture seule (chemin d'émission d'`action_weapon_fire`
   pour un canon à son en boucle contre un canon à coup). Stop : au 2e négatif sans progrès, arrêt et
   retour à l'utilisateur (règle du 22/09).
-- Gate de la sonde : un signal dont une occurrence précède chacun des 6 frags de G MONEY dans les 2 s,
+- Gate de la sonde : un signal dont une occurrence précède chacun des 6 frags de JOUEUR_441 dans les 2 s,
   absent au témoin décalé, nul hors de ses épisodes. Verdict écrit ici (§9) avant M4b.
 - [x] Verdict (§9, note `retours_rejeu_2026-09-23/SONDE_P1_tir_continu.md`, `fee612d28`) : S1 et S2
   NÉGATIFS pour le tir par tir, positifs sur les touches et le compteur ; S3 (Ghidra) POSITIF : le tir
@@ -587,7 +587,7 @@ Périmètre : `film/replay/` (`build.go`, `identity_registry_creation.go`, `live
 - Tests rouges avant : vie dont le premier point précède sa création ; vie entièrement avant la
   première création ; point, échantillon, spawn hors emprise ; aller-retour au travers d'un silence ;
   négatifs : chute continue de Behemoth 771 (t 3371-3384) conservée, véhicule garé 100 s conservé ;
-  sur faits réels (`research`, ≤ 3 fichiers) : 81c02726 (770 sans échantillon à t=983, Madina démarre
+  sur faits réels (`research`, ≤ 3 fichiers) : 81c02726 (770 sans échantillon à t=983, joueur_075 démarre
   à t=692), ab526724 (769/770 non publiés), 879a4dba (excursions 770 et 774 retirées) ; web :
   maintien véhicule au travers de `g`.
 - Gate parc après republication (`instruments/positions_limbe/census.mjs`, `bits.mjs`) : T1-T4 hors
@@ -728,7 +728,7 @@ publication des ramassages (`film/replay/document_pickups.go` et voisins), sons 
   aux 20 fichiers de faits réécrits le 2026-09-24 aux révisions de la vague D, cf. §9)
   Republication des 111 artefacts DEPUIS LES FAITS (Q3), serveur arrêté, prévenu avant ;
   redémarrage ; gates parc M1/M4a/M5 rejoués ; verdict visuel utilisateur sur 81c02726 (Mongoose,
-  Madina), 4f77afc1 (tourelles sur leur véhicule), ab526724.
+  joueur_075), 4f77afc1 (tourelles sur leur véhicule), ab526724.
 
 ### 4.5 Vague D — montée 70, re-décodage des 111 films
 
@@ -764,7 +764,7 @@ botmeta.go`, faits (`film_inputs.go`, `filmfacts_encode.go`, `filmfacts_decode.g
   supprimée ; regroupement par `roster[].team` ; états Q20-Q22 (FR + EN).
 - [x] Tests (M2 ; `occupants_temoin_test.go`, `occupants_doutes_test.go`,
   `identity_registry_entites_test.go`, `seatLogic.test.ts`) : témoin au gabarit de b1ad85eb (8 sièges dont un jamais joué, 3 bots index 8 de désignateurs
-  0/0/1, arrivants 9 et 10) → places Eagle 5 : Hundy → Hanover Cat → PardonMy → Claudors, Cobra 1 :
+  0/0/1, arrivants 9 et 10) → places Eagle 5 : Hundy → joueur_270 → PardonMy → Claudors, Cobra 1 :
   FairyNectar → Brew Dog, ≤ 4 occupants par équipe à chaque frame (mutation : réagréger par index →
   rouge) ; réécriture de `seatLogic.test.ts:125` (qui fige `[3, 5]`) ; garde-rail de propriété « à
   aucune frame une équipe n'a plus d'occupants que de places » sur toutes les fixtures.
@@ -839,11 +839,11 @@ Périmètre : `film/internal/grammar/keyframe_world.go`, `grammar/birth_loadouts
 > (types de prédiction 1 et 3, `FUN_140de87fc`) l'autorise ; à défaut, l'écrivain de la vue C pose le
 > bit « gâchette tenue ». Theater rejoue ce bit et simule la rafale à la cadence du tag : les instants
 > de chaque coup ne sont pas dans le film, le DÉBUT et la FIN de rafale le sont, au tick. Mesuré sur
-> 81c02726 : 1 050 entrées qui tirent, toutes de G MONEY, 6/6 frags précédés d'une entrée qui tire,
+> 81c02726 : 1 050 entrées qui tirent, toutes de JOUEUR_441, 6/6 frags précédés d'une entrée qui tire,
 > témoin −60 s à 0. Limite : la vue C n'est lue que si la vue B se ferme (34 % des paquets) ;
 > couverture des épisodes 29 %/55 % (marche) → 83 %/91 % avec un balayage par la fin étalonné (0,13 %
 > d'erreur). La production refuse aujourd'hui trois branches de l'entrée et lit faux deux sous-lecteurs
-> du bloc d'action. Découverte : une 3e monture de G MONEY sur le Ghost 771 (≈ 4:55-5:12) manque au
+> du bloc d'action. Découverte : une 3e monture de JOUEUR_441 sur le Ghost 771 (≈ 4:55-5:12) manque au
 > document.
 > M4b devient : (1) grammaire — porter l'entrée complète `FUN_1406cd860` et corriger le bloc d'action
 > (catégories 1/2 de `FUN_140c9e990`, vecteur `FUN_1431a0cbc`), mesurer l'effet sur la clôture de la
@@ -914,12 +914,12 @@ de `FireEvent` recensé à l'item M4b.1.
   Chopper, LAAG, LMG du Falcon, LMG de la Wasp, Rayon de Sentinelle — rafales publiées là où le film
   les porte, cadence propre à chaque arme lue dans son tag.
 - [x] G1 — re-mesuré au code INTÉGRÉ (document publié, racine temporaire, 25/09) : une rafale dans les
-  2 s de chacun des 6 frags de G MONEY (395, 623, 650, 2159, 2228, 2402 : 15/12/11/12/15/6 coups), 0 au
-  témoin −60 s, 0 hors monture ; 15 rafales publiées sur 769 et 771. [!] 3e montée de G MONEY
+  2 s de chacun des 6 frags de JOUEUR_441 (395, 623, 650, 2159, 2228, 2402 : 15/12/11/12/15/6 coups), 0 au
+  témoin −60 s, 0 hors monture ; 15 rafales publiées sur 769 et 771. [!] 3e montée de JOUEUR_441
   (2984-3021, 3104-3119, `noTrack` 2) NON FAITE : l'embarquement suit un dispositif `ti=43` (2941) dont
   le NEW désynchronise sur `i21`, composant non porté ; porter `ti=43` i20-i22 sort du périmètre fermé —
   question à l'utilisateur (§9). G2 parc et G5 : au re-décodage. Énoncé d'origine : Gate parc (`instruments/tirs_vehicules/kills_vs_tirs.mjs`) : G1 81c02726 — un tir de Ghost publié
-  dans les 2 s avant chacun des 6 frags de G MONEY (0/6 aujourd'hui), aucun hors de ses épisodes, posé
+  dans les 2 s avant chacun des 6 frags de JOUEUR_441 (0/6 aujourd'hui), aucun hors de ses épisodes, posé
   à ≤ 3 m du sprite ; G2 — frags de classe véhicule précédés d'un tir de l'arme du tueur ≥ 90 % par
   famille lue (Ghost 1/63, LAAG 0/31, Banshee 3/26 aujourd'hui) ; G5 — joueurs d'index ≥ 16 avec des
   tirs (0/39), identifiants décalés 1 205 → 0 ; Rayon de Sentinelle tiré > 0.
@@ -1062,7 +1062,7 @@ vivent au §9 ; aucun lot de la vague D ne démarre sans eux.
    `match_ids` `null` et `[]` hachent vers la même clé ; `hashFiltre` resérialise la liste à chaque
    rendu.
 9. La requête Q12 exclut les participants « tout à zéro » (64 sur 31 documents) : le rejeu perd leur
-   nom (Hanover Cat → « Joueur inconnu »).
+   nom (joueur_270 → « Joueur inconnu »).
 10. Heure API des relais en retard d'environ 20 s sur le film : `successions.go` (fenêtre −2 / +20 s)
     et `presenceFeed.ts` (lignes « a rejoint / a quitté ») en héritent.
 11. `43e96765` : index 0 divergent (deux entités d'index 0, désignateurs différents).
@@ -1336,7 +1336,7 @@ vivent au §9 ; aucun lot de la vague D ne démarre sans eux.
     révisions `grammar-2026-09-24` / `killsource-2026-09-24` ; (3) 0,3 s ; (4) 0,3 s ; (5) films 6 s,
     crédit 3 min 11 sur les 9 170 matchs du registre, pic 749 Mio ; (6) < 1 s.
   - Questions ouvertes à l'utilisateur :
-    1. 3e montée de G MONEY sur 81c02726 (2984-3021, 3104-3119) : porter les composants de dispositif
+    1. 3e montée de JOUEUR_441 sur 81c02726 (2984-3021, 3104-3119) : porter les composants de dispositif
        `ti=43` i20 à i22 (le NEW désynchronise sur `i21`) — hors du périmètre fermé ; ouvrir un lot ?
     2. G2 Ghost de l'index 4 sur 8a485699 : renvoyé au jalon J6 du plan de suite de l'audit (fait).
     3. M3 : cibles du gate parc non atteintes à la mesure du lot (vies sans relevé d'armes 10,2 %, 1,3 %

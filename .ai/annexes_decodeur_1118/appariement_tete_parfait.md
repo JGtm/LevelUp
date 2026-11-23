@@ -3,7 +3,7 @@
 Lecture seule, Node seulement, un rejeu a la fois. Corpus : 1 455 rejeux `halo_infinite` du poste, schema 125 pour tous,
 `frameIntervalMs = 33` pour tous, `originMs` present partout. Un rejeu se designe par ses 8 premiers caracteres ; aucun
 identifiant de joueur n'est ecrit nulle part (les joueurs sont des indices locaux a chaque rejeu dans `compact.jsonl`).
-Scripts (dossier `C:/Users/Guillaume/Downloads/Scripts/dec-v150-recup/h7/`) : `extract.js` (une passe, produit
+Scripts (dossier `<poste>/Downloads/Scripts/dec-v150-recup/h7/`) : `extract.js` (une passe, produit
 `compact.jsonl`), puis `axis.js`, `ax2.js`, `hs4.js`..`hs8.js`, `coh2.js`, `mf.js`, `pf1.js`, `pf2.js`, `ex1.js`, `np.js`, `id1.js`.
 
 Conventions. Ecart signe = montee (ou medaille) moins elimination, en images : positif = la montee vient APRES l'elimination.

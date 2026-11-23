@@ -89,7 +89,7 @@ Supprimes : `ParseStatborgRecord`, `StatborgBinding`, `StatborgTarget`, `setDirt
 ### A.1.5 — controle apres cuisson
 
 Artefacts ecrits **sous le worktree du lot** :
-`C:\Users\Guillaume\Projects\LevelUp-wt-score-film\data\cache\replays\halo_infinite\` — jamais le
+`<poste>\Projects\LevelUp-wt-score-film\data\cache\replays\halo_infinite\` — jamais le
 cache du principal (`LEVELUP_REPO_ROOT` pointe le worktree, les films sont lus par chemin ABSOLU
 depuis le principal, en lecture seule).
 

@@ -1,6 +1,6 @@
 const fs=require('fs'),z=require('zlib');
 const id=process.argv[2];
-const d=JSON.parse(z.gunzipSync(fs.readFileSync('C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
+const d=JSON.parse(z.gunzipSync(fs.readFileSync('<poste>/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
 const t=d.tracks;
 console.log(Object.keys(t[0]), JSON.stringify(t[0]).slice(0,700));
 console.log(JSON.stringify(d.scoreTimeline.players[0]).slice(0,600));

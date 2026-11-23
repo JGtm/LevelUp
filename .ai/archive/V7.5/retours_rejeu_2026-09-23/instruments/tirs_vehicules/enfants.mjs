@@ -1,7 +1,7 @@
 // Les vies de chassis ENFANTS (tourelles) : naissance, echantillons, parent (slot+1), episodes.
 import fs from 'fs';
 const id = process.argv[2];
-const doc = JSON.parse(fs.readFileSync(`C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/${id}.json`, 'utf8'));
+const doc = JSON.parse(fs.readFileSync(`C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/${id}.json`, 'utf8'));
 const bySlot = {}; for (const v of doc.vehicles) (bySlot[v.slot] ||= []).push(v);
 for (const v of doc.vehicles) {
   if (v.family) continue;

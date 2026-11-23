@@ -4,7 +4,7 @@
 > Aucun commit, aucun `git add`, aucune ecriture DuckDB, AUCUN fichier de production modifie
 > (deux `*_test.go` neufs). Mesures en AVANT-PLAN, `CGO_ENABLED=0`, GOCACHE isole
 > (`scratchpad/gocache_v3`), donnees reelles du checkout principal
-> (`C:/Users/Guillaume/Projects/LevelUp/data`, lecture seule). `internal/himap/`,
+> (`<poste>/Projects/LevelUp/data`, lecture seule). `internal/himap/`,
 > `cmd/vs-measure/`, `cmd/vehicle-sprite/`, `sprites_v4/` : NON touches.
 
 ## 0. LE RESULTAT EN CINQ LIGNES

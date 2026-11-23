@@ -3,9 +3,9 @@
 > Mesures jouees le 2026-09-05 dans le worktree `LevelUp-wt-v2-decodeur`, branche
 > `feat/v2-decodeur`, HEAD `a21fd77f4`, arbre PROPRE (aucune modification du lot).
 > Prefixe commun de toute commande : depuis `apps/go-api`,
-> `GOCACHE=/c/Users/Guillaume/AppData/Local/go-build-v2-decodeur CGO_ENABLED=1`, `-p 1 -parallel 1
+> `GOCACHE=<poste>/AppData/Local/go-build-v2-decodeur CGO_ENABLED=1`, `-p 1 -parallel 1
 > -count=1`. Films lus en LECTURE SEULE sous
-> `C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks/`.
+> `<poste>/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks/`.
 >
 > CE DOCUMENT EST LE GATE DES ITEMS E.2 a E.5 : apres chaque item, ces memes commandes sont
 > rejouees et confrontees ligne a ligne. Un chiffre qui bouge = le refacto n'est pas a
@@ -122,7 +122,7 @@ vaut donc 118 ou moins ; le test n'echoue qu'au-dessus).
 
 ## 2. Etage films reels — sous garde de variable d'environnement
 
-`KILLSOURCE_FIXTURES=/c/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks`
+`KILLSOURCE_FIXTURES=<poste>/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks`
 
 ### 2.1 killsource, les 4 films de reference
 

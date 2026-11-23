@@ -1,6 +1,6 @@
 # LOT C — Sessions : bloc « Usages d'équipement »
 
-Worktree : `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ajust-sessions` · branche `feat/ajust-sessions` · port Vite **5183**.
+Worktree : `<poste>\Downloads\Scripts\LevelUp-wt-ajust-sessions` · branche `feat/ajust-sessions` · port Vite **5183**.
 Lis d'abord `BRIEF_COMMUN.md` (même dossier). Lot 100 % web.
 
 ## Repérage déjà fait (vérifie sur pièces)

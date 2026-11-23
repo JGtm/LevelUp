@@ -16,10 +16,10 @@
   (compaction append-only) attendent la mesure prod : HORS de ce plan.
 - **Hors plan, déjà réglé ou à l'utilisateur** : la branche `feat/perf-chargements` (locale et
   distante) n'existe plus (ménage de la bascule du 2026-09-25, branches 154 -> 4) ; la reconnexion
-  SSO de Chocoboflor reste un geste de l'utilisateur (ADR 0023, jamais de re-capture) ; les
+  SSO de joueur_165 reste un geste de l'utilisateur (ADR 0023, jamais de re-capture) ; les
   découvertes du §11 du plan clos restent consignées, pas des lots.
 - **Branche** `feat/perf-perimetre` depuis `feat/v75` `ea5682373` ; worktree
-  `C:\Users\Guillaume\Projects\LevelUp-wt-perf-perimetre`. Fusion `--no-ff` dans `feat/v75` par le
+  `<poste>\Projects\LevelUp-wt-perf-perimetre`. Fusion `--no-ff` dans `feat/v75` par le
   superviseur après CI verte au niveau job de la branche (go utilisateur demandé à ce moment-là).
 - **Ajout du superviseur** : le changelog 7.5.0 (écrit le matin du 2026-09-23) ne mentionne ni la
   campagne perf (fusionnée le soir même) ni l'ADR 0036 ; il annonce « quatre ADR ». Étape P3.
@@ -30,14 +30,14 @@
 - Périmètre FERMÉ par étape (liste de fichiers). Toute autre modification = découverte au §5.
 - Aucun agent ne lance le serveur (`air`, `server.exe`), Vite, un navigateur, un backfill, ni
   n'ouvre en écriture une base sous `data/`. Chronométrage SQL : COPIE de
-  `C:\Users\Guillaume\Projects\LevelUp\data\titles\halo_infinite\warehouse\shared_matches_v2.duckdb`
+  `<poste>\Projects\LevelUp\data\titles\halo_infinite\warehouse\shared_matches_v2.duckdb`
   (avec son `.wal` s'il existe) dans le scratchpad de l'agent, sonde Go temporaire sous
   `apps/go-api/cmd/perimetre_probe_tmp/` SUPPRIMÉE avant le commit, ouverture
   `access_mode=read_only`, `SET threads=2`, `SET memory_limit='512MB'` (réglages de la prod).
 - Commandes `go` une à la fois, depuis `apps/go-api` du worktree, `CGO_ENABLED=1`,
-  `GOCACHE=C:\Users\Guillaume\Projects\LevelUp-wt-perf-perimetre\.gocache-perimetre`, `CC` de
+  `GOCACHE=<poste>\Projects\LevelUp-wt-perf-perimetre\.gocache-perimetre`, `CC` de
   l'environnement (gcc winlibs — ne pas le forcer), lint avec
-  `GOLANGCI_LINT_CACHE=C:\Users\Guillaume\Projects\LevelUp-wt-perf-perimetre\.golangci-cache`.
+  `GOLANGCI_LINT_CACHE=<poste>\Projects\LevelUp-wt-perf-perimetre\.golangci-cache`.
 - Interdits : push, `git add -A`, `git stash`, `--no-verify`, `--force`, commit sur une autre
   branche, écriture dans `.ai/thought_log.md` (le superviseur l'écrit depuis le rapport).
 - Invariants intouchables : écritures per-match via `persist.BatchBuilder` ; tables append-only lues
@@ -195,7 +195,7 @@ Décisions tranchées :
   (`QMatchsDuJoueurTpl`, comme L7) ou les matchs du périmètre scopé (Relations).
 - DA.3 Parité des noms — le repli qui la tient. L7 a mesuré qu'un annuaire restreint aux matchs de
   la lecture perd des noms que la vue trouve AILLEURS : 11 couples (match, joueur) sur 93 636
-  (vue match) passeraient à « Joueur #### », 2 lignes servies de Nuzzles (Relations). Mécanisme :
+  (vue match) passeraient à « Joueur #### », 2 lignes servies de joueur_074 (Relations). Mécanisme :
   un mode « portée base » de l'annuaire (option de `lectureANommer`, même cascade, activé par les
   lectures de CE lot seulement) : niveaux alias et participants lus sur TOUTE la base, filtrés par
   les xuids de la lecture (prédicats poussés sur les TABLES — c'est la sémantique exacte de la vue,
@@ -218,7 +218,7 @@ Décisions tranchées :
   `analysis.MaskedXuidLabel` — le vérifier sur pièces ; sinon le rendre masqué côté serveur.
 - DA.6 Budgets sur la copie (2 threads / 512 Mo, JGtm, son dernier match et 20 matchs au hasard) :
   Q12, Q21, Q23, `ResolveGamertags` ≤ 100 ms chacun, annuaire compris ; Q23b ≤ sa fenêtre du
-  kill-feed + 100 ms ; Relations Q28 ≤ Q28 sans la jointure + 300 ms, Q29 ≤ 300 ms. Nuzzles
+  kill-feed + 100 ms ; Relations Q28 ≤ Q28 sans la jointure + 300 ms, Q29 ≤ 300 ms. joueur_074
   (7 190 matchs, 2 973 joueurs récurrents sans aucun nom) mesuré et rapporté. Si un budget ne
   tient pas AVEC la parité de DA.3 / DA.4 : arrêt propre, les deux chiffres au rapport (avec et
   sans le repli), aucun choix silencieux.
@@ -240,7 +240,7 @@ Décisions tranchées :
   Garde-rail de lecture brute : une entrée d'allowlist datée pour ce seul site (ou le dire s'il ne
   voit pas le fichier) ; test d'intégration « version ancienne ≠ `_latest` », rouge si le pas 2 lit
   la brute ; ADR 0036 : paragraphe « locating read » avec renvoi à l'ADR 0026. Si le pas 1 dépasse
-  500 ms sur Relations Nuzzles : essayer une liste liée en un seul paramètre, sinon arrêt propre.
+  500 ms sur Relations joueur_074 : essayer une liste liée en un seul paramètre, sinon arrêt propre.
 
 Périmètre : `internal/platform/duckdb/{queries_match.go, queries_match_detail.go,
 match_view_repo_scoreboard.go, match_view_repo_extras.go, gamertag_repo.go,
@@ -313,7 +313,7 @@ et ses sorties « avant » Q12 / Q21 réutilisées après vérification, cf. éc
   (1,7-1,8 s au lot L7) ; les chiffres absolus sont bruités, les ordres de grandeur non.
 - Chrono vue match, avant (JGtm, dernier match + 10 au hasard, 1 tour) : Q12 médiane 3,48 s
   (2,96-7,40), Q21 3,41 s, Q23 3,56 s, Q23b 5,65 s (dont fenêtre du kill-feed seule 1,68 s), RG
-  3,31 s. Nuzzles (6 matchs) : Q12 4,22 s, Q21 4,25 s, Q23 4,67 s, Q23b 6,74 s (fenêtre 2,32 s).
+  3,31 s. joueur_074 (6 matchs) : Q12 4,22 s, Q21 4,25 s, Q23 4,67 s, Q23b 6,74 s (fenêtre 2,32 s).
 - Chrono vue match, après (JGtm, dernier match + 20 au hasard, trois passes de deux tours, 42
   mesures par lecture et par passe) : Q12 médiane 16-33 ms, max 36-71 ms ; Q21 médiane 7-21 ms, max
   27-53 ms ; RG médiane 5-13 ms, max 12-41 ms ; Q23 médiane 46-89 ms, max 65-156 ms ; l'annuaire du
@@ -328,19 +328,19 @@ et ses sorties « avant » Q12 / Q21 réutilisées après vérification, cf. éc
   lecture (5,3 s au CLI, 12,2 s une fois sous charge, et Q23 a alors dépassé son délai de 20 s :
   « context deadline exceeded », section rencontres perdue pour ce match). Il part pour tout match dont
   un participant n'a ni alias, ni nom de participant dans TOUTE la base, ni nom au kill-feed du match :
-  23 des 1 160 matchs de JGtm, 15 / 587 Chocoboflor, 14 / 1 275 Madina97294, 1 / 39 XxDaemonGamerxX,
-  4 688 / 7 190 Nuzzles (31 426 couples, 25 064 xuids sur la base ; seuls 11 de ces couples sont
-  nommés ailleurs). Nuzzles, après, 6 matchs : 4 déclenchent le repli, Q12 2,9-7,2 s et Q23 3,4-5,8 s
-  (l'annuaire), Q21 et RG ≤ 40 ms. Sans le repli : Nuzzles Q12 médiane 31-44 ms (max 51-107), Q23
+  23 des 1 160 matchs de JGtm, 15 / 587 joueur_165, 14 / 1 275 joueur_117, 1 / 39 joueur_291,
+  4 688 / 7 190 joueur_074 (31 426 couples, 25 064 xuids sur la base ; seuls 11 de ces couples sont
+  nommés ailleurs). joueur_074, après, 6 matchs : 4 déclenchent le repli, Q12 2,9-7,2 s et Q23 3,4-5,8 s
+  (l'annuaire), Q21 et RG ≤ 40 ms. Sans le repli : joueur_074 Q12 médiane 31-44 ms (max 51-107), Q23
   38-46 ms ; JGtm Q12 22-34 ms, Q21 11-23 ms, Q23 72-86 ms, RG 7-10 ms.
 - Chrono Relations, après avec repli (deux tours) : JGtm Q28 1,97-2,32 s dont Q28 seule 1,72-2,08 s
   et annuaire 241-244 ms (budget +300 ms tenu), Q28 scopé 30 matchs 132-134 ms (annuaire 4-6 ms), Q29
   78-80 ms (annuaire 30-31 ms, budget 300 ms tenu), Q29 scopé 21-22 ms. Autres joueurs : annuaire Q28
-  Madina97294 282-311 ms, Chocoboflor 246-347 ms, XxDaemonGamerxX 8-11 ms (le premier passage
-  kill-feed sur la liste liée des matchs de l'historique) ; aucun repli. Nuzzles : annuaire Q28
+  joueur_117 282-311 ms, joueur_165 246-347 ms, joueur_291 8-11 ms (le premier passage
+  kill-feed sur la liste liée des matchs de l'historique) ; aucun repli. joueur_074 : annuaire Q28
   3,8-4,9 s, Q29 4,7-5,9 s (repli : 2 973 récurrents sans aucun nom), scopés 7-10 ms. Sans le repli :
-  Nuzzles annuaire Q28 684-920 ms, Q29 223-231 ms. Avant (1 tour, passe la plus chargée) : JGtm Q28
-  14,1 s, scopé 14,9 s, Q29 20,4 s ; Nuzzles 7,4 / 5,2 / 5,2 / 5,5 s (passe de l'exécuteur précédent,
+  joueur_074 annuaire Q28 684-920 ms, Q29 223-231 ms. Avant (1 tour, passe la plus chargée) : JGtm Q28
+  14,1 s, scopé 14,9 s, Q29 20,4 s ; joueur_074 7,4 / 5,2 / 5,2 / 5,5 s (passe de l'exécuteur précédent,
   moins chargée : JGtm Q28 8,2 s, Q29 5,0 s).
 - Parité (DA.4), au code final, sorties comparées triées (DA.9) puis dans l'ordre : Q12 93 000 lignes
   (tous les matchs de la copie ayant une ligne servie, 9 088 / 9 170), Q21 1 311 594 events (tous les
@@ -352,7 +352,7 @@ et ses sorties « avant » Q12 / Q21 réutilisées après vérification, cf. éc
   aucun bot hors sources, aucun nom de kill-feed variable touché) ; (i) épinglé par un test dès P2, (iii) seulement en A.12
   (le premier journal disait à tort « épinglés par les tests »), (ii) par le test Escouade. Aucun nom
   perdu. Sans le repli : exactement les écarts de L7 — 11 couples Q12 (10 matchs, 8 xuids, ex.
-  « Feelgood Joker » -> « Joueur 6576 » sur trois matchs) et 2 lignes Relations de Nuzzles, des ROUGES
+  « joueur_615 » -> « Joueur 6576 » sur trois matchs) et 2 lignes Relations de joueur_074, des ROUGES
   au sens de DA.4 ; Q21, Q23, RG, heatmap sans écart.
 - Ordre : Q12 avait un ordre des ex aequo (équipe, rang) stable d'une exécution à l'autre ; sans la
   jointure il variait (689 matchs entre deux passes) -> départage `p.xuid` (conséquence de l'ADR 0036 :
@@ -399,7 +399,7 @@ et ses sorties « avant » Q12 / Q21 réutilisées après vérification, cf. éc
   sans artefact sous `data/`.
 - DÉCISION À PRENDRE (superviseur) : DA.3 tient la parité (zéro nom perdu) et les budgets de
   l'échantillon JGtm ; hors échantillon, le repli toute la base coûte autant ou plus que la vue qu'il
-  remplace, pour 2 % des matchs de JGtm et 65 % de ceux de Nuzzles (et ses Relations). Chiffres avec
+  remplace, pour 2 % des matchs de JGtm et 65 % de ceux de joueur_074 (et ses Relations). Chiffres avec
   et sans le repli ci-dessus ; piste mesurée à titre d'information : découverte (1) de P2.
   -> TRANCHÉE : DA.10, ci-dessous.
 
@@ -438,7 +438,7 @@ supprimée) :
   « ZzAncienNom », « ZzDisparu » ; ResolveGamertags idem) ; localisation neutralisée (aucun
   candidat) -> six tests rouges (Q12, Q21, Q23, ResolveGamertags, Relations, version).
 - Chrono (2 threads, 512 Mo, machine toujours partagée ; vue seule 4,2 s) :
-  vue match Nuzzles, les 6 mêmes matchs, deux tours : Q12 médiane 184-211 ms (max 341), Q23 184-186
+  vue match joueur_074, les 6 mêmes matchs, deux tours : Q12 médiane 184-211 ms (max 341), Q23 184-186
   ms (max 336), Q21 1 ms (max 12), RG 0 ms (max 8) ; l'annuaire des 4 matchs à repli 151-325 ms
   (ancien repli : 2,8-7,2 s ; avant le lot : Q12 4,2 s, Q23 4,7 s de médiane) ; les 2 autres ≤ 8 ms.
   JGtm, ses 23 matchs à repli, deux tours (46 mesures par lecture) : Q12 médiane 18-28 ms (max
@@ -448,10 +448,10 @@ supprimée) :
   dépassé). Le repli ne part pas pour toutes les lectures d'un même match : Q12 écarte les lignes
   toutes nulles, Q21 et RG ne voient que les xuids des events.
   Relations, deux tours : JGtm Q28 2,21-2,48 s dont annuaire 275-277 ms (budget +300 ms tenu), Q29
-  90-94 ms, scopés 25-150 ms ; Madina97294 annuaire Q28 316-350 ms, Chocoboflor 237 ms, Xx 8-10 ms ;
-  Nuzzles Q28 2,31-2,46 s dont annuaire 868-871 ms (ancien repli 3,8-4,9 s ; sans repli 684-920 ms),
+  90-94 ms, scopés 25-150 ms ; joueur_117 annuaire Q28 316-350 ms, joueur_165 237 ms, Xx 8-10 ms ;
+  joueur_074 Q28 2,31-2,46 s dont annuaire 868-871 ms (ancien repli 3,8-4,9 s ; sans repli 684-920 ms),
   Q29 387-409 ms dont annuaire 327-345 ms (ancien 4,7-5,9 s), scopés 16-114 ms.
-  Pas 1 seul (la localisation exacte, 2 973 xuids récurrents sans nom de Nuzzles, CLI, 3 exécutions) :
+  Pas 1 seul (la localisation exacte, 2 973 xuids récurrents sans nom de joueur_074, CLI, 3 exécutions) :
   215-219 ms -> 2 matchs candidats. Sous le seuil de 500 ms : la variante « un seul paramètre
   tableau » n'a pas été essayée (la liste VALUES est déjà liée une fois ; 2 973 et non 25 000
   xuids : 25 064 est le compte de toute la base, aucune lecture ne les cherche tous).
@@ -462,9 +462,9 @@ supprimée) :
   matérialisées en tables temporaires dans la sonde pour tenir le temps — même contenu) : Q12 93 000,
   Q21 1 311 594, Q23 / Q23b 2 625, RG 1 853, Relations 12 289, heatmap 1 265 : ZÉRO écart trié avec
   l'avant ; Q12 et Q21 identiques octet pour octet au balayage de f576df10e (ordre compris). Les 11
-  couples Q12 (« Feelgood Joker », « madWasabii », « shake1179 », « BlockedChart3 »,
-  « Symbolicdeth », « FUGMO », « Viridianvoid », « WrathfulAsp3213 ») et les 2 lignes Relations de
-  Nuzzles gardent leur nom. Aucun nom perdu.
+  couples Q12 (« joueur_615 », « joueur_1034 », « joueur_1048 », « joueur_1036 »,
+  « Symbolicdeth », « FUGMO », « Viridianvoid », « joueur_871 ») et les 2 lignes Relations de
+  joueur_074 gardent leur nom. Aucun nom perdu.
 - Gate (code A.10, rejoué en entier) : `gofmt -l ./internal ./cmd` vide ; `go build ./...` 0 ;
   `go vet ./...` 0 ; `go test ./internal/service/... ./internal/platform/duckdb/...
   ./internal/analysis/... ./internal/api/... ./internal/archlint/... ./internal/port/...` 0 (34
@@ -656,7 +656,7 @@ machine chargée — dit tel quel dans l'entrée.
 - (P2, 2026-09-26) (1) [TRAITÉE par DA.10 / A.10 : localisation dans la brute puis lecture par
   `_latest` bornée] Le repli « toute la base » de DA.3 évalue la fenêtre `_latest` du journal
   canonique entière (3 à 7 s, 12 s sous charge) pour tout match ou périmètre qui contient un xuid que
-  rien ne nomme ailleurs (2 % des matchs de JGtm, 65 % de ceux de Nuzzles, ses Relations) ; il ne
+  rien ne nomme ailleurs (2 % des matchs de JGtm, 65 % de ceux de joueur_074, ses Relations) ; il ne
   trouve un nom que pour 11 couples sur 31 426. Piste mesurée à titre d'information, non traitée : les
   matchs candidats lus sur la table brute `match_kill_events` (`DISTINCT match_id WHERE
   feed_killer_xuid IN (…) OR victim_xuid IN (…)`, 0,31 s sur la copie, 2 threads) sont un sur-ensemble
@@ -709,8 +709,8 @@ machine chargée — dit tel quel dans l'entrée.
   reprise de ses restes (copie de base, arbre de base). P3 lancé en parallèle (effort moyen,
   `6606fd3c9`).
 - 2026-09-26 : P2 (`f576df10e`, `80184e83d`) : parité exacte, mais le repli kill-feed « toute la
-  base » coûtait 3 à 7 s quand il partait (2 % des matchs de JGtm, 65 % de ceux de Nuzzles, Relations
-  de Nuzzles). Décision DA.10 du superviseur : localiser les matchs candidats dans la table brute
+  base » coûtait 3 à 7 s quand il partait (2 % des matchs de JGtm, 65 % de ceux de joueur_074, Relations
+  de joueur_074). Décision DA.10 du superviseur : localiser les matchs candidats dans la table brute
   (lecture de localisation seule, allowlistée et datée), lire les valeurs par `_latest` bornée —
   `5ab3c13c7` : repli 150-360 ms, parité exacte, 0 nom perdu. Revue adversariale (C.2) puis A.11
   (`35e9766ff`). Changelog complété par le superviseur. Branche ni poussée ni fusionnée : attente

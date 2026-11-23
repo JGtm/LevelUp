@@ -28,7 +28,7 @@
 > `2668848b1`, qui porte les lots Séries temporelles et Sessions, puis « go » M0-M5 ; push à la fin,
 > CI ; ni merge ni autre rebase). Amendements de M0 : §1.4.
 > Branche : `feat/matchview-emprise`, créée sur `651bbe972` (tête L6 de `feat/ts-usages-emprise`),
-> worktree `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-matchview`.
+> worktree `<poste>\Downloads\Scripts\LevelUp-wt-matchview`.
 
 ## 0. Objectif, critère de succès, hors périmètre
 
@@ -104,7 +104,7 @@ jamais un zéro inventé) ; (3) tous les gates des lots verts, dernière exécut
   le joueur de la page, puis les profils suivis (clés de `friendsExtras`, `match_view_data_loaders.go:442-457`)
   dans l'ordre du tableau des scores, puis les autres dans l'ordre du tableau des scores. *Écart à la
   maquette*, qui suit l'ordre du tableau des scores sans remonter les profils suivis (m2407 :
-  Madina97294, suivie, en 5e fiche) : le brief §2 E dit « joueur de la page en premier, profils suivis
+  joueur_117, suivie, en 5e fiche) : le brief §2 E dit « joueur de la page en premier, profils suivis
   ensuite » — le brief est retenu (Q1). Fonction pure `matchCampPlayers` (service), testée.
 - **D4 — Les fiches E sans fiche « reste du camp ».** `buildPickupSheets` (`squad/emprise/emprise.logic.ts:241-272`)
   ajoute toujours une fiche « reste du camp » (l. 246). Brief : bots et partis exclus des fiches. La
@@ -598,7 +598,7 @@ match_view_tools.go (NEUFS), match_view_service.go, match_view_data_loaders.go}`
   bot et parti exclus), un seul match publié, objets par joueur, journal publiable vrai / faux, Halo 5
   (repo d'usage nil → `film_unavailable = film_unsupported`, feuille seule), feuille non supportée /
   en échec, film en échec → `*_load_failed`, jamais d'erreur de page ; témoin m2209 (MESURES §3 D et E :
-  bonus 5–2, râteliers 4–3, fiches JGtm / XL JACOB / Madina97294 / Chocoboflor dans l'ordre D3).
+  bonus 5–2, râteliers 4–3, fiches JGtm / JOUEUR_1012 / joueur_117 / joueur_165 dans l'ordre D3).
   Mutations : bot gardé en fiche → rouge ; profils suivis non remontés → rouge ; journal publiable lu
   sur `MeasuredDeaths` → rouge.
 - [x] M2.4 D8, D22 : `attachMatchLives` — repo nil → Debug « capability absente », bloc absent ; une
@@ -900,7 +900,7 @@ scores ; même ordre pour I) ; Q2 oui ; Q3 oui (signatures existantes inchangée
 verts sans modification, une mutation par nouveau paramètre). Questions d'origine :
 
 - **Q1** D3 : ordre des fiches E et des lignes I — le brief (« joueur de la page, profils suivis
-  ensuite ») ou la maquette (ordre du tableau des scores, Madina97294 en 5e fiche sur le BTB) ? Le plan
+  ensuite ») ou la maquette (ordre du tableau des scores, joueur_117 en 5e fiche sur le BTB) ? Le plan
   retient le brief.
 - **Q2** D13 : D ne porte pas les lignes « en attente » de la maquette (bonus non publiés sur le BTB,
   « 0 prise », véhicules non mesurés), par cohérence avec les pages sœurs ; G et H les portent (brief).

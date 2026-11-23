@@ -2,7 +2,7 @@
 
 > Rédigé le 2026-10-26, validé par le user le même jour (« Ok avec ton plan »).
 > Contrat d'exécution : skill `plan-execution`. Branche `feat/cartes-republiees`, depuis
-> `release/v8.1.0` (03c5d89fa), worktree `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-cartes-republiees`.
+> `release/v8.1.0` (03c5d89fa), worktree `<poste>\Downloads\Scripts\LevelUp-wt-cartes-republiees`.
 > Suite de `.ai/PLAN_CARTES_VARIANTES_STATS_2026-10-26.md` (même résolveur de groupes).
 
 ## Constat

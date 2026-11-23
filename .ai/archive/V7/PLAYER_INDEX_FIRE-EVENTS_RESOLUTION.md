@@ -135,7 +135,7 @@ au même moment.
 Ancien comportement de `correlate_kills_global` : pool unique de tous les events,
 claim-and-remove par proximité temporelle sans filtrage par joueur.
 
-**Symptôme observé (match `82f3af9f`) :** 4 fire events de FreshKalvin203 attribués
+**Symptôme observé (match `82f3af9f`) :** 4 fire events de joueur_154 attribués
 aux kills de JGtm (×1), NewFlipBobCat (×2), alpal capone (×1).
 
 **Supprimé le 2026-03-18** — remplacé par le filtre `ev["player_index"] == killer_pi`.
@@ -181,7 +181,7 @@ Valeurs b5 observées : `{3, 17, 19, 33, 35, 49, 51, 65, 81, 83, 97, 99, 113, 11
 
 - **Déduplication** : par proximité `byte_pos` (< 2 bytes = même event physique).
   Ne **pas** déduper par `(fire_counter, weapon)` : fire_counter wrappe à 255 et
-  supprime des events légitimes sur armes automatiques (bug confirmé sur KIN92/MA40 AR).
+  supprime des events légitimes sur armes automatiques (bug confirmé sur JOUEUR_617/MA40 AR).
 - **Mapping pi → xuid** : via `detect_pi_from_metadata()` (PLAYER_METADATA payload ~25KB).
   POV player absent de PLAYER_METADATA (pi=0 filtré) → reçoit pi=0 par fallback.
 - **Kills sans fire event** : gap > 500ms ou no_event = kill grenade/melee probable.
@@ -477,7 +477,7 @@ Sur un match long avec une arme automatique (ex. MA40 AR), le même `fire_counte
 revient toutes les ~256 rafales (~25 secondes à pleine cadence).
 
 **Bug confirmé :** dédup par `(player_index, fire_counter, weapon_bytes)` supprimait les
-occurrences ultérieures → KIN92 (19 kills MA40 AR) perdait des events légitimes,
+occurrences ultérieures → JOUEUR_617 (19 kills MA40 AR) perdait des events légitimes,
 avg gap gonflé à 3 secondes au lieu de 3ms.
 
 **Fix :** dédup par proximité `byte_pos` uniquement (< 2 bytes = même event physique).

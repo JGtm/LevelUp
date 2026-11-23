@@ -146,7 +146,7 @@ l'octet, en little-endian ET en big-endian.
 | mesure | 000d5950 | 00502e52 |
 |---|---|---|
 | section 3 | `[0x0CB65C, 0x14E8A0)` = 537 156 o | `[0x0CB65C, 0x14E31E)` = 535 746 o |
-| **B-POS** chaines UTF-16LE lisibles | `whiteknight2519` @ **0x13CCA6**, `PEINX13` | `LordFlacco9189`, `superjp12345` |
+| **B-POS** chaines UTF-16LE lisibles | `joueur_283` @ **0x13CCA6**, `JOUEUR_564` | `joueur_634`, `joueur_1050` |
 | **B-NEG** plancher du hasard | 0,00050 occ. / valeur (2 000 tirages) | idem |
 | identifiants d'EQUIPEMENT trouves | **0 / 21** | **0 / 21** |
 | **B-REF** familles d'ARME du film trouvees | **0 / 15** | **0 / 15** |
@@ -155,9 +155,9 @@ l'octet, en little-endian ET en big-endian.
 
 Les trois temoins sont ce qui rend ce negatif lisible :
 
-- **B-POS** est le controle qui autorise a conclure. L'instrument retrouve `whiteknight2519` a
+- **B-POS** est le controle qui autorise a conclure. L'instrument retrouve `joueur_283` a
   `0x13CCA6` — **exactement** le decalage que la carte de `chunk_00` documente par une autre
-  voie. Il lit donc les bons octets. (`LORD PEINX13` sort tronque en `PEINX13` : mon filtre
+  voie. Il lit donc les bons octets. (`JOUEUR_731` sort tronque en `JOUEUR_564` : mon filtre
   exclut l'espace, c'est la meme chaine.)
 - **B-REF** est le controle qui interdit de sur-interpreter. Les familles d'arme reellement
   jouees par le film n'y sont pas non plus. **L'absence ne vise donc pas l'equipement** : elle

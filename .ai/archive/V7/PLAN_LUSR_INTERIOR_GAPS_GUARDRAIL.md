@@ -29,8 +29,8 @@ locales serveur arrêté, `cmd/diag_q` read-only) :
 | Joueur | Trous PROD | Trous LOCAL | Note |
 |---|---|---|---|
 | JGtm | 10 (dont ~3 récents en attente, ~7 permanents) | 1 (= `ac313879`) | ensembles **disjoints** |
-| Madina97294 | 5 | 5 | |
-| Chocoboflor | 4 | 5 | |
+| joueur_117 | 5 | 5 | |
+| joueur_165 | 4 | 5 | |
 
 → Les trous sont **réels, permanents, par-environnement et non-déterministes** (dépendent de
 l'ordre d'arrivée). Il en existe des deux côtés ; aucun n'est « la vérité ». D'où le besoin

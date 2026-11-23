@@ -3,4 +3,4 @@ name = "fsclose"
 version = "0.0.0"
 edition = "2021"
 [dependencies]
-filmshell = { path = "C:/Users/Guillaume/Downloads/Scripts/libfilmshell", features = ["research"] }
+filmshell = { path = "<poste>/Downloads/Scripts/libfilmshell", features = ["research"] }

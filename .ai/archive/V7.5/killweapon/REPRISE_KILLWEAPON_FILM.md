@@ -97,7 +97,7 @@ on décide d'investir le chantier ECS générique (qui débloque **arme + score 
 
 ## Script prêt — Étape 0 : `FindObjeComponent.java`
 
-Enregistrer dans `C:\Users\Guillaume\ghidra_scripts\FindObjeComponent.java`, lancer → `ghidra_obje_component.c`.
+Enregistrer dans `<poste>\ghidra_scripts\FindObjeComponent.java`, lancer → `ghidra_obje_component.c`.
 
 ```java
 import ghidra.app.script.GhidraScript;
@@ -131,7 +131,7 @@ public class FindObjeComponent extends GhidraScript {
     public void run() throws Exception {
         di = new DecompInterface(); di.openProgram(currentProgram);
         mon = new ConsoleTaskMonitor(); fm = currentProgram.getFunctionManager();
-        out = new PrintWriter(new FileWriter("C:\\Users\\Guillaume\\Downloads\\ghidra_obje_component.c"));
+        out = new PrintWriter(new FileWriter("<poste>\\Downloads\\ghidra_obje_component.c"));
 
         // 1. la plomberie ECS que le kill-feed a utilisée
         dumpAt(0x1405839d0L, "component-getByFourCC");

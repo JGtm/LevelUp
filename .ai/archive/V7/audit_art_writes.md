@@ -32,7 +32,7 @@ Le bug est **non déterministe** : il ne se reproduit pas systématiquement en `
 CLAUDE.md affirme :
 > "les backfills 'UPDATE-style' qui ne touchent PAS shared.match_participants (LUSR, citations, engagement, etc.) peuvent rester UPDATE car non concernés par l'ART bug"
 
-**Démenti par les logs de prod 2026-05-24 20:41:04** : crash ART exact sur `match_skill_rank` (table LUSR de la player DB de Chocoboflor), avec la signature canonique `Failed to delete all rows from index. Only deleted 0 out of 1 rows`. La phrase doit être supprimée de CLAUDE.md.
+**Démenti par les logs de prod 2026-05-24 20:41:04** : crash ART exact sur `match_skill_rank` (table LUSR de la player DB de joueur_165), avec la signature canonique `Failed to delete all rows from index. Only deleted 0 out of 1 rows`. La phrase doit être supprimée de CLAUDE.md.
 
 ### 1.2 — Le pattern "DELETE batch + INSERT batch en TX" n'est PAS un fix
 

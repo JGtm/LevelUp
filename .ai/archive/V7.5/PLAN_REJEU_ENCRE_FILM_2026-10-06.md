@@ -177,8 +177,8 @@ Mesure (2026-10-06) : test jetable non versionné (vitest `--pool=forks`, lectur
 `data/cache/replays/halo_infinite`, 126 documents hors `.derived` ; script archivé dans le
 scratchpad, résultat `e6_mesure_parc.json`), par les VRAIS modules (`buildPlayers`,
 `buildFilmAllegiance`, `buildSeats`, `groupSeatsByTeam`, `seatOccupantAt`). Référence = le profil
-suivi présent au roster (`db_profiles.json`, sync actif) : JGtm 84 documents, Nuzzles 38,
-Chocoboflor 4 ; AUCUNE référence sans équipe du film.
+suivi présent au roster (`db_profiles.json`, sync actif) : JGtm 84 documents, joueur_074 38,
+joueur_165 4 ; AUCUNE référence sans équipe du film.
 
 - Vies de bots : 179 au total. AVANT, toutes à l'encre ADVERSE (clé `bot:<nom>` absente de la
   table de la feuille). APRÈS : 60 alliées (20 bots, 16 documents), 115 adverses (inchangées),
@@ -188,7 +188,7 @@ Chocoboflor 4 ; AUCUNE référence sans équipe du film.
 - En-têtes : 252 camps. AVANT, un en-tête était neutre quand aucun HUMAIN n'occupait une place du
   camp (bots inconnus de la table) — reconstruit en supposant la feuille d'accord avec le film
   pour les humains (la base n'est pas ouverte). 1 en-tête cesse d'être neutre : 248972b2, camp 1
-  vu de Nuzzles, 74 images (4968–5041) sans humain présent → encre adverse. 0 camp neutre tout le
+  vu de joueur_074, 74 images (4968–5041) sans humain présent → encre adverse. 0 camp neutre tout le
   match, 0 en-tête qui devient neutre.
 - Témoins (bot ALLIÉ, équipe du film connue ; images à 100 ms) : c7f94693 « 343 Donos » n'en est
   PAS un — le film tait son équipe (vie 947–981) : encre NEUTRE, défaut de source du lot Go.

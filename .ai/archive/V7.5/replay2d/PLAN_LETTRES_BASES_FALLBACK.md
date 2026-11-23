@@ -264,7 +264,7 @@ l'ordre de peinture.
 
 - Commandes `go` : UNE à la fois, GOCACHE privé (`<worktree>/.gocache`, jamais commité) ;
   `npm ci` dans apps/web du worktree ; vitest hors sandbox si besoin.
-- Données du principal (`c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/`) :
+- Données du principal (`<poste>/Downloads/Scripts/LevelUp-go-migration/data/`) :
   lecture seule, SAUF l'écriture des artefacts témoins re-cuits (JSON du cache replays,
   anciens sauvegardés) — aucune écriture DuckDB nulle part.
 - Coordination : une autre session a des modifications non commitées sur `openapi.yaml` /

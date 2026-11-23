@@ -3,7 +3,7 @@
 > Execute le 2026-09-03 dans le worktree `LevelUp-wt-vehicules` (branche `wt/vehicules-tourelles`).
 > Aucun commit, aucun `git add`. GOCACHE isole (`scratchpad/gocache_v12`), mesures en AVANT-PLAN,
 > `CGO_ENABLED=0` pour l'analyse, films du checkout principal
-> (`C:/Users/Guillaume/Projects/LevelUp/data/cache/film_chunks`, LECTURE SEULE).
+> (`<poste>/Projects/LevelUp/data/cache/film_chunks`, LECTURE SEULE).
 >
 > Ce lot EXECUTE le report n° 1 du lot V11 (§ 8.1 de `V11_ORIENTATION_TOURELLE_2026-09-03.md`) :
 > publier la visee d'occupant sur l'EPISODE D'OCCUPATION, et remplacer le cone au cap du chassis.
@@ -98,7 +98,7 @@ quel.
 ## 3. CHIFFRES AVANT / APRES — LES DEUX ARTEFACTS DE DEMONSTRATION
 
 Reconstruits par `cmd/replay-build` (`LEVELUP_REPO_ROOT` = ce worktree), puis copies vers
-`C:/Users/Guillaume/Projects/LevelUp-wt-capture-rejeu/data/cache/replays/halo_infinite/`.
+`<poste>/Projects/LevelUp-wt-capture-rejeu/data/cache/replays/halo_infinite/`.
 
 | | `0d76e8f1` (Behemoth) | `fccc61cd` (Launch Site) |
 |---|---|---|

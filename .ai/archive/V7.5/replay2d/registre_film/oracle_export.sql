@@ -6,7 +6,7 @@ COPY (
     '7344d24f','696a9d7c','24dbb67d',
     '000d5950','06dfe6d9')
   ORDER BY match_id
-) TO 'C:/Users/Guillaume/Projects/LevelUp-wt-score-film/.ai/V7.5/replay2d/registre_film/oracle_lotA.tsv'
+) TO 'C:/Users/utilisateur/Projects/LevelUp-wt-score-film/.ai/V7.5/replay2d/registre_film/oracle_lotA.tsv'
   (HEADER, DELIMITER E'\t');
 
 COPY (
@@ -17,5 +17,5 @@ COPY (
     '7344d24f','696a9d7c','24dbb67d',
     '000d5950','06dfe6d9')
   ORDER BY match_id, team_id, xuid
-) TO 'C:/Users/Guillaume/Projects/LevelUp-wt-score-film/.ai/V7.5/replay2d/registre_film/oracle_lotA_participants.tsv'
+) TO 'C:/Users/utilisateur/Projects/LevelUp-wt-score-film/.ai/V7.5/replay2d/registre_film/oracle_lotA_participants.tsv'
   (HEADER, DELIMITER E'\t');

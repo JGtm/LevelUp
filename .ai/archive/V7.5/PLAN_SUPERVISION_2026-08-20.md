@@ -1,8 +1,8 @@
 # Plan de supervision — reprise v7.5 + registre-film — 2026-08-20
 
 > Session de pilotage (contrat : skill `plan-execution`). Un agent par worktree frère
-> `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-<nom>` (l'ancien principal
-> `C:\Users\Guillaume\Projects\LevelUp` N'EXISTE PLUS — le dépôt de travail est
+> `<poste>\Downloads\Scripts\LevelUp-wt-<nom>` (l'ancien principal
+> `<poste>\Projects\LevelUp` N'EXISTE PLUS — le dépôt de travail est
 > `Downloads\Scripts\LevelUp-go-migration`, branche `feat/v75`). Fusions `--no-ff` par le
 > superviseur après CR vérifié sur pièces, push superviseur, CI verte au niveau JOB.
 > Base de chaque lot : `feat/v75` (`ce9933ea5`). Schéma artefact : 18 (prochain libre 19).
@@ -71,7 +71,7 @@ propre au worktree, jamais de boucle sur le corpus de films.
 ## Découvertes (notées, non traitées)
 
 - (E5) `vgmstream-cli` et les outils de mix/page (`_outils/*.py`, machine précédente) ont
-  disparu avec `C:\Users\Guillaume\Projects\` — la recette d'écoute doit être reconstruite.
+  disparu avec `<poste>\Projects\` — la recette d'écoute doit être reconstruite.
 - (E2) 224 lâchers (grenades/grapple/thruster) ne sont jamais dessinés (règle générale du
   calque, indépendante de Fiesta) — comportement assumé, pas un bug.
 - (E4) La commande de reproduction du registre :201 était un faux vert (`\|` littéral RE2).

@@ -83,8 +83,8 @@ Gate 1 : chiffres par film, AVANT/APRES, sur les 8 films du corpus d'origine au 
       a la zone RELEVEE a la main.
       **FAIT** (`7344d24f` 25,8->73,2 % · `e6ccc947` 17,2->73,3 % · `696a9d7c` 15,3->77,9 %),
       detail par action sous `-dump`. Les deux choses que le releve dit VRAIMENT tombent
-      juste : l'action de FlyGuy8773 est datee **48,9 s** et attribuee DEDANS (releve :
-      « 0:48 flyguy8773 capture la base B »), et les trois rangs de zone sont tous captures a
+      juste : l'action de joueur_780 est datee **48,9 s** et attribuee DEDANS (releve :
+      « 0:48 joueur_780 capture la base B »), et les trois rangs de zone sont tous captures a
       **90,0 s au plus tard** (releve a 1:30 : « une equipe controle les trois bases »).
 - [!] 2.2 Publier une matrice de justesse (bonne zone / mauvaise zone / aucune), pas un
       simple taux d'attribution. C'est le chiffre qui manque a tout le chantier.

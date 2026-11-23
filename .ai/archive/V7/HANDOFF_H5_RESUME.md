@@ -1,9 +1,9 @@
 # Handoff — Halo 5 (lecture + LUSR + KDA + PeopleHub + assets)
 
 Doc de reprise (post-compaction). Branche **`feat/multititre-peripherie`** (worktree
-`c:/Users/Guillaume/Downloads/Scripts/levelup-multititre`), **locale, ahead ~20, PAS de PR**.
+`<poste>/Downloads/Scripts/levelup-multititre`), **locale, ahead ~20, PAS de PR**.
 Données runtime (db_profiles, tokens, data/titles/halo_5) = clone **main**
-`c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration` (split 2-clones : code+config
+`<poste>/Downloads/Scripts/LevelUp-go-migration` (split 2-clones : code+config
 worktree, data+tokens main). Toolchain : `PATH=/c/msys64/ucrt64/bin`, `CGO_ENABLED=1`.
 
 ## LIVRÉ + committé (tout testé, `go build ./...` vert)

@@ -13,12 +13,12 @@
 **Le bottleneck c'est UNIQUEMENT le réseau, pas le compute ni les writes DB.**
 
 L'audit du 22 mai (Agent 3, breakdown logs réels) a mesuré :
-- **Network = 95%** du temps Madina (~456s sur 479s) — appels Halo API à 300-500ms RTT vers Azure US
+- **Network = 95%** du temps joueur_075 (~456s sur 479s) — appels Halo API à 300-500ms RTT vers Azure US
 - **Compute Go = ~5%** cumulés sur tous les batchs (perf scores, LUSR, engagement, aggregates) → **~5s total pour 1085 matchs**
 - **DB writes = négligeable** (sub-second, jamais "slow query" loggué)
 
 → **Parallélisation à privilégier (P0/P1)** :
-- Téléchargements API qui sont actuellement séquentiels — notamment **`processWeaponKillsInline`** (séquentiel sur 21 films × ~10-13s = 210-275s par cycle Madina, gros gain ~150-200s)
+- Téléchargements API qui sont actuellement séquentiels — notamment **`processWeaponKillsInline`** (séquentiel sur 21 films × ~10-13s = 210-275s par cycle joueur_075, gros gain ~150-200s)
 - Scheduler RunOnce séquentiel sur joueurs → parallèle (gain 15min → 5-8min)
 
 → **Parallélisation à NE PAS prioriser (correction du plan initial)** :
@@ -53,7 +53,7 @@ L'utilisateur a signalé 4 problèmes :
 | `defer recover()` dans `runPostSyncPipeline` | Partiel | Idem, bypass C++ |
 | Heartbeat goroutine 30s | Passif | Distingue crash / deadlock / kill externe |
 | Dominance flags wiring dans post-sync (étape 1.7) | Validé | `BackfillDominanceFlags` câblée pour les nouveaux matchs |
-| Cross-player dedup : `loadKnownMatchIDs` UNION `shared.match_participants WHERE xuid=?` | Validé tests | Choco skippe le fetch API quand Madina vient de syncer |
+| Cross-player dedup : `loadKnownMatchIDs` UNION `shared.match_participants WHERE xuid=?` | Validé tests | joueur_901 skippe le fetch API quand joueur_075 vient de syncer |
 | Parallel heal loops (errgroup + SetLimit 8) | **Suspect** | Concurrent UPSERTs match_participants aggravent races ART |
 | Double zlib `ParseHighlightEvents` rendu tolérant | Validé | Fix régression du 8 mai sur fresh downloads |
 | ~~Scoreboard Q12 WHERE relâché~~ | **REVERTÉ** | N'a fixé qu'1 match sur 1610, pas worth le diff |
@@ -64,7 +64,7 @@ L'utilisateur a signalé 4 problèmes :
 terminate called after throwing an instance of 'duckdb::FatalException'
   what():  "INTERNAL Error: Failed to append to PRIMARY_match_participants_match_id_xuid:
   Constraint Error: PRIMARY KEY or UNIQUE constraint violation:
-  duplicate key 0941d737-1fb4-4a11-8a9a-169624911729, 2533274828226170"
+  duplicate key 0941d737-1fb4-4a11-8a9a-169624911729, 2738015123372434"
 ```
 
 Crash C++ levé depuis le binding cgo DuckDB. Bypass `recover()` Go et `debug.SetCrashOutput`. Le process meurt brutalement.
@@ -209,11 +209,11 @@ Effort : **~9h** (recalibré, +4h vs estimation initiale).
 
 **4 tests existants** `TestProcessWeaponKillsInline_*` toujours verts post-refactor.
 
-**Source** : Audit Agent 3 (handoff §3). **C'est le gain le plus impactant identifié — ~150-200s économisés par cycle Madina.**
+**Source** : Audit Agent 3 (handoff §3). **C'est le gain le plus impactant identifié — ~150-200s économisés par cycle joueur_075.**
 
 **Constat audit** :
 - `processWeaponKillsInline` ([backfill_weapons.go:232-255](apps/go-api/internal/sync/backfill_weapons.go#L232)) est une boucle `for matchID := range matchIDs` **SANS goroutine, séquentielle**.
-- Sur cycle Madina 22 mai : 21 films × ~10-13s/match = **210-275s** dans le "gap noir" entre `had_bot_teammate` (18:29:56) et CSR (18:34:31).
+- Sur cycle joueur_075 22 mai : 21 films × ~10-13s/match = **210-275s** dans le "gap noir" entre `had_bot_teammate` (18:29:56) et CSR (18:34:31).
 - Sur cycle JGtm : 41 films × ~10-13s = **~8 minutes potentielles** sériel. Crash JGtm probablement dans ce gap.
 - Le pattern `errgroup + SetLimit(healParallelism=8)` existe DÉJÀ dans `healWeaponKillsForRecentMatches` ([events_heal.go:179-202](apps/go-api/internal/sync/events_heal.go#L179)) — à reproduire.
 
@@ -298,7 +298,7 @@ _ = eg.Wait()
 
 4 tests existants (`BasicPrefix`, `MultiChunk`, `FilmAbsent`, `DownloadFails`) restent verts → **no impact**. Suite complète : unit 10.7s + race 1.2s + integration 38s tout vert.
 
-**Gain attendu en prod** : sur cycle Madina 21 films × 6s gaspillés intra-film en série = **~120s économisés** en plus du gain Phase 3.0 (~150-200s). Combiné, on attaque les fondations du "cycle 15min".
+**Gain attendu en prod** : sur cycle joueur_075 21 films × 6s gaspillés intra-film en série = **~120s économisés** en plus du gain Phase 3.0 (~150-200s). Combiné, on attaque les fondations du "cycle 15min".
 
 ### 3.2 ~~Move parse highlight_events vers la phase parallèle~~ **DÉPRIORISÉ P3** (1.5h)
 
@@ -380,11 +380,11 @@ Suite scheduler complète verte avec `-race` (2.4s). Aucune régression sur les 
 
 **Source** : Audit Agent 3 (handoff §3 priorité 3).
 
-**Constat** : sur cycle Madina, `healEventsForRecentMatches` (4.2s) puis `healWeaponKillsForRecentMatches` (174s) sont en série. Les deux téléchargent le **même type de ressource** (films Halo). En série, le pool HTTP a des moments creux.
+**Constat** : sur cycle joueur_075, `healEventsForRecentMatches` (4.2s) puis `healWeaponKillsForRecentMatches` (174s) sont en série. Les deux téléchargent le **même type de ressource** (films Halo). En série, le pool HTTP a des moments creux.
 
 **Cible** : encapsuler les 2 dans un seul `errgroup` qui consomme les match_ids à parser pour chaque type. Saturer le pool HTTP en continu.
 
-**Gain estimé** : 20-30% sur les deux étapes combinées (Madina : 178s → ~125-140s).
+**Gain estimé** : 20-30% sur les deux étapes combinées (joueur_075 : 178s → ~125-140s).
 
 **Risque** : ordre d'insertion des heal types peut compter (events avant weapon_kills si un dépend de l'autre). À auditer avant impl.
 
@@ -464,7 +464,7 @@ Compteurs livrés (clés expvar plates, sans labels — convention Go stdlib) :
 
 **Source** : Audit Agent 2 (handoff §2 risque résiduel #6).
 
-**Problème critique non listé dans le plan initial** : pendant la période où l'ART était corrompue, les batchs computed sur les rows partiellement visibles ont produit des résultats FAUX. Exemple documenté dans [`steps_shared_rebuild_match_participants.go:17`](apps/go-api/internal/migration/steps_shared_rebuild_match_participants.go#L17) : **LUSR de Madina figé à Argent IV au lieu de Platine**.
+**Problème critique non listé dans le plan initial** : pendant la période où l'ART était corrompue, les batchs computed sur les rows partiellement visibles ont produit des résultats FAUX. Exemple documenté dans [`steps_shared_rebuild_match_participants.go:17`](apps/go-api/internal/migration/steps_shared_rebuild_match_participants.go#L17) : **LUSR de joueur_075 figé à Argent IV au lieu de Platine**.
 
 **Conséquence** : le rebuild swap-table de Phase 4.1 récupère les rows en DB, mais les valeurs dérivées (LUSR cascade, performance scores, sessions, citations, dominance flags) restent figées sur l'état corrompu.
 
@@ -610,11 +610,11 @@ Ces points ne sont PAS dans ce plan. Notés ailleurs si applicable.
 2. **Phase 2.1 + 2.2** (cartographie + ADR 0018) — avant toute écriture de code, on aligne sur le contract.
 3. **Phase 5.1** (stress test concurrent UPSERT) — écrit AVANT la Phase 2.3 pour validation TDD. Le test échoue d'abord.
 4. **Phase 2.3** (singleflight) — fix le crash, pass le test 5.1.
-5. **Phase 3.0** (paralléliser `processWeaponKillsInline`) — **TDD obligatoire** (tests d'abord, output attendu défini avant code). Gain ~150-200s/cycle Madina.
+5. **Phase 3.0** (paralléliser `processWeaponKillsInline`) — **TDD obligatoire** (tests d'abord, output attendu défini avant code). Gain ~150-200s/cycle joueur_075.
 
 **P1 — Recovery + parallélisation scheduler** :
 6. **Phase 4.1** (ART rebuild runtime) — recovery automatique pour les ~32 matchs déjà corrompus.
-7. **Phase 4.4** (recompute force=true post-rebuild) — recalcule LUSR/perf/sessions/dominance pour les joueurs affectés (sinon Madina reste figée en Argent IV).
+7. **Phase 4.4** (recompute force=true post-rebuild) — recalcule LUSR/perf/sessions/dominance pour les joueurs affectés (sinon joueur_075 reste figée en Argent IV).
 8. **Phase 3.4** (parallel scheduler RunOnce) — après singleflight validé. Gain 15min → 5-8min.
 9. **Phase 3.5** (heal loops avec safety singleflight).
 
@@ -683,7 +683,7 @@ Ce handoff couvre :
 
 1. **Audit parallélisation actuelle** : validation/refus des 6 postulats du plan sur l'état réel du sync engine (download chunks parallèles, parse séquentiel, intra-match séquentiel, scheduler séquentiel, heal loops parallèles depuis Action B, rate limiter).
 2. **Deep dive ART corruption DuckDB** : validation que singleflight est la bonne stratégie ou alternatives, statut upstream du bug DuckDB, recommandation finale de recovery.
-3. **Performance breakdown réel** : timeline parsée depuis les logs du 22 mai (Madina 8min, Choco 4min) avec décomposition network/compute/DB write — valide ou refute le postulat "writes DB pas le bottleneck".
+3. **Performance breakdown réel** : timeline parsée depuis les logs du 22 mai (joueur_075 8min, joueur_901 4min) avec décomposition network/compute/DB write — valide ou refute le postulat "writes DB pas le bottleneck".
 4. **Highlight events pipeline** : faisabilité du move parse → Phase 2 parallèle, thread-safety du parser, gain estimé.
 
 **Ce handoff DOIT être lu avant de démarrer l'implémentation.** Il peut amender certaines phases (priorisation, scope, blockers découverts).

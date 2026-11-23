@@ -5,7 +5,7 @@
 > un evenement joue PLUSIEURS couches ensemble, avec gains et hauteurs — donc un `.wem`
 > brut isole ne peut pas ressembler au son en jeu.
 >
-> Worktree FRERE `C:\Users\Guillaume\Projects\LevelUp-wt-balise-mix`, branche
+> Worktree FRERE `<poste>\Projects\LevelUp-wt-balise-mix`, branche
 > `wt/balise-mix`, base `feat/v75`. Jeu et scratchpad par chemins ABSOLUS, lecture seule
 > sur le jeu. Contrat `plan-execution` + `CLAUDE.md`. Un commit par phase.
 > Ni journal ni registre : les textes partent au compte rendu.

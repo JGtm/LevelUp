@@ -162,8 +162,8 @@ ordre des vies, et `SlotCollisions` n'en était qu'un TOTAL de match — aucun c
 pouvait savoir QUEL slot était concerné. Les marques de portage, les ramassages, les frags sous
 équipement actif et les calques d'objectif héritaient donc d'un nom arbitraire sur ces slots.
 
-**Le témoin, sur pièces** : `084a804d` slot 734 — A `2535430265968559` `[5872..6981]`, une vie non
-résolue `[7123..7158]`, B `2535456423427614` `[7457..7591]`. La première version de la passe
+**Le témoin, sur pièces** : `084a804d` slot 734 — A `2683317851328856` `[5872..6981]`, une vie non
+résolue `[7123..7158]`, B `2661813924332111` `[7457..7591]`. La première version de la passe
 nommait la vie du milieu à **A**, par la règle « l'occupant précédent ». C'est un choix par
 l'ORDRE, pas par le temps : rien dans le film ne dit de quel côté de la relève elle tombe.
 
@@ -262,7 +262,7 @@ par la résolution dans le temps de P1-7, −1 par cette abstention honnête).
   n'est nommée ». **Les deux sont faux.** Mesuré des deux côtés : `objectives.unpublished`
   **35 → 35**, `attached` **41 → 41** — *aucune action récupérée* ; les 7 gains sont la version
   de schéma et des pistes nommées (P0-0). Et la cause réelle est autre : les 35 actions
-  appartiennent à `2535429116401024` et `2535433300797518`, **absents du roster ET sans aucune
+  appartiennent à `2611238472939357` et `2652418697197851`, **absents du roster ET sans aucune
   piste dans le film** (roster 6, feuille 8) — le repli par le pont ne peut pas les atteindre,
   puisqu'il n'y a aucune piste à nommer. P1-3 reste un **correctif de défense** portant
   (mutation `M10` rouge) ; le fait « joueur de la feuille sans aucune piste » est porté au
@@ -325,7 +325,7 @@ par la résolution dans le temps de P1-7, −1 par cette abstention honnête).
   222).
 - **Témoin — l'oracle est le calque lui-même** : `084a804d` passe de 51 à **53 rides nommées**, et
   la ride du slot 590 (282 frames) **quitte le seau non attribué `par-slot/590` pour
-  `par-xuid/2535467063146739`** (171 → 453 frames, +282 exactement). C'est la seule ligne
+  `par-xuid/2729310715855668`** (171 → 453 frames, +282 exactement). C'est la seule ligne
   « disparue » du lot, et c'est une attribution gagnée.
 
 ## P1-8 — Deux bots d'un même siège ne s'écrasent plus
@@ -394,8 +394,8 @@ Neuf films, les deux côtés cuits par le même outil, seul le code diffère.
 | `coverage.shots.noSlot` 2785 → 2768 | 17 tirs de moins sans slot | `shots.attached` 3193 → **3204** (+11) et `shots.ambiguous` 36 → 42 (+6) — somme exacte |
 | `coverage.vehicles.shotsNoRide` 2785 → 2768 | miroir du précédent | `vehicles.shots` 290 → **295**, `shotsVehicleWeapon` 27 → **32** |
 | `coverage.t0Film.burst` 21 → 20 | un partant de moins dans la rafale | **déduplication** : `t0FilmMs` = 44910 et `marginMs` = 22600 **identiques des deux côtés** — deux pistes comptées séparément partagent désormais une identité. Le verdict du coup d'envoi ne bouge pas. |
-| `vehicles.rides/duree-totale/par-slot/590` 282 → *(disparue)* | la ride quitte le seau NON ATTRIBUÉ | `par-xuid/2535467063146739` 171 → **453** (+282 exactement) (P1-7) |
-| `vehicles.rides/par-xuid/2535430265968559` 5 → 4 et sa durée 794 → 567 | la ride du slot 734 n'est plus créditée à A par un nom ARBITRAIRE du pont | elle reste PUBLIÉE (74 rides des deux côtés) et ses 227 frames réapparaissent en `par-slot/734` — **correction**, cf. le complément de P0-0 ci-dessus. Bilan : `ridesNamed` 51 → **52** |
+| `vehicles.rides/duree-totale/par-slot/590` 282 → *(disparue)* | la ride quitte le seau NON ATTRIBUÉ | `par-xuid/2729310715855668` 171 → **453** (+282 exactement) (P1-7) |
+| `vehicles.rides/par-xuid/2683317851328856` 5 → 4 et sa durée 794 → 567 | la ride du slot 734 n'est plus créditée à A par un nom ARBITRAIRE du pont | elle reste PUBLIÉE (74 rides des deux côtés) et ses 227 frames réapparaissent en `par-slot/734` — **correction**, cf. le complément de P0-0 ci-dessus. Bilan : `ridesNamed` 51 → **52** |
 
 **Aucune perte réelle sur les neuf témoins** : quatre lignes sont des gains lus à l'envers, et
 les deux dernières sont une attribution ARBITRAIRE retirée. Le témoin non concerné (`bf15f7ab`, slayer) ne perd
@@ -490,7 +490,7 @@ reconstruirait le littéral serait resté vert quoi qu'il arrive ; c'est la mêm
 **Le défaut** : `xuidOfPublishedTrack` repliait sur `slotXUID[t.Slot]` **sans la garde
 `SlotAmbiguous`** que le lot venait d'ajouter à ses deux jumeaux (`bridgeOfSlot`, `xuidAt`) pour
 cette raison précise. Sur la configuration réelle du slot 734 de `084a804d`, la passe de nommage
-REFUSE (`contested = 1`) et le helper servait quand même `2535430265968559` : `samplesByXUID`
+REFUSE (`contested = 1`) et le helper servait quand même `2683317851328856` : `samplesByXUID`
 (zones, chemin NEUF de ce lot) indexait les positions de la piste contestée sous le PREMIER
 occupant — **une capture de zone pouvait être géolocalisée sur la trajectoire d'un autre joueur**.
 Même exposition pour `tracksByXUID` (drapeau).
@@ -505,7 +505,7 @@ explicite au cadrage de l'audit, et la modifier sortirait du périmètre.
 
 **Mutation** : `NamingBridge` rendant `SlotXUID` tel quel,
 `TestUnePisteCONTESTEEnEstJamaisIndexeeSousUnXUID` rougit sur les deux assertions (piste indexée
-sous `2535430265968559`, échantillons de zone servis). **Contre-épreuve** : sur un slot non
+sous `2683317851328856`, échantillons de zone servis). **Contre-épreuve** : sur un slot non
 ambigu, le repli par le pont joue toujours.
 
 ### C3 (P2) — deux témoins chiffrés ne tenaient pas
@@ -515,7 +515,7 @@ La revue a recuit `af13e2b2` et `3372e7eb` des deux côtés. Verdict, sur pièce
 | témoin | ce que le journal annonçait | ce qui est MESURÉ |
 |---|---|---|
 | `af13e2b2` (P0-1) | « +19 gains » | `zones.captures` **19 → 19**, `attributed` **14 → 14** — *aucune capture récupérée*. Les 19 gains sont des pistes nommées, donc **P0-0**. Apport réel de P0-1 : `zones.noPosition = 5`, la CAUSE, champ qui n'existait pas |
-| `3372e7eb` (P1-3) | « +7 gains » et « un joueur dont aucune vie n'est nommée » | `objectives.unpublished` **35 → 35**, `attached` **41 → 41** — *aucune action récupérée*. Et la cause écrite est **fausse** : les 35 actions appartiennent à `2535429116401024` et `2535433300797518`, **absents du roster ET sans aucune piste** (roster 6, feuille 8) |
+| `3372e7eb` (P1-3) | « +7 gains » et « un joueur dont aucune vie n'est nommée » | `objectives.unpublished` **35 → 35**, `attached` **41 → 41** — *aucune action récupérée*. Et la cause écrite est **fausse** : les 35 actions appartiennent à `2611238472939357` et `2652418697197851`, **absents du roster ET sans aucune piste** (roster 6, feuille 8) |
 
 **P0-1 et P1-3 restent des correctifs portants** — leurs mutations rougissent (`M9`, `M10`), le
 chemin est fermé — mais ce sont des **correctifs de DÉFENSE, non chiffrés sur le parc** : aucun

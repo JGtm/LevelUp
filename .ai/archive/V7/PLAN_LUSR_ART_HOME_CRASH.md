@@ -17,7 +17,7 @@ DuckDB maintient un index interne (ART). Toute opération qui touche cet index p
 
 ### Ce qui s'est passé ce soir
 
-1. Sync de Chocoboflor à 20:41:04 → crash ART sur `match_skill_rank` (player DB) via le chemin LUSR `DELETE + INSERT en TX`.
+1. Sync de joueur_165 à 20:41:04 → crash ART sur `match_skill_rank` (player DB) via le chemin LUSR `DELETE + INSERT en TX`.
 2. Cascade sur la même player DB : achievements, friends recompute, vues mat. — toutes invalidées par le FATAL.
 3. Le sync se déclare quand même `status:"success"` (avec `lusr_updated:0` et `warnings:8`).
 4. La handle SQL de la player DB devient zombie → les handlers HTTP qui la détiennent encore (`PlayerMatchesRepo` notamment) renvoient `sql: database is closed` → 500 sur la home page.
@@ -34,11 +34,11 @@ DuckDB maintient un index interne (ART). Toute opération qui touche cet index p
 | Heure | Joueur | Statut | Réalité |
 |-------|--------|--------|---------|
 | 20:36:48 | JGtm | success | OK |
-| 20:38:20 | XxDaemonGamerxX | success | OK |
+| 20:38:20 | joueur_291 | success | OK |
 | 20:38 → 20:43+ | home JGtm | — | **500 répété** `sql: database is closed` |
-| 20:39:49 | Madina97294 | success | OK (LUSR a écrit via INSERT-only) |
-| **20:41:04** | **Chocoboflor** | — | **FATAL ART sur match_skill_rank** |
-| 20:41:08 | Chocoboflor | success | KO : `lusr_updated:0`, achievements KO, mv KO |
+| 20:39:49 | joueur_117 | success | OK (LUSR a écrit via INSERT-only) |
+| **20:41:04** | **joueur_165** | — | **FATAL ART sur match_skill_rank** |
+| 20:41:08 | joueur_165 | success | KO : `lusr_updated:0`, achievements KO, mv KO |
 | 20:49 → 20:52 | les 4 | success | no-op (`inserted:0`) |
 
 Signature exacte du crash :
@@ -179,7 +179,7 @@ Pour chaque : refactor du `ON CONFLICT DO UPDATE` en pattern C. Tests unitaires 
 
 **Sous-étape 5.2 — RecoverFromFATAL (3 h)** :
 - Implémentation côté provider.
-- Test : forcer FATAL sur DB Chocoboflor (via SQL invalide), vérifier que GET home JGtm reste 200.
+- Test : forcer FATAL sur DB joueur_165 (via SQL invalide), vérifier que GET home JGtm reste 200.
 
 **Sous-étape 5.3 — Handler home retry/503 (1 h)** :
 - Détection `database is closed` ou FATAL → 1 retry après recovery → sinon 503 + Retry-After.

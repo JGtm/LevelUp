@@ -24,9 +24,9 @@
 Gardes d'environnement (aucun film, aucune variable = SKIP propre) :
 
 ```
-$env:SCORE_FILM   = "C:/Users/Guillaume/Projects/LevelUp/data/cache/film_chunks/<short8>"
+$env:SCORE_FILM   = "<poste>/Projects/LevelUp/data/cache/film_chunks/<short8>"
 $env:SCORE_ORACLE = "<worktree>/.ai/V7.5/replay2d/registre_film/oracle_lotA.tsv"
-$env:D1_FILM      = "C:/Users/Guillaume/Projects/LevelUp/data/cache/film_chunks/<short8>"
+$env:D1_FILM      = "<poste>/Projects/LevelUp/data/cache/film_chunks/<short8>"
 $env:D1_OUT       = "<worktree>/.ai/V7.5/replay2d/registre_film/lotA_d1_chaine.tsv"
 ```
 
@@ -203,7 +203,7 @@ non circulaire est le prix de laisser les frags libres, et il est faible.
 ### 4.1 Ce qui plombe CTF et Slayer, mesure slot par slot
 
 - `64e8adfa` (CTF) : **0/8**, et c'est le film tronque de 24,6 s. Les valeurs sont proches mais
-  toutes en dessous — slot 16 : 14/12/10 contre 17/12/10 pour `2535449963449748` (-3 frags) ;
+  toutes en dessous — slot 16 : 14/12/10 contre 17/12/10 pour `2655688745173961` (-3 frags) ;
   slot 12 : 11/14/9 contre 15/15/9 (-4/-1). Le decodage est bon, la fin du match manque.
 - `000d5950` (Slayer) : 7/8 justes mais 5/8 attribues. Les slots 14 et 24 lisent tous deux
   (8,14,1) et DEUX joueurs de l'oracle ont ce triplet : la regle de prudence de

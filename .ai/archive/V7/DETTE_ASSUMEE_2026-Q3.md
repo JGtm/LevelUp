@@ -174,7 +174,7 @@ changement de résultat (J3/J4/J7) ou de wiring provider (J9).
   contenu décrivait D1a/D2 ; corrigé 2026-07-07/V6c.]
   - **DÉFAUT DÉCOUVERT (2026-07-12) — fenêtre d'observation RÉINITIALISÉE.** La télémétrie
     D1a n'était PAS à 0 : `legacy_source_used=duckdb_oauth` était émis à CHAQUE post-sync des
-    4 joueurs (JGtm, Madina97294, Chocoboflor, XxDaemonGamerxX). Cause racine : le post-sync
+    4 joueurs (JGtm, joueur_117, joueur_165, joueur_291). Cause racine : le post-sync
     achievements (`sync.resolveAccessTokenFromDB`, supprimé) résolvait l'access_token Xbox Live
     EXCLUSIVEMENT depuis `sync_meta` sans jamais consulter le store `watcher_tokens` — il servait
     donc toujours le RT legacy alors que le store couvrait ces joueurs. **Fix (branche

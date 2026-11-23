@@ -3,7 +3,7 @@
 > Lot COURT, MESURE SEULE. Aucune publication, aucun changement de production, aucune base.
 > Instrument sous garde `OBJ_FILM`, lecture seule, `CGO_ENABLED=0`, un seul `go` a la fois.
 > Ni journal ni registre : les textes partent au CR.
-> Worktree : `C:\Users\Guillaume\Projects\LevelUp-wt-powerup` (branche `wt/powerup`).
+> Worktree : `<poste>\Projects\LevelUp-wt-powerup` (branche `wt/powerup`).
 > Contrat d'execution : `.claude/skills/plan-execution/SKILL.md`.
 
 ## 0. La question

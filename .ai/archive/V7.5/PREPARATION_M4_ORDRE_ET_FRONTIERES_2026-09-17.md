@@ -8,7 +8,7 @@
 # NOTE DE PREPARATION DE M4 — la publication (lots 4.1, 4.2, 4.4 ; 4.3 reporte V16)
 
 > Mesures reprises le **2026-09-17** (`date +%F`) en LECTURE SEULE dans le worktree
-> `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-recherche-film`, branche
+> `<poste>/Downloads/Scripts/LevelUp-wt-recherche-film`, branche
 > `feat/recherche-decodeur-film`, tete **`492cb0923`** (fusion du lot 3.3), plus les trois
 > branches M3 en vol lues par `git show <branche>:<chemin>` et
 > `git log --name-only 492cb0923..<branche>`. Aucun fichier du depot n'a ete modifie, **aucun

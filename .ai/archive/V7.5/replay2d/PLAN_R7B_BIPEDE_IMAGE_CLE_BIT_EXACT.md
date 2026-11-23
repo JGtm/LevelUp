@@ -4,7 +4,7 @@
 > tranche la FORME (le corps d'un record d'image-cle est un ETAT COMPLET : 102-104 % de la
 > longueur reelle, contre 12-39 % pour la lecture « record NEW ») sans atteindre le BIT
 > (0,51 %). Ce lot attaque ce qui reste : la bit-exactitude des deserialiseurs.
-> Worktree `C:/Users/Guillaume/Projects/LevelUp-wt-kf35`, branche `wt/kf-biped-bit-exact`,
+> Worktree `<poste>/Projects/LevelUp-wt-kf35`, branche `wt/kf-biped-bit-exact`,
 > base `wt/kf-biped-etat-complet` = `4807b8da2` (R3+R5+R6+R7-a).
 > Execution sous le contrat du skill `plan-execution`.
 
@@ -115,7 +115,7 @@ Toute modification d'un fichier PARTAGE du decodeur ajoute :
 2. Aucune bosse de `SchemaVersion`. Aucune ecriture DuckDB, aucun rendu, aucune string UI,
    **aucune publication a l'artefact**, aucun balayage de masse (3 films, pas 951).
 3. Lecture seule stricte hors du worktree. Ghidra : LECTURE SEULE, aucun rename, aucun script.
-4. `GOCACHE=C:/Users/Guillaume/Projects/LevelUp-wt-kf35/.gocache`, **une seule commande `go`
+4. `GOCACHE=<poste>/Projects/LevelUp-wt-kf35/.gocache`, **une seule commande `go`
    a la fois**, `CGO_ENABLED=0`.
 5. Bascules globales restaurees en `defer` ; `LockProcessDecode` tenu pour tout le test.
 6. Pas de Python, pas d'emoji, seuils 500 L / 80 L / 5 parametres respectes.

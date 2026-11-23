@@ -5,7 +5,7 @@
 > nous suffit » · « je veux comme des muzzle flash, avec differents effets pour plasma et tout,
 > c'est plus au niveau des cones de visee (sans les remplacer) » · « pour les explosions de
 > grenades, je veux des effets d'explosion pas des symboles » · reference : le projet
-> `C:\Users\Guillaume\Projects\Csstat`.
+> `<poste>\Projects\Csstat`.
 > Execution sous `plan-execution`, branche `feat/v75`, commits par etape, PAS de push.
 
 ## LA MESURE QUI DEBLOQUE TOUT (superviseur, 2026-08-15)
@@ -22,7 +22,7 @@ dans sa trajectoire), pas par le `h` de l'evenement. C'est exactement ce que fai
 Csstat — son commentaire dit « petite flamme dans la direction du REGARD du joueur qui tire ».
 La couverture cesse d'etre 18,6 % et devient celle du regard, bien plus large.
 
-## Ce que fait la reference (lu sur pieces, `C:\Users\Guillaume\Projects\Csstat`)
+## Ce que fait la reference (lu sur pieces, `<poste>\Projects\Csstat`)
 
 | element | fichier | ce qu'il fait |
 |---|---|---|

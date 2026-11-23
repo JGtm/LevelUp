@@ -3,7 +3,7 @@
 Date : 2026-11-18. Statut : recherche en lecture seule, aucune modification du dépôt ni des briques.
 Sondes (module Go jetable, briques publiées `halo-infinite-files-reader` v1.2.0,
 `halo-infinite-map-images` v1.4.0, `halo-infinite-film-decoder` v1.4.1, aucun `replace`) :
-`C:\Users\Guillaume\AppData\Local\Temp\claude\17871fa88c29004d\63a04594-e948-4485-9732-90ff5a088fa7\scratchpad\plan_par_mode\`
+`<poste>\AppData\Local\Temp\claude\17871fa88c29004d\63a04594-e948-4485-9732-90ff5a088fa7\scratchpad\plan_par_mode\`
 (`cmd/` : une sonde par dossier ; `out/` : sorties ; `mvar_natifs/` : variantes natives rapatriées).
 Build : `GOWORK=off GOFLAGS=-mod=mod GOPROXY=off go build -o bin/<sonde>.exe ./cmd/<sonde>`.
 

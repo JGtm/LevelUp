@@ -8,16 +8,16 @@
 
 | Joueur | Matchs DB | Matchs Archives | Total | Taille DB | Période |
 |--------|-----------|-----------------|-------|-----------|---------|
-| Chocoboflor | 0 | 0 | 0 | 36.76 MB | ? → ? |
+| joueur_165 | 0 | 0 | 0 | 36.76 MB | ? → ? |
 | JGtm | 0 | 17 | 17 | 46.26 MB | ? → ? |
-| Madina97294 | 0 | 545 | 545 | 38.26 MB | ? → ? |
-| XxDaemonGamerxX | 0 | 0 | 0 | 11.76 MB | ? → ? |
+| joueur_117 | 0 | 545 | 545 | 38.26 MB | ? → ? |
+| joueur_291 | 0 | 0 | 0 | 11.76 MB | ? → ? |
 | **Total** | - | - | **562** | **133.04 MB** | - |
 
-## Chocoboflor
+## joueur_165
 
-- **XUID** : `2535469190789936`
-- **DB** : `C:\Users\Guillaume\Downloads\Scripts\LevelUp\data\players\Chocoboflor\stats.duckdb`
+- **XUID** : `2547408409520575`
+- **DB** : `<poste>\Downloads\Scripts\LevelUp\data\players\joueur_165\stats.duckdb`
 - **Taille** : 36.76 MB
 
 ### Statistiques de jeu
@@ -54,7 +54,7 @@
 ## JGtm
 
 - **XUID** : `2533274823110022`
-- **DB** : `C:\Users\Guillaume\Downloads\Scripts\LevelUp\data\players\JGtm\stats.duckdb`
+- **DB** : `<poste>\Downloads\Scripts\LevelUp\data\players\JGtm\stats.duckdb`
 - **Taille** : 46.26 MB
 
 ### Statistiques de jeu
@@ -94,10 +94,10 @@
 - `matches_2023.parquet`
 - Total matchs archivés : **17**
 
-## Madina97294
+## joueur_117
 
-- **XUID** : `2533274858283686`
-- **DB** : `C:\Users\Guillaume\Downloads\Scripts\LevelUp\data\players\Madina97294\stats.duckdb`
+- **XUID** : `2623439693412443`
+- **DB** : `<poste>\Downloads\Scripts\LevelUp\data\players\joueur_117\stats.duckdb`
 - **Taille** : 38.26 MB
 
 ### Statistiques de jeu
@@ -138,10 +138,10 @@
 - `matches_2023.parquet`
 - Total matchs archivés : **545**
 
-## XxDaemonGamerxX
+## joueur_291
 
-- **XUID** : `2533274833178266`
-- **DB** : `C:\Users\Guillaume\Downloads\Scripts\LevelUp\data\players\XxDaemonGamerxX\stats.duckdb`
+- **XUID** : `2558964982616721`
+- **DB** : `<poste>\Downloads\Scripts\LevelUp\data\players\joueur_291\stats.duckdb`
 - **Taille** : 11.76 MB
 
 ### Statistiques de jeu

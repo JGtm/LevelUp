@@ -325,7 +325,7 @@ Authorization: XBL3.0 x={user_hash};{xsts_token}
 Accept-Language: en-us
 ```
 
-Réponse : `{"people": [{"gamertag": "...", "xuid": "2535462389823105"}, ...]}`
+Réponse : `{"people": [{"gamertag": "...", "xuid": "2764285640232075"}, ...]}`
 
 Auth : chaîne MSAL → Xbox user token → XSTS (`RelyingParty: "http://xboxlive.com"`) → header `XBL3.0`.
 **L'app fait déjà cette chaîne** pour les tokens Halo (même MSAL, relying party différent).

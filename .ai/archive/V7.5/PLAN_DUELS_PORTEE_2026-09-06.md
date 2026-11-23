@@ -1176,7 +1176,7 @@ de la légende de PORTÉE, accents des deux tuiles) sont présentes dans
       sur les DuckDB (mono-writer) et `make dev` REFUSE de démarrer si `:8000` répond déjà.
       Donc, dans l'ordre : (1) `make stop` (tue par PORT, donc valable depuis n'importe quel
       worktree) ; (2) depuis `LevelUp-wt-duels` :
-      `make dev LEVELUP_DATA_ROOT="C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration"`
+      `make dev LEVELUP_DATA_ROOT="<poste>/Downloads/Scripts/LevelUp-go-migration"`
       — l'API Go est COMPILÉE depuis ce worktree (donc porte `CapWeaponRange` et le service de
       portée) mais LIT les données, la config et les secrets du worktree principal ; (3) ouvrir
       `http://localhost:5173` (Vite, proxy `/api` et `/static` -> `127.0.0.1:8000`) ; (4) en fin

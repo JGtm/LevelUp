@@ -215,7 +215,7 @@ changent. Statuer AVANT d ecrire.
   confirme). **VERIFICATION VISUELLE FAITE `[x]`, le 2026-08-29** — sur le `make dev` lance par
   l utilisateur (le serveur relance par l agent etait mort apres ~16 min, `exit status
   0xffffffff` : ne pas relancer de serveur depuis un process d agent). Match
-  `78919882-f47d-4460-9e78-673f5afdd338`, Chocoboflor, 14 frags. Sunburst lu a l ecran :
+  `78919882-f47d-4460-9e78-673f5afdd338`, joueur_165, 14 frags. Sunburst lu a l ecran :
   classe **« Environnement — 14,3 % »** (2 kills), niveau 2 nomme **« Bobine a fusion UNSC —
   2 · 14,3 % »** avec sa ligne de rappel, **« Non attribue » retombe a 71,4 %** et **« Melee »
   reste a 14,3 %** (compteur API, intact). C est EXACTEMENT le critere de succes n2 : les kills
@@ -382,7 +382,7 @@ Volumetrie de reference : 136 900 morts decodees, 74 569 a source mesuree (54,5 
 
     match 215e7022-9959-4a1e-85aa-861161b588f4 — 2026-02-03 16:13 UTC — Argyle
     Quick Play / Team Slayer:Arena — t = 325 526 ms (5 min 25 s)
-    tueur Elmo910 -> victime aK2fResHv3 — publishable=false, diverges=false
+    tueur joueur_622 -> victime aK2fResHv3 — publishable=false, diverges=false
 
 La classe `equipment` de la decision D1 vaudrait donc **1 kill**, porte par un joueur
 hors roster. Ce n'est pas un arc de sunburst, c'est une poussiere. **D1 EST A REOUVRIR** —

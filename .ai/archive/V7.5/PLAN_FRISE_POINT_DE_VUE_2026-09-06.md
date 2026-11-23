@@ -1,7 +1,7 @@
 # PLAN — LA FRISE DU REJEU : TRAIT DE LECTURE UNIQUE, POINT DE VUE SÉLECTIONNABLE, MÉDAILLES
 
 > Ouvert le 2026-09-06. Branche cible : `feat/v75-frise-pov`, worktree DÉDIÉ
-> `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-frise-pov`, depuis `feat/v75`.
+> `<poste>/Downloads/Scripts/LevelUp-wt-frise-pov`, depuis `feat/v75`.
 > Le worktree principal est partagé — ne pas y exécuter ce plan.
 > Préfixe `feat/` volontaire : une branche `wt/*` ne déclenche pas la CI.
 >

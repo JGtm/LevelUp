@@ -966,7 +966,7 @@ NORMAL** de la precision reelle. Ce qui etait faux dans `HitLikely`, c est le **
 | Carte de 78919882 | « Altitude » (7ter.42-pre) | **High Ground**, carte FORGE (7ter.42(0)) |
 | « Correction Flood Gulch / Ravin Parasite » | presentee comme une correction (7ter.52 C0) | c est une **TRADUCTION** (`Flood` = `Parasite` en FR), pas une correction (7ter.53 R6ii) |
 | Bots et kill-feed | « le kill-feed du film est structurellement incomplet » | **l index HIGHLIGHT est un index de JOUEURS** ; le bot est dans la voie REPLICATION (7ter.59) |
-| **Validation des assistants** | « 31 decodes contre 30 API, RaiiZeNBack 3 = 3 » (7ter.24ter) — **RECOPIE DANS LE BRIEF D UN CHANTIER ET UTILISE COMME REFERENCE PENDANT DES SEMAINES** | **22 nommes pour 30** sur `9b191a7f` (le 31 comptait des faux positifs), l ancre par joueur portait sur un **AUTRE joueur** (xuid resolu ailleurs par la bijection courante) ; la validation qui tient est le **MULTISET par joueur**, 17/17 et 29/29 sur deux films (7ter.76) |
+| **Validation des assistants** | « 31 decodes contre 30 API, joueur_1033 3 = 3 » (7ter.24ter) — **RECOPIE DANS LE BRIEF D UN CHANTIER ET UTILISE COMME REFERENCE PENDANT DES SEMAINES** | **22 nommes pour 30** sur `9b191a7f` (le 31 comptait des faux positifs), l ancre par joueur portait sur un **AUTRE joueur** (xuid resolu ailleurs par la bijection courante) ; la validation qui tient est le **MULTISET par joueur**, 17/17 et 29/29 sur deux films (7ter.76) |
 | **Grammaire du kill-event** | `killer(E5) victim(E5) R32 R1 assist(E5) R32` (7ter.24ter), les deux R32 « inexpliques » | `victime(E5) tueur(E5) [% TUEUR] R1 assistant(E5) [% ASSISTANT]` — ordre INVERSE et les deux R32 sont des **parts de degats en pourcentage entier** (7ter.75) |
 | **Cardinalite de l assistant** | « cardinalite MESUREE A 1 sur 100 % de la population » (la formule venait de `internal/migration/steps_shared_kill_events.go` ; CE FICHIER A ETE CORRIGE le 2026-07-28 et porte desormais le bon denominateur) | denominateur reel = **LES KILL-EVENTS ATTACHES** : la nullite du compteur prouve *aucune mort n a recu deux ENREGISTREMENTS nommant des assistants distincts*, PAS *aucune mort ne porte deux assistants* (7ter.76 (6)) |
 | **La touche de projectile dans le flux d events** | « **PAS dans un flux d events** — trois eliminations sans ancre » (titre et resume de **7ter.84**, 2026-07-28) | **FAUX. Les codes 6 et 7 y sont** : 80 886 et 129 390 sur 949 films, dont 80 % en PREMIER evenement. Ils figuraient deja dans l histogramme de 7ter.84 (3) aux rangs 14 et 11, **sous une coupure d affichage a 9 lignes**. Meme corpus, meme population de paquets a l unite, binaire independant (**7ter.86 (3)**) |
@@ -2579,8 +2579,8 @@ TAUX l est ; ecart non explique de 1.14 % entre mon compte de porteurs (97 556) 
 ### 21.5 LA BIJECTION INDICE -> JOUEUR N EST PAS EN CAUSE — `[ETABLI]`
 
 `cmd/tmp_rcunite gt 000d5950` reproduit **8/8** la table publiee par le voisin
-(`0 whiteknight2519 · 1 JAVIERLOLITO540 · 2 JGtm · 3 LORD PEINX13 · 4 IKE ILYA ·
-5 Akatsuki fire17 · 6 aldusbroncus · 7 VitaminA1688`). Notre ancrage (`resolveXuidPIStrict`,
+(`0 joueur_283 · 1 JOUEUR_156 · 2 JGtm · 3 JOUEUR_731 · 4 JOUEUR_417 ·
+5 joueur_700 fire17 · 6 joueur_389 · 7 joueur_362`). Notre ancrage (`resolveXuidPIStrict`,
 ecrit par `gt.ref`) est **film-seul** : motif xuid cherche au bit pres, 5 bits precedents, indices
 deux a deux distincts. **Aucun ordre de roster n y entre**, donc aucune de nos mesures par joueur
 n est affectee par la permutation. Corollaire mesure et utile : l ancrage NAIF

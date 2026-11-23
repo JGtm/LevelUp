@@ -152,14 +152,14 @@ a{color:#d4d4d4}a:hover{color:#fafafa}
         </div>
       </div>
 
-      <aside class="col" aria-label="Fiche de Madina97294">
+      <aside class="col" aria-label="Fiche de joueur_117">
         <div class="scroll">
         <div class="dhead">
           <div class="backrow"><button class="lnk"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>Équipes</button><span class="kbd">Échap</span></div>
           <div class="picks" aria-label="Changer de joueur">
             <sc-for list="{{picks}}" as="k" hint-placeholder-count="8"><button class="{{k.cls}}" title="{{k.n}}" aria-label="{{k.n}}">{{k.i}}</button><sc-if value="{{k.gapAfter}}" hint-placeholder-val="{{false}}"><span class="gap"></span></sc-if></sc-for>
           </div>
-          <div class="who"><span class="dot a"></span><b>Madina97294</b><small>Eagle</small><span class="kda">8<span>/</span>5<span>/</span>2</span></div>
+          <div class="who"><span class="dot a"></span><b>joueur_117</b><small>Eagle</small><span class="kda">8<span>/</span>5<span>/</span>2</span></div>
           <div class="seg acts" aria-label="Actions sur ce joueur"><button class="on">Suivre</button><button>Seul</button><button>Masquer</button></div>
         </div>
 
@@ -199,14 +199,14 @@ a{color:#d4d4d4}a:hover{color:#fafafa}
     </div>
 
     <div class="tp">
-      <button class="ibtn" aria-label="Caméra : suivre Madina97294" title="Caméra : suivre Madina97294"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l5-3v10l-5-3z"></path><rect x="2" y="6" width="13" height="12" rx="2"></rect></svg></button>
+      <button class="ibtn" aria-label="Caméra : suivre joueur_117" title="Caméra : suivre joueur_117"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l5-3v10l-5-3z"></path><rect x="2" y="6" width="13" height="12" rx="2"></rect></svg></button>
       <button class="ibtn" aria-label="Son"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><path d="M15.5 8.5a5 5 0 0 1 0 7"></path></svg></button>
       <span class="vsep"></span>
       <button class="play" aria-label="Lecture"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13-8z" fill="currentColor"></path></svg></button>
       <button class="ibtn" aria-label="Reculer de 10 secondes">−10</button>
       <button class="ibtn" aria-label="Avancer de 10 secondes">+10</button>
       <span class="time"><b>3:51</b> / 7:45</span>
-      <div class="scrub" title="Repères de Madina97294 mis en avant">
+      <div class="scrub" title="Repères de joueur_117 mis en avant">
         <div class="ticks"><sc-for list="{{ticks}}" as="k" hint-placeholder-count="20"><i class="{{k.cls}}" style="left: {{k.l}}"></i></sc-for></div>
         <div class="rail"><i style="width: 49.7%"></i></div>
         <span class="knob" style="left: calc(49.7% - 6px)"></span>
@@ -227,22 +227,22 @@ a{color:#d4d4d4}a:hover{color:#fafafa}
 class Component extends DCLogic {
   renderVals() {
     const P = [
-      { n: 'Chocoboflor', t: 'a', x: 30, y: 37 },
-      { n: 'Draconewt', t: 'a', x: 39, y: 44 },
-      { n: 'Madina97294', t: 'a', x: 49, y: 52, f: true },
+      { n: 'joueur_165', t: 'a', x: 30, y: 37 },
+      { n: 'joueur_023', t: 'a', x: 39, y: 44 },
+      { n: 'joueur_117', t: 'a', x: 49, y: 52, f: true },
       { n: 'JGtm', t: 'a', x: 41, y: 22 },
       { n: 'WDW Eclipse', t: 'b', dead: true },
-      { n: 'ELOsk11', t: 'b', x: 74, y: 53 },
-      { n: 'yougo77500', t: 'b', x: 18, y: 49 },
+      { n: 'joueur_749', t: 'b', x: 74, y: 53 },
+      { n: 'joueur_1044', t: 'b', x: 18, y: 49 },
       { n: 'DubsDay', t: 'b', x: 40, y: 80 }
     ];
     const pins = P.filter((p) => !p.dead).map((p) => ({ n: p.n, x: p.x + '%', y: p.y + '%', cls: 'pin ' + p.t + (p.f ? ' f' : '') }));
     const picks = P.map((p, i) => ({ n: p.n, i: p.n.slice(0, 2).toUpperCase(), cls: 'pk ' + p.t + (p.dead ? ' dead' : '') + (p.f ? ' sel' : ''), gapAfter: i === 3 }));
     const F = [
-      ['3:49', 'Madina97294', 'a', 'WDW Eclipse', 'Îlot'],
-      ['3:42', 'ELOsk11', 'b', 'JGtm', 'Passerelle nord']
+      ['3:49', 'joueur_117', 'a', 'WDW Eclipse', 'Îlot'],
+      ['3:42', 'joueur_749', 'b', 'JGtm', 'Passerelle nord']
     ];
-    const feed = F.map((f) => ({ t: f[0], k: f[1], v: f[3], z: f[4], kc: (f[2] === 'a' ? 'ka' : 'kb') + (f[1] === 'Madina97294' ? ' me' : ''), vc: (f[2] === 'a' ? 'kb' : 'ka') + (f[3] === 'Madina97294' ? ' me' : '') }));
+    const feed = F.map((f) => ({ t: f[0], k: f[1], v: f[3], z: f[4], kc: (f[2] === 'a' ? 'ka' : 'kb') + (f[1] === 'joueur_117' ? ' me' : ''), vc: (f[2] === 'a' ? 'kb' : 'ka') + (f[3] === 'joueur_117' ? ' me' : '') }));
     const T = [[18,'a',1],[29,'b',0],[44,'a',0],[52,'a',1],[70,'b',1],[83,'a',0],[97,'a',1],[110,'b',0],[121,'a',0],[135,'a',1],[150,'b',0],[162,'a',0],[169,'a',1],[181,'a',0],[182,'b',1],[193,'a',0],[202,'b',1],[214,'a',1],[217,'a',1],[222,'b',0],[229,'a',1],[247,'a',0],[256,'b',0],[268,'a',1],[281,'a',0],[300,'b',1],[312,'a',0],[333,'a',1],[351,'b',0],[366,'a',0],[384,'a',1],[401,'b',0],[420,'a',0],[437,'a',1],[455,'b',0]];
     const ticks = T.map(([s, t, mine]) => ({ l: (s / 465 * 100).toFixed(2) + '%', cls: 't' + t + (mine ? '' : ' off') }));
     return { pins, picks, feed, ticks };

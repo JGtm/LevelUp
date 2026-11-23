@@ -6,7 +6,7 @@
 ## 0. TL;DR
 
 - **Branche** : `refactor/durabilite-snapshot-immuable`, poussée sur `origin`. **PAS mergée sur `main`**.
-- **Worktree dédié** : `C:\Users\Guillaume\Downloads\Scripts\LevelUp-durabilite-snapshot` (isolé du dépôt principal). Toutes les commandes Go/git ci-dessous s'y exécutent.
+- **Worktree dédié** : `<poste>\Downloads\Scripts\LevelUp-durabilite-snapshot` (isolé du dépôt principal). Toutes les commandes Go/git ci-dessous s'y exécutent.
 - **Fait + testé** : Phase 0 (B-swap instrumentation), Phase 1.b (`CommitThenAdvance`), **Phase 2 producteur+monitoring (`3600007f4`)**, **Phase 3 lecture snapshot + cutover MatchView (`083f22eea`)**, Phase 4 global (`c6214c3ab`) **REVERTÉ par la vérification adversariale** → **lecture-snapshot SCOPED MatchView retenue** (cf. thought_log [2026-06-25] « Vérification finale + remédiation »).
 - **Câblage retenu = SCOPED MatchView** : `MatchViewRepo.WithSharedReader` + helper `sharedRead()` + reader snapshot-préféré SINGLETON par titre (`ServiceRegistry.snapReaders`, fermé au shutdown). `OpenSnapshotShared` reconstruit le schéma shared complet (matérialisation + vues canoniques). **GLOBAL abandonné** : cassait le classement mondial (`world_csr_leaderboard_latest` lue via le même SharedReader, hors snapshot, données non-match-immutables). Médias (SharedSocial) + dérivés player (ReadDB) restent live.
 - **Remédiation (28 findings adversariaux)** : dead code dérivé retiré (`OpenSnapshotForPlayer`/export dérivé/createSnapshotView) ; logging dédié `logs/snapshot.log` (`ModuleSnapshot`) + fallback/`ErrSnapshotIncomplete`/force-ready loggés (negative-cache anti-spam) ; `rows.Err()` propagé (`ProduceSnapshot` no-op `read_incomplete` au lieu de figer un set tronqué) ; tests ajoutés (change-gate re-cut, rétention/purge, métriques cut, reader fallback-incomplet).
@@ -72,7 +72,7 @@ Découpler les lectures des écritures : servir les lectures depuis des **snapsh
 ## 6. Toolchain / commandes (worktree)
 
 ```bash
-WT="C:/Users/Guillaume/Downloads/Scripts/LevelUp-durabilite-snapshot/apps/go-api"
+WT="<poste>/Downloads/Scripts/LevelUp-durabilite-snapshot/apps/go-api"
 # CGO requis (driver DuckDB) : gcc msys64 dans PATH, CGO_ENABLED=1 (défaut OK).
 go -C "$WT" vet ./internal/sync/ ./internal/ops/ ./internal/migration/ ./internal/domain/title/
 go -C "$WT" test -tags integration -count=1 -run 'Snapshot' ./internal/sync/ ./internal/ops/

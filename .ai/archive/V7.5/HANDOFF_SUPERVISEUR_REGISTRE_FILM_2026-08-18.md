@@ -28,7 +28,7 @@
 > **MISE A JOUR (18/08, nuit)** : la phase 2b est CLOSE, FUSIONNEE ET POUSSEE (`feat/v75` = `9cde26529` apres le correctif archlint `PlayerIndex` -> `FilmIndex` ; schema 16, contrat 36 ; **CI VERTE AU NIVEAU JOB**, run 32176682166) ; le §2 ci-dessous decrit l'etat d'AVANT cette fusion et reste utile comme chronique. Ce qui reste : §3 (gate visuel utilisateur — planche avec la section « zones », temoins schema 16 poses ; hygiene de cloture ; role « colline » du catalogue) et le nettoyage des worktrees du chantier.
 
 - Branche unique `feat/v75`, HEAD **`f41fd362c`** = `origin/feat/v75` (poussee). Le principal
-  `C:\Users\Guillaume\Projects\LevelUp` est PARTAGE avec les sessions de l'utilisateur (item 4
+  `<poste>\Projects\LevelUp` est PARTAGE avec les sessions de l'utilisateur (item 4
   « objectifs vivants » : `wt/drapeau`, `wt/attache`, ...) : n'y faire QUE des fusions, quand
   `git status` est propre (2 fichiers non suivis d'autres sessions a laisser :
   `.ai/AUDIT_V7.2.0_MAIN_2026-08-06.md`, `apps/go-api/internal/himap/sonde_bouillie_gamefiles_test.go`).
@@ -36,7 +36,7 @@
   (`internal/platform/duckdb`, tag `integration`) — la requete de production lit `map_id`
   (ajoute par l'item 4 en `b0fb3e10f`) et le DDL du test ne le porte pas. Correctif = R1-9 du
   lot C-bis phase 2b (ci-dessous), livre a la prochaine fusion. Tous les autres jobs sont verts.
-- Un executeur de fond travaille dans `C:\Users\Guillaume\Projects\LevelUp-wt-zones-ti13-p2b`
+- Un executeur de fond travaille dans `<poste>\Projects\LevelUp-wt-zones-ti13-p2b`
   (branche `wt/zones-ti13-p2b`) — voir §2. Les autres worktrees de ce chantier (`wt-registre-film`,
   `wt-score-*`, `wt-visee-*`, `wt-zones-film`, `wt-zones-ti13`, `wt-zones-ti13-p2`,
   `wt-joueur-moteur`, `wt-usages-film`) sont FUSIONNES : a supprimer a la cloture (`git worktree

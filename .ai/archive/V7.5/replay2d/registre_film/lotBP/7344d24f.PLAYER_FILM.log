@@ -10,7 +10,7 @@
     player_state_measure_test.go:80: B.0.4 TEMPS MORT · lectures du compte a rebours 591 dont ACTIVES 1 (0.17 %) · morts du fil 117 · intervalles mort -> reapparition mesurables 111 · mediane 10.06 s
     player_state_measure_test.go:80: B.0.4 COUVERTURE · 1 fenetres actives pour 117 morts (0.85 %) · seuil 90 % · NON TENU
     player_state_measure_test.go:80: B.0.4 TEMPS MORT CUMULE · 111 intervalles · total 1135.5 s · moyenne 10.23 s (equipe NON resolue : le film ne la porte pas de facon fiable)
-    player_state_measure_test.go:81: TSV arme en main depose dans C:\Users\Guillaume\Projects\LevelUp-wt-joueur-moteur\.ai\V7.5\replay2d\registre_film\lotBP\7344d24f_arme_en_main.tsv (1 lignes)
+    player_state_measure_test.go:81: TSV arme en main depose dans <poste>\Projects\LevelUp-wt-joueur-moteur\.ai\V7.5\replay2d\registre_film\lotBP\7344d24f_arme_en_main.tsv (1 lignes)
 --- PASS: TestPlayerBridgePhase0 (95.69s)
 PASS
 ok  	levelup/go-api/internal/analysis/replay	96.967s

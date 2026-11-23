@@ -2,7 +2,7 @@
 
 Films mesures : 20 ; echecs : 0. Contexte d instrument (largeurs d axe lues dans le film, profil par defaut, sans calibration killsource).
 
-Table ECS : `C:/Users/GUILLA~1/AppData/Local/Temp/claude/c--Users-Guillaume-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad/L4a/ecs_table_avant.tsv`.
+Table ECS : `<poste>/AppData/Local/Temp/claude/c--Users-poste-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad/L4a/ecs_table_avant.tsv`.
 
 ## Par build
 

@@ -58,6 +58,6 @@
     ti13_etat_test.go:106:   joueur 30 : 11 valeurs, 9 distinctes
     ti13_etat_test.go:106:   joueur 31 : 4 valeurs, 4 distinctes
     ti13_etat_test.go:106:   RESERVE : la phase 0 a mesure qu'en Strongholds le trafic apparent de ces composants est de la CONTAMINATION d'ancrage (0 % de chainage). Les chiffres ci-dessus ne valent que sur les films ou le chainage les valide (KOTH).
-    ti13_etat_test.go:107:   ecrit : C:\Users\Guillaume\Projects\LevelUp-wt-zones-ti13\.ai\V7.5\replay2d\registre_film\lotC\000d5950_ti13_etat.tsv (1234 octets)
+    ti13_etat_test.go:107:   ecrit : <poste>\Projects\LevelUp-wt-zones-ti13\.ai\V7.5\replay2d\registre_film\lotC\000d5950_ti13_etat.tsv (1234 octets)
 --- PASS: TestTi13EtatLotCbis (31.58s)
 PASS

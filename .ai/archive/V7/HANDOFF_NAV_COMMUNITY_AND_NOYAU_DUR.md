@@ -1,7 +1,7 @@
 # HANDOFF — Refonte navigation (`/community`) + narration card « Noyau dur »
 
 > Daté 2026-06-28. Reprise par l'utilisateur (avec ses feedbacks) puis poursuite.
-> Plan détaillé associé : `C:\Users\Guillaume\.claude\plans\zany-growing-marble.md`.
+> Plan détaillé associé : `<poste>\.claude\plans\zany-growing-marble.md`.
 
 ## TL;DR — où on en est
 

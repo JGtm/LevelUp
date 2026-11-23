@@ -146,13 +146,13 @@ Contre-exemples nommes (film, xuid, publie -> oracle) :
 
 | film | xuid | periodes | publie | oracle | ecart |
 |---|---|---|---|---|---|
-| `16ea3668` | 2535417044536883 | 1 | 56,7 s | **0,9 s** | **+55,8 s (63x)** |
-| `b8a44fe8` | 2535442462807197 | 5 | 223,9 s | 59,0 s | +164,9 s |
-| `b8a44fe8` | 2533274858283686 | 7 | 342,9 s | 271,8 s | +71,1 s |
-| `cde26226` | 2535468122262494 | 6 | 115,2 s | 42,3 s | +72,9 s |
-| `8bc6074f` | 2535449383340628 | 4 | 80,8 s | 42,4 s | +38,4 s |
+| `16ea3668` | 2659168014067630 | 1 | 56,7 s | **0,9 s** | **+55,8 s (63x)** |
+| `b8a44fe8` | 2668071070819525 | 5 | 223,9 s | 59,0 s | +164,9 s |
+| `b8a44fe8` | 2623439693412443 | 7 | 342,9 s | 271,8 s | +71,1 s |
+| `cde26226` | 2675056546355096 | 6 | 115,2 s | 42,3 s | +72,9 s |
+| `8bc6074f` | 2700529065230693 | 4 | 80,8 s | 42,4 s | +38,4 s |
 
-Le cas `16ea3668` / 2535417044536883 se lit dans l'artefact a l'oeil nu : un unique span
+Le cas `16ea3668` / 2659168014067630 se lit dans l'artefact a l'oeil nu : un unique span
 `carried [2317..2883]` (56,7 s) pour un joueur dont l'oracle donne **2 vols, 0 prise et
 0,9 s de portage**. Il a vole le drapeau, l'a lache 0,9 s plus tard, et le calque l'a laisse
 dans sa main pendant 55,8 s.
@@ -199,8 +199,8 @@ joueur sur `flag_grabs`, `flag_captures`, `flag_steals`, `flag_returns`,
 
 | film | action | joueur | publie | oracle | comp |
 |---|---|---|---|---|---|
-| `a0c36016` | `flag_capture_assists` | 2535427927026623 | **84** | **0** | 20 B |
-| `cde26226` | `flag_steals` | 2535469190789936 | **65** | **1** | 24 A |
+| `a0c36016` | `flag_capture_assists` | 2548036979862261 | **84** | **0** | 20 B |
+| `cde26226` | `flag_steals` | 2547408409520575 | **65** | **1** | 24 A |
 | `bf5ced1b` | `flag_carriers_killed` | — | 0 | 1 | 21 B |
 | `4ecdf3e7` | `flag_grabs` | — | 21 | 22 | 22 A |
 
@@ -424,7 +424,7 @@ Deux comportements, et **un seul des deux est defendable** :
    avec `bursts = 0` : la regle `IsFlagFilm` (`objectiveevents/flagfilm.go:78-80`,
    `Bursts > 0 && Captures > 0 && Captures <= Bursts && Steals > 0`) refuse le film. Un
    silence documente vaut mieux qu'un calque faux — mais il coute **266,2 s de portage reel
-   sur 22 joueurs**, dont 10 joueurs a plus de 9 s (jusqu'a 47,5 s pour 2535460487570599 sur
+   sur 22 joueurs**, dont 10 joueurs a plus de 9 s (jusqu'a 47,5 s pour 2567075421684059 sur
    `879a4dba`).
 2. **Le calque des ACTIONS n'a AUCUNE garde equivalente, et il publie du faux.** Sur
    `4f77afc1`, il annonce **65 prises de drapeau** la ou l'oracle en compte **4 pour les
@@ -587,7 +587,7 @@ et sa dependance a une recuisson. **Aucun item n'est engage : c'est une proposit
 
 - [ ] **L5 — Fermer un portage de drapeau sur le lacher.**
   *Preuve d'entree* : +1 129,3 s (+5,73 s/periode), 69 joueurs / 95 au-dessus de leur oracle,
-  pire cas `16ea3668` / 2535417044536883 : 56,7 s publiees pour 0,9 s.
+  pire cas `16ea3668` / 2659168014067630 : 56,7 s publiees pour 0,9 s.
   *Contenu* : exploiter le canal DEJA lu et DEJA compte —
   `coverage.flagCarries.objectLives = 37` et **`closedByObject = 0`** sur `16ea3668`. Une vie
   d'objet drapeau qui reapparait au sol DATE le lacher.
@@ -655,7 +655,7 @@ et sa dependance a une recuisson. **Aucun item n'est engage : c'est une proposit
    17 306 evenements du comp 20 B de `d9781168`. L'oracle prouve sur `a0c36016` que ce meme
    comp produit 84 actions pour 0 reelle. Le commentaire est a reecrire dans le lot qui
    touchera la borne (anti-patron n° 9).
-4. **`4ecdf3e7` (drapeau neutre) perd un joueur entier** : 2533274877168586, 4,1 s a l'oracle,
+4. **`4ecdf3e7` (drapeau neutre) perd un joueur entier** : 2595499236340293, 4,1 s a l'oracle,
    0 publiee, 0 periode — le seul joueur a 0 publie hors BTB. Non instruit.
 5. **`zone_offensive_kills` / `zone_defensive_kills`** ne figurent dans aucune table
    d'emplacement (`named.go:103-110`), comme `flag_secures`. Non chiffre : ces colonnes n'ont

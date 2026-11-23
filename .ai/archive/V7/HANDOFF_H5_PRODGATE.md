@@ -68,7 +68,7 @@ findings non-évidents, reste à faire, commandes opérationnelles.
   session-compare gardé sur const (threading 3-niveaux + 13 fixtures disproportionné, surface secondaire).
   **KDA h5 = `h5NetFDA` (k+a/3)−d déjà correct** · **DR h5 = N/A** (cryptum sans `damage_taken`, vérifié
   carnage brut 0/13241). → **Damage model par titre ENTIÈREMENT réglé.** Cf. PLAN_DAMAGE_MODEL §0.
-- 🟡 **Sanity-check terrain LUSR/combat** (code DONE, PAS un gap) : vérif runtime niveaux (Madina Platine/Diamant…)
+- 🟡 **Sanity-check terrain LUSR/combat** (code DONE, PAS un gap) : vérif runtime niveaux (joueur_075 Platine/Diamant…)
   + profils combat distincts — relève de l'exécution (service tournant / `cmd/diag_lusr_*`), pas du code.
 
 **STOP : weapon family canonical / weapon v3 = NON commencé (consigne user). Land main = après weapon family + accord.**
@@ -127,7 +127,7 @@ page, skip-known). Le joueur doit être dans `db_profiles.json` (avec `xuid`) AV
 
 ```bash
 export PATH="/c/msys64/ucrt64/bin:$PATH"; export CGO_ENABLED=1
-MAIN=/c/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration
+MAIN=<poste>/Downloads/Scripts/LevelUp-go-migration
 # 1. (Re)build le binaire après toute modif capture/persist/mapper :
 go -C apps/go-api build -o /tmp/h5-backfill.exe ./cmd/h5-backfill
 # 2. Lancer pour un joueur (ajoute SES matchs au shared partagé ; PAS de purge —
@@ -184,9 +184,9 @@ canonical / weapon v3 = EN DERNIER** (décision user 2026-06-23).
 
 ## 1. Topologie & branche
 
-- **Code** : worktree `c:/Users/Guillaume/Downloads/Scripts/levelup-multititre`,
+- **Code** : worktree `<poste>/Downloads/Scripts/levelup-multititre`,
   branche **`integration/h5-x-livefetch`** (NON poussée, NON sur main).
-- **Données runtime** : repo `c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration`
+- **Données runtime** : repo `<poste>/Downloads/Scripts/LevelUp-go-migration`
   (db_profiles.json, auth tokens, `data/titles/halo_5/...`). C'est le `LEVELUP_REPO_ROOT`
   à pointer pour les outils.
 - Le **merge h5 × live-fetch** (46 conflits) est committé + **E2E validé** sur données
@@ -224,12 +224,12 @@ canonical / weapon v3 = EN DERNIER** (décision user 2026-06-23).
    en hiver) → match où `start_time_utc ≤ ts ≤ end_time_utc`. **VALIDÉ** sur 2019-12-12
    (3 captures 22h27/37/49 ↔ 3 matchs 21:25/21:36/21:47 UTC, mapping 1:1). Ce n'est PAS
    un offset d'horloge à recalibrer, juste la conversion TZ. Captures : 84 fichiers
-   `Halo_5_Guardians-YYYY-MM-DD_HHhMM.mp4` dans `C:/Users/Guillaume/Videos/Captures/JGtm`
+   `Halo_5_Guardians-YYYY-MM-DD_HHhMM.mp4` dans `<poste>/Videos/Captures/JGtm`
    (2018-08 → 2019-12).
 4. **Modèle tokens** (cf. [[feedback_token_model_rt_never_recapture]]) : **6 RT valides**
-   (5 + JGtm : DankerGlue1131/GeleJugefi/QuiteSiren8545/TrimButton1352/UppedJoker1176). Les
-   3 xuids en `AADSTS70000 different client id` (2533274833178266, 2533274858283686,
-   2535469190789936) = RT d'une **vieille app Azure**, entrées store périmées → **IGNORER**,
+   (5 + JGtm : joueur_130/joueur_1017/joueur_318/joueur_551/joueur_659). Les
+   3 xuids en `AADSTS70000 different client id` (2558964982616721, 2623439693412443,
+   2547408409520575) = RT d'une **vieille app Azure**, entrées store périmées → **IGNORER**,
    **JAMAIS re-capturer**. Le bruit `AADSTS70000` dans les logs de sync = ces 3 RT retentés.
 5. **Backfill h5 = ALL-OR-NOTHING** : le runner (`livesync/runner.go` RunDelta) capture TOUT
    puis `PersistAll` à la FIN. Pour le full historique (JGtm = 2016→2023, beaucoup de matchs),
@@ -272,7 +272,7 @@ canonical / weapon v3 = EN DERNIER** (décision user 2026-06-23).
 
 ```bash
 export PATH="/c/msys64/ucrt64/bin:$PATH"; export CGO_ENABLED=1
-MAIN=/c/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration
+MAIN=<poste>/Downloads/Scripts/LevelUp-go-migration
 
 # Rebuild le binaire de sync (après toute modif capture/persist/client h5)
 go -C apps/go-api build -o /tmp/h5-sync.exe ./cmd/h5-sync

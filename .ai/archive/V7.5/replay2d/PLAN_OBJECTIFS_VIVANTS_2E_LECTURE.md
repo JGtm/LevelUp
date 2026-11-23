@@ -575,7 +575,7 @@ reste entiere.
 drapeau : le calque ne publie rien, sa couverture est ABSENTE (« personne n'a lu »), et c'est
 exactement ce que le golden doit montrer.
 
-**TEMOINS RE-CUITS** sous `C:\Users\Guillaume\Projects\LevelUp\data\cache\replays\halo_infinite\`,
+**TEMOINS RE-CUITS** sous `<poste>\Projects\LevelUp\data\cache\replays\halo_infinite\`,
 un film par processus, aucune base ouverte (les faits de match viennent de fichiers JSON, avec le
 `mapId` qui donne les socles) : `64e8adfa` 2 879 687 o, `530820e5` 1 617 220 o, `53ce4390`
 2 540 731 o (absent du cache jusqu'ici), `000d5950` 2 402 255 o. Les quatre portent `schema 14`.

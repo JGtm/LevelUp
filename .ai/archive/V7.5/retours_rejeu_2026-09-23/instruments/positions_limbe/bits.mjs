@@ -3,7 +3,7 @@
 // MEME motif de bits lu sur des cartes/axes differents (donc pas une coordonnee monde).
 import fs from 'fs';
 import path from 'path';
-const REPO = 'C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration';
+const REPO = 'C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration';
 const HERE = path.dirname(new URL(import.meta.url).pathname).replace(/^\/([A-Za-z]:)/, '$1');
 const cat = JSON.parse(fs.readFileSync(`${REPO}/data/titles/halo_infinite/reference/map_quant_bounds.json`, 'utf8'));
 const norm = (s) => (s || '').toLowerCase().split(/\s+/).filter(Boolean).join(' ').replace(/ - ranked$/, '').replace(/ heavies$/, '');

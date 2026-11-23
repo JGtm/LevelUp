@@ -2,7 +2,7 @@
 
 > Créé le 2026-09-16 (soir), révisé le même soir après revue fraîche (`plan-review`, 8 P1 / 7 P2
 > intégrés). Branche : `wt/sync-robustesse`. Worktree dédié :
-> `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-sync-robustesse`. Base : `feat/v75` @ `ab7fc5695`.
+> `<poste>/Downloads/Scripts/LevelUp-wt-sync-robustesse`. Base : `feat/v75` @ `ab7fc5695`.
 > **Push sur `main` = déploiement prod : interdit.** Push de `feat/v75` : décision utilisateur.
 >
 > **Contrat d'exécution : skill `plan-execution` fait foi.** Ordre strict, une étape à la fois,
@@ -28,7 +28,7 @@
 
 ---
 
-## 1. Constat (première exécution réelle du sync par le pool, Nuzzles, 2026-09-16)
+## 1. Constat (première exécution réelle du sync par le pool, joueur_074, 2026-09-16)
 
 **C-A — Un `429` termine la passe qui se déclare réussie.** 6 slots × 3 req/s : `HTTP 429` sur
 `GetMatchHistory(start=225)`. Le pool met le slot fautif en cooldown AIMD et `acquireAnyPublic`
@@ -49,7 +49,7 @@ Côté serveur (`sync_handler.go:516-520/599-603`, `auto_sync_run.go:379-389`) :
 
 **C-B — `--token-pool-size N` compte les sources, pas les slots sains.** `NewPool`
 (`internal/platform/auth/pool/pool.go:137-183`) tronque `sources[:MaxSize]` AVANT de résoudre ;
-avec `1`, la première source du scan (Chocoboflor, révoquée) est la seule tentée → « aucun slot
+avec `1`, la première source du scan (joueur_165, révoquée) est la seule tentée → « aucun slot
 créé ». L'ordre du scan n'est pas stable (map).
 
 **C-C — `sync-full` / `sync-delta` n'appliquent aucune migration.** `cmd/levelup/cmd_sync.go` :
@@ -60,8 +60,8 @@ non appliqué pendant 83 min de sync → 2 matchs rejetés une seconde fois.
 
 **C-D — `PolicyPinnedPlayer` sur `GetCareerRank` repose sur une prémisse fausse.** Mesuré le
 2026-09-16 (sonde non versionnée, serveur arrêté) : `GET /careerranks` pour un xuid TIERS avec
-trois prêteurs différents (JGtm, DankerGlue, Trimbutton) → `200` ; rang ET XP identiques à
-l'appel du propriétaire (JGtm : `rank=202 xp=2555` vu par DankerGlue et Trimbutton ; Nuzzles :
+trois prêteurs différents (JGtm, joueur_1016, joueur_1018) → `200` ; rang ET XP identiques à
+l'appel du propriétaire (JGtm : `rank=202 xp=2555` vu par joueur_1016 et joueur_1018 ; joueur_074 :
 `rank=272 xp=0` — 272 est le rang maximal, l'XP nulle est sa vraie valeur). L'endpoint est
 entièrement public. Aucun appelant de production n'utilise `GetCareerRank` (`career.go:56`
 `//nolint:unused`, tests seulement ; `fetch_cache.go:124` passe-plat ; `v2/fetch_player.go:43`
@@ -213,7 +213,7 @@ token PROPRE du joueur pour les succès Xbox Live ; le store rend le sentinelle
       16/09 n'y sont pas), en-tête daté.
 - [x] 3.5 Docs : `internal/platform/auth/pool/README.md` (tableau des appelants : `GetCareerRank`
       → `PolicyAnyPublic` ; pinned = cron Spartan + live-sync H5 ; mesure du 2026-09-16 consignée :
-      trois prêteurs, rang et XP identiques à l'appel du propriétaire, Nuzzles `272/0` = rang
+      trois prêteurs, rang et XP identiques à l'appel du propriétaire, joueur_074 `272/0` = rang
       max), `docs/COMMANDS.md` + `docs/FR/COMMANDS.md` (paragraphe carrière), `cmd/levelup/pool_engine.go:5-10`,
       `cmd/levelup/cmd_sync.go` (deux commentaires), `.ai/PLAN_SYNC_POOL_SEAMS_SCHEMA_2026-09-16.md`
       §8 (ligne « prémisse contredite » → « tranchée par mesure, D4 du plan robustesse »).

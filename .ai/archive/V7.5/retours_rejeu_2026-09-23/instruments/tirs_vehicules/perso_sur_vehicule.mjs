@@ -1,7 +1,7 @@
 // Tirs d'arme PERSONNELLE poses sur un vehicule (champ v) : par famille, et selon que le roster
 // depasse 16 index (repliement du FilmIndex sur 4 bits) ou non.
 import fs from 'fs';
-const dir = 'C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
+const dir = 'C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
 const files = fs.readdirSync(dir).filter(f => f.endsWith('.json') && !f.includes('derived'));
 const agg = {};
 for (const f of files) {

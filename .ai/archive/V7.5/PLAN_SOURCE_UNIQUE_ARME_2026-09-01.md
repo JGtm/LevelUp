@@ -541,8 +541,8 @@ une révision de décodeur périmée (les deux groupes portent `killsource-2026-
 pas les suicides ni les chutes (**zéro** mort sans tueur crédité dans la table, 251 tueurs bots
 soit 0,2 %).
 
-Sur les joueurs suivis, la couverture réelle est donc : JGtm **96,8 %**, Chocoboflor **96,4 %**,
-Madina97294 **95,0 %**, XxDaemonGamerxX 85,3 %.
+Sur les joueurs suivis, la couverture réelle est donc : JGtm **96,8 %**, joueur_165 **96,4 %**,
+joueur_117 **95,0 %**, joueur_291 85,3 %.
 
 CONSÉQUENCE POUR LE TÉMOIN : après A6 et A6.8, un résidu de l'ordre de **4 à 6 %** sur des
 matchs 4v4 est le PLANCHER attendu, pas un défaut du lot. Un résidu plus élevé sur un

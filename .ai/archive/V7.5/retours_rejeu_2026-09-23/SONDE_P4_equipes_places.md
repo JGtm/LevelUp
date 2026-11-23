@@ -54,21 +54,21 @@ entre les deux images-clés voisines, exclues.
 | Entité (slot ti=9) | Index | Dés. | Première / dernière image-clé | Fenêtre large | Trous | Occupant (lien) | Corps liés (création) |
 |---|---|---|---|---|---|---|---|
 | 1297 | 0 | 0 | f12 / f5014 | ]début..fin[ | **rang 4 (f613)** | MONEY x BUTTER (table 0) | 513, 521, 530, … |
-| 1299 | 1 | 1 | f12 / **f3013** | ]..f3213[ | — | FairyNectar5788 (table 1) | 514 … 548 (dernière vie → f3117) |
-| 1301 | 2 | 1 | f12 / f5014 | fin | — | Madina97294 (table 2) | |
-| 1303 | 3 | 0 | f12 / f5014 | fin | — | Namikidori (table 3) | |
-| 1305 | 4 | 1 | f12 / f5014 | fin | — | Chocoboflor (table 4) | |
-| 1309 | 6 | 0 | f12 / f5014 | fin | — | DRghie (table 6) | |
+| 1299 | 1 | 1 | f12 / **f3013** | ]..f3213[ | — | joueur_539 (table 1) | 514 … 548 (dernière vie → f3117) |
+| 1301 | 2 | 1 | f12 / f5014 | fin | — | joueur_117 (table 2) | |
+| 1303 | 3 | 0 | f12 / f5014 | fin | — | joueur_1013 (table 3) | |
+| 1305 | 4 | 1 | f12 / f5014 | fin | — | joueur_165 (table 4) | |
+| 1309 | 6 | 0 | f12 / f5014 | fin | — | joueur_595 (table 6) | |
 | 1311 | 7 | 1 | f12 / f5014 | fin | — | JGtm (table 7) | |
 | 1530 | 8 | 0 | f12 / f212 | ]f−186..f412[ | — | **343 Hundy** (bid 16) — BOT_METADATA f12..f271, `nbBots=0` à **f273** | 512 (f0, positions → f270) |
-| 1610 | 9 | 0 | f412 / f613 | ]f212..f813[ | — | Hanover Cat (arrivant, pas dans la table) | 523 (f661, 0,2 s) |
+| 1610 | 9 | 0 | f412 / f613 | ]f212..f813[ | — | joueur_270 (arrivant, pas dans la table) | 523 (f661, 0,2 s) |
 | 1687 | 8 | 0 | f813 / f813 | ]f613..f1013[ | — | **343 PardonMy** (bid 7) — BOT_METADATA f813..f829, `nbBots=0` à **f831** | 526 (f774, positions → f829) |
 | 1713 | 10 | 0 | f1013 / f5014 | ]f813..fin[ | — | Claudors (arrivant) | 532 (f1184), 534, 572, 576, 582 |
 | 2145 | 8 | 1 | f3213 / f5014 | ]f3013..fin[ | — | **343 Brew Dog** (bid 19) — BOT_METADATA dès **f3155** (paquet de changement en milieu de chunk 17) jusqu'à la fin | 564 (f3236), 569, 573, 577, 585, 594 |
 
 Occupants par image-clé (MESURÉ) : 4 + 4 à chacune des 25 images-clés pleines, **3 + 4 à f613**
 (MONEY manquant). Par désignateur, jamais plus de 4. Eagle (des 0) : 0, 3, 6 + la 4e place tenue
-successivement par 1530 (Hundy) → 1610 (Hanover Cat) → 1687 (PardonMy) → 1713 (Claudors), fenêtres
+successivement par 1530 (Hundy) → 1610 (joueur_270) → 1687 (PardonMy) → 1713 (Claudors), fenêtres
 disjointes. Cobra (des 1) : 2, 4, 7 + la place de 1299 (FairyNectar, → f3013) → 2145 (Brew Dog, f3155).
 
 Le trou de MONEY à f613 n'est PAS un départ (DÉDUIT) : son corps 521 a 3 071 positions continues sur
@@ -92,7 +92,7 @@ des paquets de changement en milieu de chunk (f270-273, f693, f829-833, f3155). 
   d'index 8 sont disjointes : chaque lien est unique (512 → 1530 → Hundy, 526 → 1687 → PardonMy,
   564…594 → 2145 → Brew Dog).
 - le paquet de changement à f693 (`nbBots=0`, aucun bot déclaré avant lui depuis f273) n'a pas de
-  sens établi — HYPOTHÈSE : réécriture sur un changement de joueur humain (départ de Hanover Cat,
+  sens établi — HYPOTHÈSE : réécriture sur un changement de joueur humain (départ de joueur_270,
   dont le corps s'arrête à f662 et l'entité à f613/f813). Non tranché, non nécessaire à M2.
 
 ### Règle des places sur les tirs (MESURÉ)
@@ -107,13 +107,13 @@ des paquets de changement en milieu de chunk (f270-273, f693, f829-833, f3155). 
   f3108 alors que Brew Dog vit 170 s sur la place 1 (6 vies, f3236..f4935). HYPOTHÈSE (non
   vérifiée) : leurs tirs passent par la variante courte du 105 ou un autre canal. La place d'un bot
   ne se lit donc PAS dans les tirs.
-- Hanover Cat (0,2 s de vie) n'a aucun tir : sa place n'est pas lue non plus.
+- joueur_270 (0,2 s de vie) n'a aucun tir : sa place n'est pas lue non plus.
 
 Ce qui est MESURÉ pour la règle de l'utilisateur (« un partant libère sa place pour son remplaçant,
 un humain remplace le bot ») : Claudors, humain, hérite de la place 5 (tirs) ; les quatre occupants
 successifs de la 4e place d'Eagle ont des fenêtres disjointes et le même désignateur ; Brew Dog
 entre (f3155) entre la dernière vie de FairyNectar (f3117) et la première image-clé sans elle
-(f3213). Que Hundy, Hanover Cat et PardonMy aient tenu la place **5** (et non une autre) est DÉDUIT
+(f3213). Que Hundy, joueur_270 et PardonMy aient tenu la place **5** (et non une autre) est DÉDUIT
 (chaînage : seule place libre d'Eagle), pas lu.
 
 ### Retards de l'API sur le film (MESURÉ côté film, horloge annexe `f = s × 10 + 227`)
@@ -121,7 +121,7 @@ entre (f3155) entre la dernière vie de FairyNectar (f3117) et la première imag
 | Relais | API | Film |
 |---|---|---|
 | Hundy sort | 0:34.0 (f567) | f273 (BOT_METADATA), corps → f270 |
-| Hanover Cat entre / sort | f566 / f988 | entité ]f212..f412], corps f661-662, sortie ]f662..f813[ |
+| joueur_270 entre / sort | f566 / f988 | entité ]f212..f412], corps f661-662, sortie ]f662..f813[ |
 | PardonMy entre / sort | f988 / f1125 | corps f774, sortie **f831** (BOT_METADATA) |
 | Claudors entre | 1:29.7 (f1124) | entité ]f813..f1013], corps f1184 |
 | FairyNectar sort / Brew Dog entre | 5:22.3-5:22.4 (f3450) | FairyNectar ≤ f3155 ; Brew Dog **f3155** |
@@ -155,12 +155,12 @@ reprend l'index d'un partant. Le verdict ne doit pas se lire « le film écrit l
    compteur.
 5. **Place** : table de chunk_00 pour les occupants du départ ; **tirs** pour un remplaçant humain
    qui tire (Claudors → 5) ; **chaînage par équipe** pour les bots (ils n'écrivent aucun tir long)
-   et pour un arrivant sans tir (Hanover Cat) — repli nommé, compté. Un siège de la table SANS
+   et pour un arrivant sans tir (joueur_270) — repli nommé, compté. Un siège de la table SANS
    entité (WNBA Fan A5, place 5) est une place libre dès la première image-clé porteuse, occupée par
    le premier arrivant de même équipe (Hundy) ; l'équipe de cette place ne se lit que par ses
    occupants (WNBA n'a ni entité ni désignateur).
 6. **Gate du témoin** : à chaque image-clé porteuse, occupants par désignateur ≤ 4 (mesuré : 4 + 4
-   partout sauf 3 + 4 à f613, trou de marche) ; place 5 d'Eagle : Hundy → Hanover Cat → PardonMy →
+   partout sauf 3 + 4 à f613, trou de marche) ; place 5 d'Eagle : Hundy → joueur_270 → PardonMy →
    Claudors ; place 1 de Cobra : FairyNectar → Brew Dog.
 
 ## Hors périmètre (noté, non traité)

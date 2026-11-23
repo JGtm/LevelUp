@@ -811,7 +811,7 @@
       <div class="chart"><svg id="as-ses" viewBox="0 0 1060 212" role="img" aria-label="Assistances de la soiree"></svg></div>
       <p class="note">
         Meme grammaire, <b>une seule chose change : l'axe est en assistances PAR MATCH MESURE</b>, pas en cumul.
-        « Je sers Madina 1,4 fois par match » se compare d'une soiree a l'autre ; « 12 assistances » non.
+        « Je sers joueur_075 1,4 fois par match » se compare d'une soiree a l'autre ; « 12 assistances » non.
         La bande du dessous donne le total de l'escouade match par match : elle montre si la soiree s'est
         delitee au 5e match, ce qu'un cumul cache par construction.
       </p>
@@ -1273,7 +1273,7 @@
       txt(m, X0 - 8, Y0 + H - H * m / MAX + 4, 'end', 'muted', s);
     });
     txt('mediane de mes frags (m)', X0 + W / 2, Y0 + H + 34, 'middle', 'muted', s);
-    var pl = [['Moi', 17.6, 19.4, 620, 'var(--compare-a)'], ['Madina97294', 12.1, 14.0, 540, 'var(--chart-series-2)'],
+    var pl = [['Moi', 17.6, 19.4, 620, 'var(--compare-a)'], ['joueur_117', 12.1, 14.0, 540, 'var(--chart-series-2)'],
               ['Kaelin', 24.9, 20.2, 410, 'var(--chart-series-1)'], ['Vorn', 15.3, 23.8, 270, 'var(--compare-b)']];
     pl.forEach(function (p) {
       var cx = X0 + W * p[1] / MAX, cy = Y0 + H - H * p[2] / MAX, r = 6 + Math.sqrt(p[3]) / 6;
@@ -1288,14 +1288,14 @@
     txt('Fusil de combat — un bâton par joueur, frags au-dessus, morts en dessous', 0, 14, 'start', 'muted', s);
     whiskers('por-sq2', 140, 28, 300, [
       { label: 'Moi', p10: 9, p50: 18.2, p90: 33, n: 214, color: 'var(--compare-a)' },
-      { label: 'Madina97294', p10: 6, p50: 12.9, p90: 24, n: 188, color: 'var(--chart-series-2)' },
+      { label: 'joueur_117', p10: 6, p50: 12.9, p90: 24, n: 188, color: 'var(--chart-series-2)' },
       { label: 'Kaelin', p10: 14, p50: 26.1, p90: 41, n: 141, color: 'var(--chart-series-1)' },
       { label: 'Vorn', p10: 8, p50: 16.0, p90: 29, n: 96, color: 'var(--compare-b)' }
     ], 50);
     el('line', { x1: 140, y1: 116, x2: 440, y2: 116, class: 'grid' }, s);
     whiskers('por-sq2', 140, 126, 300, [
       { label: 'Moi', p10: 11, p50: 20.4, p90: 36, n: 180, color: 'var(--stat-deaths)' },
-      { label: 'Madina97294', p10: 7, p50: 14.8, p90: 27, n: 166, color: 'var(--stat-deaths)' },
+      { label: 'joueur_117', p10: 7, p50: 14.8, p90: 27, n: 166, color: 'var(--stat-deaths)' },
       { label: 'Kaelin', p10: 12, p50: 21.0, p90: 38, n: 129, color: 'var(--stat-deaths)' },
       { label: 'Vorn', p10: 13, p50: 24.6, p90: 42, n: 101, color: 'var(--stat-deaths)' }
     ], 50);
@@ -1323,10 +1323,10 @@
     txt('Assistances PAR MATCH MESURE — qui sert qui', 0, 14, 'start', null, s);
     stacked('as-ses', 160, 24, 700, [
       { label: 'Moi', parts: [
-        { label: 'Madina97294', v: 1.42, color: 'var(--chart-series-2)', note: '34 % des assistances de l\'escouade' },
+        { label: 'joueur_117', v: 1.42, color: 'var(--chart-series-2)', note: '34 % des assistances de l\'escouade' },
         { label: 'Kaelin', v: .71, color: 'var(--chart-series-1)', note: '17 %' },
         { label: 'Vorn', v: .28, color: 'var(--compare-b)', note: '7 % &middot; 2 eliminations volees' }] },
-      { label: 'Madina97294', parts: [
+      { label: 'joueur_117', parts: [
         { label: 'Moi', v: .85, color: 'var(--compare-a)', note: '20 %' },
         { label: 'Kaelin', v: .43, color: 'var(--chart-series-1)', note: '10 %' }] },
       { label: 'Kaelin', parts: [
@@ -1525,7 +1525,7 @@
     valueGrid('now-obj-ses', 106, 156, ['Drapeau', 'Zones', 'Crane'], ['Port.', 'Repr.', 'Vol.', 'Tenir'],
       [[23, 14, 5, null], [null, null, null, 61], [11, null, 4, 18]], 70, 24);
     txt('Vue 3 — grille joueur x role  (escouade seulement)', 0, 252, 'start', 'muted', s);
-    valueGrid('now-obj-ses', 106, 268, ['Moi', 'Madina97294'], ['Port.', 'Repr.', 'Vol.', 'Tenir'],
+    valueGrid('now-obj-ses', 106, 268, ['Moi', 'joueur_117'], ['Port.', 'Repr.', 'Vol.', 'Tenir'],
       [[23, 9, 5, 34], [11, 14, 2, 27]], 70, 24);
   })();
 
@@ -1544,7 +1544,7 @@
   (function () {
     var s = document.getElementById('now-obj-mv');
     txt('Vue 1 — Actions d\'objectif par joueur   (une echelle PAR COLONNE)', 0, 14, 'start', 'muted', s);
-    valueGrid('now-obj-mv', 150, 30, ['Moi', 'Madina97294', 'Kaelin', 'Adversaire 1', 'Adversaire 2'],
+    valueGrid('now-obj-mv', 150, 30, ['Moi', 'joueur_117', 'Kaelin', 'Adversaire 1', 'Adversaire 2'],
       ['Captures', 'Retours', 'Vols', 'Temps porteur (s)'],
       [[2, 1, 0, 74], [1, 3, 1, 31], [0, 2, 0, 12], [1, 1, 2, 48], [2, 0, 1, 66]], 112, 24);
     txt('Vue 2 — Total d\'objectif par equipe   (zero au centre)', 620, 14, 'start', 'muted', s);
@@ -1767,7 +1767,7 @@
 
   (function () {
     var inks = ['var(--compare-a)', 'var(--chart-series-2)', 'var(--chart-series-1)', 'var(--chart-series-4)'];
-    var names = ['JGtm', 'Madina97294', 'Chocoboflor', 'Coequipier hors escouade'];
+    var names = ['JGtm', 'joueur_117', 'joueur_165', 'Coequipier hors escouade'];
     lobbyStack('prev-obj-e', 230, 16, 640, [
       { label: 'Prendre', sub: 'zones capturees · drapeaux saisis', parts: [6, 33, 6, 11, 44] },
       { label: 'Defendre', sub: 'zones securisees · retours', parts: [22, 19, 11, 5, 43] },
@@ -1814,7 +1814,7 @@
   (function () {
     var s = document.getElementById('now-ech-matrice');
     txt('venge ↓   /   est venge →', 0, 14, 'start', 'muted', s);
-    heat('now-ech-matrice', 120, 40, ['Moi', 'Madina97294', 'Kaelin'], ['Moi', 'Madina97294', 'Kaelin'],
+    heat('now-ech-matrice', 120, 40, ['Moi', 'joueur_117', 'Kaelin'], ['Moi', 'joueur_117', 'Kaelin'],
       [[null, 190, 133], [171, null, 158], [145, 162, null]], 118, 34);
     txt('rampe 0 → 190 : un compte n\'a pas d\'autre bas qui ait un sens', 0, 172, 'start', 'muted', s);
   })();
@@ -1835,7 +1835,7 @@
       var px = X0 + W * (0.04 + rnd() * .66), py = Y0 + 20 + rnd() * (H - 24);
       el('circle', { cx: px, cy: py, r: 2, fill: 'var(--muted-foreground)', 'fill-opacity': .5 }, s);
     }
-    [['Moi', .30, .42, 9, 'var(--compare-a)'], ['Madina97294', .52, .66, 12, 'var(--chart-series-2)'],
+    [['Moi', .30, .42, 9, 'var(--compare-a)'], ['joueur_117', .52, .66, 12, 'var(--chart-series-2)'],
      ['Kaelin', .22, .30, 7, 'var(--chart-series-1)']].forEach(function (p) {
       var cx = X0 + W * p[1], cy = Y0 + 16 + (H - 20) * p[2];
       var c = el('circle', { cx: cx, cy: cy, r: p[3], fill: p[4], 'fill-opacity': .6, stroke: p[4], 'stroke-width': 1.5, class: 'mark' }, s);
@@ -1849,7 +1849,7 @@
   (function () {
     var s = document.getElementById('now-ech-donne');
     grouped('now-ech-donne', 20, 14, 470, 104, [
-      { label: 'Moi', d: 323, r: 316 }, { label: 'Madina97294', d: 329, r: 352 }, { label: 'Kaelin', d: 307, r: 291 }
+      { label: 'Moi', d: 323, r: 316 }, { label: 'joueur_117', d: 329, r: 352 }, { label: 'Kaelin', d: 307, r: 291 }
     ], 380);
     txt('donne', 22, 152, 'start', 'muted', s);
     el('rect', { x: 0, y: 144, width: 14, height: 9, rx: 2, fill: 'var(--chart-series-3)' }, s);
@@ -1879,7 +1879,7 @@
     var picks = [[.06, 0], [.13, 1], [.22, 0], [.29, 2], [.35, 1], [.44, 0], [.51, 2], [.58, 1],
                  [.63, 0], [.71, 1], [.78, 2], [.84, 0], [.91, 1]];
     var inks = ['var(--compare-a)', 'var(--chart-series-2)', 'var(--chart-series-1)'];
-    var names = ['Moi', 'Madina97294', 'Kaelin'];
+    var names = ['Moi', 'joueur_117', 'Kaelin'];
     picks.forEach(function (p) {
       var x = X0 + W * p[0];
       var a = el('rect', { x: x - 3, y: 6, width: 6, height: 18, rx: 2, fill: 'var(--chart-series-3)', class: 'mark' }, s);
@@ -1963,7 +1963,7 @@
   (function () {
     var s = document.getElementById('now-por-mv');
     var arms = ['Fusil de combat', 'Pistolet', 'Sniper', 'Fusil a pompe'];
-    var pl = [['Moi', 'var(--compare-a)'], ['Madina97294', 'var(--chart-series-2)'],
+    var pl = [['Moi', 'var(--compare-a)'], ['joueur_117', 'var(--chart-series-2)'],
               ['Adversaire 1', 'var(--muted-foreground)'], ['Adversaire 2', 'var(--muted-foreground)']];
     var vals = [[[10, 18, 31], [7, 13, 24], [12, 21, 35], [9, 16, 28]],
                 [[4, 9, 17], [3, 7, 14], [5, 11, 20], [4, 8, 15]],
@@ -2001,10 +2001,10 @@
     txt('Assistant ↓   /   les segments sont ses beneficiaires', 0, 14, 'start', 'muted', s);
     stacked('now-as', 160, 26, 700, [
       { label: 'Moi', parts: [
-        { label: 'Madina97294', v: 62, color: 'var(--chart-series-2)', note: '34 % des assistances mesurees' },
+        { label: 'joueur_117', v: 62, color: 'var(--chart-series-2)', note: '34 % des assistances mesurees' },
         { label: 'Kaelin', v: 31, color: 'var(--chart-series-1)', note: '17 %' },
         { label: 'Vorn', v: 12, color: 'var(--compare-b)', note: '7 % &middot; 2 eliminations volees' }] },
-      { label: 'Madina97294', parts: [
+      { label: 'joueur_117', parts: [
         { label: 'Moi', v: 37, color: 'var(--compare-a)', note: '20 %' },
         { label: 'Kaelin', v: 19, color: 'var(--chart-series-1)', note: '10 %' }] },
       { label: 'Kaelin', parts: [
@@ -2030,7 +2030,7 @@
     var s = document.getElementById('now-bal-sq'), X0 = 40, Y0 = 14, W = 440, H = 110;
     var series = [
       { n: 'Moi', c: 'var(--compare-a)', v: [.5,-.3,.8,.2,-.6,.4,.7,-.2,.3,.6,-.4,.5] },
-      { n: 'Madina97294', c: 'var(--chart-series-2)', v: [-.2,.4,.1,-.5,.3,.6,-.1,.2,-.4,.5,.2,-.3] },
+      { n: 'joueur_117', c: 'var(--chart-series-2)', v: [-.2,.4,.1,-.5,.3,.6,-.1,.2,-.4,.5,.2,-.3] },
       { n: 'Kaelin', c: 'var(--chart-series-1)', v: [.3,.2,-.4,.6,.1,-.2,.4,.5,.2,-.3,.6,.1] }
     ];
     var cums = series.map(function (S) { var a = 0; return S.v.map(function (x) { a += x; return a; }); });

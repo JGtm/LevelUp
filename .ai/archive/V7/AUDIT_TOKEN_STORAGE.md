@@ -14,7 +14,7 @@ Aujourd'hui les tokens auth (`refresh_token` OAuth Microsoft + cache MSAL) sont 
 4. **`data/auth/watcher_tokens.json`** (`TokenStore` mono-user legacy) : champ `RefreshToken`
 
 Conséquences observées :
-- Bug Madina97294 (2026-05-26) : Air hot-reload → Pool brûle l'env var → DuckDB peuplé → handler HTTP lit env var stale → `invalid_grant`
+- Bug joueur_117 (2026-05-26) : Air hot-reload → Pool brûle l'env var → DuckDB peuplé → handler HTTP lit env var stale → `invalid_grant`
 - 4 CLI tools qui appellent directement `provider.Exchange` peuvent brûler le RT env.local et reproduire le bug
 - DuckDB OLAP utilisé comme credential store — anti-pattern architectural
 

@@ -1,4 +1,4 @@
-export GOCACHE=C:/Users/Guillaume/AppData/Local/go-build-cg-l2 PATH=/c/msys64/ucrt64/bin:$PATH CGO_ENABLED=1; API=/c/Users/Guillaume/Downloads/Scripts/LevelUp-wt-cg-l2/apps/go-api; C=C:/Users/GUILLA~1/AppData/Local/Temp/claude/c--Users-Guillaume-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad/L2
+export GOCACHE=C:/Users/utilisateur/AppData/Local/go-build-cg-l2 PATH=/c/msys64/ucrt64/bin:$PATH CGO_ENABLED=1; API=/c/Users/utilisateur/Downloads/Scripts/LevelUp-wt-cg-l2/apps/go-api; C=C:/Users/utilisateur/AppData/Local/Temp/claude/c--Users-poste-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad/L2
 G=$API/internal/games/halo_infinite/film/internal/grammar; M=$C/mut2
 TESTS="${TESTS:-.}"
 muter() {

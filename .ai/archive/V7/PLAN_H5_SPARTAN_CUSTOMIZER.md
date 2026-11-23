@@ -2,7 +2,7 @@
 
 > Statut : Pré-P0 FAIT, P0 à venir. Date : 2026-06-28.
 > Branche : `feat/h5-spartan-customizer`
-> Worktree : `C:\Users\Guillaume\Downloads\Scripts\LevelUp-h5-spartan-customizer`
+> Worktree : `<poste>\Downloads\Scripts\LevelUp-h5-spartan-customizer`
 
 ## Objectif
 

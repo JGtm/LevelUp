@@ -414,7 +414,7 @@ films illisibles. Registre des replis, sommes sur les 20 films :
 
 ## 7. Gates (sorties exactes, tête corrigée)
 
-Environnement : `GOCACHE=C:/Users/Guillaume/AppData/Local/go-build-cg3-vuea`, CGO msys64 ucrt64, une
+Environnement : `GOCACHE=<poste>/AppData/Local/go-build-cg3-vuea`, CGO msys64 ucrt64, une
 commande go à la fois ; films lus en place (`data/cache/film_chunks`, lecture seule) ; racine factice
 et copie du parc au scratchpad (`scratchpad/cg3-V1/repo`, `scratchpad/cg3-V1/parc`). Pièces :
 `scratchpad/cg3-V2c/`. Les gates 1 à 11 ci-dessous ont tourné sur la tête corrigée AVANT fusion (base

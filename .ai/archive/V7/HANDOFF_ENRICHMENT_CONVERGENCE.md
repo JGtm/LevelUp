@@ -4,12 +4,12 @@
 
 ## 1. Problème initial
 
-Enrichissements incomplets après sync : FDA « faux », Madina sans LUSR, Flo (Chocoboflor) sans perfs, section « Rang & MMR équipe » sans LUSR, « Frags par arme » vide. Diagnostic complet (logs + code + lecture DuckDB, serveur arrêté) : voir `.ai/thought_log.md` [2026-06-04].
+Enrichissements incomplets après sync : FDA « faux », joueur_075 sans LUSR, Flo (joueur_165) sans perfs, section « Rang & MMR équipe » sans LUSR, « Frags par arme » vide. Diagnostic complet (logs + code + lecture DuckDB, serveur arrêté) : voir `.ai/thought_log.md` [2026-06-04].
 
 ## 2. Causes racines confirmées
 
 - **RC-1** — 401 auth sans recovery : `MarkUnhealthy`/refresh jamais câblés sur le bon slot (`pinnedGamertag` vide pour `PolicyAnyPublic`), `doGet` ne retry pas sur 401 → `matches_inserted:0`.
-- **RC-2** — player DB legacy de Chocoboflor SANS PRIMARY KEY (`player_match_enrichment`, `match_citations`, `match_skill_rank`) : `CREATE TABLE IF NOT EXISTS (...PK...)` no-op sur table préexistante → `INSERT OR IGNORE`/`ON CONFLICT` échouent. De plus `RunForDB(TargetPlayer)` n'était JAMAIS appelé au boot serveur.
+- **RC-2** — player DB legacy de joueur_165 SANS PRIMARY KEY (`player_match_enrichment`, `match_citations`, `match_skill_rank`) : `CREATE TABLE IF NOT EXISTS (...PK...)` no-op sur table préexistante → `INSERT OR IGNORE`/`ON CONFLICT` échouent. De plus `RunForDB(TargetPlayer)` n'était JAMAIS appelé au boot serveur.
 - **RC-3** — reader LUSR profil triait/fenêtrait sur `match_skill_rank.start_time` qui est 100 % NULL pour les rows LUSR (colonne dénormalisée jamais remplie ; seul le CSR la remplit).
 - **RC-5** — events film jamais récupérés sur le chemin live : le watcher (`Trigger`, `cmd/server/main.go`) était construit sans `WithHighlightEvents` (zéro-value false). Le heal qui masquait ça a été retiré le 2026-06-01 → `highlight_events`/`weapon_kills`/`killer_victim_pairs` arrêtés au 30/05.
 - **RC-4 (LUSR équipe)** — PAS un trou d'archi : le scoreboard lit déjà le LUSR de chaque coéquipier SUIVI depuis SA player DB (`match_view_builders_team.go` → `GetMatchSkillRank` → `Q22aMatchSkillRankPlayer` qui lit `match_skill_rank_latest`). Le « manque » récent = conséquence de l'enrichment cassé. Réparé par RC-1/RC-2/RC-5. **CSR et LUSR sont exclusifs par match** (classé/non classé) → aucune table shared dédiée nécessaire.
@@ -55,9 +55,9 @@ Mécanisme : `fetchHighlightChunkResilient` — pour un match FRAIS (< `freshFil
 
 ## 7. À valider après déploiement
 
-- Re-sync des 4 joueurs (tokens Madina/XxDaemon depuis le store `data/auth/watcher_tokens/`, cf. ADR 0023) → vérifier `matches_inserted>0` (RC-1 réparé).
-- Au reboot : les migrations PK s'appliquent sur la DB legacy de Chocoboflor (logs `repair_*_primary_key`) → ses perfs/citations se peuplent.
-- Niveaux LUSR attendus (sanity check, cf. mémoire `reference_lusr_target_levels`) : Madina97294 fin Platine/début Diamant, Chocoboflor + JGtm milieu/bas Or.
+- Re-sync des 4 joueurs (tokens joueur_075/joueur_639 depuis le store `data/auth/watcher_tokens/`, cf. ADR 0023) → vérifier `matches_inserted>0` (RC-1 réparé).
+- Au reboot : les migrations PK s'appliquent sur la DB legacy de joueur_165 (logs `repair_*_primary_key`) → ses perfs/citations se peuplent.
+- Niveaux LUSR attendus (sanity check, cf. mémoire `reference_lusr_target_levels`) : joueur_117 fin Platine/début Diamant, joueur_165 + JGtm milieu/bas Or.
 - Backlog events 30/05 → convergence le résorbe sur quelques cycles (horizon 50/cycle).
 
 ## 8. Commit

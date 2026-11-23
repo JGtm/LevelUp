@@ -21,12 +21,12 @@
 
 ## Règles d'environnement (à respecter par tout exécuteur)
 
-- Worktree dédié `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-v2-<lot>`, branche `feat/v2-<lot>`
+- Worktree dédié `<poste>\Downloads\Scripts\LevelUp-wt-v2-<lot>`, branche `feat/v2-<lot>`
   (préfixe `feat/**` = la CI se déclenche au push). Checkout principal
-  `C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration` : lecture seule (données `data/`,
+  `<poste>\Downloads\Scripts\LevelUp-go-migration` : lecture seule (données `data/`,
   registre, annexes), jamais d'écriture.
 - Commandes `go` en SÉRIE (jamais deux à la fois), avec un cache propre au lot :
-  `GOCACHE=C:\Users\Guillaume\AppData\Local\go-build-v2-<lot>`, `CGO_ENABLED=1`, depuis
+  `GOCACHE=<poste>\AppData\Local\go-build-v2-<lot>`, `CGO_ENABLED=1`, depuis
   `apps/go-api`. Tests d'intégration : `-tags=integration -p 1`.
 - Gates en AVANT-PLAN uniquement (aucun run d'arrière-plan, aucun outil d'attente).
 - Web : `npm --prefix apps/web run typecheck`, `npm --prefix apps/web run lint`, vitest via
@@ -276,7 +276,7 @@ Tâche E-II (preuves en CI)
       le garde `archlint/no_unbounded_film_loop_test.go:168-172` mis à jour (il entérinait la
       justification périmée).
 - [ ] G.2 (I2) `internal/himap/heightfield.go` : 175 lignes mortes et leur test supprimés.
-- [ ] G.3 (H2) Porter `C:\Users\Guillaume\Downloads\Halo Infinite - Sons armes\_outils\livraison.py`
+- [ ] G.3 (H2) Porter `<poste>\Downloads\Halo Infinite - Sons armes\_outils\livraison.py`
       en Go comme mode `livrer` de `cmd/weapon-sounds` (sortie identique : `weaponSoundVariations.ts`
       et les assets de `static/sounds/`, prouvée par comparaison octet à octet sur la sortie
       actuelle) ; la recette `.ai/V7.5/RECETTE_SONS_ARMES.md` mise à jour.
@@ -528,7 +528,7 @@ Décisions superviseur : infobulle tronquée et « 1m00s » = exceptions documen
   par morts (`ResolveRoundIdentity`, `deathInstantMin = 3`) alors que les deux couvertures sont
   complémentaires : les joueurs qui meurent moins de 3 fois (les meilleurs, donc les porteurs)
   sortaient du pont → actions d'objectif perdues (17 → 12 sur `c0a82e88`, captures et vols de
-  SweatyYeti75 disparus). Régression, pas décision (« neutralité prouvée » contre le mauvais
+  joueur_631 disparus). Régression, pas décision (« neutralité prouvée » contre le mauvais
   témoin). Correctif : `RoundIdentity.CompletedByLines` (mono-manche, compléter sans contredire,
   aucun xuid deux fois) → 7/7 pontés, 23 actions, chaque joueur = sa ligne de feuille de match.
   Impact : tout artefact cuit depuis le 2026-08-28 sur film mono-manche avec un joueur à < 3

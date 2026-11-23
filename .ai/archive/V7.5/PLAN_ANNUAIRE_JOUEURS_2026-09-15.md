@@ -525,7 +525,7 @@ gate complet machine au repos.
 - `go build ./cmd/levelup` → **0**.
 - `go run ./cmd/levelup identity list` sur les registres locaux (LEVELUP_REPO_ROOT du dépôt
   principal, commande STRICTEMENT en lecture) → **12 identités, aucune panique** : les 4
-  joueurs à profils multi-titres (JGtm admin, Chocoboflor, Madina97294, XxDaemonGamerxX), les
+  joueurs à profils multi-titres (JGtm admin, joueur_165, joueur_117, joueur_291), les
   6 amis `auth_only`, et 3 lignes `token_orphan` (fixtures `000000000000000{0,1,2}.json`,
   cf. §10). Exit 0.
 - Hors gate : `go vet ./...` → 0 ; `./internal/archlint/... ./internal/watcher/...

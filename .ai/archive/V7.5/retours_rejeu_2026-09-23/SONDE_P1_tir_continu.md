@@ -26,7 +26,7 @@ Légende : **[M]** mesuré · **[D]** déduit · **[H]** hypothèse.
    `FA4FAD21`). Sur 81c02726 : 73 touches, **6/6 frags précédés dans les 2 s, 0/12 au témoin
    décalé, 0 hors épisodes** ; cadence en rafale **8 ticks = 133 ms (7,5/s = 225 coups/min x 2)**.
 4. **Le gate est donc passé FORMELLEMENT par un signal qui n'est pas le tir** : les tirs manqués ne
-   sont nulle part (G MONEY : 73 touches pour 56 ou 312 tirs numérotés ; boredagain7592 sur
+   sont nulle part (JOUEUR_441 : 73 touches pour 56 ou 312 tirs numérotés ; joueur_1052 sur
    8a485699 : 23 tirs numérotés, 0 touche). Sur 8a485699, le même signal existe pour la Banshee
    (10 touches, 7,2/s) et manque pour le Ghost (aucune touche).
 5. **Le candidat de la vue de contrôle (vue C) est réfuté par l'étalonnage** [M] : son bloc d'action
@@ -85,16 +85,16 @@ de 113 bits — réfutée (0).
 R(1) : bits 26..33 du payload dans la disposition canonique (préambule 9 bits, ref0 de domaine 1 à
 sonde, ref1 et ref2 absentes). **n mod 256 = (v >> 1) | ((v & 1) << 7)** [M : les valeurs brutes
 enchaînent … c252 c254 c1 c3 … quand n franchit 128]. Il vaut 0 au premier tir de chaque joueur,
-avance de 1 par tir, traverse morts et corps (G MONEY : c204 sur le corps 532, c210 sur le 537).
+avance de 1 par tir, traverse morts et corps (JOUEUR_441 : c204 sur le corps 532, c210 sur le 537).
 
 **Les sauts** (records de cadrage certain seulement, tête ou liste validée) [M] :
 
 | film | tireur | sauts (tirs numérotés sans record) | ce qui les recouvre |
 |---|---|---|---|
-| 81c02726 | G MONEY (2) | premier record à n = **56** (t 1275) quand les 7 autres commencent à n = 0 ou 1 | épisode Ghost 311-1088 |
+| 81c02726 | JOUEUR_441 (2) | premier record à n = **56** (t 1275) quand les 7 autres commencent à n = 0 ou 1 | épisode Ghost 311-1088 |
 | 81c02726 | les 7 autres | 0 à 5 sur tout le match | — |
-| 8a485699 | boredagain7592 (4) | **+23** (t 555-1500) | son Ghost 745-1169 (0 touche) |
-| 8a485699 | KyleT1848 (7) | **+37** (2194-2661) ; +6 (2692-3424) | sa Banshee 2334-2449 ; son Chopper 3099-3205 |
+| 8a485699 | joueur_1052 (4) | **+23** (t 555-1500) | son Ghost 745-1169 (0 touche) |
+| 8a485699 | joueur_1001 (7) | **+37** (2194-2661) ; +6 (2692-3424) | sa Banshee 2334-2449 ; son Chopper 3099-3205 |
 | 8a485699 | xmatt3434x (0) | **+54, +107, +30** entre ses tirs ENREGISTRÉS `11725DC4` de 4508, 4605, 4655, 4777 | son Wasp 4454-4943 |
 | 8a485699 | 0, 1, 2, 4 | +48, +181, +183, +210 | après la prise du Rayon de Sentinelle (1998, 4205, 5612, 5132) |
 | 8a485699 | 3, 5 | 0 | — |
@@ -104,7 +104,7 @@ joueur (même compteur que les tirs enregistrés), mais le film n'en reçoit AUC
 Wasp le montre dans un même épisode : le mode à coup (`11725DC4`) est enregistré, l'autre mode
 (le canon continu, `d3c407ed` au V3F) n'existe que par les trous du compteur — c'est la façon de
 distinguer ses deux modes de tir dans le film (réponse de l'utilisateur à Q11).
-Réserve : un compteur modulo 256 ne départage pas 56 de 312 (G MONEY).
+Réserve : un compteur modulo 256 ne départage pas 56 de 312 (JOUEUR_441).
 
 ## 4. S1 ter — les touches (`damage_aftermath`)
 

@@ -10,7 +10,7 @@ commit.
 
 Branche de travail : `wt/r12-repulseur`, creee depuis `wt/grappin-vies` (la branche qui porte
 les instruments R6 a R11 et les desers portes). Worktree :
-`C:/Users/Guillaume/Downloads/Scripts/LevelUp/.claude/worktrees/agent-a8075904f56589d18`.
+`<poste>/Downloads/Scripts/LevelUp/.claude/worktrees/agent-a8075904f56589d18`.
 
 ---
 
@@ -19,7 +19,7 @@ les instruments R6 a R11 et les desers portes). Worktree :
 **LA CONVENTION DE TEMPS EST LE TEMPS DE FILM, et elle est etablie deux fois par deux canaux
 sans rapport** : le decodeur de production `killsource` place l'unique kill au `jpt!` du
 repulseur de tout le film a **325 526 ms = 5:25,5**, la ou le releve Theater situe l'usage
-d'Elmo910 a 5:25 ; et le canal i48 retrouve les **quatre** ramassages du releve avec un ecart
+d'joueur_622 a 5:25 ; et le canal i48 retrouve les **quatre** ramassages du releve avec un ecart
 de **+1,35 a +1,97 s**, une bande de 620 ms, contre 1/4 et 0/4 pour les temoins decales de
 +/-30 s. **LE FILM NE PORTE PAS LE GESTE DU REPULSEUR — IL PORTE SON EFFET** : le recensement
 ancre des 64 composants du bipede rend ZERO sur le porteur aux cinq instants d'usage, alors
@@ -53,16 +53,16 @@ Film `215e7022-9959-4a1e-85aa-861161b588f4` — Argyle, Quick Play/Team Slayer, 
 |---|---|---|
 | P1 | 3:48 | JGtm prend le repulseur au socle ; meurt sans l'utiliser |
 | S1 | 4:49 | reapparition du repulseur au socle |
-| P2 | 4:55 | Elmo910 prend le repulseur |
-| **U1** | **5:25** | **Elmo910 l'UTILISE — kill attribue, source de degats : Repulseur** |
+| P2 | 4:55 | joueur_622 prend le repulseur |
+| **U1** | **5:25** | **joueur_622 l'UTILISE — kill attribue, source de degats : Repulseur** |
 | S2 | 5:56 | reapparition au socle |
 | P3 | 8:14 | Bot Ziker le ramasse |
 | **U2** | **~8:14** | **Bot Ziker l'utilise quasi immediatement** |
 | **U3** | **8:20** | **Bot Ziker le reutilise** |
 | M1 | ~8:22 | Bot Ziker meurt ; il laisse tomber le repulseur avec une charge restante |
 | S3 | 9:14 | reapparition au socle |
-| P4 | 9:50 | Elmo910 le ramasse |
-| **U4** | **9:54** | **Elmo910 l'utilise** |
+| P4 | 9:50 | joueur_622 le ramasse |
+| **U4** | **9:54** | **joueur_622 l'utilise** |
 | **U5** | **10:05** | **seconde utilisation** |
 
 Le releve porte une reserve : « film demarre 10,4 s avant le match ». Ses instants sont donc
@@ -77,11 +77,11 @@ ecrite au depot, anterieure au releve et independante de lui.
 lot kills-hors-arme du 2026-08-29) consigne l'UNIQUE kill au repulseur de toute la base :
 
 > match `215e7022-9959-4a1e-85aa-861161b588f4`, 2026-02-03 16:13 UTC, Argyle,
-> Quick Play/Team Slayer, **t = 325 526 ms**, Elmo910 -> aK2fResHv3
+> Quick Play/Team Slayer, **t = 325 526 ms**, joueur_622 -> aK2fResHv3
 
 `killsource.Kill.TimeMS` est documente mot pour mot comme « instant de la mort, en
 **millisecondes depuis le debut du film** ». Or **325 526 ms = 5:25,5**, et le releve place
-l'usage U1 d'Elmo910 — avec kill attribue au repulseur — a **5:25**.
+l'usage U1 d'joueur_622 — avec kill attribue au repulseur — a **5:25**.
 
 **Les instants du releve sont donc en TEMPS DE FILM, tels que le curseur du visionneur les
 affiche.** La mention « film demarre 10,4 s avant le match » decrit le decalage entre
@@ -123,7 +123,7 @@ Regle du chantier : seuils et temoins ecrits avant de regarder. Ce paragraphe es
 ### 1.1 Etape A — ancrer le film : qui, quand, quel rang
 
 **Mesure A1 (pont du kill).** `killsource.Decode` sur `215e7022` doit rendre une mort dont
-`Source.Tag == 0x07104b31` a `TimeMS` dans **[323 000, 328 000]**, tueur `Elmo910`.
+`Source.Tag == 0x07104b31` a `TimeMS` dans **[323 000, 328 000]**, tueur `joueur_622`.
 - **Si oui** : la convention de temps du par. 0.1 est confirmee PAR MESURE, et on tient une
   verite terrain Theater sur le `jpt!` du repulseur.
 - **Si non** : le pont tombe, et je le dis avant d'aller plus loin.
@@ -139,7 +139,7 @@ i48 ne sert pas d'ancre d'identite sur ce film et je le dis.
 ### 1.2 Etape B — LA QUESTION, posee dans l'autre sens
 
 Pour chacun des **CINQ instants d'usage** U1 (5:25), U2 (~8:14), U3 (8:20), U4 (9:54),
-U5 (10:05), et pour le PORTEUR de ce moment (Elmo910 pour U1/U4/U5, Bot Ziker pour U2/U3) :
+U5 (10:05), et pour le PORTEUR de ce moment (joueur_622 pour U1/U4/U5, Bot Ziker pour U2/U3) :
 
 **Qu'est-ce qui, dans le film, change chez ce porteur dans une fenetre de +/- 1,5 s autour de
 l'instant, et ne change pas chez les autres joueurs aux memes instants ?**
@@ -212,12 +212,12 @@ Instrument : `killsource/r12_ancre_kill_research_test.go`, `TestR12AncreKill`. I
 chemin de PRODUCTION `killsource.Decode` (gele) sur le film et publie ses 51 kills.
 
 ```
-5:25.5   tag=07104b31 Repulsor   cls=ARME SOUS_RESERVE   tueur=Elmo910   victime=aK2fResHv3
+5:25.5   tag=07104b31 Repulsor   cls=ARME SOUS_RESERVE   tueur=joueur_622   victime=aK2fResHv3
 ANCRE U1 : t=325526 ms  origine=credit-concordant  voie=marche  — fenetre [323000,328000] : true
 ```
 
 **Verdict pre-inscrit : PASSE.** Un seul kill au tag `0x07104b31` dans tout le film, a
-**325 526 ms**, tueur **Elmo910**, victime **aK2fResHv3**, origine `credit-concordant`, voie
+**325 526 ms**, tueur **joueur_622**, victime **aK2fResHv3**, origine `credit-concordant`, voie
 `marche` (la voie a 98,2 % de justesse de couple). C'est EXACTEMENT la ligne que le registre
 des reports consigne depuis le 2026-08-29, rejouee ici.
 
@@ -228,9 +228,9 @@ place l'usage U1 a 5:25. **Les instants du releve sont en TEMPS DE FILM.** L'hyp
 **CONSEQUENCE 2 — LA RESERVE SUR `07104b31` EST LEVEE PAR VERITE TERRAIN.** Le registre
 notait, pour ce tag : « L'identification vient d'une RE hors ligne, jamais confirmee sur
 corpus [...] PAS de verite-terrain Theater ». Elle existe desormais : un observateur humain a
-vu, au visionneur, Elmo910 utiliser le repulseur a 5:25 et le kill lui etre attribue avec
+vu, au visionneur, joueur_622 utiliser le repulseur a 5:25 et le kill lui etre attribue avec
 « source de degats : Repulseur » ; le decodeur, sans rien savoir de ce releve, place au meme
-instant un kill d'Elmo910 dont le dead-state porte `0x07104b31`. **La chaine
+instant un kill d'joueur_622 dont le dead-state porte `0x07104b31`. **La chaine
 `eqip 7ca85adc -> sofa 6845f2b3 -> eqip 1e79ebda -> jpt! 07104b31` est confirmee sur corpus
 reel.** (Le statut `SOUS_RESERVE` de `labels.tsv` reste le regime normal de toute arme nommee
 de cette table — `TestCoherenceDesLignes` l'exige — mais la raison specifique qui le motivait
@@ -240,10 +240,10 @@ pour cette ligne, l'absence de verite terrain, n'existe plus.)
 donc au moins deux joueurs sont interchangeables dans la bijection indice -> joueur, et les
 NOMS ligne a ligne ne sont pas publiables en toute rigueur. Ce qui tient malgre cela : le
 TAG et l'INSTANT ne passent pas par la bijection (ils viennent du dead-state et du kill-feed),
-et le nom `Elmo910` est ici corrobore par une source externe — le releve Theater. Trois autres
+et le nom `joueur_622` est ici corrobore par une source externe — le releve Theater. Trois autres
 lignes du meme decodage coincident d'ailleurs avec le releve sans avoir ete cherchees :
 JGtm tue Bot ziker en melee a 8:20,2 (le releve dit « il meurt vers 8:22 »), et Bot ziker tue
-en melee a 9:50,3 (le releve situe la un ramassage d'Elmo910).
+en melee a 9:50,3 (le releve situe la un ramassage d'joueur_622).
 
 ### 2.2 Mesure A2 — i48 retrouve les QUATRE ramassages, avec un ecart CONSTANT
 
@@ -257,9 +257,9 @@ bipede. Palette **famille A** (31 lectures a rang sur 31 portent ses marqueurs) 
 | ancre du releve | lecture i48 « rang 6 » la plus proche | ecart |
 |---|---|---|
 | P1 JGtm 3:48 | **3:49,3** slot 549 | **+1 348 ms** |
-| P2 Elmo910 4:55 | **4:56,9** slot 560 | **+1 968 ms** |
+| P2 joueur_622 4:55 | **4:56,9** slot 560 | **+1 968 ms** |
 | P3 Bot ziker 8:14 | **8:15,4** slot 592 | **+1 429 ms** |
-| P4 Elmo910 9:50 | **9:51,5** slot 608 | **+1 553 ms** |
+| P4 joueur_622 9:50 | **9:51,5** slot 608 | **+1 553 ms** |
 
 **4/4 apparies** (seuil pre-inscrit : 2). Et le fait qui vaut plus que le compte : **les
 quatre ecarts tiennent dans une bande de 620 ms**, tous positifs, moyenne +1,6 s — le delai
@@ -416,7 +416,7 @@ Et le journal des instants, qui vaut plus que les taux :
 ```
 
 **Les DEUX seules occurrences du type 104 de tout le film tombent a 5:25,5 et 5:25,6 —
-c'est-a-dire a l'instant du kill au repulseur d'Elmo910 (325 526 ms, mesure A1), a 100 ms
+c'est-a-dire a l'instant du kill au repulseur d'joueur_622 (325 526 ms, mesure A1), a 100 ms
 pres.** Et quatre des dix occurrences du type 105 sont dans les fenetres, dont trois au meme
 instant et deux a **8:16,0** — c'est-a-dire 600 ms apres le ramassage de Bot ziker mesure par
 i48 (8:15,4), la ou le releve dit « il l'utilise quasi immediatement ».
@@ -735,7 +735,7 @@ aucune DuckDB ouverte, aucun code de production touche, aucun commit.
 | `filmdec/r12_socles_research_test.go` | `TestR12Socles` — les creations d'entites ti=37 par GlobalID d'`eqip`, et l'appariement aux reapparitions au socle du releve |
 
 Chemins : `<F>` = `<repo>/data/cache/film_chunks` (ici `<repo>` =
-`C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration`). **Aucun catalogue de bornes,
+`<poste>/Downloads/Scripts/LevelUp-go-migration`). **Aucun catalogue de bornes,
 aucun artefact de rejeu n'est requis par un seul de ces instruments.**
 
 ```

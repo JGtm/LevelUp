@@ -8,7 +8,7 @@ Branche : `wt/slot-parmanche` (base `aa1245fa0`). Lot FRONT-END de correctness.
 TOUS les joueurs — DERNIER GAGNANT. Un slot de biped est RÉATTRIBUÉ entre manches
 (multi-manche) : slot X = joueur A en manche 0, joueur B en manche 1-2. La Map s'effondre →
 un slot montre un seul nom/couleur pour tout le match. Symptômes utilisateur (Oddball 3
-manches) : « deux DinoR00 et pas de SHROOM », « le point de SHROOM n'apparaît qu'à partir de
+manches) : « deux joueur_366 et pas de SHROOM », « le point de SHROOM n'apparaît qu'à partir de
 1:06 ». Les 5 dérivés collapsent : `nameBySlot`, `colorBySlot`, `sideBySlot`, `markBySlot`,
 `indexBySlot` générique.
 
@@ -32,7 +32,7 @@ joueur).
   FACTORIES de résolveurs frame-aware `(slot, frame) => valeur`. GARDER `indexBySlot`
   (agrégat, consommé par `equipmentUsageLogic` — hors périmètre canvas). Gate :
   `rosterLogic.test.ts` mis à jour + nouveaux tests mono-manche neutre PROUVÉ + multi-manche
-  corrigé avec contre-épreuve (scénario « deux DinoR00 / SHROOM »).
+  corrigé avec contre-épreuve (scénario « deux joueur_366 / SHROOM »).
 
 - [x] **E2 — Hook `useSlotIdentity.ts`.** Retourner résolveurs frame-aware `(slot, frame)`.
   Convertir `distinctSlotColors` en résolveur frame-aware. Retirer l'export `slotColors` map
@@ -94,8 +94,8 @@ joueur).
 - [2026-08-28] E1 CLOS. `buildSlotOwnership`/`ownerAtFrame` + `colorResolver`/`sideResolver`/
   `markResolver`/`nameResolver` (frame-aware) ; `indexBySlot` conservé (doc clarifiée = agrégat).
   Gate `rosterLogic.test.ts` : 36/36 vert, incluant neutralité mono-manche PROUVÉE + correction
-  multi-manche avec CONTRE-ÉPREUVE (« deux DinoR00 / SHROOM », le slot 512 rend SHROOM à f=25 et
-  DinoR00 à f=220 — impossible avec la Map figée). Env : junction node_modules vers le worktree
+  multi-manche avec CONTRE-ÉPREUVE (« deux joueur_366 / SHROOM », le slot 512 rend SHROOM à f=25 et
+  joueur_366 à f=220 — impossible avec la Map figée). Env : junction node_modules vers le worktree
   principal (deps identiques). NB thought_log non touché (texte au CR, cf. consigne du lot).
 - [2026-08-28] E2 CLOS (useSlotIdentity frame-aware, `distinctColorResolver`, slotColors retirée) ;
   E3 CLOS (marqueurs, résolution clampée à la fenêtre de vie + test contre-épreuve du clamp) ;

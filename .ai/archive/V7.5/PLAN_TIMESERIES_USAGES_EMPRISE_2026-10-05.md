@@ -20,7 +20,7 @@
 > Statut du plan : **L1-L9 exécutés le 2026-10-06 (GO du superviseur, lot par lot) ; L9 = ronde 1
 > de la revue adversariale (R1-R8) ; reste la ronde 2 de relecture, sur les seules corrections de L9,
 > puis fusion sur accord du superviseur**. Branche : `feat/ts-usages-emprise` (créée sur `origin/feat/v75` = `65c99b669`),
-> worktree `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ts-usages`.
+> worktree `<poste>\Downloads\Scripts\LevelUp-wt-ts-usages`.
 
 ## 0. Objectif, critère de succès, hors périmètre
 

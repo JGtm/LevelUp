@@ -542,7 +542,7 @@ BANC DE VERITE — 11de8353 : ok
   [FILET] vehicules vehicles.rides.aim/n : 4101 -> 4034 (aucune mesure du banc ne couvre ce bloc)
   [FILET] vehicules vehicles.rides.aim/total : 4101 -> 4034 (aucune mesure du banc ne couvre ce bloc)
   [FILET] vehicules vehicles.rides/duree-totale : 4955 -> 4887 (aucune mesure du banc ne couvre ce bloc)
-  [FILET] vehicules vehicles.rides/duree-totale/par-xuid/2535415759610104 : 266 -> 198 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] vehicules vehicles.rides/duree-totale/par-xuid/2746409228518711 : 266 -> 198 (aucune mesure du banc ne couvre ce bloc)
 
 BANC DE VERITE — 50247b26 : ok
   [gain] P-1 paquets fermes au bit pres : 139 -> 141
@@ -826,7 +826,7 @@ DETAIL DES PERTES (17 temoin(s)) :
     perte     vehicules        vehicles.rides.aim/n                                     4101 -> 4034      
     perte     vehicules        vehicles.rides.aim/total                                 4101 -> 4034      
     perte     vehicules        vehicles.rides/duree-totale                              4955 -> 4887      
-    perte     vehicules        vehicles.rides/duree-totale/par-xuid/2535415759610104        266 -> 198       
+    perte     vehicules        vehicles.rides/duree-totale/par-xuid/2746409228518711        266 -> 198       
 
   [50247b26] version_31_sans_identification (schema 82 -> 82)
     perte     autres:stances   stances/duree-totale                                    41381 -> 41372     

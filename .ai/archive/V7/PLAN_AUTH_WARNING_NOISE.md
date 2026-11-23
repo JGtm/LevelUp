@@ -6,7 +6,7 @@
 >    concurrent dans le working tree interdisait le checkout depuis main).
 > 2. BUG DÉCOUVERT ET CORRIGÉ en Phase 3 : la boucle boot de `pool.NewPool` (`i--` +
 >    `poolSize--`) retentait le MÊME index après un échec et ABANDONNAIT silencieusement
->    toutes les sources suivantes (explique le burst de 7 tentatives DankerGlue ET des
+>    toutes les sources suivantes (explique le burst de 7 tentatives joueur_1016 ET des
 >    comptes sains absents du pool). Test de régression : TestNewPool_SkipsFailingSourceAndKeepsTheRest.
 > 3. Phase 4b (purge sync_meta post-migration) VOLONTAIREMENT REPORTÉE : le double-write
 >    compat `onRotated` (store + sync_meta, retiré Phase 5 ADR-0023) ré-écrirait le RT à
@@ -35,9 +35,9 @@
 | 3. « migrations player échouées » ×5 comptes à chaque boot | Les comptes watcher (db_path vide, donneurs de tokens) n'ont pas de player DB ; le boot tente quand même la migration → IO Error | `cmd/server/main.go:375-390` |
 | 4. « configuration non sûre » ×3 lignes à chaque boot | Intentionnel en dev (garde prod existe) mais 3 lignes au lieu d'1 | `cmd/server/main.go:281-289`, `internal/config/config.go:191-213` |
 
-Comptes : 4 principaux (JGtm, Chocoboflor, Madina97294, XxDaemonGamerxX — refresh OK,
-RT flux web confidentiel) ; 5 watcher (DankerGlue, Trimbutton, QuiteSiren, UppedJoker,
-GeleJugefi — RT flux public, `db_path` vide dans db_profiles.json).
+Comptes : 4 principaux (JGtm, joueur_165, joueur_117, joueur_291 — refresh OK,
+RT flux web confidentiel) ; 5 watcher (joueur_1016, joueur_1018, QuiteSiren, UppedJoker,
+joueur_1017 — RT flux public, `db_path` vide dans db_profiles.json).
 
 ---
 
@@ -157,7 +157,7 @@ le dashboard (Phase 5) l'affichera.
 - erreur Transient → PAS de cache négatif.
 - `Refresh()` purge l'entrée négative.
 - callback `onAuthError` invoqué avec la bonne classe ; effacé après succès.
-**Done** : le burst boot (7 tentatives DankerGlue) tombe à 1 WARN ; les cycles 15 min
+**Done** : le burst boot (7 tentatives joueur_1016) tombe à 1 WARN ; les cycles 15 min
 deviennent silencieux (Debug) tant que l'état n'a pas changé.
 
 ---

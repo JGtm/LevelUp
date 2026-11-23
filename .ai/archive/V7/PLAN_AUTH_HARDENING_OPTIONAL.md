@@ -9,7 +9,7 @@
 ## État des lieux (acquis)
 
 - SSO Xbox fonctionnel (Authorization Code Flow), device flow OK.
-- 4 joueurs : `jgtm`/`jgtm_xbox` (admin), `madina97294`, `xxdaemongamerxx` (user).
+- 4 joueurs : `jgtm`/`jgtm_xbox` (admin), `joueur_117`, `joueur_291` (user).
 - `instance_locked=false`. Sessions 7 j glissants + persistance conditionnelle + purge 6 h.
 - App canonique cible décidée par l'user : **`e1cb35ab-c41a-4ee5-a7a1-22ea4e94cdca`** (LevelUp Halo).
 
@@ -76,7 +76,7 @@ But : savoir **où** opérer sans casser. Les refresh tokens sont liés à leur 
   (POST /auth/logout), retour `/login`, et la revisite ne reconnecte PAS automatiquement
   (cookie d'auth bien effacé). Important vu tous les changements session de cette soirée.
 - **Admin JGtm** : `jgtm_xbox` (admin) voit bien la section/onglet admin et y accède
-  (users, invites, monitoring) ; un compte `user` (madina/xxdaemon) ne la voit pas.
+  (users, invites, monitoring) ; un compte `user` (joueur_075/xxdaemon) ne la voit pas.
 
 ---
 

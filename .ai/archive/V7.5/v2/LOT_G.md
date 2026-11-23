@@ -1,6 +1,6 @@
 # Lot G — Outils et catalogues (Go, docs) — journal d'exécution
 
-> Exécuteur : agent Sonnet, worktree `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-v2-outils`,
+> Exécuteur : agent Sonnet, worktree `<poste>\Downloads\Scripts\LevelUp-wt-v2-outils`,
 > branche `feat/v2-outils`. Plan source : `.ai/PLAN_V2_REJEU_FILM_2026-09-05.md` (section Lot G).
 > Contrat : skill `plan-execution`.
 
@@ -212,7 +212,7 @@ Commit : `d412c96a9` —
 ## Gate G (clôture du lot)
 
 Commandes exactes, jouées en avant-plan depuis `apps/go-api` avec
-`GOCACHE=/c/Users/Guillaume/AppData/Local/go-build-v2-outils CGO_ENABLED=1` :
+`GOCACHE=<poste>/AppData/Local/go-build-v2-outils CGO_ENABLED=1` :
 
 ```
 go build ./...
@@ -379,7 +379,7 @@ Gates rejoués (avant-plan, `GOCACHE`/`GOLANGCI_LINT_CACHE` dédiés au lot) :
 ./internal/himap/... ./internal/archlint/... ./internal/filmproc/... ./cmd/levelup/...
 ./cmd/replay-worker/... ./cmd/weapon-sounds/...` → `ok` sur les 6 paquets ;
 `golangci-lint run --new-from-merge-base=origin/main` sur ces 6 paquets (avec
-`GOLANGCI_LINT_CACHE=/c/Users/Guillaume/AppData/Local/golangci-v2-outils`) → `0 issues.` ;
+`GOLANGCI_LINT_CACHE=<poste>/AppData/Local/golangci-v2-outils`) → `0 issues.` ;
 `go build ./...` a échoué une fois sur une erreur de linker sans rapport avec ce lot
 (`cmd/rebuild_shared_social`, `cmd/rebuild_pme_art`, `cmd/refresh-metadata`... — collision de
 répertoire de travail du linker, probablement des builds Go concurrents d'autres agents du
@@ -573,8 +573,8 @@ pour octet à celle du script Python (comparée par `TestLivrerOctetPourOctet`).
 ### Gate des corrections
 
 Commandes exactes, en avant-plan, depuis `apps/go-api`, avec
-`GOCACHE=/c/Users/Guillaume/AppData/Local/go-build-v2-outils`,
-`GOLANGCI_LINT_CACHE=/c/Users/Guillaume/AppData/Local/golangci-v2-outils`, `CGO_ENABLED=1` :
+`GOCACHE=<poste>/AppData/Local/go-build-v2-outils`,
+`GOLANGCI_LINT_CACHE=<poste>/AppData/Local/golangci-v2-outils`, `CGO_ENABLED=1` :
 
 ```
 go build ./...

@@ -43,7 +43,7 @@ Mesure du jour :
 - 1 798 des matchs à positions de kills ont un CSR par joueur (`match_csrs`, 13 219 identités
   distinctes : ce sont les CSR de TOUS les joueurs du lobby, pas seulement des joueurs suivis) ;
 - CSR moyen de lobby : médiane **1 474** ; **782 lobbys** à moyenne ≥ 1500, **1 730** ≥ 1300 ;
-- **51 % des matchs** à positions de kills sont des matchs de Nuzzles (CSR médian 1 502,
+- **51 % des matchs** à positions de kills sont des matchs de joueur_074 (CSR médian 1 502,
   max 1 756) ;
 - `match_participants` porte aussi, pour ~72 % des participants, `kills_expected`,
   `deaths_expected`, `team_mmr`, `enemy_mmr` : une attente de performance PAR JOUEUR et par
@@ -51,15 +51,15 @@ Mesure du jour :
 
 Conséquence : le terme « Confirmation » (couche 3 de la définition) n'exige plus de construire un
 corpus de tiers pour les cartes classées ; il est en grande partie dans la sauvegarde. Il reste à
-vérifier que ce corpus n'est pas DOMINÉ par un seul joueur (un lobby sur deux contient Nuzzles :
+vérifier que ce corpus n'est pas DOMINÉ par un seul joueur (un lobby sur deux contient joueur_074 :
 ses habitudes de placement pèseraient lourd dans toute mesure non corrigée).
 
 ### 1.3 Mais ce corpus a été purgé en local le 26/10
 
-La purge locale du 2026-10-26 (Nuzzles, calloussss, Brooks SVP) a retiré 8 024 matchs de la base
+La purge locale du 2026-10-26 (joueur_074, joueur_386, joueur_272) a retiré 8 024 matchs de la base
 partagée et **2 624 films, 2 137 fichiers de rejeu et 2 013 faits** du cache. État croisé :
 
-| Ressource | Matchs de Nuzzles (1 742) | Autres matchs (1 657) |
+| Ressource | Matchs de joueur_074 (1 742) | Autres matchs (1 657) |
 |---|---|---|
 | Positions de kills | sauvegarde locale seulement | sauvegarde + base courante |
 | Film en local | **0** | 1 415 |
@@ -74,7 +74,7 @@ l'utilisateur jugeait le bon le 20/09) ne l'est pas sans re-télécharger et re-
 
 Le VPS a téléchargé 503 films les 26 et 27/10 (15 Go, disque à 85 %) ; ils portent sur des matchs
 de 2024-10 à 2026-10. Les films de deux ans restent donc servis par le jeu : le re-téléchargement
-des films de Nuzzles est plausible (non vérifié sur ses matchs précis). Coût d'ordre de grandeur :
+des films de joueur_074 est plausible (non vérifié sur ses matchs précis). Coût d'ordre de grandeur :
 le cache local fait 36 Go pour 1 422 films (~25 Mo par film) → ~700 lobbys Onyx des cartes
 classées ≈ 18 Go, plus la cuisson (règle en vigueur : jamais de cuisson en lot sans accord, pic
 mémoire).
@@ -145,7 +145,7 @@ Ce que le nouveau corpus change :
    lobbys Onyx (~40 % des matchs classés d'une carte), la zone nécessaire pour ~100 engagements
    retombe de l'ordre d'une position, plus d'une pièce. La largeur se choisit par reproductibilité
    (deux moitiés de matchs tirées au sort doivent donner la même carte), pas à la main.
-2. **Le verrou réel est la confusion.** Le K/D d'un lieu mesure qui s'y trouve (Nuzzles dans un
+2. **Le verrou réel est la confusion.** Le K/D d'un lieu mesure qui s'y trouve (joueur_074 dans un
    lobby sur deux) et ce qui s'y passe (défense de base, kills à la réapparition), pas le lieu. Les
    nouvelles colonnes permettent de corriger le « qui » : CSR de chacun des joueurs du lobby,
    `kills_expected` / `deaths_expected`. Un modèle de duel où chaque kill oppose deux positions et
@@ -180,36 +180,36 @@ Ce que le nouveau corpus change :
 
 | | Sauvegarde locale `avant-purge-20261026` | Base du VPS |
 |---|---|---|
-| Contenu | 10 026 matchs, gelée au 25/10 | sur-ensemble vivant (Nuzzles toujours suivi, 2,58 Go) |
+| Contenu | 10 026 matchs, gelée au 25/10 | sur-ensemble vivant (joueur_074 toujours suivi, 2,58 Go) |
 | Accès | lecture immédiate, aucun processus ne la tient | tenue en écriture par le serveur de prod : une copie à chaud d'un fichier DuckDB ouvert peut être incohérente ; passer par un instantané (restic) ou un export |
-| Films | 0 pour Nuzzles | 11 pour Nuzzles (cache sans éviction, disque à 85 %) |
+| Films | 0 pour joueur_074 | 11 pour joueur_074 (cache sans éviction, disque à 85 %) |
 | Risque | la note du 26/10 prévoit de SUPPRIMER cette sauvegarde après vérification de l'appli | toute opération lourde sur un VPS de 2 Go de RAM |
 
 Lecture : pour les positions de kills et les CSR, la sauvegarde locale suffit et ne coûte rien ;
 le VPS n'apporte que deux jours de matchs en plus. **La sauvegarde est aujourd'hui la seule copie
 locale de ce corpus ; sa suppression prévue le ferait disparaître du poste** (il resterait au
-VPS). Pour les films de Nuzzles, ni l'un ni l'autre ne suffit : il faudrait les re-télécharger.
+VPS). Pour les films de joueur_074, ni l'un ni l'autre ne suffit : il faudrait les re-télécharger.
 
 ## 7. Décisions de l'utilisateur (message du 2026-10-27)
 
 1. **Dossier de recherche autonome** : « extraire un dossier de recherche autonome, au besoin on
    peut retélécharger les matchs et cuire les rejeux nécessaires pour obtenir un max de
-   données ». Élargir aussi calloussss et Brooks SVP au-delà de 2026 (la purge locale les avait
-   limités aux matchs de 2026). **Fait** : `C:\Users\Guillaume\Downloads\Scripts\LevelUp-recherche-positions\`
+   données ». Élargir aussi joueur_386 et joueur_272 au-delà de 2026 (la purge locale les avait
+   limités aux matchs de 2026). **Fait** : `<poste>\Downloads\Scripts\LevelUp-recherche-positions\`
    (copie vérifiée de la sauvegarde, README). Rien re-téléchargé à ce stade.
 2. **Lever le doute d'échelle** : oui. **Fait** (§2) : unités monde, ×3,048.
-3. **Poids de Nuzzles** : accepté, en notant que l'élargissement du point 1 change la répartition.
+3. **Poids de joueur_074** : accepté, en notant que l'élargissement du point 1 change la répartition.
 4. **Films des lobbys Onyx** : oui, re-téléchargement et cuisson (cf. point 1).
 
 Données complémentaires mesurées dans la copie de recherche :
 
 | Joueur | Matchs (sauvegarde) | dont 2025 | Matchs classés avec CSR | CSR médian | CSR max |
 |---|---|---|---|---|---|
-| Nuzzles | 7 274 | — | 4 149 | 1 502 | 1 756 |
-| calloussss | 325 | 15 | 285 | **1 686** | **1 805** |
-| Brooks SVP | 425 | 10 | 342 | 1 464 | 1 548 |
+| joueur_074 | 7 274 | — | 4 149 | 1 502 | 1 756 |
+| joueur_386 | 325 | 15 | 285 | **1 686** | **1 805** |
+| joueur_272 | 425 | 10 | 342 | 1 464 | 1 548 |
 
-calloussss est le joueur au CSR le plus haut des trois : l'élargissement de son historique est
+joueur_386 est le joueur au CSR le plus haut des trois : l'élargissement de son historique est
 le gain le plus direct pour le corpus de bons joueurs.
 
 Plan qui en découle (projet, non validé, aucune exécution) :

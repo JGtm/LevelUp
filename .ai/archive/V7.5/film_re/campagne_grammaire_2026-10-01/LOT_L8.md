@@ -199,7 +199,7 @@ général ; il ne reste rien à corriger dans L8 pour ce film.
 
 ## 5. Gates (sorties exactes)
 
-Depuis `apps/go-api` du worktree, `GOCACHE=C:/Users/Guillaume/AppData/Local/go-build-cg-l8`, une
+Depuis `apps/go-api` du worktree, `GOCACHE=<poste>/AppData/Local/go-build-cg-l8`, une
 commande `go` à la fois.
 
 | Gate | Sortie |

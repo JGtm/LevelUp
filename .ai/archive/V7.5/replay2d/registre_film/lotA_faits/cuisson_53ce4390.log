@@ -1,4 +1,4 @@
-2026/08/18 01:51:32 INFO faits du match charges path=C:\Users\Guillaume\Projects\LevelUp-wt-score-film\.ai\V7.5\replay2d\registre_film\lotA_faits\53ce4390.json match=53ce4390-efa0-455d-acbc-2208865a68b6 joueurs=8 variante=CTF:Arena
+2026/08/18 01:51:32 INFO faits du match charges path=<poste>\Projects\LevelUp-wt-score-film\.ai\V7.5\replay2d\registre_film\lotA_faits\53ce4390.json match=53ce4390-efa0-455d-acbc-2208865a68b6 joueurs=8 variante=CTF:Arena
 2026/08/18 01:51:33 INFO replaybuild: actions d'objectif identifiees match_id=53ce4390-efa0-455d-acbc-2208865a68b6 famille=flag nommees=200 identifiees=200 slotsApparies=8
 2026/08/18 01:51:57 INFO replaybuild: morts sans revendication typées match_id=53ce4390-efa0-455d-acbc-2208865a68b6 publiees=1 orphelines=2
 2026/08/18 01:53:02 INFO capacites : lectures d i48 recordsDelta=233023 masqueAvecI48=56 lues=56 illisibles=0 sansIdentite=3
@@ -15,4 +15,4 @@
 2026/08/18 01:56:07 INFO rejeu : episodes d'equipement actif viesPubliees=122 viesCamo=0 episodesCamo=0 viesSurbouclier=5 episodesSurbouclier=5
 2026/08/18 01:56:07 INFO rejeu : palette de capacites palette=famille_a lectures=53 rangsNommes=3
 2026/08/18 01:56:07 INFO rejeu : couverture par calque tirsRattaches=1777 tirsDisponibles=2229 tirsSansSlot=322 tirsAmbigus=130 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=166 grenadesDisponibles=168 verdictTirs=nominal verdictGrenades=nominal verdictPont="non publiable : un slot change de porteur"
-2026/08/18 01:56:07 INFO artefact rejeu écrit path=C:\Users\Guillaume\Projects\LevelUp-wt-score-film\data\cache\replays\halo_infinite\53ce4390.json tracks=122 module=va_behemoth bytes=2332921 match=53ce4390-efa0-455d-acbc-2208865a68b6 title=halo_infinite
+2026/08/18 01:56:07 INFO artefact rejeu écrit path=<poste>\Projects\LevelUp-wt-score-film\data\cache\replays\halo_infinite\53ce4390.json tracks=122 module=va_behemoth bytes=2332921 match=53ce4390-efa0-455d-acbc-2208865a68b6 title=halo_infinite

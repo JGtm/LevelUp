@@ -240,26 +240,26 @@ a{color:#d4d4d4}a:hover{color:#fafafa}
 class Component extends DCLogic {
   renderVals() {
     const P = [
-      { n: 'Madina97294', t: 'a', k: 8, d: 5, a: 2, s: 900, v: 100, g: 2, e: true, x: 49, y: 52 },
-      { n: 'Draconewt', t: 'a', k: 7, d: 4, a: 4, s: 900, v: 64, g: 1, e: false, x: 39, y: 44 },
-      { n: 'Chocoboflor', t: 'a', k: 7, d: 2, a: 2, s: 800, v: 92, g: 0, e: false, x: 30, y: 37 },
+      { n: 'joueur_117', t: 'a', k: 8, d: 5, a: 2, s: 900, v: 100, g: 2, e: true, x: 49, y: 52 },
+      { n: 'joueur_023', t: 'a', k: 7, d: 4, a: 4, s: 900, v: 64, g: 1, e: false, x: 39, y: 44 },
+      { n: 'joueur_165', t: 'a', k: 7, d: 2, a: 2, s: 800, v: 92, g: 0, e: false, x: 30, y: 37 },
       { n: 'JGtm', t: 'a', k: 1, d: 4, a: 1, s: 150, v: 100, g: 2, e: true, f: true, x: 41, y: 22 },
       { n: 'WDW Eclipse', t: 'b', k: 4, d: 6, a: 3, s: 550, v: 0, g: 0, e: false, dead: '↻ 5,8 s', gap: true },
       { n: 'DubsDay', t: 'b', k: 5, d: 4, a: 1, s: 550, v: 88, g: 2, e: true, x: 40, y: 80 },
-      { n: 'yougo77500', t: 'b', k: 3, d: 7, a: 1, s: 350, v: 100, g: 2, e: false, x: 18, y: 49 },
-      { n: 'ELOsk11', t: 'b', k: 3, d: 6, a: 0, s: 300, v: 35, g: 2, e: false, x: 74, y: 53 }
+      { n: 'joueur_1044', t: 'b', k: 3, d: 7, a: 1, s: 350, v: 100, g: 2, e: false, x: 18, y: 49 },
+      { n: 'joueur_749', t: 'b', k: 3, d: 6, a: 0, s: 300, v: 35, g: 2, e: false, x: 74, y: 53 }
     ].map((p) => ({ ...p, cls: 'trow' + (p.dead ? ' dead' : '') + (p.f ? ' follow' : '') + (p.gap ? ' gap' : ''), dcls: 'dot ' + p.t, gcls: 'ic' + (p.g ? '' : ' off'), ecls: 'ic' + (p.e ? '' : ' off'), vw: p.v + '%', alive: !p.dead, isDead: !!p.dead, resp: p.dead || '' }));
     const pins = P.filter((p) => !p.dead).map((p) => ({ n: p.n, x: p.x + '%', y: p.y + '%', cls: 'pin ' + p.t + (p.f ? ' f' : '') }));
     const F = [
-      ['3:49', 'Madina97294', 'a', 'WDW Eclipse', 'Îlot', 'Atrium'],
-      ['3:42', 'ELOsk11', 'b', 'JGtm', 'Passerelle nord', 'Îlot'],
-      ['3:37', 'Madina97294', 'a', 'WDW Eclipse', 'Atrium', ''],
-      ['3:34', 'Madina97294', 'a', 'yougo77500', 'Couloir ouest', ''],
-      ['3:22', 'WDW Eclipse', 'b', 'Madina97294', 'Atrium', ''],
+      ['3:49', 'joueur_117', 'a', 'WDW Eclipse', 'Îlot', 'Atrium'],
+      ['3:42', 'joueur_749', 'b', 'JGtm', 'Passerelle nord', 'Îlot'],
+      ['3:37', 'joueur_117', 'a', 'WDW Eclipse', 'Atrium', ''],
+      ['3:34', 'joueur_117', 'a', 'joueur_1044', 'Couloir ouest', ''],
+      ['3:22', 'WDW Eclipse', 'b', 'joueur_117', 'Atrium', ''],
       ['3:22', 'JGtm', 'a', 'DubsDay', 'Cour sud', 'Passerelle nord'],
-      ['3:13', 'Draconewt', 'a', 'yougo77500', 'Couloir ouest', ''],
-      ['3:02', 'Chocoboflor', 'a', 'yougo77500', 'Couloir ouest', ''],
-      ['3:01', 'Madina97294', 'a', 'WDW Eclipse', 'Atrium', '']
+      ['3:13', 'joueur_023', 'a', 'joueur_1044', 'Couloir ouest', ''],
+      ['3:02', 'joueur_165', 'a', 'joueur_1044', 'Couloir ouest', ''],
+      ['3:01', 'joueur_117', 'a', 'WDW Eclipse', 'Atrium', '']
     ].map((f, i) => ({ t: f[0], k: f[1], v: f[3], z: f[4], zk: f[5], hasZk: !!f[5], kc: f[2] === 'a' ? 'ka' : 'kb', vc: f[2] === 'a' ? 'kb' : 'ka', cls: 'fi' + (i === 0 ? ' now' : '') + ((f[1] === 'JGtm' || f[3] === 'JGtm') ? ' me' : '') }));
     const T = [[18,'a'],[29,'b'],[44,'a'],[52,'a'],[70,'b'],[83,'a'],[97,'a'],[110,'b'],[121,'a'],[135,'a'],[150,'b'],[162,'a'],[169,'a'],[181,'a'],[182,'b'],[193,'a'],[202,'b'],[214,'a'],[217,'a'],[222,'b'],[229,'a'],[247,'a'],[256,'b'],[268,'a'],[281,'a'],[300,'b'],[312,'a'],[333,'a'],[351,'b'],[366,'a'],[384,'a'],[401,'b'],[420,'a'],[437,'a'],[455,'b']];
     const ticks = T.map(([s, t]) => ({ l: (s / 465 * 100).toFixed(2) + '%', cls: 't' + t }));

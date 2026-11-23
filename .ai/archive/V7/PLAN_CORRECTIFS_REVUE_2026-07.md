@@ -17,7 +17,7 @@ lint (`--new-from-merge-base=main`).
 
 - **Branche** : `fix/revue-2026-07-correctifs` (depuis main local, 1 branche,
   N commits — 1 commit par lot minimum).
-- **Worktree** : `c:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-revue-correctifs`.
+- **Worktree** : `<poste>\Downloads\Scripts\LevelUp-wt-revue-correctifs`.
 - **Effort estimé** : lots A/E rapides, B/D moyens, C lourd, F moyen —
   ~5-6 jours effectifs au total.
 - **Exécution** : agents Opus séquentiels (JAMAIS deux builds Go en parallèle —

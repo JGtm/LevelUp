@@ -399,7 +399,7 @@
       <div class="chart"><svg id="now-5" viewBox="0 0 1060 250" role="img" aria-label="Usages d'equipement aujourd'hui"></svg></div>
       <p class="note">
         <b>Le bloc de gauche n'est pas en cause et reste tel quel.</b> A droite, le lecteur qui vient de voir
-        « Madina97294 a pose 4 murs » cherche la part de son camp <b>sur les murs</b> et trouve une barre
+        « joueur_117 a pose 4 murs » cherche la part de son camp <b>sur les murs</b> et trouve une barre
         « Equipement » qui melange murs, capteurs, propulseurs, surbouclier et camouflage ; et les deux barres
         font la meme longueur alors qu'elles valent 24 et 38 usages.
       </p>
@@ -644,7 +644,7 @@
     return t;
   }
 
-  /* Donnees de maquette — 14 matchs joues ensemble avec « Madina97294 ». */
+  /* Donnees de maquette — 14 matchs joues ensemble avec « joueur_117 ». */
   var RECU = [29, 22, 12], DONNE = [24, 17, 7];   /* coup de pouce / travail partage / frag prepare */
   var TOT_R = 63, TOT_D = 48, VOLMAX = 96;
   var TIERS = ['coup de pouce', 'travail partage', 'frag prepare'];
@@ -967,7 +967,7 @@
   'use strict';
   var M = window.MQ, el = M.el, txt = M.txt, hover = M.hover, S = M.S;
   var ALLY = 'var(--team-ally)', ENEMY = 'var(--team-enemy)', OP = [1, .78, .58, .42];
-  var ALLIES = ['Moi', 'Madina97294', 'Kaelin', 'Vorn'], ENNEMIS = ['Sarko', 'Tuva', 'Ryn', 'Odal'];
+  var ALLIES = ['Moi', 'joueur_117', 'Kaelin', 'Vorn'], ENNEMIS = ['Sarko', 'Tuva', 'Ryn', 'Odal'];
   function seg(nom, v) {
     var i = ALLIES.indexOf(nom);
     if (i >= 0) return { label: nom, v: v, color: ALLY, op: OP[i] };
@@ -975,11 +975,11 @@
     return { label: nom, v: v, color: ENEMY, op: OP[j] };
   }
   var SOCLES = [
-    { n: 'Fusil de precision', s: 'Precision', tier: 0, tot: 12, unnamed: 4, seg: [['Moi', 5], ['Madina97294', 1], ['Vorn', 1], ['Sarko', 3], ['Tuva', 2]] },
+    { n: 'Fusil de precision', s: 'Precision', tier: 0, tot: 12, unnamed: 4, seg: [['Moi', 5], ['joueur_117', 1], ['Vorn', 1], ['Sarko', 3], ['Tuva', 2]] },
     { n: 'Epee a energie', s: 'Epee', tier: 0, tot: 7, unnamed: 2, seg: [['Kaelin', 3], ['Vorn', 1], ['Ryn', 2], ['Odal', 1]] },
-    { n: 'Lance-roquettes', s: 'Roquettes', tier: 0, tot: 5, unnamed: 1, seg: [['Moi', 1], ['Madina97294', 2], ['Sarko', 1], ['Tuva', 1]] },
-    { n: 'Fusil de combat', s: 'Combat', tier: 1, tot: 9, unnamed: 3, seg: [['Moi', 2], ['Madina97294', 2], ['Kaelin', 1], ['Sarko', 2], ['Ryn', 1], ['Odal', 1]] },
-    { n: 'Hydra', s: 'Hydra', tier: 1, tot: 6, unnamed: 2, seg: [['Madina97294', 1], ['Vorn', 2], ['Tuva', 2], ['Odal', 1]] },
+    { n: 'Lance-roquettes', s: 'Roquettes', tier: 0, tot: 5, unnamed: 1, seg: [['Moi', 1], ['joueur_117', 2], ['Sarko', 1], ['Tuva', 1]] },
+    { n: 'Fusil de combat', s: 'Combat', tier: 1, tot: 9, unnamed: 3, seg: [['Moi', 2], ['joueur_117', 2], ['Kaelin', 1], ['Sarko', 2], ['Ryn', 1], ['Odal', 1]] },
+    { n: 'Hydra', s: 'Hydra', tier: 1, tot: 6, unnamed: 2, seg: [['joueur_117', 1], ['Vorn', 2], ['Tuva', 2], ['Odal', 1]] },
     { n: 'Empaleur', s: 'Empaleur', tier: 1, tot: 4, unnamed: 0, seg: [['Kaelin', 2], ['Sarko', 1], ['Ryn', 1]] }
   ];
   var parts = function (so) { return so.seg.map(function (p) { return seg(p[0], p[1]); }); };
@@ -1011,7 +1011,7 @@
       cols: SOCLES.map(function (so) { return { label: so.s, sub: so.unnamed ? '+' + so.unnamed + ' sans nom' : '', parts: parts(so) }; })
     });
     M.legend('p4a', 50, 300, [
-      { label: 'Moi', color: ALLY, op: OP[0] }, { label: 'Madina97294', color: ALLY, op: OP[1] },
+      { label: 'Moi', color: ALLY, op: OP[0] }, { label: 'joueur_117', color: ALLY, op: OP[1] },
       { label: 'Kaelin', color: ALLY, op: OP[2] }, { label: 'Vorn', color: ALLY, op: OP[3] }
     ], 112);
     M.legend('p4a', 50, 316, [
@@ -1042,7 +1042,7 @@
       k++;
     });
     M.legend('p4b', 50, 300, [
-      { label: 'Moi', color: ALLY, op: OP[0] }, { label: 'Madina97294', color: ALLY, op: OP[1] },
+      { label: 'Moi', color: ALLY, op: OP[0] }, { label: 'joueur_117', color: ALLY, op: OP[1] },
       { label: 'Kaelin', color: ALLY, op: OP[2] }, { label: 'Vorn', color: ALLY, op: OP[3] }
     ], 112);
     M.legend('p4b', 50, 316, [
@@ -1060,7 +1060,7 @@
   'use strict';
   var M = window.MQ, el = M.el, txt = M.txt, hover = M.hover, S = M.S;
   var ALLY = 'var(--team-ally)', ENEMY = 'var(--team-enemy)', OP = [1, .78, .58, .42];
-  var ALLIES = ['Moi', 'Madina97294', 'Kaelin', 'Vorn'], ENNEMIS = ['Sarko', 'Tuva', 'Ryn', 'Odal'];
+  var ALLIES = ['Moi', 'joueur_117', 'Kaelin', 'Vorn'], ENNEMIS = ['Sarko', 'Tuva', 'Ryn', 'Odal'];
   /* Familles rangees par volume decroissant — le MEME ordre que la grille de gauche, inchangee. */
   var FAM = ['Grappin', 'Mur', 'Surbouclier', 'Camouflage', 'Capteur', 'Propulseur'];
   var TOT = [24, 11, 9, 7, 6, 5];
@@ -1070,7 +1070,7 @@
   /* Lignes = joueurs, colonnes = familles (bloc de gauche, inchange). */
   var PAR_JOUEUR = [
     ['Moi', [5, 1, 2, 0, 1, 1]],
-    ['Madina97294', [3, 4, 1, 0, 2, 0]],
+    ['joueur_117', [3, 4, 1, 0, 2, 0]],
     ['Kaelin', [4, 1, 1, 2, 0, 1]],
     ['Vorn', [2, 1, 1, 1, 1, 1]],
     ['Sarko', [3, 1, 1, 2, 0, 1]],

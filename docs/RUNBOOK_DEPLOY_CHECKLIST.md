@@ -287,7 +287,7 @@ longer window on its own; R8 to R10 follow with the server up.
 ### R1 — skill bit of the 157 Infinite matches (stopped)
 
 157 Halo Infinite matches first synced between 2026-05-25 and 2026-05-30 (the days the batch path
-went live without setting the completion bits; JGtm 77, Chocoboflor 70, XxDaemonGamerxX 10 in
+went live without setting the completion bits; JGtm 77, joueur_165 70, joueur_291 10 in
 prod) carry no skill bit (`4`) in `match_registry.backfill_completed`. The participants bit
 (`512`) of the same matches is set by the migration `shared_registry_participants_bit_v1`; that
 migration does not touch the skill bit. `levelup reset-bitmasks` sets it only where the skill
@@ -427,9 +427,9 @@ running pool applies it at its next scan.
 ```bash
 docker compose exec -T -u appuser levelup levelup pool-sharing list
 docker compose exec -T -u appuser levelup levelup pool-sharing grandfather \
-  --players JGtm,Chocoboflor,XxDaemonGamerxX,Madina97294,DankerGlue,GeleJugefi,Trimbutton,QuiteSiren,UppedJoker
+  --players JGtm,joueur_165,joueur_291,joueur_117,joueur_1016,joueur_1017,joueur_1018,QuiteSiren,UppedJoker
 docker compose exec -T -u appuser levelup levelup pool-sharing grandfather \
-  --players JGtm,Chocoboflor,XxDaemonGamerxX,Madina97294,DankerGlue,GeleJugefi,Trimbutton,QuiteSiren,UppedJoker --yes
+  --players JGtm,joueur_165,joueur_291,joueur_117,joueur_1016,joueur_1017,joueur_1018,QuiteSiren,UppedJoker --yes
 ```
 
 ### R10 — demo re-seed (after R1-R8)

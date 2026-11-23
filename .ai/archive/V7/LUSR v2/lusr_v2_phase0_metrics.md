@@ -19,10 +19,10 @@ Vérifier sur les données Halo Infinite actuelles que les biais du LUSR v1 corr
 
 | Joueur | Matchs | Wins | Draws | Losses | Win% réel | Win% prédit | Avec coéquipier tracké |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Madina97294 | 1120 | 511 | 48 | 561 | 47.8% | 50.1% | 434 (39%) |
-| Chocoboflor | 468 | 236 | 3 | 229 | 50.7% | 50.3% | 344 (74%) |
+| joueur_117 | 1120 | 511 | 48 | 561 | 47.8% | 50.1% | 434 (39%) |
+| joueur_165 | 468 | 236 | 3 | 229 | 50.7% | 50.3% | 344 (74%) |
 | JGtm | 893 | 437 | 7 | 449 | 49.3% | 50.1% | 466 (52%) |
-| XxDaemonGamerxX | 32 | 10 | 0 | 22 | 31.2% | 49.0% | 32 (100%) |
+| joueur_291 | 32 | 10 | 0 | 22 | 31.2% | 49.0% | 32 (100%) |
 
 ## 2. Effet squad — `is_with_tracked_teammate`
 

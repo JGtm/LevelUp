@@ -2,7 +2,7 @@
 // un tir du tueur dans les 2 s qui precedent ? Ventile par tag de degat (-> vehicule).
 import fs from 'fs';
 const SP = process.argv[2];
-const dir = 'C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
+const dir = 'C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
 const lignes = fs.readFileSync(SP + '/sondes/tirs_vehicules/kills_vehicules.tsv', 'utf8').trim().split('\n').slice(1).filter(l => !l.startsWith('('));
 const NOM = { f712c64a: 'Ghost (veh_cv_ghost)', deffdc6b: 'Wraith (233c877d)', '7c4f8a28': 'Wraith (233c877d)', '382cafaf': 'Warthog LAAG (dd7f9102)',
   '674a7d69': 'Falcon lance-grenades/gauss (1a043c29)', a859230a: 'Falcon lance-grenades/gauss (1a043c29)', fa4fad21: 'Banshee (000026ed)', '53b1e6c5': 'Banshee (000026ed)', a21bf18a: 'Banshee (000026ed)',

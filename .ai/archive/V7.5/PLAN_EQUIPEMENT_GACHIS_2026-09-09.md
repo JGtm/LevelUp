@@ -540,7 +540,7 @@ Tous verts / 0 résultat au grep (résultats détaillés au Journal).
 - **Nouvelle, E3 du 2026-09-09 — TEST D'INTÉGRATION ROUGE, PRÉEXISTANT** :
   `internal/api/wire` / `TestOuvrierReel_ConstruitEtLivre` (tag `integration`) échoue sur
   trois mesures figées d'identité — « 0 vies anonymes, attendu 1 » et le xuid
-  `2535458702376288` nommé par le film mais absent des mesures figées. **Prouvé préexistant** :
+  `2643148600905879` nommé par le film mais absent des mesures figées. **Prouvé préexistant** :
   le même test, rejoué au point de branche `32821ba86` dans un worktree détaché jetable,
   échoue à l'identique et produit le même artefact à l'octet près. L'attente figée a été
   périmée par le lot de nommage des vies (elle réclame une vie anonyme que le décodeur ne
@@ -1057,7 +1057,7 @@ CORPUS : 64 artefacts lus dans <depot>/data/cache/replays/halo_infinite
   **`go test -tags=integration -p 1 -count=1 ./...` : UN ÉCHEC, PRÉEXISTANT — prouvé, pas
   supposé.** `internal/api/wire` / `TestOuvrierReel_ConstruitEtLivre` échoue sur trois
   mesures figées d'IDENTITÉ : « 0 vies anonymes, attendu 1 », et le xuid
-  `2535458702376288` « nommé par le film mais absent des mesures figées ». Vérification faite
+  `2643148600905879` « nommé par le film mais absent des mesures figées ». Vérification faite
   en rejouant le MÊME test au point de branche `32821ba86`, dans un worktree détaché jetable
   (supprimé depuis — ni ma branche ni mon worktree touchés) : **échec identique, et l'artefact
   produit est le même à l'octet près (291 655 octets, 22 trajectoires, 781 frames)**. Le diff

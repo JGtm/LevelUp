@@ -84,7 +84,7 @@ une clôture commune :
 ## 1. Base, branche, worktree, coordination
 
 ### 1.1 Branche et worktree
-- Branche **`feat/ri-ecart-108`**, worktree DÉDIÉ `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-ecart108`,
+- Branche **`feat/ri-ecart-108`**, worktree DÉDIÉ `<poste>/Downloads/Scripts/LevelUp-wt-ecart108`,
   tête de départ **`199c6984d`** (les trois rapports de recherche et la fusion de `feat/v75`
   `940e27b3f`, qui contient le plan clos, schéma 93, `grammar-2026-10-09.3`). Préfixe `feat/` : la CI
   se déclenche au push. Un seul exécutant.
@@ -94,8 +94,8 @@ une clôture commune :
   AVANT tout `git worktree remove` (jamais `--force`).
 - `data/cache/film_facts` du worktree : dossier RÉEL (jamais une jonction), renommé avant chaque passe
   de `replay-equiv` (§5, pièges).
-- Cache Go : `GOCACHE='C:\Users\Guillaume\AppData\Local\go-build-ri'`,
-  `GOLANGCI_LINT_CACHE='C:\Users\Guillaume\AppData\Local\golangci-ri'` ; un seul processus `go` à la
+- Cache Go : `GOCACHE='<poste>\AppData\Local\go-build-ri'`,
+  `GOLANGCI_LINT_CACHE='<poste>\AppData\Local\golangci-ri'` ; un seul processus `go` à la
   fois ; jamais `go build ./...` ; tests en avant-plan, découpés sous 10 minutes.
 - Push : `feat/ri-ecart-108` seule ; aucune fusion dans `feat/v75` (geste du superviseur, sur accord).
 
@@ -107,10 +107,10 @@ une clôture commune :
 
 ### 1.3 Variables communes des commandes (bash, depuis `$WT/apps/go-api`)
 ```bash
-export GOCACHE='C:\Users\Guillaume\AppData\Local\go-build-ri' GOLANGCI_LINT_CACHE='C:\Users\Guillaume\AppData\Local\golangci-ri' PATH="/c/msys64/ucrt64/bin:$PATH" CGO_ENABLED=1
-WT=/c/Users/Guillaume/Downloads/Scripts/LevelUp-wt-ecart108
-R=C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/film_chunks
-SP=C:/Users/GUILLA~1/AppData/Local/Temp/claude/c--Users-Guillaume-Downloads-Scripts-LevelUp/2efb0786-9fba-4f95-8fd0-464ee47b91d7/scratchpad/ri
+export GOCACHE='<poste>\AppData\Local\go-build-ri' GOLANGCI_LINT_CACHE='<poste>\AppData\Local\golangci-ri' PATH="/c/msys64/ucrt64/bin:$PATH" CGO_ENABLED=1
+WT=<poste>/Downloads/Scripts/LevelUp-wt-ecart108
+R=<poste>/Downloads/Scripts/LevelUp/data/cache/film_chunks
+SP=<poste>/AppData/Local/Temp/claude/c--Users-poste-Downloads-Scripts-LevelUp/2efb0786-9fba-4f95-8fd0-464ee47b91d7/scratchpad/ri
 RES=$SP/res                      # sorties de ce plan, un sous-dossier par étape : $RES/r0, $RES/r1.2, ...
 REF=$SP/d1                       # références du plan clos (agg.sh, ref_corrigee/, m2/)
 O108=$SP/ecart108                # sorties du rapport R-VEH-4 (final/, table_x2.awk, par_film.awk)
@@ -139,10 +139,10 @@ neuf par passe) :
   idem `-films $F8 -sortie $RES/<e>/carte8`, et `-films $F20,$F8 -mpp-declare -sortie $RES/<e>/carte_mpp`
   (mêmes drapeaux) ; comparaison : `cmp` de chaque TSV, `fermeture_films.tsv` par `cut -f1-16`.
 - **G-equiv** : binaire `go build -o $RES/bin/replay-equiv-<e>.exe ./cmd/replay-equiv` ; passe :
-  `data/cache/film_facts` du worktree renommé avant, puis `<exe> -repo-root C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-ecart108 -out-dir $RES/<e>/equiv > $RES/<e>/equiv.log 2>&1`
+  `data/cache/film_facts` du worktree renommé avant, puis `<exe> -repo-root <poste>/Downloads/Scripts/LevelUp-wt-ecart108 -out-dir $RES/<e>/equiv > $RES/<e>/equiv.log 2>&1`
   (20 films, `depuis_les_faits=false` vérifié dans le journal) ; comparaison base/lot : `diff` des
   TSV d'étapes par film (`$RES/<e>/equiv/<film>.tsv`).
-- **killsource** : binaire `go build -o $RES/bin/killsource-<e>.exe ./cmd/killsource` ; passe : `json <film> -carte <carte> -cache C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-ecart108/data/cache`
+- **killsource** : binaire `go build -o $RES/bin/killsource-<e>.exe ./cmd/killsource` ; passe : `json <film> -carte <carte> -cache <poste>/Downloads/Scripts/LevelUp-wt-ecart108/data/cache`
   sur les 19 témoins de `config/replay_corpus.toml` (liste et cartes de `$SP/d1y/ks.sh`), sorties
   `$RES/<e>/ks/<film>.json` ; comparaison : `cmp`, puis `$SP/d1y/comparer_ks.sh` adapté au dossier.
 - **Gardes de révision passées sous `-skip "$SKIPREV"`** entre deux montées (R1 à R4) ; elles

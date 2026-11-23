@@ -1113,8 +1113,8 @@ du document OpenAPI Huma (liste `isKnownChiBrut`) : aucune exception de plafond 
 - `/session/context` : le front poste seulement `{title_slug}` (`lib/title-routing/applyActiveTitle.ts:45`) et
   `{player_slug}` (`stores/appShellStore.ts:155`) ; il ne poste JAMAIS `locale`. La langue vit dans le segment
   d'URL `{-$lang}`, liste fermée `KNOWN_LOCALES = ['fr','en']` : `fr-FR` / `en-US` ne sont jamais envoyés, la
-  liste fermée {fr, en} est donc exacte. L'e2e `media-like-bug.spec.ts` poste `JGtm`, `Madina97294`,
-  `XxDaemonGamerxX`, `Chocoboflor` : acceptés. Slugs réels du poste (`db_profiles.json`) : tous alphanumériques.
+  liste fermée {fr, en} est donc exacte. L'e2e `media-like-bug.spec.ts` poste `JGtm`, `joueur_117`,
+  `joueur_291`, `joueur_165` : acceptés. Slugs réels du poste (`db_profiles.json`) : tous alphanumériques.
 - TTL de 24 h : le front ne garde pas la langue dans `localStorage` (`appShellStore` : « pas localStorage ») ;
   la locale de session reste `fr` faute d'écriture. Ce qu'un visiteur anonyme perd après 24 h d'inactivité
   (le TTL est glissant, rafraîchi au plus toutes les 5 min) : le titre et le joueur courants mémorisés, que

@@ -699,7 +699,7 @@ déplacement (Phase 1, TDD). Backend non touché.
   ligne). Gate re-exécuté par l'orchestrateur : vitest 291 fichiers / 2573 passés /
   14 skip pré-existants / 0 échec (+81 tests du module) ; `tsc -b` = 0 ; eslint fichiers
   touchés = 0. Smoke navigateur (script Playwright ad hoc, serveurs dev relancés) :
-  app à l'identique sur `/players/Chocoboflor/home`, 0 erreur page, TOUTES les requêtes
+  app à l'identique sur `/players/joueur_165/home`, 0 erreur page, TOUTES les requêtes
   API JSON portent `X-LevelUp-Title: halo_infinite` (titre par défaut — preuve D-9) ;
   `/bootstrap` sans header (pré-hydratation, session autoritaire, documenté) ; assets
   `<img>` sans header (fetch navigateur, hors client API — attendu). Découvertes
@@ -711,8 +711,8 @@ déplacement (Phase 1, TDD). Backend non touché.
   Gate re-exécuté par l'orchestrateur : `tsc -b` = 0 ; vitest **295 fichiers / 2605
   passés / 14 skip pré-existants / 0 échec** ; `eslint .` = 0 erreur (68 warnings
   baseline pré-existante) ; ratchet `/t/` + `/players/` vert, 0 offender. Smoke
-  navigateur (Playwright) : `/t/halo_infinite/players/Chocoboflor/home` rendu, headers
-  API uniformément `halo_infinite` ; `/t/halo_5/players/Chocoboflor/home` FRESH-LOAD
+  navigateur (Playwright) : `/t/halo_infinite/players/joueur_165/home` rendu, headers
+  API uniformément `halo_infinite` ; `/t/halo_5/players/joueur_165/home` FRESH-LOAD
   avec session Infinite → convergence D-6 observée (URL stable, `?f=` estampillé
   `halo_5`, re-bootstrap, contenu H5) — les requêtes shell pré-convergence partent avec
   l'ancien titre puis sont purgées par `clear()` (conforme D-3 : le shell suit le

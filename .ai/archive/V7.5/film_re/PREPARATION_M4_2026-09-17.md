@@ -5,7 +5,7 @@
 > (items 4.1.1 a 4.4.2) comme `.ai/PREPARATION_M2_PAS_4_A_6_2026-09-17.md` a prepare les pas 4 a 6.
 >
 > Base : `24b67e339`, branche `feat/decfilm-m4prep`, worktree
-> `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-decfilm-m4prep`. Date : 2026-09-17.
+> `<poste>/Downloads/Scripts/LevelUp-wt-decfilm-m4prep`. Date : 2026-09-17.
 >
 > Sources lues en entier : le plan (section M4, §1.3 D6/D11/D12, §1.4 V1-V15), l'architecture
 > cible §11 et §12 (`.ai/ARCHITECTURE_CIBLE_DECODEUR_FILM_2026-09-12.md`), l'ADR

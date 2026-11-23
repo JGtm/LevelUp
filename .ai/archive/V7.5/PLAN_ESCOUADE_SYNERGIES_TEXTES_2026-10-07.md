@@ -14,7 +14,7 @@
 > **Ronde 2** : C1-C3 validés, 24 conditions tenues, 2 constats P2 (commentaires) corrigés en E6.
 > **Revue close sur deux rondes.**
 > Branche `feat/escouade-synergies-textes`, partie de `origin/feat/v75` à `879f31bbf` (Tactique v2
-> fusionnée : `git grep mesurerEchange` vide). Worktree `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-escouade`.
+> fusionnée : `git grep mesurerEchange` vide). Worktree `<poste>\Downloads\Scripts\LevelUp-wt-escouade`.
 > Ni push, ni fusion, ni rebase : le superviseur pousse, lance la revue adversariale et fusionne.
 
 ## 0. Objectif, critère de succès, hors périmètre

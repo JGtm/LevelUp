@@ -8,7 +8,7 @@
 
 - **Maquette** : https://claude.ai/artifact/6ZKxrug6cLzkxpYs2VWYaP (version 18), copie locale
   `.ai/V7.5/MAQUETTE_ONGLET_TACTIQUE_ESCOUADE_2026-09-26.html`. Chiffres RÉELS de la soirée du
-  22/09 (JGtm + Chocoboflor + Madina97294, 7 matchs), relevés en lecture seule dans
+  22/09 (JGtm + joueur_165 + joueur_117, 7 matchs), relevés en lecture seule dans
   `shared_matches_v2.duckdb` et `players/JGtm/stats.duckdb` (serveur arrêté, CLI `duckdb -readonly`).
 - **Journal** : `.ai/thought_log.md`, entrée « [2026-09-26] Escouade, onglet Usages… » et ses
   compléments 1 à 16 (l'historique complet des itérations et des chiffres).

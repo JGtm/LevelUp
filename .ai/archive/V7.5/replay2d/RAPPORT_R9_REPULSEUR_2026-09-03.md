@@ -708,7 +708,7 @@ production touche. `gofmt -l` vide et `go vet` vert sur le paquet.
 
 Chemins : `<F>` = `<repo>/data/cache/film_chunks`,
 `<B>` = `<repo>/data/titles/halo_infinite/reference/map_quant_bounds.json`
-(ici `<repo>` = `C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration`).
+(ici `<repo>` = `<poste>/Downloads/Scripts/LevelUp-go-migration`).
 
 ```
 # depuis apps/go-api

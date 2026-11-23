@@ -1,5 +1,5 @@
 const fs=require('fs'),z=require('zlib');
-const d=JSON.parse(z.gunzipSync(fs.readFileSync('C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+process.argv[2]+'.json.gz')));
+const d=JSON.parse(z.gunzipSync(fs.readFileSync('<poste>/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+process.argv[2]+'.json.gz')));
 console.log(Object.keys(d).join(' '));
 console.log(JSON.stringify(d.coverage.zones));
 const zs=d.zoneStates; console.log(Array.isArray(zs)?zs.length:typeof zs);

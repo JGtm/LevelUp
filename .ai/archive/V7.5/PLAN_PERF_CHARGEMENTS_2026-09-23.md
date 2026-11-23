@@ -473,7 +473,7 @@ Journal du lot (2026-09-23, branche `feat/perf-l6`, base 97cc0d0c8) :
   ./internal/sync/...` : 30 constats avant, les memes 30 apres (0 nouveau), `--new-from-rev=97cc0d0c8`
   → 0 ; en plus `go test ./internal/archlint/` 0 et `go test ./internal/games/halo_5/livesync/
   ./internal/service/` 0.
-- Decouvertes (non traitees) : (a) joueur 2535469190789936 : l'ecriture canonique LUSR echoue a
+- Decouvertes (non traitees) : (a) joueur 2547408409520575 : l'ecriture canonique LUSR echoue a
   chaque cycle depuis au moins 09:49 (« Duplicate key id: N violates primary key constraint » sur
   `match_skill_rank` de sa base joueur : sequence `match_skill_rank_id_seq` en retard sur max(id)) —
   deux groupes tenus, 5 matchs sautes par cycle, trou LUSR tant que la sequence n'a pas depasse
@@ -638,12 +638,12 @@ L2.6, 7176aaa45 L2.7, b02ea5020 gate, puis ce journal) :
   dans l'ordre des lignes Q32b — requete sans ORDER BY, avant comme apres. Retirer la jointure a
   change l'ordre physique : 33 matchs touches sur l'ensemble des 9 scenarios, verifies sur la
   copie (29 a egalite de frags max dans l'equipe du main : Bourreau ; 4 a double egalite :
-  Faux-frere x3, Heros silencieux x1) ; ex. Bourreau de c25f8e7c passe de Chocoboflor a
-  Madina97294 (composition) ; sur « un coequipier » (566 matchs dans la matrice), joueur
+  Faux-frere x3, Heros silencieux x1) ; ex. Bourreau de c25f8e7c passe de joueur_165 a
+  joueur_117 (composition) ; sur « un coequipier » (566 matchs dans la matrice), joueur
   principal : Bourreau 55 -> 50, Faux-frere 59 -> 58, Heros silencieux 11 -> 10. Aucune stat ne
   change ; le departage etait deja arbitraire (stable pour un plan donne : deux executions de la
   base identiques, L2.1 a L2.7 identiques entre elles). Non corrige : decouverte (1).
-  (4) D2.3 : un coequipier NON suivi a desormais sa ligne d'intensite (Nilton410 : 15 / 15
+  (4) D2.3 : un coequipier NON suivi a desormais sa ligne d'intensite (joueur_006 : 15 / 15
   matchs au lieu de 0) — effet voulu de D2.3.
   (5) D2.5 : la requete `filters.sessions` seule rend la page de `picked_squad_session_labels`
   (7 matchs au lieu de 38) — effet voulu.
@@ -1165,13 +1165,13 @@ commits aae43375a L7.1, cc72023b8 L7.2, 0406132ff L7.3, aa2ec4880 gate, puis ce 
   `cmd/perfprobe_l7_tmp/` (jamais commitee) appelant les VRAIS repos a travers un driver chronometre,
   `access_mode=read_only`, 2 threads, 512 Mo ; binaire « avant » construit sur l'arbre de base exporte
   (`git archive 2beeba665`), « apres » sur le worktree ; cinq joueurs suivis (JGtm 1 160 matchs,
-  Madina97294 1 275, Chocoboflor 587, XxDaemonGamerxX 39, Nuzzles 7 190). La vue seule
+  joueur_117 1 275, joueur_165 587, joueur_291 39, joueur_074 7 190). La vue seule
   (`SELECT count(*) FROM v_gamertag_lookup`) : 1,7-1,8 s au repos.
 - Chrono avant -> apres (JGtm, deux tours intercales de 3 executions) : rencontres (Q26) 2,6-3,7 s ->
   0,82-1,33 s (Q26 0,84-1,30 s + matchs de l'historique 13-21 ms + annuaire 9-17 ms) ; rivaux (Q27 x 2)
   6,6-7,0 s -> 1,94-2,18 s (Q27 1,06-1,08 s par lecture + 14 ms + 9 ms) ; Q10 2,25-2,62 s -> 28-30 ms ;
   Comparer 2,27-2,59 s -> 9-29 ms par appel (4 appels : 9,3-9,9 s -> 81-87 ms). Cinq joueurs, apres :
-  rencontres 0,80-1,37 s, rivaux 1,54-2,24 s (Nuzzles : annuaire 40 ms + jambe kill-feed 42 + 85 ms
+  rencontres 0,80-1,37 s, rivaux 1,54-2,24 s (joueur_074 : annuaire 40 ms + jambe kill-feed 42 + 85 ms
   pour ses deux « Joueur #### »), Q10 9-180 ms, Comparer 67-86 ms le bloc de 4.
   ATTENDU « DIZAINES DE MS » NON ATTEINT POUR Q26 ET Q27 : ce qui reste est la fenetre `QUALIFY ...
   OVER (PARTITION BY match_id)` de `match_kill_events_latest` (3,95 M lignes), que le filtre tueur /
@@ -1180,22 +1180,22 @@ commits aae43375a L7.1, cc72023b8 L7.2, 0406132ff L7.3, aa2ec4880 gate, puis ce 
 - Parite (D7.2) : L7.1 / L7.2 : 300 lignes servies (rencontres avec et sans amis, rivaux, 5 joueurs)
   identiques a l'octet avant/apres (noms, compteurs, ordre), au code final. Au-dela des lignes servies,
   sur TOUS les joueurs croises ou affrontes des cinq joueurs (58 353 couples joueur / croise) : zero
-  ecart pour quatre joueurs ; 8 chez Nuzzles, « Joueur #### » la ou la vue trouve un nom hors de ses
+  ecart pour quatre joueurs ; 8 chez joueur_074, « Joueur #### » la ou la vue trouve un nom hors de ses
   7 190 matchs (ses participants n'ont pas de gamertag), aucun dans une ligne servie — l'ecart nomme de
   D7.1 (participants des matchs de la lecture), fige par `TestCareerRepo_Annuaire_EcartNomme_
-  NomHorsHistorique`. Rivaux : les 269 adversaires sans alias ni nom de participant (JGtm, Madina97294,
-  Chocoboflor) recoivent le nom de la vue ; un adversaire connu du SEUL kill-feed (aucune ligne
-  participant ; 1 sur la copie, chez Nuzzles, nomme par alias) serait reste masque par la lecture
+  NomHorsHistorique`. Rivaux : les 269 adversaires sans alias ni nom de participant (JGtm, joueur_117,
+  joueur_165) recoivent le nom de la vue ; un adversaire connu du SEUL kill-feed (aucune ligne
+  participant ; 1 sur la copie, chez joueur_074, nomme par alias) serait reste masque par la lecture
   agregee — d'ou `match_rencontre`. Q10 : lignes communes identiques (noms, compteurs) ; ne different
   que les ex aequo de la coupe LIMIT 50 (`ORDER BY match_count DESC` sans departage, deja differents
-  d'une execution a l'autre AVANT le lot : deux ensembles sur deux executions pour JGtm et Nuzzles) —
-  JGtm 1 ligne, Madina97294 4, Chocoboflor 2, Nuzzles et XxDaemonGamerxX 0. Comparer : 20 sorties
+  d'une execution a l'autre AVANT le lot : deux ensembles sur deux executions pour JGtm et joueur_074) —
+  JGtm 1 ligne, joueur_117 4, joueur_165 2, joueur_074 et joueur_291 0. Comparer : 20 sorties
   (joueur + ses trois co-participants les plus frequents, 5 joueurs) identiques a l'octet ; zero ecart de
   nom sur les 53 061 xuids de la base (la lecture couvre tout l'historique du joueur compare).
 - Lectures de la vue CONSIGNEES (L7.3), cout mesure (JGtm, dernier match, un appel) :
   (a) Relations `GetRelations` (Q28 et Q28 scope, `queries_career_encounters.go:146,249`) : 3,4-4,0 s
   (scope 30 matchs : 2,4-2,7 s) ; remplacement mecanique mais parite NON tenue : 2 lignes servies de
-  Nuzzles (sur 7 450) passeraient a « Joueur #### », et l'annuaire nommerait jusqu'a 7 450 xuids dont
+  joueur_074 (sur 7 450) passeraient a « Joueur #### », et l'annuaire nommerait jusqu'a 7 450 xuids dont
   2 973 sans alias ni nom ; sans la vue : ~0,9 s (fenetre du kill-feed, comme Q26) + annuaire (non mesure) ;
   (b) vue match : Q12 tableau de score 1,7-2,2 s (3-6 ms sans la jointure, mesure), Q21 evenements 2,2 s,
   Q23 rencontres 2,2 s, Q23b stats de rencontre 3,6 s (dont ~0,9 s de fenetre du kill-feed) — de l'ordre
@@ -1251,7 +1251,7 @@ commits aae43375a L7.1, cc72023b8 L7.2, 0406132ff L7.3, aa2ec4880 gate, puis ce 
   `./internal/api/...` dans le worktree (decouverte (6) de L1) retire.
 - Decouvertes (consignees, non traitees) : (1) Q26 et Q27 paient la fenetre `_latest` du kill-feed sur
   3,95 M lignes (0,8-1,1 s par lecture) ; une liste CONSTANTE des matchs du joueur poussee sous la
-  fenetre la ramene a 0,51-0,56 s (JGtm) / 0,21-0,24 s (Nuzzles), mesure ; seule une vue materialisee
+  fenetre la ramene a 0,51-0,56 s (JGtm) / 0,21-0,24 s (joueur_074), mesure ; seule une vue materialisee
   changerait l'ordre de grandeur (cf. L5a (6)) ; (2) GetRivals lit deux fois le meme agregat (ORDER BY
   deaths puis frags) : une lecture et deux tris en Go economiseraient une fenetre (~1 s par requete) ;
   (3) la vue match evalue la vue des noms quatre fois par ouverture, plus ResolveGamertags (cf. (b),
@@ -1263,7 +1263,7 @@ commits aae43375a L7.1, cc72023b8 L7.2, 0406132ff L7.3, aa2ec4880 gate, puis ce 
   les bots : 93 des 224 lignes servies aux cinq joueurs sont des bots (JGtm : « 343 Chilies » 4e), que le
   selecteur de composition de l'onglet Tactique peut proposer comme coequipiers ; (7) la heatmap
   Relations (Q29) rend un ordre non deterministe (ORDER BY xuid, heure : le jour ne departage pas) ;
-  (8) Relations : 2 973 des 7 450 joueurs recurrents de Nuzzles n'ont ni alias ni gamertag de
+  (8) Relations : 2 973 des 7 450 joueurs recurrents de joueur_074 n'ont ni alias ni gamertag de
   participant (import sans gamertag ?) — la vue comme l'annuaire les masquent.
 ## 9 quater. L8 — Escouade : departages stables et capability sur la page (Go)
 
@@ -1486,7 +1486,7 @@ Items :
   `teammates_log_test.go:212` ; commits 778efcb9e, 3a7c21d28 (message DEBUG sans accent, cf. journal)
 - [x] L9.4 matrice d'impact par xuid (D9.4) — `teammates/teammates_squad_charts_impact_events.go:94`
   (`resolveSquadScope(...).gtByXUID`, lignes = noms choisis), `teammates_service_sections.go:129` ;
-  test `teammates_impact_matrix_membership_test.go:25` (« Madina » / « madina » / « MADINA ») ;
+  test `teammates_impact_matrix_membership_test.go:25` (« joueur_075 » / « joueur_075 » / « JOUEUR_075 ») ;
   commit 3b89ac6b2
 - [x] L9.5 lecture legere : Q32b illisible = erreur (D9.5) — `teammates_service_intersect.go:346`
   (`lireEquipeAlliee`, seul appel de Q32b), `teammates_service_composition_legere.go:192,206` ;
@@ -1526,8 +1526,8 @@ executeur Opus ; un commit par item, puis ce journal) :
   23/09 17:25 — celle de la revue D, recopiee dans le scratchpad du lot —, copies de
   `db_profiles.json` et `player_friends.json` ; `OpenReadOnly`, 2 threads, 512 Mo ;
   `CareerService.GetTopEncounters` de bout en bout, cablage de `wire.Career` reproduit, 3 tours) :
-  avant 6,6-19,3 s (JGtm 14,3-19,3 s, XxDaemonGamerxX 6,6-13,0 s,
-  Madina97294 7,3-8,9 s, Chocoboflor 7,2-7,7 s ; la vue seule : 1,9-4,8 s PAR AMI, trois amis
+  avant 6,6-19,3 s (JGtm 14,3-19,3 s, joueur_291 6,6-13,0 s,
+  joueur_117 7,3-8,9 s, joueur_165 7,2-7,7 s ; la vue seule : 1,9-4,8 s PAR AMI, trois amis
   par joueur) ; apres 0,79-0,98 s (registre + lecture) ; la lecture seule des amis, sans
   registre : 7,8-20,7 ms, et le service 0,80-0,98 s. Parite : 12 amis sur 12 resolus au meme
   xuid par le registre, la lecture et la vue ; 40 rencontres servies (4 joueurs x 10) identiques
@@ -1883,15 +1883,15 @@ Aucun autre process ne tient les bases pendant la mesure.
   37 le 2026-09-22 a 18 h, avant la campagne) — meme classe que D9g.3, candidat a
   `observability.LevelUnlessCanceled`. `friends_xp` (bootstrap) tente d'ouvrir EN RW la DB de
   chaque ami non suivi pour la migrer (« chemin introuvable », 5 WARN par bootstrap, deja le matin
-  a 10 h) : resoudre l'existence du profil avant d'ouvrir. Chocoboflor est « joueur en echec » a
+  a 10 h) : resoudre l'existence du profil avant d'ouvrir. joueur_165 est « joueur en echec » a
   chaque cycle d'auto-sync (HTTP 429 de halostats a la decouverte, page 0) : externe a la
   campagne, a surveiller. Le cron des noms d'assets au boot (`asset_name_sweep_cron`, 60 s apres
   le demarrage) et l'expansion du catalogue de playlists (une trentaine de GET Waypoint, 19:47:20
   a 19:47:33) tournent pendant les premieres requetes de l'utilisateur apres un redemarrage.
   Lot C4 : `internal/api/handlers/replay_local_gate.go:74` lit `LEVELUP_REPLAY_PUBLIC` dans une
   variable de paquet a l'init (meme defaut que les bornes DuckDB : ignoree depuis `.env.local`),
-  son commentaire presente la lecture unique comme voulue — a trancher. Chocoboflor : au boot,
-  `cli_auth: refresh_token mort — reauth_required` (xuid 2535469190789936) : reconnexion SSO
+  son commentaire presente la lecture unique comme voulue — a trancher. joueur_165 : au boot,
+  `cli_auth: refresh_token mort — reauth_required` (xuid 2547408409520575) : reconnexion SSO
   du compte a faire par l'utilisateur, jamais de re-capture (ADR 0023).
 
 - (epilogue, 2026-09-23 soir, apres la fusion dans feat/v75) L'E2E Playwright (`e2e-react`) ne

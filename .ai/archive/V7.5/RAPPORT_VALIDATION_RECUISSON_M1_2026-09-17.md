@@ -152,10 +152,10 @@ balayage sur `a6ae19fb` entre le decodeur de base et le decodeur M1 (2 lectures 
 
 - 20 voies de nommage `coverage.bridge.namedByNextLife` / `namedByPreviousLife` 0 -> 1 (ou 0 -> 2
   sur `daaa17d6`), sur 17 artefacts ;
-- 2 reattributions de piste par xuid sur `64e8adfa` (`tracks/par-xuid/2533274792763167` et
-  `tracks/vies-par-xuid/2533274792763167`, 15 -> 14) ;
+- 2 reattributions de piste par xuid sur `64e8adfa` (`tracks/par-xuid/2557369989364329` et
+  `tracks/vies-par-xuid/2557369989364329`, 15 -> 14) ;
 - 1 reattribution de duree de trajet sur `4f77afc1`
-  (`vehicles.rides/duree-totale/par-xuid/2535437483090324`, 1 289 -> 1 157).
+  (`vehicles.rides/duree-totale/par-xuid/2632700264829909`, 1 289 -> 1 157).
 
 **1 changement hors des attendus** :
 

@@ -110,7 +110,7 @@ n'est créditée à personne. Contrôle interne qui passe — le total affiché 
 L'inventaire ne se lit qu'aux **images-clés**, une toutes les **20,0 s** (mesuré : 24 images-clés,
 écart médian 200 images, un seul écart de 400). Entre deux, l'écran montre la dernière lecture
 connue. La faire passer pour l'état courant était un vrai défaut, relevé par l'utilisateur à 1:06
-sur LORD PEINX13 : l'état affiché datait de **9,7 s** et rien ne le disait.
+sur JOUEUR_731 : l'état affiché datait de **9,7 s** et rien ne le disait.
 
 **Une lecture récente est franche, une lecture ancienne s'estompe**, et l'infobulle donne l'âge
 exact avec le numéro de l'image-clé — sans quoi « c'est vieux » ne se vérifie pas. C'est la

@@ -6,7 +6,7 @@
 > `.ai/V7.5/replay2d/SPEC_LECTEUR_PLANCHE2A_2026-08-28.md` (memo Claude Design + decisions
 > utilisateur — elle PREVAUT sur toute intuition de mise en forme).
 >
-> Branche : `wt/lecteur` (worktree dedie `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-lecteur`),
+> Branche : `wt/lecteur` (worktree dedie `<poste>\Downloads\Scripts\LevelUp-wt-lecteur`),
 > base feat/v75 @ 86b9087c9. 1 commit par lot sur wt/lecteur. AUCUN merge vers feat/v75,
 > AUCUN push — autorisation utilisateur attendue apres gate visuel.
 

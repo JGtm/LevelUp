@@ -1,6 +1,6 @@
 # Plan — Ajustements supplementaires pre-v7.5 (deuxieme vague, 2026-09-21)
 
-Source : `C:\Users\Guillaume\Downloads\Ajustements-supp-prev75.txt` (retours utilisateur) + arbitrages
+Source : `<poste>\Downloads\Ajustements-supp-prev75.txt` (retours utilisateur) + arbitrages
 du 2026-09-21 (conversation). Branche de chantier : `feat/ajustements-supp-v75` (depuis
 `origin/feat/v75` = 28b93cca5 + prop `frameless` de ChartCard b8166c9bf). Contrat : skill
 `plan-execution`. Chaque lot = un worktree, un executeur Opus, une branche `feat/ajsup-<lot>`,

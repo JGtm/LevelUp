@@ -160,7 +160,7 @@ le chunk borne la fenêtre RW, les lecteurs passent entre les chunks, comme even
 - [x] B1.6 Rattrapage backfill — SOLDÉ le 2026-07-12 : départage fait par
       `lusr_v2_canonical_backfill` en fenêtre prod (serveur arrêté) — dry-run d'abord
       (2 547 comptés) puis `--commit` : **2 551 matchs réécrits** (JGtm 946,
-      Madina97294 1 081, Chocoboflor 493, XxDaemonGamerxX 31), couverture LUSR garantie
+      joueur_117 1 081, joueur_165 493, joueur_291 31), couverture LUSR garantie
       par construction (reset par joueur + persist owner-only, append-only + vues
       `_latest`). Serveur relancé, site 200.
 
@@ -180,7 +180,7 @@ slots morts au boot, `refresh_token mort — reauth_required` ×45, `world-enric
       180 W = 429 AIMD (backpressure saine). Local = env dev-recovery (tous comptes reauth,
       NON représentatif — écarté du ciblage).
 - [~] B2.2 Blacklist 3 RT morts — SANS OBJET en prod : vérif read-only prod → AUCUN RT mort
-      actif post-reboot (seul Chocoboflor a reauth 35× PRÉ-reboot, auto-guéri ; 0 post-reboot).
+      actif post-reboot (seul joueur_165 a reauth 35× PRÉ-reboot, auto-guéri ; 0 post-reboot).
       Rien à blacklister. La discovery n'exclut que les comptes SANS token ; un RT mort est
       retenté par design (auto-guérison reauth_required, ADR 0023). L'anti-flood B6.4 couvre
       désormais le flood oauth-refresh (clé par classe) si un RT venait à mourir.
@@ -235,7 +235,7 @@ bruit leaderboard était local (dev). catalog prod juillet = 0 ERROR.
       d'entrée `asset_translations` → résolvables SEULEMENT par le drain DiscoveryUGC réseau
       (`catalog/ugc-drain`), hors périmètre de cet endpoint zéro-réseau.
 - [!] B4.2 XUIDs orphelins — `convergence/run` lancé pour les **4 joueurs réels** (JGtm,
-      Madina97294, Chocoboflor, XxDaemonGamerxX) : **4/4 succeeded, auth live SISU OK**
+      joueur_117, joueur_165, joueur_291) : **4/4 succeeded, auth live SISU OK**
       (error_count=0). MAIS `converged_psa=0` partout → **0 alias résolu** (AVANT **144** →
       APRÈS **144**). Cause sur pièces : la convergence d'alias est OPPORTUNISTE (upsert
       `xuid_aliases` depuis les JSON PSA re-fetchés) et ne cible que les matchs
@@ -247,7 +247,7 @@ bruit leaderboard était local (dev). catalog prod juillet = 0 ERROR.
 - [x] B4.3 Lying bits events — `lying-bits/reset`. AVANT lying_bits_events **580**. Dry-run :
       events 580 / weapons 0 / events_loaded 579 = **1159** (cohérent, pas d'anomalie). Réel :
       **1159 nettoyés** row-by-row (anti-ART) → APRÈS immédiat **0**. Puis rebond à **13** après
-      les convergences B4.2 (Chocoboflor/XxDaemon). DÉCOUVERTE (sur pièces) : le détecteur
+      les convergences B4.2 (joueur_165/joueur_639). DÉCOUVERTE (sur pièces) : le détecteur
       lying_bits_events est un FAUX POSITIF pour les matchs no-film/vides terminaux —
       `MarkNoFilmDefinitive`/`MarkEventsEmptyDefinitive` posent MBitEvents SANS écrire de
       highlight_events, et le détecteur ne teste pas `events_empty` → reset+convergence oscille

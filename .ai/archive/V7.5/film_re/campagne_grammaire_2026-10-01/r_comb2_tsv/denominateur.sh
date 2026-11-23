@@ -1,7 +1,7 @@
 #!/bin/bash
 # denominateur.sh <configs_r_comb2.tsv> <sortie> : le denominateur fixe CONSOLIDE de R-COMB-2,
 # recalcule depuis les TSV bruts de la campagne, chaque (source, variante) classee.
-CG=/c/Users/Guillaume/Downloads/Scripts/LevelUp-wt-campagne-grammaire/.ai/V7.5/film_re/campagne_grammaire_2026-10-01
+CG=/c/Users/utilisateur/Downloads/Scripts/LevelUp-wt-campagne-grammaire/.ai/V7.5/film_re/campagne_grammaire_2026-10-01
 RC2=$1; OUT=$2
 {
   # source  fichier  colonne variante  colonne utiles_lus

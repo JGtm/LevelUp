@@ -1,5 +1,5 @@
 const fs=require('fs'),z=require('zlib');
-const dir='C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
+const dir='<poste>/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
 const rows=fs.readFileSync('scan.jsonl','utf8').trim().split('\n').map(JSON.parse).filter(r=>r.hillSeq);
 let unp=0,sizes={}; const out=[];
 for(const r of rows){ const d=JSON.parse(z.gunzipSync(fs.readFileSync(dir+r.id+'.json.gz'))); const c=d.coverage.zones; 

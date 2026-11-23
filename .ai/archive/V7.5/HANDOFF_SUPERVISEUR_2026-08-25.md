@@ -2,7 +2,7 @@
 
 > Point d'entree pour la prochaine session de PILOTAGE. Meme regime : un agent par worktree
 > FRERE cree DEPUIS LA RACINE en chemin absolu (`git -C &lt;racine&gt; worktree add
-> /c/Users/Guillaume/Downloads/Scripts/LevelUp-wt-&lt;nom&gt; -b wt/&lt;nom&gt; origin/feat/v75`),
+> <poste>/Downloads/Scripts/LevelUp-wt-&lt;nom&gt; -b wt/&lt;nom&gt; origin/feat/v75`),
 > CR verifie SUR PIECES, fusion `--no-ff` par le superviseur, push superviseur, CI verte au
 > niveau JOB. Lire aussi : `PLAN_SUPERVISION_2026-08-20.md`, `REGISTRE_REPORTS.md` (fin),
 > `.ai/thought_log.md` (tete), memoire.

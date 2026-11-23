@@ -183,7 +183,7 @@ changer, tout à exécuter.
 - [x] J0.6 Strongholds sur Vagabond : rejouer `696a9d7c` (une fois téléchargé) avec capture +
       relevé zones. KOTH/Oddball : reportés, notés.
       *FAIT, AVEC RELEVÉ.* **1 205 704 records, 2 095 entités**, identité prouvée à 99,0 %.
-      Quatre ancres terrain horodatées (0:48 base B flyguy8773 · 1:30 trois bases, score 21 ·
+      Quatre ancres terrain horodatées (0:48 base B joueur_780 · 1:30 trois bases, score 21 ·
       3:10 score 69-30 · 5:34 trois bases). Relevé écrit :
       `.ai/RELEVE_TERRAIN_CAPTURES_2026-07-31.md`, copié sur la clé avec les CSV.
 

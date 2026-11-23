@@ -159,7 +159,7 @@ Gates de la ronde 1 (depuis `apps/web/`, `node_modules/.tmp` purgé avant `tsc`)
 Plausibilité APRÈS refus (sonde jetable, supprimée) — mesurés / refusés, et médiane sur les
 seuls joueurs mesurés :
 - `000d5950` (499 s, 8 joueurs, 6 vies non rattachées) : **1 mesuré / 7 en « — »** ; le seul
-  mesuré (whiteknight2519) 73,8 s (01:13), médiane par mort 8,1 s, plus long trou 8,8 s ;
+  mesuré (joueur_283) 73,8 s (01:13), médiane par mort 8,1 s, plus long trou 8,8 s ;
 - `7344d24f` (569 s, 8 joueurs, 5 vies non rattachées) : **3 mesurés / 5 en « — »** ;
   120,9 s / 130,7 s / 159,2 s (02:00 à 02:39), médiane par mort 10,1 s, plus long trou
   18,3 s ; cumul des mesurés 411 s sur 40 trous ;
@@ -228,7 +228,7 @@ restent sont des traces courtes et tardives, réellement contenues : le doute y 
 - `npm ci` dans `apps/web` du worktree (autorisé, précédent worktrees frères) ; vitest peut
   devoir tourner hors sandbox.
 - Les artefacts témoins vivent dans le dépôt principal
-  (`c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/`), lecture seule.
+  (`<poste>/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/`), lecture seule.
 - Fichiers <= 500 L, fonctions <= 80 L ; aucune logique métier dans le composant (module
   `*_logic.ts` / `deadTimeLogic.ts`).
 - Aucun fichier `.ai/` du principal modifié (journal/registre = superviseur).

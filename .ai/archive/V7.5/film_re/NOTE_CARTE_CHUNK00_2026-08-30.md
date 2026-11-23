@@ -58,8 +58,8 @@ Instruments (tous sous garde d'environnement, sautes en CI) :
    `release`. Elle est identique sur les films du meme build ; le premier octet qui differe entre
    deux films tombe apres elle, a `0x0CB65C`.
 9. **La troisieme section porte l'identite des joueurs.** Des gamertags y sont ecrits en UTF-16LE
-   — `Chocoboflor` (un joueur suivi par le projet), `vamprym`, `RAZOR BLADE LEO` sur `00162144` ;
-   `whiteknight2519`, `LORD PEINX13` sur `000d5950`. Le reste est dense et non decode.
+   — `joueur_165` (un joueur suivi par le projet), `vamprym`, `RAZOR BLADE LEO` sur `00162144` ;
+   `joueur_283`, `JOUEUR_731` sur `000d5950`. Le reste est dense et non decode.
 10. **Le premier octet d'un paquet delta n'est pas un type d'evenement, et le bit de poids faible
     du lot D4 est explique.** 219 702 paquets du corpus font UN octet — trop court pour l'en-tete
     minimal d'un evenement (11 bits). Sous la grammaire de trame, le bit en question tombe dans
@@ -204,8 +204,8 @@ octets de registre sont a 95,40 % des zeros de bourrage). Ce que les mesures en 
   taille fixe a ces pas. Le niveau general, tres au-dessus des 0,391 % d'octets uniformes, vient
   des 17 % de zeros et de la repetition locale.
 - **Elle porte l'identite des joueurs.** Recherche des chaines UTF-16LE : sur `00162144`,
-  `vamprym` (`0x13CA9A`), `Chocoboflor` (`0x13F378`), `RAZOR BLADE LEO` (`0x1408A2`) ; sur
-  `000d5950`, `whiteknight2519` (`0x13CCA6`), `LORD PEINX13` (`0x13F7AF`). **`Chocoboflor` est un
+  `vamprym` (`0x13CA9A`), `joueur_165` (`0x13F378`), `RAZOR BLADE LEO` (`0x1408A2`) ; sur
+  `000d5950`, `joueur_283` (`0x13CCA6`), `JOUEUR_731` (`0x13F7AF`). **`joueur_165` est un
   joueur suivi par le projet** : ce sont bien des participants, pas des suites d'octets heureuses.
   Trois seulement par film, et espacees de ~10 ko : le reste du roster n'apparait pas en clair,
   ce qui est attendu d'un flux bit-packe ou seules les chaines tombant sur un octet plein restent

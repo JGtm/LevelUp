@@ -24,9 +24,9 @@ score est celui que sert l'API : la requête Q12 (`platform/duckdb/queries_match
 
 | Instant affiché (frame) | Eagle (f0) | Cobra (f1) |
 |---|---|---|
-| 0:00 (227), préambule compris (217) | **3** : MONEY x BUTTER, Namikidori, DRghie | 4 : FairyNectar5788, Madina97294, Chocoboflor, JGtm |
-| 2:14 (1567) | **5** : MONEY x BUTTER, Namikidori, DRghie, **« Joueur inconnu »** (fantôme), Claudors | 4 : idem |
-| 6:24 (4067) | **5** : idem 2:14 | **5** : **FairyNectar5788** (fantôme), Madina97294, Chocoboflor, JGtm, 343 Brew Dog |
+| 0:00 (227), préambule compris (217) | **3** : MONEY x BUTTER, joueur_1013, joueur_595 | 4 : joueur_539, joueur_117, joueur_165, JGtm |
+| 2:14 (1567) | **5** : MONEY x BUTTER, joueur_1013, joueur_595, **« Joueur inconnu »** (fantôme), Claudors | 4 : idem |
+| 6:24 (4067) | **5** : idem 2:14 | **5** : **joueur_539** (fantôme), joueur_117, joueur_165, JGtm, 343 Brew Dog |
 
 Frise des bascules (même instrument) : Eagle 3 → 4 à 0:44.0 (f661), 4 → 5 à 1:36.0 (f1185) ;
 Cobra 4 → 5 à 5:27.0 (f3497). Les trois constats de l'utilisateur sont exacts à la tuile près.
@@ -36,19 +36,19 @@ Cobra 4 → 5 à 5:27.0 (f3497). Les trois constats de l'utilisateur sont exacts
   corps existe dans le film (slot 512, créé à f0, positions jusqu'à f270) mais il est ANONYME : aucune
   vie nommée, donc aucun siège, donc aucune fiche. Sa ligne de tableau de score est de surcroît
   filtrée par Q12 (0/0/0/0).
-- **Le 5e d'Eagle à 2:14** : « Joueur inconnu » = `2535449383340628` (Hanover Cat, gamertag connu de
+- **Le 5e d'Eagle à 2:14** : « Joueur inconnu » = `2700529065230693` (joueur_270, gamertag connu de
   `v_gamertag_lookup`, mais sa ligne 0/0/0/0 est filtrée par Q12 et le film ne lui écrit aucun nom).
   Sa seule vie publiée dure 0,2 s (slot 523, f661–662, 5 positions) ; ensuite la règle
   `seatOccupantAt` le garde **`present`** jusqu'à la fin parce qu'aucun successeur n'occupe SON siège
   (siège 9) — Claudors est assis au siège 10.
-- **Le 5e de Cobra à 6:24** : FairyNectar5788, dernière vie finie à 4:49.0 (f3117, tuée par MONEY),
+- **Le 5e de Cobra à 6:24** : joueur_539, dernière vie finie à 4:49.0 (f3117, tuée par MONEY),
   gardée `present` pour la même raison (siège 1 sans successeur) ; 343 Brew Dog est au siège 8.
 
 ### 1.2 Ce que disent l'API et le film (pièces brutes)
 
 API (`SP/db/shared_matches_v2.duckdb`, `match_participants`), toujours 4 contre 4 : Eagle = MONEY,
-Namikidori, DRghie + la 4e place tenue successivement par Hundy (−0:01.7 → 0:34.0), Hanover Cat
-(0:33.9 → 1:16.1), PardonMy (1:16.1 → 1:29.8), Claudors (1:29.7 → fin) ; Cobra = Madina, Chocoboflor,
+joueur_1013, joueur_595 + la 4e place tenue successivement par Hundy (−0:01.7 → 0:34.0), joueur_270
+(0:33.9 → 1:16.1), PardonMy (1:16.1 → 1:29.8), Claudors (1:29.7 → fin) ; Cobra = joueur_075, joueur_165,
 JGtm + FairyNectar (→ 5:22.3) puis Brew Dog (5:22.4 → fin).
 
 Faits persistés du film (sonde Go, `sonde_faits.txt`) — **MESURÉ** :
@@ -97,7 +97,7 @@ Quatre défauts se composent ; les deux premiers suffisent à produire 3 / 5 / 5
 `seatLogic.ts:123-134` : une présence finie rend `present` tant qu'aucun occupant suivant n'est
 assis sur le **même** `seat` (« mourir n'est pas partir », D2 du lot 1.9.14). La règle était voulue
 pour les morts de fin de partie ; elle devient un fantôme dès que le remplaçant est assis sur un AUTRE
-siège — ce qui est le cas général (C2). **MESURÉ** : Hanover Cat (siège 9, présence 661–662) et
+siège — ce qui est le cas général (C2). **MESURÉ** : joueur_270 (siège 9, présence 661–662) et
 FairyNectar (siège 1, présence 0–3117) restent affichés jusqu'à la fin ; 8 376 tuile-s de ce type sur
 22 documents.
 
@@ -109,8 +109,8 @@ des vies, et (d) dont la présence (enveloppe des vies) finit AVANT l'arrivée. 
 (**DÉDUIT** ligne à ligne, `coverage.seats.apparies = 0` **MESURÉ**) :
 - la place réellement libérée (siège 5, WNBA Fan A5) n'a ni vie ni équipe → jamais partante ;
 - Hundy / PardonMy (bots, index 8) n'ont pas d'équipe → exclus ;
-- Hanover Cat (index 9) est un ARRIVANT → ne peut pas être partant pour Claudors (index 10) ;
-- les seuls partants d'Eagle sont MONEY (5042) et DRghie (5050), « partis » parce que morts avant
+- joueur_270 (index 9) est un ARRIVANT → ne peut pas être partant pour Claudors (index 10) ;
+- les seuls partants d'Eagle sont MONEY (5042) et joueur_595 (5050), « partis » parce que morts avant
   la dernière frame : ils ne sont libres qu'après l'arrivée de 9 et 10.
 Résultat : Eagle a 5 sièges (0, 3, 6, 9, 10), Cobra 5 (1, 2, 4, 7, 8). Le film réutilise l'index d'un
 partant 2 fois sur 35 arrivées (lot 1.7) ; la règle « siège = index » ne peut donc pas porter
@@ -159,8 +159,8 @@ l'index de participant : c'est la **place**, et le remplaçant hérite de celle 
 | Film | Index de tireur | Tirs | Tombés dans les vies de… | Index de participant du tireur |
 |---|---|---|---|---|
 | b1ad85eb | 5 (siège de WNBA Fan A5) | 84 | **Claudors 100 %** | 10 |
-| 43716616 | 5 (siège de Slowpoke6743, parti) | 65 | **KernelPanic10 100 %** | 9 |
-| 43e96765 | 0 (siège de LeodaganQC, parti) | 38 | Cmillward21 89 % (le reste = LeodaganQC avant son départ) | 9 |
+| 43716616 | 5 (siège de joueur_721, parti) | 65 | **joueur_608 100 %** | 9 |
+| 43e96765 | 0 (siège de LeodaganQC, parti) | 38 | joueur_697 89 % (le reste = LeodaganQC avant son départ) | 9 |
 
 Chaque autre index de tireur tombe à 89–100 % dans les vies du joueur de la table au même numéro.
 Sur b1ad85eb, Claudors a donc **0 tir publié** : ses 84 tirs sont rangés `noSlot` (144 au total),
@@ -230,13 +230,13 @@ Go :
 
 Tests et garde-rails :
 - Go, ROUGE aujourd'hui : un témoin au gabarit de b1ad85eb (8 sièges dont un jamais joué, 3 bots
-  index 8 de désignateurs 0/0/1, arrivants 9 et 10) — places Eagle 5 : Hundy → Hanover Cat → PardonMy
+  index 8 de désignateurs 0/0/1, arrivants 9 et 10) — places Eagle 5 : Hundy → joueur_270 → PardonMy
   → Claudors, Cobra 1 : FairyNectar → Brew Dog ; équipe de chaque bot ; au plus 4 occupants par équipe
   à chaque frame. Mutation : réagréger par index → rouge.
 - Web, ROUGE aujourd'hui : réécrire le témoin `seatLogic.test.ts:125` (qui fige `[3, 5]`) avec les
   tuiles attendues à f227 / f1567 / f4067 :
-  Eagle {MONEY x BUTTER, Namikidori, DRghie, 343 Hundy} → {…, Claudors} ;
-  Cobra {FairyNectar5788, Madina97294, Chocoboflor, JGtm} → {343 Brew Dog, Madina97294, Chocoboflor, JGtm}.
+  Eagle {MONEY x BUTTER, joueur_1013, joueur_595, 343 Hundy} → {…, Claudors} ;
+  Cobra {joueur_539, joueur_117, joueur_165, JGtm} → {343 Brew Dog, joueur_117, joueur_165, JGtm}.
 - Garde-rail : test de propriété sur toutes les fixtures de contrat et goldens d'assemblage —
   « à aucune frame une équipe n'a plus d'occupants que de places » ; test que `seatOccupantAt` rend
   `absent` après la présence d'un occupant sans successeur.
@@ -272,7 +272,7 @@ capacité 14 → **10** documents (5 630 → **374** s) ; « moins que l'API » 
 (3 485 → **198** s) ; tuiles de joueurs sortis 8 376 → **0** ; b1ad85eb exactement 4 + 4 aux trois
 instants avec les noms attendus (`frise_apres_b1ad85eb.txt`). Le résidu est l'imprécision de l'API :
 bots dont l'heure API précède la fin des vies du partant (`4ecdf3e7`, `859da825`, `bf2a9f05`…) et
-micro-vies (≤ 0,5 s) d'un partant après son départ (`859da825`, opresko, f3167–3170).
+micro-vies (≤ 0,5 s) d'un partant après son départ (`859da825`, joueur_1029, f3167–3170).
 
 Risques : contraire à ADR 0034 D-9 (« la base est un compteur de contrôle, jamais un repli ») pour
 l'équipe des bots ; retard API ≈ 20 s (C4) qui décale arrivées et départs ; critère de retrait
@@ -313,12 +313,12 @@ le re-décodage du parc est refusé pour l'instant, avec ses replis nommés, com
    b1ad85eb −21,4 s deux fois) : `successions.go` (fenêtre −2 s / +20 s) manque la première vie du bot
    remplaçant ; `presenceFeed.ts` date les lignes « a rejoint / a quitté » avec le même retard.
 3. **Q12 exclut les participants « tout à zéro »** (64 sur 31 documents) : le rejeu perd leur nom
-   (Hanover Cat → « Joueur inconnu ») et leurs lignes de présence.
+   (joueur_270 → « Joueur inconnu ») et leurs lignes de présence.
 4. `43e96765` : index 0 (LeodaganQC) divergent (`divIndex=1`) — une seconde entité d'index 0 d'un
    autre désignateur, à instruire.
 5. Bots présents moins de 20 s : aucune équipe lue (`43716616`, `72b0a25e`, `d1dfbc02`, `f2966f08`,
    `divergences 0`) — `ScanPlayerTeams` ne lit que les images-clés.
-6. Micro-vies (≤ 0,5 s) : b1ad85eb slot 523 (Hanover Cat, 5 positions), `859da825` slot 548 (opresko,
+6. Micro-vies (≤ 0,5 s) : b1ad85eb slot 523 (joueur_270, 5 positions), `859da825` slot 548 (joueur_1029,
    après son départ API).
 7. Trois documents affichent une 3e colonne « sans équipe » (`a6ae19fb` bot hors roster, `f2966f08`
    bot fantôme toute la partie, `db1b00b3` film tronqué de 38 s).
@@ -335,5 +335,5 @@ le re-décodage du parc est refusé pour l'instant, avec ses replis nommés, com
 - Go : `apps/go-api/internal/games/halo_infinite/film/replay/equipes_b1ad85eb_research_test.go`
   (`//go:build research`, lit les faits de `b1ad85eb`, `43e96765`, `43716616`, aucun film), joué deux
   fois sous verrou `voie.sh`, `GOCACHE` privé, `CGO_ENABLED=0`. Sortie `sonde_faits.txt`, `tirs_*.tsv`.
-- **Worktree à retirer** : `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-inv-equipes_b1ad85eb`
+- **Worktree à retirer** : `<poste>/Downloads/Scripts/LevelUp-wt-inv-equipes_b1ad85eb`
   (détaché sur `43a01721e`, un seul fichier ajouté, non commité, `.gocache` privé).

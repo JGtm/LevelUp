@@ -314,7 +314,7 @@ exhaustive-deps ×3, react-refresh ×1) ; `npx tsc -b` exit 0.
 ### Phase 4 — Le logo (rapide)
 
 - [x] 4.1 Génération de `apps/web/public/icons/replay-black.png` et `replay-white.png` depuis
-      `C:\Users\Guillaume\Downloads\Replay-logo.png` par un programme Go JETABLE dans le
+      `<poste>\Downloads\Replay-logo.png` par un programme Go JETABLE dans le
       scratchpad (`image/png`, pas de Python, pas d'ImageMagick — absent du poste) :
       `alphaOut = alphaIn × clamp((R − max(G,B)) / 160, 0, 1)` (les rouges = encre, l'ovale
       gris/blanc = transparent), couleur pleine noire / blanche, recadrage à la boîte

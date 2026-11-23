@@ -1,4 +1,4 @@
-# Lot `fiche_armes` — « à 2:08, XxDaemonGamerxX n'a pas d'armes dans sa fiche » (81c02726)
+# Lot `fiche_armes` — « à 2:08, joueur_291 n'a pas d'armes dans sa fiche » (81c02726)
 
 Enquête en lecture seule, base `43a01721e`. Horloge : `t = affiché_s × 10 + 227`.
 Légende : **MESURÉ** (fichier:ligne, sortie chiffrée), **DÉDUIT**, **HYPOTHÈSE**.
@@ -14,7 +14,7 @@ aucun film ouvert) : `LevelUp-wt-inv-fiche_armes/apps/go-api/internal/games/halo
 
 ### 1.1 La vie concernée (MESURÉ, document 81c02726)
 
-Slot 534, xuid 2533274833178266, filmIndex 1, équipe 0, vie `startFrame 1422 → endFrame 1623`
+Slot 534, xuid 2558964982616721, filmIndex 1, équipe 0, vie `startFrame 1422 → endFrame 1623`
 (1:59.5 → 2:19.6). Création de bipède lue à t 1422 (gen 1, index de participant 1). Pour cette vie :
 **0 `loadouts`, 0 `inventory`, 0 `abilities`, 0 `equipmentChanges`**. Ce qui existe :
 `weaponChanges {t 1520, taken, fd98554c VK78, sans from}`, `pickups` VK78 à 1520 et grenade à pointes

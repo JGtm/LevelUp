@@ -80,15 +80,15 @@ Front : `ExplorerTargetIdentityBanner.test.tsx` (emblème/bannière/rang/adornme
 **Checklist rapide (à cocher sur l'autre machine) :**
 
 - [ ] `make go-api-dev` (ou équivalent) → serveur up sur `:8000`.
-- [ ] **Probe API brute joueur inconnu** (répond à « récupère-t-on le Spartan ID de Nilton410 ? ») :
+- [ ] **Probe API brute joueur inconnu** (répond à « récupère-t-on le Spartan ID de joueur_006 ? ») :
   ```bash
-  go run ./apps/go-api/cmd/diag_appearance JGtm 2535427927026623
+  go run ./apps/go-api/cmd/diag_appearance JGtm 2548036979862261
   # Attendu : /customization/appearance → 403 ; /customization?view=public → 200 (ServiceTag "MELG", Emblem, Backdrop)
   ```
 - [ ] **Endpoint Explorer, cible NON-locale** (curl avec session/tokens) :
   ```bash
   curl -s -X POST http://localhost:8000/api/v1/players/JGtm/pages/explorer/player-query \
-    -H 'Content-Type: application/json' -d '{"target_gamertag":"Nilton410"}' | jq '.target_profile.identity'
+    -H 'Content-Type: application/json' -d '{"target_gamertag":"joueur_006"}' | jq '.target_profile.identity'
   # Attendu (clés SNAKE_CASE — c'est le fix Phase 1) :
   #   spartan_id:"MELG", emblem_image_url, banner_image_url,
   #   career_rank:{ rank_title, adornment_image_url, current_xp, xp_for_next_rank }
@@ -100,7 +100,7 @@ Front : `ExplorerTargetIdentityBanner.test.tsx` (emblème/bannière/rang/adornme
 - [ ] **Médailles data** : `go run apps/go-api/cmd/inspect_bp/main.go data/warehouse/metadata.duckdb` → comparer `medal_definitions` vs `citation_mappings`.
 - [ ] **(front) `npm install` puis `npm run typecheck`** → confirmer 0 erreur (l'erreur `hls.js` de cet env disparaît une fois `node_modules` installé).
 
-### Cas « joueur tiers rencontré » (ex. Nilton410) — flow + état de validation
+### Cas « joueur tiers rencontré » (ex. joueur_006) — flow + état de validation
 
 Pour une cible **non suivie** (absente de `db_profiles.json`) :
 
@@ -108,17 +108,17 @@ Pour une cible **non suivie** (absente de `db_profiles.json`) :
 - **Chemin** : `LocalIdentity` → nil (pas suivi) → bascule **live** `CareerLiveService.FetchLiveIdentity(xuid)` (`career_live_target.go`).
 - **Customisation tierce = vue publique** : `GetSpartanCustomization` → 403 sur `/customization/appearance` (player-gated) → fallback `/customization?view=public` (HTTP 200, même bloc Appearance pour tout xuid) → **SpartanID (service tag) + emblem + backdrop + banner** (banner via `ResolveNameplateURL` si absent).
 
-**VALIDATION RUNTIME DÉJÀ FAITE (thought_log 2026-05-30, lignes 600-627)** — exactement `JGtm → Nilton410` (xuid `2535427927026623`) via `cmd/diag_appearance` + curl serveur `:8000` :
+**VALIDATION RUNTIME DÉJÀ FAITE (thought_log 2026-05-30, lignes 600-627)** — exactement `JGtm → joueur_006` (xuid `2548036979862261`) via `cmd/diag_appearance` + curl serveur `:8000` :
 - `/customization/appearance` → 403 ; `/customization?view=public` → **200** (ServiceTag "MELG", Emblem, Backdrop).
 - Endpoint Explorer → HTTP 200, `target_profile.identity` = **SpartanID "MELG" + emblem + backdrop + banner + career rank 272 « Hero Gold »** ; `top_medals`, `season_csrs`, `matches_per_season` (S13:22), `time_played_seconds`. **Carte complète pour un joueur sans DB locale.**
 - `logs/service.log` : ligne INFO `FetchLiveIdentity résolu` confirmée. HighestCSR/LUSR nuls (peaks du propriétaire, omis pour un tiers — voulu).
 - ⇒ **`careerranks` n'est PAS gated** dans les faits (le rang 272 est revenu) — contrairement à ce que le commentaire d'en-tête de `career_live_target.go` suppose en cas de 403. Le code dégrade proprement (`career_rank=null`) SI un jour c'était gaté, mais empiriquement le rang s'affiche.
 
-**Ce que MON changement (Phase 1) modifie vs cette validation** : uniquement la **couche de sérialisation** — la même donnée passe désormais par `analysis.BuildSpartanIdentity(raw, locale, ranks)` → DTO snake_case (`career_rank` imbriqué) au lieu de la struct brute PascalCase. Couvert en unitaire par `TestExplorerService_TargetProfile_IdentitySerializesAsDTO`. Le **flux de récupération live (le « est-ce qu'on récupère bien le Spartan ID de Nilton410 »)** est inchangé par ma PR — il était déjà fonctionnel.
+**Ce que MON changement (Phase 1) modifie vs cette validation** : uniquement la **couche de sérialisation** — la même donnée passe désormais par `analysis.BuildSpartanIdentity(raw, locale, ranks)` → DTO snake_case (`career_rank` imbriqué) au lieu de la struct brute PascalCase. Couvert en unitaire par `TestExplorerService_TargetProfile_IdentitySerializesAsDTO`. Le **flux de récupération live (le « est-ce qu'on récupère bien le Spartan ID de joueur_006 »)** est inchangé par ma PR — il était déjà fonctionnel.
 
-**Sur la « bannière aléatoire »** : ⚠️ malentendu à lever. La vue publique fournit quasi toujours backdrop et/ou vraie nameplate → Nilton410 reçoit **SA vraie bannière** (cf. validation ci-dessus), PAS une aléatoire. Mon pool déterministe (Phase 3.6) n'est qu'un **filet ultime** : il ne se déclenche QUE si banner **ET** backdrop sont vides (cible sans aucun visuel public — rare). Design option C = priorité **vraie bannière > backdrop > pool**. Donc pour Nilton410 spécifiquement, le pool ne s'active pas (et c'est le comportement voulu).
+**Sur la « bannière aléatoire »** : ⚠️ malentendu à lever. La vue publique fournit quasi toujours backdrop et/ou vraie nameplate → joueur_006 reçoit **SA vraie bannière** (cf. validation ci-dessus), PAS une aléatoire. Mon pool déterministe (Phase 3.6) n'est qu'un **filet ultime** : il ne se déclenche QUE si banner **ET** backdrop sont vides (cible sans aucun visuel public — rare). Design option C = priorité **vraie bannière > backdrop > pool**. Donc pour joueur_006 spécifiquement, le pool ne s'active pas (et c'est le comportement voulu).
 
-**Re-validation live NON rejouable dans CET environnement** : `db_profiles.json`, `data/players/`, `data/auth/watcher_tokens/` sont **absents** ici (machine sans données runtime) ; les ports `:8000/:8080/:3000` timeoutent. `cmd/diag_appearance JGtm 2535427927026623` échoue donc sur `owner introuvable dans db_profiles`. La re-preuve live doit être faite sur la machine de dev habituelle (avec config + tokens), commande prête ci-dessus.
+**Re-validation live NON rejouable dans CET environnement** : `db_profiles.json`, `data/players/`, `data/auth/watcher_tokens/` sont **absents** ici (machine sans données runtime) ; les ports `:8000/:8080/:3000` timeoutent. `cmd/diag_appearance JGtm 2548036979862261` échoue donc sur `owner introuvable dans db_profiles`. La re-preuve live doit être faite sur la machine de dev habituelle (avec config + tokens), commande prête ci-dessus.
 
 ## Commandes pour re-valider
 

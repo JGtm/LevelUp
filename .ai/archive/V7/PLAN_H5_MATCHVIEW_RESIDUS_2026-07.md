@@ -69,7 +69,7 @@ first_sync_by=JGtm). Matchs témoins :
 5. **« Pas de LUSR »** : les 3 matchs concernés sont CLASSÉS → l'affichage attend un
    CSR par match (`resolveMatchRatingType` : ranked → CSR, social → LUSR).
    - JGtm : 1306 classés dont **115 sans ligne CSR** ; 664 sociaux dont 190 sans LUSR.
-     Madina : 114/125 ; Chocoboflor : 107/218 ; XxDaemonGamerxX : 52/56.
+     joueur_075 : 114/125 ; joueur_165 : 107/218 ; joueur_291 : 52/56.
    - CSR manquants : le backfill (23-24/06) a couru APRÈS l'import — matchs dans le
      périmètre mais sautés en silence (`csr_match.go` : carnage KO → `continue` sans
      log ; gamertag introuvable ; `CurrentCsr` nil). Le taux de manque explose sur les
@@ -248,8 +248,8 @@ Périmètre fermé :
 - [x] D4. Témoins vérifiés : 7e3fa711 / 14f762a2-970b / f6baea94-e0e9 → ligne
       `CSR / Placement` dans match_skill_rank_latest ET `rank={rating_type:CSR,
       tier_label:Placement}` servi par l'API ; header complet (map/mode/playlist).
-      Couverture finale : classés avec ligne = 1306/1306 (JGtm), 1100/1100 (Madina),
-      893/893 (Chocoboflor), 219/219 (XxDaemonGamerxX).
+      Couverture finale : classés avec ligne = 1306/1306 (JGtm), 1100/1100 (joueur_075),
+      893/893 (joueur_165), 219/219 (joueur_291).
 Gate LOT D :
 ```
 cd apps/go-api && go test -tags=integration ./internal/persist/... ./internal/games/halo_5/...
@@ -332,7 +332,7 @@ CI branche verte — le job Frontend rouge du commit LOT C a été corrigé, cf.
          1 map par id (Tidal, d67fdcb9) appliqués → **48/48 maps du registre H5 résolues**
          (garde-fou `logUnresolvedMaps` : 0 map non résolue).
       2. D2 (`h5-csr-match-backfill --missing-only`, 4 joueurs) : **1002 lignes « Placement »
-         écrites** — JGtm 303 / Madina97294 293 / Chocoboflor 277 / XxDaemonGamerxX 129 ;
+         écrites** — JGtm 303 / joueur_117 293 / joueur_165 277 / joueur_291 129 ;
          `placement_csr_null = 100 %`, **zéro skip** (0 carnage KO, 0 owner absent). DEC-4
          confirmé en prod comme en local.
       3. F3 (`cleanup_media_index --foreign-only`) : dry-run préalable = **84 fichiers exacts**,
@@ -351,9 +351,9 @@ CI branche verte — le job Frontend rouge du commit LOT C a été corrigé, cf.
 | A | COMPLÉTÉ | 2026-07-11 | mode/playlist/tug vérifiés réel (JGtm h5 + non-rég Infinite) ; explorer hors périmètre (§8) |
 | B | COMPLÉTÉ | 2026-07-11 | Tidal seedé local (--overrides-only) ; map_ui='Tidal' vérifié réel ; garde-fou 0 map non résolue. PROD : rejouer en V2 |
 | C | COMPLÉTÉ | 2026-07-11 | Résistance + Résultat attendu masqués selon capability/null ; 5 tests vitest ; 112/112 match-view ; fix CI types test (tsc -b) |
-| D | COMPLÉTÉ | 2026-07-11 | D2 ventilation : JGtm 303, Madina 293, Chocoboflor 277, XxDaemon 129 → **1002/1002 placement_csr_null** (0 carnage KO, 0 owner absent) ; lignes Placement écrites, couverture classés 100 % × 4 joueurs. PROD : rejouer D2 en V2 |
+| D | COMPLÉTÉ | 2026-07-11 | D2 ventilation : JGtm 303, joueur_075 293, joueur_165 277, joueur_639 129 → **1002/1002 placement_csr_null** (0 carnage KO, 0 owner absent) ; lignes Placement écrites, couverture classés 100 % × 4 joueurs. PROD : rejouer D2 en V2 |
 | E | COMPLÉTÉ | 2026-07-11 | delivery-checklist déroulée ; gate global vert (tests+lint+types+CI branche) |
-| V | COMPLÉTÉ : V1/V2/V4 [x] ; V3 [!] user | 2026-07-12 | salve post-deploy : overrides Tidal → 48/48 maps, 1002 lignes Placement (JGtm 303/Madina 293/Choco 277/XxDaemon 129, 100 % placement_csr_null, 0 skip), purge 84 média (dry-run=84) ; V3 = vérif visuelle utilisateur |
+| V | COMPLÉTÉ : V1/V2/V4 [x] ; V3 [!] user | 2026-07-12 | salve post-deploy : overrides Tidal → 48/48 maps, 1002 lignes Placement (JGtm 303/joueur_075 293/joueur_901 277/joueur_639 129, 100 % placement_csr_null, 0 skip), purge 84 média (dry-run=84) ; V3 = vérif visuelle utilisateur |
 | F | COMPLÉTÉ | 2026-07-11 | vérifié réel local (7 clips h5 associés, copies prod du scratchpad expirées) ; purge locale 84→0 ; f88f6d8b lui-même = assoc PROD → confirmé en V3. PROD : rejouer F3 en V2 |
 
 ## 8. Découvertes hors périmètre (NE PAS traiter dans ce chantier)

@@ -146,12 +146,12 @@ Test Files  150 passed (150)
 EXIT_VITEST=0
 ## web: npm run lint (plafond 20)
 
-C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\match-view\MatchEncountersTable.tsx
+<poste>\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\match-view\MatchEncountersTable.tsx
   458:17  warning  Compilation Skipped: Use of incompatible library
 
 This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
 
-C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\match-view\MatchEncountersTable.tsx:458:17
+<poste>\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\match-view\MatchEncountersTable.tsx:458:17
   456 |   const [sorting, setSorting] = useState<SortingState>([])
   457 |
 > 458 |   const table = useReactTable<MatchEncounterRow>({
@@ -160,20 +160,20 @@ C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\match-v
   460 |     columns,
   461 |     state: { sorting },  react-hooks/incompatible-library
 
-C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\match-view\MatchKDCumulChart.tsx
+<poste>\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\match-view\MatchKDCumulChart.tsx
   356:5  warning  React Hook useCallback has a missing dependency: 't'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
 
-C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\match-view\MatchPositionsHeatmap.tsx
+<poste>\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\match-view\MatchPositionsHeatmap.tsx
    68:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                                                          react-refresh/only-export-components
   127:9   warning  The 'all' logical expression could make the dependencies of useMemo Hook (at line 128) change on every render. To fix this, wrap the initialization of 'all' in its own useMemo() Hook  react-hooks/exhaustive-deps
   127:9   warning  The 'all' logical expression could make the dependencies of useMemo Hook (at line 133) change on every render. To fix this, wrap the initialization of 'all' in its own useMemo() Hook  react-hooks/exhaustive-deps
 
-C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\match-view\MatchScoreboard.tsx
+<poste>\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\match-view\MatchScoreboard.tsx
   503:17  warning  Compilation Skipped: Use of incompatible library
 
 This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
 
-C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\match-view\MatchScoreboard.tsx:503:17
+<poste>\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\match-view\MatchScoreboard.tsx:503:17
   501 |   const [sorting, setSorting] = useState<SortingState>([])
   502 |
 > 503 |   const table = useReactTable<ScoreboardRowVM>({
@@ -182,7 +182,7 @@ C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\match-v
   505 |     columns,
   506 |     state: { sorting },  react-hooks/incompatible-library
 
-C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\media\MediaAudioConfigButton.tsx
+<poste>\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\media\MediaAudioConfigButton.tsx
   71:5  warning  Error: Calling setState synchronously within an effect can trigger cascading renders
 
 Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
@@ -191,7 +191,7 @@ Effects are intended to synchronize state between React and external systems suc
 
 Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
 
-C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\media\MediaAudioConfigButton.tsx:71:5
+<poste>\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\media\MediaAudioConfigButton.tsx:71:5
   69 |   useEffect(() => {
   70 |     if (!data) return
 > 71 |     setMode(data.mode ?? 'auto')
@@ -200,12 +200,12 @@ C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\media\M
   73 |   }, [data])
   74 |  react-hooks/set-state-in-effect
 
-C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\palmares\RelationsTable.tsx
+<poste>\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\palmares\RelationsTable.tsx
   344:17  warning  Compilation Skipped: Use of incompatible library
 
 This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
 
-C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\palmares\RelationsTable.tsx:344:17
+<poste>\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\palmares\RelationsTable.tsx:344:17
   342 |     pageSize: RELATIONS_PAGE_SIZE,
   343 |   })
 > 344 |   const table = useReactTable<RelationInsight>({
@@ -214,12 +214,12 @@ C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\palmare
   346 |     columns,
   347 |     state: { sorting, pagination },  react-hooks/incompatible-library
 
-C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\squad\SquadImpactScoreboard.tsx
+<poste>\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\squad\SquadImpactScoreboard.tsx
   301:17  warning  Compilation Skipped: Use of incompatible library
 
 This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
 
-C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\squad\SquadImpactScoreboard.tsx:301:17
+<poste>\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\squad\SquadImpactScoreboard.tsx:301:17
   299 |   }, [matrixMatches, matrixBadgeOrd, extremes, scoreExt, i18n])
   300 |
 > 301 |   const table = useReactTable<ImpactRow>({
@@ -228,12 +228,12 @@ C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\squad\S
   303 |     columns,
   304 |     getCoreRowModel: getCoreRowModel(),  react-hooks/incompatible-library
 
-C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\squad\SquadSynergyHistoryTable.tsx
+<poste>\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\squad\SquadSynergyHistoryTable.tsx
   350:17  warning  Compilation Skipped: Use of incompatible library
 
 This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
 
-C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\squad\SquadSynergyHistoryTable.tsx:350:17
+<poste>\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\squad\SquadSynergyHistoryTable.tsx:350:17
   348 |   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: PAGE_SIZE })
   349 |
 > 350 |   const table = useReactTable<SquadMatchHistoryRow>({

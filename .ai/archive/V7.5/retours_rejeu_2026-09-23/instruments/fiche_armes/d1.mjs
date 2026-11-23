@@ -1,6 +1,6 @@
 import fs from 'fs';
 const id = process.argv[2];
-const doc = JSON.parse(fs.readFileSync(`C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/${id}.json`, 'utf8'));
+const doc = JSON.parse(fs.readFileSync(`C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/${id}.json`, 'utf8'));
 console.log('roster', JSON.stringify(doc.roster));
 console.log('identity.bipedSlots', JSON.stringify(doc.identity.bipedSlots).slice(0,3000));
 console.log('identity.players', JSON.stringify(doc.identity.players).slice(0,2000));

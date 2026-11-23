@@ -382,7 +382,7 @@ Depuis `apps/go-api`, pour toute sonde `research && campagne_overlay` :
 
 ```
 go test -tags=research,campagne_overlay \
-  -overlay=C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-campagne-grammaire/.ai/V7.5/film_re/campagne_grammaire_2026-10-01/surcouche_unique_postj12/overlay.json \
+  -overlay=<poste>/Downloads/Scripts/LevelUp-wt-campagne-grammaire/.ai/V7.5/film_re/campagne_grammaire_2026-10-01/surcouche_unique_postj12/overlay.json \
   -count=1 -timeout 240m -run '<Test>' ./internal/games/halo_infinite/film/internal/grammar/
 ```
 

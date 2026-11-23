@@ -1,6 +1,6 @@
 // Gate parc : images-cles trouees (bipedes vivants absents) sur une GRILLE complete, et vies sans arme.
 import fs from 'fs';
-const DIR = 'C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
+const DIR = 'C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
 const files = fs.readdirSync(DIR).filter(f => /^[0-9a-f]{8}\.json$/.test(f)).sort();
 const q = (a, p) => { const s = [...a].sort((x,y)=>x-y); return s[Math.min(s.length-1, Math.floor(p*s.length))]; };
 let G = { docs:0, gridKf:0, kfNoBiped:0, kfHoled:0, kfClean:0, aliveInst:0, missInst:0, lives:0, lifeSec:0,

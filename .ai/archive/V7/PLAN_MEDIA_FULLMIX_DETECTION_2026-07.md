@@ -88,7 +88,7 @@ Gate 2 : `go build ./cmd/migrate-hls-audio` + `go test ./internal/media/...` ver
 ## Journal
 
 - [2026-07-17] Plan créé. Sources réelles confirmées présentes
-  (`C:\Users\Guillaume\Videos\Captures\JGtm\`) : `2026-07-03 21-38-44.mkv` (4 pistes opus,
+  (`<poste>\Videos\Captures\JGtm\`) : `2026-07-03 21-38-44.mkv` (4 pistes opus,
   Track1..4), `2026-07-07 23-03-38.mkv` (3 pistes aac full/game/voices),
   `2026-07-16 16-07-19.mkv` (3 pistes aac). ffmpeg 8.0.1 présent.
 - [2026-07-17] Items 1 et 2 COMPLÉTÉS, tous items statués `[x]`, 4 gates verts. Algorithme :

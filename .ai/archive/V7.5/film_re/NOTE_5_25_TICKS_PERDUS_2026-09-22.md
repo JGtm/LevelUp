@@ -103,14 +103,14 @@ taux qu on retranche pour obtenir la perte NETTE de l abandon.
 
 | joueur | vies | ticks attendus | lus | **PERDUS** | perte |
 |---|---:|---:|---:|---:|---:|
-| Tataaannn | 9 | 41 337 | 21 446 | **19 891** | 48,1 % |
-| Chocoboflor | 13 | 38 986 | 19 778 | **19 208** | 49,3 % |
+| joueur_737 | 9 | 41 337 | 21 446 | **19 891** | 48,1 % |
+| joueur_165 | 13 | 38 986 | 19 778 | **19 208** | 49,3 % |
 | JGtm | 10 | 34 289 | 18 070 | **16 219** | 47,3 % |
-| indahoopty8751 | 16 | 33 717 | 18 248 | **15 469** | 45,9 % |
-| MEK1906 | 17 | 21 491 | 16 597 | 4 894 | 22,8 % |
-| SHN Lups99 | 6 | 26 136 | 22 059 | 4 077 | 15,6 % |
-| Madina97294 | 12 | 22 892 | 19 800 | 3 092 | 13,5 % |
-| Draconewt | 7 | 23 863 | 20 870 | 2 993 | 12,5 % |
+| joueur_834 | 16 | 33 717 | 18 248 | **15 469** | 45,9 % |
+| JOUEUR_419 | 17 | 21 491 | 16 597 | 4 894 | 22,8 % |
+| joueur_670 | 6 | 26 136 | 22 059 | 4 077 | 15,6 % |
+| joueur_117 | 12 | 22 892 | 19 800 | 3 092 | 13,5 % |
+| joueur_023 | 7 | 23 863 | 20 870 | 2 993 | 12,5 % |
 | **TOTAL** | **90** | **242 711** | **156 868** | **85 843** | **35,4 %** |
 
 Perte NETTE de l abandon (moins le taux naturel de 1,30 %) : **34,1 %, soit 82 681 ticks**.
@@ -129,8 +129,8 @@ document publie sur ce film (lot 5.23.3), et les 8 joueurs sont ceux du roster d
 | **PERDUS** | **460 625** |
 | **perte** | **53,7 %** (nette **53,4 %**, 458 273 ticks) |
 
-Extremes : `AJM002` **90,7 %**, `BLADERUNNER3141` 70,5 %, `CU3RV0187` 67,6 % … `MiniScotsMin`
-23,1 %, `XN3RDXD3VILX` 27,1 %. Meme forme que sur `bfecd02b`, a un niveau plus haut : un film
+Extremes : `JOUEUR_469` **90,7 %**, `JOUEUR_136` 70,5 %, `JOUEUR_126` 67,6 % … `joueur_728`
+23,1 %, `JOUEUR_390` 27,1 %. Meme forme que sur `bfecd02b`, a un niveau plus haut : un film
 BTB est plus dense, et la cascade y coute davantage.
 
 ---
@@ -152,8 +152,8 @@ donc que leurs bords sont potentiellement DECALES, du quantum d une trame ou plu
 
 **CE QUI PEUT ETRE PERDU EN ENTIER, ce sont les 397 zones** (2 971 sur `4f77afc1`) : plus de
 cinq trames consecutives, dans une fenetre de mouvement, sans une seule lecture du corps. Par
-joueur sur `bfecd02b` : JGtm 82, Tataaannn 74, MEK1906 51, Chocoboflor 48, Madina97294 48,
-indahoopty8751 41, SHN Lups99 40, Draconewt 13.
+joueur sur `bfecd02b` : JGtm 82, joueur_737 74, JOUEUR_419 51, joueur_165 48, joueur_117 48,
+joueur_834 41, joueur_670 40, joueur_023 13.
 
 Les 495 intervalles fermes de l instrument se comparent aux **514** intervalles LUS que le
 document publie sur ce film (sprint 501 + mobilite 12 + accroupi 1, glissade 0 — lot 5.23.3) :

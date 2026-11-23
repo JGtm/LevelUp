@@ -65,7 +65,7 @@
 
 > Executeur : agent dedie dans `../LevelUp-wt-oddball-porteur` (branche `wt/oddball-porteur`).
 > Donnees et config lues dans le DEPOT PRINCIPAL via `LEVELUP_REPO_ROOT`
-> (`c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration`) — aucune ecriture de base,
+> (`<poste>/Downloads/Scripts/LevelUp-go-migration`) — aucune ecriture de base,
 > lectures DuckDB par `OpenReadForQuery` uniquement. Commits prefixe `oddball-d10(...)`,
 > jamais `git add -A`, jamais de push. `.ai/thought_log.md` et `.ai/REGISTRE_REPORTS.md`
 > ne sont PAS touches par cette branche (textes fournis au CR, le superviseur les consigne).

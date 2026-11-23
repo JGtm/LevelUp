@@ -24,8 +24,8 @@
 
 | Volet | Branche | Worktree | Base |
 |---|---|---|---|
-| A (Escouade) | `wt/squad-compo` | `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-squad-compo` | feat/v75 @ 823cf96d5 |
-| B (perf note) | `feat/perf-note-objectifs` | `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-perfnote` | feat/v75 @ 823cf96d5 |
+| A (Escouade) | `wt/squad-compo` | `<poste>\Downloads\Scripts\LevelUp-wt-squad-compo` | feat/v75 @ 823cf96d5 |
+| B (perf note) | `feat/perf-note-objectifs` | `<poste>\Downloads\Scripts\LevelUp-wt-perfnote` | feat/v75 @ 823cf96d5 |
 
 Volet A se replie dans `feat/v75` à la clôture (mode branche unique v7.5). Volet B reste
 sur sa branche (chantier isolé) ; merge décidé avec l'utilisateur après la v7.5.0.
@@ -60,13 +60,13 @@ stagés explicitement, jamais `git add -A`).
   sociale) : toute ligne enrichment avec `performance_score` non NULL dont le match est
   hors univers de calcul (outcome=4, is_excluded, sous seuil de chaîne) est remise à
   NULL (score + chain). Conséquence assumée et annoncée : les 8 notes ranked de JGtm et
-  les 8 de Chocoboflor disparaissent (elles dataient de l'ère pré-chaînes, référence
-  globale abandonnée) ; Madina garde ~14 notes ranked recalculées par famille.
+  les 8 de joueur_165 disparaissent (elles dataient de l'ère pré-chaînes, référence
+  globale abandonnée) ; joueur_075 garde ~14 notes ranked recalculées par famille.
 - D-E **Le batch devient auto-nettoyant** : à chaque run (force ou non), les scores
   stockés qui ne qualifient plus sont NULLés (pas seulement à la purge one-shot).
   L'exclusion manuelle d'un match est donc rattrapée au batch suivant (pas de nettoyage
   synchrone dans match_exclusion_service — hors périmètre).
-- D-F **BTB non scindé** (écarts modestes, volumes faibles hors Madina) — consigné au
+- D-F **BTB non scindé** (écarts modestes, volumes faibles hors joueur_075) — consigné au
   registre des reports avec condition de reprise (volumes BTB en hausse ou plainte
   calibration BTB).
 - D-G **`buildFormTab`/`analysis.ComputePerformanceSeries` (onglet API `form` sans UI)** :
@@ -167,12 +167,12 @@ ce fichier avant lot 3).
 
 **Gate 0 PASSÉ le 2026-08-27.** Outil vert (build/vet/gofmt/lint/run exit 0). Rapport :
 `LevelUp-wt-perfnote\.ai\RAPPORT_SIM_PERF_NOTE_2026-08.md`. Réplique du régime actuel
-exacte à 0.00 pt chez JGtm (1033 matchs) et Daemon (12) ; écarts Choco/Madina (1.3-2.2 pt
+exacte à 0.00 pt chez JGtm (1033 matchs) et Daemon (12) ; écarts joueur_901/joueur_075 (1.3-2.2 pt
 moyens) dans la plage de la sonde « métrique 0.06 absente » (medal_exploit). 10/12
-chaînes dans [45,55] ; les 2 hors fenêtre (chaos Madina 41.0 inchangée par la réforme ;
-ranked_objectif Madina 38.8 → 44.4, AMÉLIORÉE par la scission) sont pré-existantes et
+chaînes dans [45,55] ; les 2 hors fenêtre (chaos joueur_075 41.0 inchangée par la réforme ;
+ranked_objectif joueur_075 38.8 → 44.4, AMÉLIORÉE par la scission) sont pré-existantes et
 documentées. Zéro note simulée sur outcome=4 (116 DNF). Purge prévue : JGtm 78 /
-Chocoboflor 41 / Madina 118 / Daemon 10 — recoupe le diagnostic à l'unité près.
+joueur_165 41 / joueur_075 118 / Daemon 10 — recoupe le diagnostic à l'unité près.
 **POIDS FIGÉS : ospm = 0.12**, profil D-C confirmé tel quel (gain des « écrasés mais
 actifs » = 2.0× le plancher de bruit ; à 0.16 les porteurs de combat perdraient
 jusqu'à 12 pts et la marge de non-inversion tomberait au niveau du bruit ; profil
@@ -269,7 +269,7 @@ directes : **26 movers exactement** — 6 `CTF:Arena on Opulence` + 6 `CTF:Arena
 Flag` (Live Fire ×3, Prism ×3) + 2 `Strongholds:Arena` + 4 `Assault:Neutral Bomb` +
 3 `Arena:VIP` + 3 `Assault:One Bomb` + 1 `Assault:Neutral Bomb Squad` (= 25 sociaux →
 arena_objectif) + 1 `Ranked:CTF 3 Captures` (→ ranked_objectif). Tables par chaîne
-réconciliées : JGtm arena_objectif 221→235 (+14), Choco 152→156 (+4), Madina 192→199
+réconciliées : JGtm arena_objectif 221→235 (+14), joueur_901 152→156 (+4), joueur_075 192→199
 (+7) et ranked_objectif 21→22 (+1). **Correction du lot 0** : sur les « 14 pair_names
 inversés », 6 étaient des modes SLAYER inversés (`Team Slayer:Arena` ×5, `Slayer:Arena`
 ×1) — ils restent à bon droit en famille slayer ; l'annexe lot 0 les comptait à tort
@@ -299,7 +299,7 @@ robustesse.
 - [x] B2.3 Garde-rail pérenne : assertion d'intégration « aucun performance_score sur
       outcome=4 » après un run de batch sur fixture.
 - [x] B2.4 Réparation d'index PSA (découverte lot 0, CONFIRMÉE sur pièces par le pilote
-      le 2026-08-27) : sur la DB `XxDaemonGamerxX`, `idx_psa_match` est incohérent —
+      le 2026-08-27) : sur la DB `joueur_291`, `idx_psa_match` est incohérent —
       `WHERE match_id='05fffb2a-...'` rend 2 lignes, le scan forcé (`match_id||''=`)
       en rend 4. Item : balayer les 4 DBs joueur (comparaison lookup indexé vs scan
       forcé sur l'échantillon des match_ids multi-lignes), DROP INDEX + CREATE INDEX
@@ -323,7 +323,7 @@ packages zéro `--- FAIL:` (himap timeout local toléré).
 **B2.4 exécuté sur les 4 DBs réelles** (port 8000 vérifié libre, dry-run → repair →
 re-vérif par process neuf + contre-sondes pilote) : la corruption touchait LES QUATRE
 DBs sur `idx_psa_match` ET `idx_psa_category` (JGtm : 220/3830 lignes invisibles à
-l'index, 5,7 % ; Choco 37 ; Madina 32 ; Daemon 7) ; `idx_psa_gen` sain partout.
+l'index, 5,7 % ; joueur_901 37 ; joueur_075 32 ; Daemon 7) ; `idx_psa_gen` sain partout.
 DROP+CREATE+CHECKPOINT, row counts identiques avant/après, zéro divergence après
 (témoin 05fffb2a : 2/4 → 4/4). Cause racine de la désync NON élucidée (hors périmètre,
 famille bug ART) — consignée en Découvertes.
@@ -417,8 +417,8 @@ contre-sondés par le pilote : purge = prédiction À L'UNITÉ 4/4 (78/41/118/10
 note sur outcome=4 ; zéro chaîne `ranked` ; aucune perte de ligne (arithmétique
 append-only exacte) ; 26 movers confirmés perf ET LUSR (concordance
 performance_chain↔playlist_group : 0 divergence) ; médianes dans [45,55] hors 2 cas
-pré-existants documentés (chaos Madina 41,8 amélioré ; ranked_slayer n=2) ;
-ranked_objectif Madina 38,8 → 45,25 ; oracle sentinelle diag_perfsim : purge=0,
+pré-existants documentés (chaos joueur_075 41,8 amélioré ; ranked_slayer n=2) ;
+ranked_objectif joueur_075 38,8 → 45,25 ; oracle sentinelle diag_perfsim : purge=0,
 1041/502/1128/12 notes = stockées, écarts médians ±1,2 pt (effet medal_exploit
 attendu). Témoins gate visuel prêts (section 6 du CR lot 4) — B4.3 après volets D/C,
 serveur relancé.
@@ -490,7 +490,7 @@ impératif d'abord), même fenêtre serveur-arrêté, jamais en concurrence d'ac
 - (diagnostic) `match_exclusion_service` ne nettoie pas la note (couvert par D-E au
   batch suivant).
 - (lot 0, 2026-08-27, VÉRIFIÉE pilote) Index ART `idx_psa_match` incohérent sur la DB
-  XxDaemonGamerxX (2 lignes indexées vs 4 au scan) → item B2.4. Le lecteur de prod
+  joueur_291 (2 lignes indexées vs 4 au scan) → item B2.4. Le lecteur de prod
   `PersonalScoreAwardsRepo` (colonne Score personnel) est exposé dès AUJOURD'HUI sur
   cette DB.
 - (lot 0) 26 matchs objectifs classés slayer par la liste actuelle (affecte aussi les
@@ -498,9 +498,9 @@ impératif d'abord), même fenêtre serveur-arrêté, jamais en concurrence d'ac
   correction dans ce chantier (lot 1bis) + recompute LUSR au lot 4.
 - (lot 0) DB JGtm : 15 lignes `personal_score_awards` avec xuid vide sur 6 matchs
   (filtrées par la sélection sur xuid — sans effet sur les calculs).
-- (lot 0) L'annexe corpus du plan disait Madina 22 objectif / 12 slayer en ranked ; la
+- (lot 0) L'annexe corpus du plan disait joueur_075 22 objectif / 12 slayer en ranked ; la
   classification fidèle au code donne 21/13 (l'écart = `Ranked:CTF 3 Captures`, cf.
-  D-I). Totaux ranked 50 et comptes JGtm 8 / Choco 8 / Daemon 0 confirmés.
+  D-I). Totaux ranked 50 et comptes JGtm 8 / joueur_901 8 / Daemon 0 confirmés.
 - (lot 2, 2026-08-27) La corruption d'index PSA touchait LES 4 DBs locales (pas
   seulement Daemon), sur idx_psa_match ET idx_psa_category — réparée (B2.4), mais la
   CAUSE RACINE de la désynchronisation n'est pas élucidée (famille bug ART, hors
@@ -514,10 +514,10 @@ impératif d'abord), même fenêtre serveur-arrêté, jamais en concurrence d'ac
   détachée de BatchComputePerformanceScores) — non traité.
 - (lot 4, 2026-08-28) **MAJEURE — corruption LUSR `h5_arena`** : 2 461 lignes
   match_skill_rank_latest des 4 DBs halo_infinite (jusqu'à 80 % de l'historique LUSR,
-  JGtm 895 / Madina 1064 / Choco 471 / Daemon 31) portaient la chaîne Halo 5
+  JGtm 895 / joueur_075 1064 / joueur_901 471 / Daemon 31) portaient la chaîne Halo 5
   `h5_arena`, écrites dans la fenêtre 26-28 juin 2026 — signature d'un binaire h5 (ou
   classifier h5 par défaut) exécuté sur les données Infinite. RÉPARÉE à 99,9 % par le
-  replay canonique du lot 4 (résidu : 2 lignes Madina, matchs à équipes non binaires,
+  replay canonique du lot 4 (résidu : 2 lignes joueur_075, matchs à équipes non binaires,
   non rejouables). Cause racine + exposition PROD à investiguer (registre B4.6 ; le
   balayage VPS B4.5 vérifiera aussi `playlist_group='h5_arena'` en read-only).
 - (lot 4) `RecomputeLUSRCanonicalForPlayer` écrit dans la SHARED (sentinelle + états
@@ -539,7 +539,7 @@ impératif d'abord), même fenêtre serveur-arrêté, jamais en concurrence d'ac
 
 ## Annexe — chiffres corpus (2026-08-27, 4 joueurs, 2 948 participations)
 
-- Ranked : 50 participations (Madina 34 = 22 obj/12 slayer ; JGtm 8 ; Choco 8 ; Daemon 0).
+- Ranked : 50 participations (joueur_075 34 = 22 obj/12 slayer ; JGtm 8 ; joueur_901 8 ; Daemon 0).
 - Arena sociale (médianes/min) : pspm 200 (obj) vs 156 (slayer), kpm 1.30 vs 1.25,
   dpm 1.45 vs 1.30 ; ranked : pspm 206 vs 161, kpm 1.36 vs 1.17.
 - Intra-famille objectif : pspm CTF 190 / SH 201 / KOTH 233 / Oddball 244 ;

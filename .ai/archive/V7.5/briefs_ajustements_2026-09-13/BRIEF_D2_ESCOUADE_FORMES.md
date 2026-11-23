@@ -1,7 +1,7 @@
 # LOT D2 — Escouade : portage intégral de l'artefact « Les formes retenues » (2ec1b8eb)
 
-Worktree : `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ajust-escouade-formes` · branche `feat/ajust-escouade-formes` · port Vite **5185**.
-Lis d'abord `BRIEF_COMMUN.md`. Artefact : `artefacts/2ec1b8eb_les_formes_retenues.html` — LIS-LE EN ENTIER (CSS des formes + script : données, six fonctions de forme, 19 cartes avec titres, sous-titres, légendes, notes). La version texte `artefacts/art_2ec1b8eb.txt` aide à lire le script. Playwright : `E2E_VISUAL_SQUAD_TEAMMATES=Madina97294,Chocoboflor`.
+Worktree : `<poste>\Downloads\Scripts\LevelUp-wt-ajust-escouade-formes` · branche `feat/ajust-escouade-formes` · port Vite **5185**.
+Lis d'abord `BRIEF_COMMUN.md`. Artefact : `artefacts/2ec1b8eb_les_formes_retenues.html` — LIS-LE EN ENTIER (CSS des formes + script : données, six fonctions de forme, 19 cartes avec titres, sous-titres, légendes, notes). La version texte `artefacts/art_2ec1b8eb.txt` aide à lire le script. Playwright : `E2E_VISUAL_SQUAD_TEAMMATES=joueur_117,joueur_165`.
 Ce lot touche le Go (skills `arch-rules`, `go-features`, `db-schema`, règles ART de CLAUDE.md : lectures via vues `_latest`, aucune écriture nouvelle nécessaire a priori). GOCACHE privé.
 
 ## Cadrage utilisateur (verbatim)

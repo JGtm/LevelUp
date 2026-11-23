@@ -194,7 +194,7 @@
     </span>
   </div>
   <h1>Les cinq cartes qui quittent l’onglet Usages</h1>
-  <p class="lede">Une carte vers Dynamique, quatre vers Contributions. Pour chacune : sa forme d'aujourd'hui, la proposition dans sa nouvelle page, et un verdict. Les autres cartes de ces pages ne changent pas ; elles sont rappelées en pointillé pour situer la carte. Chiffres de ta soirée du 22/09 (JGtm, Chocoboflor, Madina97294, sept matchs), relevés dans la base en lecture seule.</p>
+  <p class="lede">Une carte vers Dynamique, quatre vers Contributions. Pour chacune : sa forme d'aujourd'hui, la proposition dans sa nouvelle page, et un verdict. Les autres cartes de ces pages ne changent pas ; elles sont rappelées en pointillé pour situer la carte. Chiffres de ta soirée du 22/09 (JGtm, joueur_165, joueur_117, sept matchs), relevés dans la base en lecture seule.</p>
   <nav class="toc" aria-label="Sommaire">
     <a href="#questions">Les questions</a>
     <a href="#tri">Le tri</a>
@@ -242,7 +242,7 @@
           <div class="legend" id="lg-fda1"></div>
           <div id="fda1"></div>
         </div></div>
-        <div class="card ctx" style="margin-top:10px"><h5>Balance des dégâts cumulée <span class="chip" style="margin-left:auto">déjà sur la page, inchangée</span></h5><div class="body">Mêmes joueurs, même abscisse. Fin de soirée : JGtm −36,3, Chocoboflor −18,9, Madina97294 +23,4 vies.</div></div>
+        <div class="card ctx" style="margin-top:10px"><h5>Balance des dégâts cumulée <span class="chip" style="margin-left:auto">déjà sur la page, inchangée</span></h5><div class="body">Mêmes joueurs, même abscisse. Fin de soirée : JGtm −36,3, joueur_165 −18,9, joueur_117 +23,4 vies.</div></div>
       </div>
     </div>
     <p class="why"><b>Ce qui change</b> : les pastilles « écart moyen par match » sortent (des chiffres sous le graphe), la valeur de fin va au bout de chaque courbe, l'abscisse reprend celle de la balance des dégâts (#1 à #7). Couleurs de joueur inchangées.</p>
@@ -299,7 +299,7 @@
       </div>
     </div>
     <p class="why"><b>Forme</b> : une légende des joueurs (aujourd'hui aucune), le compte de frags au bout de chaque barre (aujourd'hui un pourcentage du total du joueur, effacé sous 5 %), et une pastille à la couleur de la classe devant chaque arme, pour la relier à la Répartition des frags. Le pourcentage passe au survol. « Précision par rôle », propre à Halo 5, reste une carte à part, inchangée.</p>
-    <p class="why"><b>Données : chaque frag nommé par le film.</b> Aujourd'hui la carte garde huit armes et range le reste dans « Autres armes » : ce soir, le Mutilateur (1) et le VK78 Commando (1) de JGtm. Elle prend aussi la mêlée et les grenades sur la feuille de match, qui diffère du film d'un frag : Madina97294 a 4 frags à la grenade à fragmentation au film, 3 sur la feuille ; le code abandonne alors le détail et affiche une ligne « Grenade ». Les bidons et l'environnement n'y figurent pas. La proposition lit tout dans le film : toutes les armes, chaque type de grenade, la mêlée, les bidons et les chutes. Un seul frag reste sans ligne : Madina97294 en compte 121 sur la feuille et 120 au film.</p>
+    <p class="why"><b>Données : chaque frag nommé par le film.</b> Aujourd'hui la carte garde huit armes et range le reste dans « Autres armes » : ce soir, le Mutilateur (1) et le VK78 Commando (1) de JGtm. Elle prend aussi la mêlée et les grenades sur la feuille de match, qui diffère du film d'un frag : joueur_117 a 4 frags à la grenade à fragmentation au film, 3 sur la feuille ; le code abandonne alors le détail et affiche une ligne « Grenade ». Les bidons et l'environnement n'y figurent pas. La proposition lit tout dans le film : toutes les armes, chaque type de grenade, la mêlée, les bidons et les chutes. Un seul frag reste sans ligne : joueur_117 en compte 121 sur la feuille et 120 au film.</p>
   </section>
 
   <!-- ===== 4-5. LES DEUX CARTES D'OBJECTIF ===== -->
@@ -370,7 +370,7 @@
   var nf = function (v, d) { return v.toLocaleString('fr-FR', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); };
   var sgn = function (v, d) { return (v > 0 ? '+' : v < 0 ? '−' : '') + nf(Math.abs(v), d); };
   var dur = function (s) { s = Math.round(s); var m = Math.floor(s / 60); return m ? m + ' min ' + String(s % 60).padStart(2, '0') : s + ' s'; };
-  var P = [{ k: 'J', label: 'JGtm', ink: 'var(--p1)' }, { k: 'C', label: 'Chocoboflor', ink: 'var(--p2)' }, { k: 'M', label: 'Madina97294', ink: 'var(--p3)' }];
+  var P = [{ k: 'J', label: 'JGtm', ink: 'var(--p1)' }, { k: 'C', label: 'joueur_165', ink: 'var(--p2)' }, { k: 'M', label: 'joueur_117', ink: 'var(--p3)' }];
   function playerLegend(id, extra) {
     document.getElementById(id).innerHTML = P.map(function (p) { return '<span><i class="round" style="background:' + p.ink + '"></i>' + p.label + '</span>'; }).join('') + (extra || '');
   }
@@ -452,7 +452,7 @@
   classBars('rf1', true);
 
   // ---------- 3. Outils de destruction ----------
-  // [ligne, classe, [JGtm, Chocoboflor, Madina97294]].
+  // [ligne, classe, [JGtm, joueur_165, joueur_117]].
   // Aujourd'hui : 8 armes, puis « Autres armes », puis mêlée et grenades (totaux de la feuille de match) ;
   // environnement et non attribué exclus.
   var TOOLS_TODAY = [
@@ -505,7 +505,7 @@
     skull: [['Crânes récupérés', 'Prendre'], ['Porteurs de crâne abattus', 'Défendre'], ['Temps de portage', 'Tenir', true]]
   };
   // Par soirée : matchs à objectif, familles [nom, type, n matchs, [notre camp, lobby] par colonne (null = colonne absente)],
-  // et les trois rôles de « Ce que mon camp prend » [JGtm, Chocoboflor, Madina97294, allié hors escouade, adversaire].
+  // et les trois rôles de « Ce que mon camp prend » [JGtm, joueur_165, joueur_117, allié hors escouade, adversaire].
   var SOIREES = {
     '2209': {
       matches: [['21:23', 'Starboard', 'Drapeau', 'V 3–0'], ['21:46', 'Origin', 'Drapeau', 'D 1–3']],
@@ -528,7 +528,7 @@
     }
   };
   var ROLES = [['Prendre', 'zones capturées · drapeaux saisis'], ['Défendre', 'zones sécurisées · retours'], ['Tenir', 'temps en zone · temps de portage', true]];
-  var NAMES = ['JGtm', 'Chocoboflor', 'Madina97294', 'Coéquipier hors escouade', 'Adversaire'];
+  var NAMES = ['JGtm', 'joueur_165', 'joueur_117', 'Coéquipier hors escouade', 'Adversaire'];
   var famHead = function (f) { return el('div', { style: 'font-size:12px;font-weight:500;margin-top:2px' }, f[0] + ' <span style="color:var(--muted-foreground);font-weight:400">— ' + f[2] + ' match' + (f[2] > 1 ? 's' : '') + '</span>'); };
 
   function renderObjectives(key) {
@@ -600,7 +600,7 @@
     // contenu validé : une ligne par action, famille par famille, barre à l'échelle de la ligne.
     var fh = document.getElementById('fiches'); fh.innerHTML = '';
     var FI = FICHES[key];
-    var who = [['JGtm', 'var(--p1)', 'J'], ['Chocoboflor', 'var(--p2)', 'C'], ['Madina97294', 'var(--p3)', 'M'], ['Reste du camp', 'var(--rest)', '+']];
+    var who = [['JGtm', 'var(--p1)', 'J'], ['joueur_165', 'var(--p2)', 'C'], ['joueur_117', 'var(--p3)', 'M'], ['Reste du camp', 'var(--rest)', '+']];
     var ROLE_NAMES = ['Prendre', 'Défendre', 'Tenir'];
     who.forEach(function (w, wi) {
       // Rôle dominant : celui où le joueur pèse le plus dans notre camp.
@@ -630,7 +630,7 @@
     fitLabels();
   }
 
-  // Colonnes des fiches, dans l'ordre de COLS : [JGtm, Chocoboflor, Madina97294, reste du camp].
+  // Colonnes des fiches, dans l'ordre de COLS : [JGtm, joueur_165, joueur_117, reste du camp].
   var FICHES = {
     '2209': [[[4, 0, 0, 0], [0, 1, 1, 0], [3, 4, 5, 2], [0, 0, 1, 1], [7, 5, 8, 2], [3, 4, 3, 4], [5, 2, 4, 0], [2, 0, 4, 2], [64.9, 19.7, 44.8, 8.1]]],
     '0709': [[[18, 26, 20, 7], [5, 6, 11, 0], [7, 1, 2, 0], [7, 1, 10, 2], [271.3, 286.0, 308.5, 202.0]],

@@ -1,3 +1,9 @@
+## [2026-11-23] Anonymisation des documents du dépôt public, première passe — Complété (documents ; code, tests et historique à part)
+
+- **Décision** : les documents sous `.ai/` et `docs/` désignent les joueurs par des libellés stables, le poste par un repère neutre et les identifiants de joueur par leur fictif dérivé ; un outil rejouable tient la règle, sa table reste hors dépôt ; dans le doute sur un mot courant, rien n'est remplacé. Le pseudo du propriétaire, les auteurs de projets crédités, les bots du jeu et les noms inventés par les tests restent.
+- **Résultats** : 888 fichiers, 34 586 lignes ; second passage sans effet ; aucun fichier hors périmètre touché ; colonnes, liens et JSON intacts ; plus aucun chemin du poste dans le périmètre.
+- **Limites** : un pseudo écrit seul en prose, inconnu de la table, peut rester ; le code, les tests et quatre fichiers de configuration sont à traiter avec leurs tests ; l'historique git garde les anciens textes.
+
 ## [2026-11-23] Plan du backlog des 17 et 18 novembre — Complété (hors rattrapage du coup d'envoi, reporté)
 
 - **Décision** : le plan se clôt sur pièces : chaque item a son statut, ce qui dépend de la régénération du parc passe au registre des reports, les contrôles à l'écran sont remis au user en une seule liste.
@@ -101,7 +107,7 @@
 ## [2026-11-22] Médailles du bouclier et barème d'impact : étape 0 close (mesures et cartographie) — En cours
 **Statut :** En cours. Plan : `.ai/PLAN_MEDAILLES_BOUCLIER_2026-11-22.md` (étape 0 close, pistes A, B et C non lancées), branche `feat/medailles-bouclier`.
 **Décision technique principale :** les règles de bris, de recharge et de vengeance ont été mesurées sur le parc avant tout code, par deux instruments `research` en lecture seule (`sync/replayartifacts/medailles_bouclier_research_test.go`, `platform/duckdb/impact_bareme_research_test.go`), gardés comme témoins du barème.
-**Résultats observés :** 1 455 rejeux lus, 127 493 bris ; 23,4 % suivis d'une recharge complète, 72,0 % d'une mort dans les 10 s, 1,7 % sans issue alors que la vie continue plus de 10 s (seuil d'arrêt : 10 %) ; Cible difficile : médiane 2 par joueur et par match (seuil : 6). Vengeur dérivé : médiane 2 par joueur et par match ; les lignes héritées valent 2,4 fois plus en total et s'arrêtent au 2026-03-18. Barème, points par match sur 643 matchs : JGtm de -0,736 à -0,519, Madina97294 de +0,330 à +0,535, Chocoboflor de -0,501 à -0,215. Inventaire : 8 lectures de `medals_earned` à basculer sur la vue de fusion, 19 à laisser sur la table, 1 à trancher.
+**Résultats observés :** 1 455 rejeux lus, 127 493 bris ; 23,4 % suivis d'une recharge complète, 72,0 % d'une mort dans les 10 s, 1,7 % sans issue alors que la vie continue plus de 10 s (seuil d'arrêt : 10 %) ; Cible difficile : médiane 2 par joueur et par match (seuil : 6). Vengeur dérivé : médiane 2 par joueur et par match ; les lignes héritées valent 2,4 fois plus en total et s'arrêtent au 2026-03-18. Barème, points par match sur 643 matchs : JGtm de -0,736 à -0,519, joueur_117 de +0,330 à +0,535, joueur_165 de -0,501 à -0,215. Inventaire : 8 lectures de `medals_earned` à basculer sur la vue de fusion, 19 à laisser sur la table, 1 à trancher.
 **Conclusion / prochaine étape :** deux points à trancher avant la piste A : la révision du résumé d'usage (`us7`) et la ligne du résumé vivent dans le décodeur, que le plan interdit de monter ; la fiche du rejeu calcule déjà « Boucliers perdus » côté web, à remplacer par les instants servis.
 ## [2026-11-22] Fenêtres de console du bureau et historique de synchronisation (issue #213) — Complété (reste la vérification à l'écran du user)
 **Statut :** Complété ; plan `.ai/PLAN_FENETRES_ET_SYNC_2026-11-22.md` statué (A5 et la carte à l'écran restent au user).
@@ -173,9 +179,9 @@
 
 ## [2026-11-18] Backlog des 17 et 18 novembre et deux retours du user sur le rejeu : instruction sur pièces et plan — Complété (plan écrit, non commité ; décisions D-1 à D-7 et go attendus du user)
 **Statut :** Complété pour l'instruction et le plan ; aucun code. Plan : `.ai/PLAN_BACKLOG_2026-11-18.md`.
-**Décision technique principale :** trois instructions en lecture seule par agents Sonnet (page du rejeu, serveur, garde-rails), recoupées par le pilote sur une quinzaine de références ; le rejeu du match `38900a5e` lu champ par champ ; une mesure sur les 1 455 rejeux du poste. Le départ d'ELOsk11 se règle côté site, sans changement du décodeur ni régénération : le rejeu publie déjà un corps supprimé sans compte à rebours puis une présence fermée, le site en faisait une ligne « mort ».
+**Décision technique principale :** trois instructions en lecture seule par agents Sonnet (page du rejeu, serveur, garde-rails), recoupées par le pilote sur une quinzaine de références ; le rejeu du match `38900a5e` lu champ par champ ; une mesure sur les 1 455 rejeux du poste. Le départ d'joueur_749 se règle côté site, sans changement du décodeur ni régénération : le rejeu publie déjà un corps supprimé sans compte à rebours puis une présence fermée, le site en faisait une ligne « mort ».
 **Résultats observés :**
-- 1 386 départs en cours de match dans 729 rejeux : 875 finissent par un corps supprimé (le schéma d'ELOsk11), 503 par une vraie mort, 8 sans raison publiée (`.ai/annexes_backlog_1118/mesure_departs.md`).
+- 1 386 départs en cours de match dans 729 rejeux : 875 finissent par un corps supprimé (le schéma d'joueur_749), 503 par une vraie mort, 8 sans raison publiée (`.ai/annexes_backlog_1118/mesure_departs.md`).
 - `haloTokensForDrain` est atteint en production par la mise en file des rejeux après chaque synchronisation : le jeton du premier profil sert au film d'un autre joueur sans passer par la mise en commun.
 - 31 entrées retenues en dix pistes (A à H, K, S) ; 9 non retenues avec leur sort (dont le paquet DuckDB, sous son budget, et tout ce qui relève du chantier décodeur).
 - Une autre session range `.ai/` dans le dossier principal (plans déplacés vers `.ai/V8.3/` et `.ai/archive/V8/`, non commités) : non touché.
@@ -327,7 +333,7 @@
 - **Cause** : le worktree LevelUp-wt-812 avait data LUI-MÊME en jonction vers le data principal (ancien dossier renommé data.avant-jonction). Le contrôle du pilote ne listait que les jonctions SOUS data ; git worktree remove --force a suivi la jonction et vidé data entier vers 17 h 33 (bases, jetons, films, rejeux). Règle durcie dans la mémoire du projet : tester chaque niveau du chemin, un worktree à la fois, films recomptés après chaque suppression, et aucune suppression sans accord explicite du user.
 - **Restauré** : bases partagées et données des 9 joueurs depuis la sauvegarde restic du serveur de 12 h 18 (service arrêté pendant la sauvegarde, fichiers cohérents) ; base partagée Halo Infinite filtrée aux matchs des 9 joueurs locaux (264 Mo au lieu de 2,5 Go ; contrôles : matchs par joueur identiques 9/9, 43 tables identiques sur les matchs gardés, vues, index et séquences identiques, 1 455/1 455 rejeux avec leur match) ; 1 455 rejeux depuis le dossier d attente 8.2.1 du serveur ; jetons des 9 joueurs (empreintes différentes de celles du serveur, qui les avait déjà renouvelés : pas de jeton partagé) ; 1 366 films (1 301 du portable du user, 65 du serveur) et 1 227 faits de film ; fichiers versionnés de data.
 - **Perdu** : 248 films de l archive locale (ni sur le portable, ni sur le serveur) ; dérivés locaux (calques tactiques, marques .derived, identités de film), à régénérer depuis les rejeux et les films.
-- **Clôture (même soir)** : 231 films retéléchargés auprès de Halo (archive-films --match, 0 expiré, 0 erreur) : 1 597 films sur 1 614, les 1 455 rejeux ont tous leur film ; 17 films perdus sans rejeu ni liste. Calques tactiques régénérés (1 455 écrits, 0 échec). Serveur local démarré (health 200, un seul avertissement : réconciliation des médias suspendue sur Halo 5 pour Chocoboflor, garde-fou de disparition massive, chemins de médias du serveur absents en local), puis arrêté proprement par stdin : 0 journal DuckDB restant.
+- **Clôture (même soir)** : 231 films retéléchargés auprès de Halo (archive-films --match, 0 expiré, 0 erreur) : 1 597 films sur 1 614, les 1 455 rejeux ont tous leur film ; 17 films perdus sans rejeu ni liste. Calques tactiques régénérés (1 455 écrits, 0 échec). Serveur local démarré (health 200, un seul avertissement : réconciliation des médias suspendue sur Halo 5 pour joueur_165, garde-fou de disparition massive, chemins de médias du serveur absents en local), puis arrêté proprement par stdin : 0 journal DuckDB restant.
 
 ## [2026-11-16] Croix des morts sans cause : mesure sur le parc entier et relecture — Complété
 - **Décision** : refaire après la régénération la mesure de l'échantillon (99 films) sur les 1 455 rejeux, avec le vrai code web, puis relire le code par un contexte frais (tâches de fin de chantier notées par le user).
@@ -1250,7 +1256,7 @@
 
 **Décision technique principale** : ordre rétabli : squash dans `main` (585efd2775, PR #179), puis tag `v8.1.1` annoté sur ce commit, puis publication. La version de prod vient du dépôt.
 
-**Résultats observés** : déploiement, ouvrier de rejeu et démo verts ; `.env` et conteneur en `v8.1.1` ; page de version réduite à l'installeur et aux trois serveurs ; `updates/latest.json` et ses fichiers répondent 200. Recalcul au démarrage : Chocoboflor, bloqué depuis la 8.1.0 par des matchs non convergents, aboutit à 20:38 UTC ; JGtm à 20:40 ; suivants en cours, aucun recalcul partiel. Le premier essai, à 20:36, a été annulé par le redémarrage du job démo. Série Go « reste » relancée une fois sur la PR (arrêt à 30 min, sans test rouge).
+**Résultats observés** : déploiement, ouvrier de rejeu et démo verts ; `.env` et conteneur en `v8.1.1` ; page de version réduite à l'installeur et aux trois serveurs ; `updates/latest.json` et ses fichiers répondent 200. Recalcul au démarrage : joueur_165, bloqué depuis la 8.1.0 par des matchs non convergents, aboutit à 20:38 UTC ; JGtm à 20:40 ; suivants en cours, aucun recalcul partiel. Le premier essai, à 20:36, a été annulé par le redémarrage du job démo. Série Go « reste » relancée une fois sur la PR (arrêt à 30 min, sans test rouge).
 
 **Conclusion / prochaine étape** : mise à jour réelle dans l'application à éprouver au passage 8.1.1 vers la suivante. `.gitignore` et ce journal attendent sur `chore/apres-v8.1.1`, à intégrer à la prochaine version.
 
@@ -1438,7 +1444,7 @@
 
 **Decision technique principale** : la fin de la DERNIERE vie d un joueur, quand aucune mort ecrite ne la clot et que l API le declare present a la fin (`match_participants.present_at_completion` vrai, `left_in_progress` faux), est la derniere frame du film, bornee STRICTEMENT avant l ouverture de la vie suivante du slot ; aucun point fabrique (`libs/film/replay/tracks_fin_de_vie_presence.go`, regle de `tracks_fin_de_vie.go`). « A quitte » se lit sur l API, jamais sur l arret des positions. `replay.Participant` gagne `PresentAtCompletion`, `LeftInProgress`, `Deaths` (tous nil = non declare, aucun defaut qui affirme la presence) ; `domain.MatchPlayerFact` : `LeftInProgress` devient `*bool` (plus de COALESCE FALSE), `PresentAtCompletion *bool`, `DeathsDeclared bool`, remplis par la lecture existante `ReplayFactsRepo.playerFacts` (colonnes ajoutees a la meme requete, pas de seconde) puis `replaybuild.participantsDuTableau` ; le collecteur de sync (`killcollector/roster.go`, seconde copie de la meme projection) la porte aussi, par `colonnesDuTableau.participant`, pour que le document interne des porteurs au sync suive la meme regle que la cuisson. Cas qui n etendent pas et se comptent (replis nommes, registre `facts/fallback`) : `repli_fin_de_vie_sans_tableau_api` (participant introuvable, drapeau ou morts NULL, vie sans xuid de cause `film_end`), `repli_fin_de_vie_mort_manquante` (API compte plus de morts que `types.Death` du joueur, aucune tolerance). Une mort ecrite apres l ouverture decide seule (regle existante) ; sans calage, un joueur sans aucune mort ecrite est prolonge, un joueur avec des morts non datables ne se decide pas. Web : aucun changement de code (`lifeEndsOf` lit `endFrame` : une fin a l horizon n est plus une fin close, donc plus de mort neutre) ; deux tests dans `killFeedLogic.test.ts`.
 
-**Resultats observes** : temoins reels (film decode une fois en memoire, documents avant/apres rejoues depuis les faits, base copiee en lecture seule, rien ecrit) : `008e1bba` SloppyTopp8812 dernier point 636, fin 636 -> 1700 (derniere frame 1700) ; `1e26f641` xPIPExGODx 2096, 2096 -> 3092 (3092) ; `15d8d850` JGtm 5620, 5620 -> 5772 (5772). Sur 26 films : 3 245 vies publiees, 113 vies changees (3 %), delta de fin min 1 / mediane 17 / p90 60 / max 1 064 frames, 23 cas sans tableau (vies sans xuid), 0 cas mort manquante, 0 chevauchement de vies (par slot et par joueur). `UsageSummaryRev` NON montee : la regle d attribution est inchangee ; sur ces 26 films seul `CamoMS` change, pour 6 joueurs (+0,3 s a +3 s : un episode de camo ouvert au dernier point court jusqu a la fin prolongee), et la cle de reprise (rev, schema 107 non publie) refait deja tout resume. Goldens d assemblage, fixtures de contrat web et manifeste regeneres par leur procedure ; schema reste 107, chronique v107 completee.
+**Resultats observes** : temoins reels (film decode une fois en memoire, documents avant/apres rejoues depuis les faits, base copiee en lecture seule, rien ecrit) : `008e1bba` joueur_565 dernier point 636, fin 636 -> 1700 (derniere frame 1700) ; `1e26f641` xPIPExGODx 2096, 2096 -> 3092 (3092) ; `15d8d850` JGtm 5620, 5620 -> 5772 (5772). Sur 26 films : 3 245 vies publiees, 113 vies changees (3 %), delta de fin min 1 / mediane 17 / p90 60 / max 1 064 frames, 23 cas sans tableau (vies sans xuid), 0 cas mort manquante, 0 chevauchement de vies (par slot et par joueur). `UsageSummaryRev` NON montee : la regle d attribution est inchangee ; sur ces 26 films seul `CamoMS` change, pour 6 joueurs (+0,3 s a +3 s : un episode de camo ouvert au dernier point court jusqu a la fin prolongee), et la cle de reprise (rev, schema 107 non publie) refait deja tout resume. Goldens d assemblage, fixtures de contrat web et manifeste regeneres par leur procedure ; schema reste 107, chronique v107 completee.
 
 **Conclusion / suite** : instrument `apps/go-api/internal/replaybuild/fin_de_vie_presence_research_test.go` (tag research). A trancher par l utilisateur : le sync (porteurs) suit desormais la regle ; ses lignes deja ecrites ne se refont qu au prochain passage. Le seuil de 0 « mort manquante » sur 26 films n est pas une preuve que la garde ne sert jamais : elle est testee en unitaire.
 
@@ -1471,7 +1477,7 @@ binaire sans symboles (et rouge sur une mauvaise version) ; un panic d'un binair
 (installation, deux lancements, arrêt propre, désinstallation). Web : typecheck 0, lint 0 erreur, vitest 1063 fichiers passés ; garde-rail `halo5Images.guard.test.ts` et test Go `TestSPAHandler_ImagesWebPDeLaPage` (image/webp).
 Aucun navigateur ni application lancés hors du test d'installation prescrit : le rendu réel des WebP dans le canvas n'a été vérifié que par décodage libwebp et par les tests.
 
-**Conclusion / prochaine étape** : gate visuel de l'utilisateur sur `C:\Users\Guillaume\Downloads\webp-halo5-avant-apres\comparer.html` (douze paires, brut et recolorié) ; s'il refuse, retirer le commit des images (le commit de (f) reste ; repli = plaques sans perte, environ 22 Mo au lieu de 4). Rapport : `.ai/V8/L23_POIDS_MISES_A_JOUR_2026-11-04.md` §11. Non traité, noté au plan §10 : PNG de `halo_infinite/` (6,6 Mo), logos `teams/`.
+**Conclusion / prochaine étape** : gate visuel de l'utilisateur sur `<poste>\Downloads\webp-halo5-avant-apres\comparer.html` (douze paires, brut et recolorié) ; s'il refuse, retirer le commit des images (le commit de (f) reste ; repli = plaques sans perte, environ 22 Mo au lieu de 4). Rapport : `.ai/V8/L23_POIDS_MISES_A_JOUR_2026-11-04.md` §11. Non traité, noté au plan §10 : PNG de `halo_infinite/` (6,6 Mo), logos `teams/`.
 
 ## [2026-11-04] Desktop - L23 : mesure du poids des mises à jour et options - Complété (23.1) ; décision 23.2 à l'utilisateur
 
@@ -2218,7 +2224,7 @@ branche lancée au push ; prochaine étape = lot 4, revue adversariale (une rond
 
 ## [2026-10-28] i18n, revue de l'interface : libellés de palier de rang et textes d'Accueil en anglais — Complété (branche `fix/i18n-revue-ui`, non commité)
 **Décision technique principale** : (A) le libellé d'un palier ne se lit plus jamais de `match_skill_rank.tier_label` (écrit dans la langue du moment : « Diamond 4 » Halo 5, « Or VI » Halo Infinite) : il se déduit du code (`tier` + `sub_tier`) dans la langue de la requête, par `analysis.SkillTierDisplayLabel` (palier sans sous-palier valide = nom seul ; placement = aucun libellé) et `SkillTierLabelOrPlacementMarker` (marqueur `Placement` que le web reconnaît). Six lecteurs convertis : Explorateur (lignes, « Pic rang », module « Classement »), Accueil (pic de rang dont le pic CSR all-time figé en langue par défaut, playlists récentes), Carrière (checkpoints LUSR / CSR), vue d'un match (en-tête, tableau des scores, CSR des participants, rangs des amis), classement local ; la page session passe au helper commun. Aucun type servi ne porte plus la colonne stockée (`MatchHistoryRawRow.SkillStoredLabel` ne sert qu'à lire les matchs restants d'un placement ; `HomeSkillPeakRow.TierLabel` et `canonical.LUSRCheckpoint.TierLabel` supprimés ; `tier_label` retiré des requêtes Q22a, Q30, Q8 et du classement) ; garde-rail `archlint/i18n_tier_label_stored_not_served_test.go`. (B) `ServedLabel` / `ServedTitle` / `ServedDescription` reconnaissent la copie du modèle dans n'importe laquelle de ses langues (`isStoredCopy`) : le formulaire web poste le `label` localisé reçu, donc dans la langue de la requête de création ; la résolution se fait aussi sous la langue par défaut.
-**Résultats observés** : bases de démo et bases réelles (copies) : 0 ligne à `tier` vide et `tier_label` rempli ; 9 lignes Infinite (Madina97294) en CSR « Diamant » à `sub_tier` 0, servies en nom seul. Les quatre textes de l'Accueil de la démo (« Précision létale — tirs à la tête », « Série victorieuse — victoires », « Ascension du Spartan » et sa description) n'ont pas d'origine enregistrée : `template_id` NULL sur les 9 défis des deux titres, labels littéraux de `internal/ops/seed_demo_prestige_plan.go` absents du catalogue (27 modèles) ; `preset_id = 'ascension'` absent du catalogue (`halo_infinite.slayer|support|consistent|explorer`, aucun preset Halo 5) : la résolution les sert tels quels par construction. Données de démo et générateur non touchés.
+**Résultats observés** : bases de démo et bases réelles (copies) : 0 ligne à `tier` vide et `tier_label` rempli ; 9 lignes Infinite (joueur_117) en CSR « Diamant » à `sub_tier` 0, servies en nom seul. Les quatre textes de l'Accueil de la démo (« Précision létale — tirs à la tête », « Série victorieuse — victoires », « Ascension du Spartan » et sa description) n'ont pas d'origine enregistrée : `template_id` NULL sur les 9 défis des deux titres, labels littéraux de `internal/ops/seed_demo_prestige_plan.go` absents du catalogue (27 modèles) ; `preset_id = 'ascension'` absent du catalogue (`halo_infinite.slayer|support|consistent|explorer`, aucun preset Halo 5) : la résolution les sert tels quels par construction. Données de démo et générateur non touchés.
 **Découvertes (non traitées)** : `HomeRepo.LoadHomeMatches` (et ses requêtes) sans appelant hors tests ; `fillRankedMSRItem` / `fillPlacementItem` / `buildHomePlaylistRankItem` sous `nolint:unused` à péremption 2026-06-22 dépassée ; `service/compare_service.go` `csrRankLabel` et `match_history_explorer_options.go` `skillTierLabel` dérivent du code mais en français figé (le web relocalise le premier) ; le générateur de démo écrit des défis libres et un arc preset d'identifiant inconnu du catalogue.
 **Vérification pilote (2026-10-28)** : `gate-push` complet vert (lint Go, intégration + baseline, typecheck et lint web) ; Chrome sur une copie de la démo (ports 8010 / 5180) : Explorateur Halo 5 « Diamant IV / Platine VI / Or III » en fr, « Diamond IV / Platinum VI / Gold III » en en, placements « 5 matchs restants / 5 matches left » ; Accueil et Carrière Infinite en en : « Gold VI », « Platinum I » ; vue d un match Halo 5 en fr : « Or III ». Découverte : le serveur en mode démo ne lance aucun cycle de migration Halo 5 (base metadata Halo 5 de la démo locale non migrée : médailles servies en identifiants, tables de résumés des morts absentes) ; la démo de prod est régénérée au déploiement depuis des bases migrées.
 **Conclusion / prochaine étape** : gate Go (vet, tests, `integration`, lint) vert ; contrat OpenAPI inchangé (champs `json:"-"`). À décider : faire écrire au générateur de démo des défis issus de vrais modèles (ou accepter des textes français sur la démo `/en`).
@@ -2235,14 +2241,14 @@ branche lancée au push ; prochaine étape = lot 4, revue adversariale (une rond
 **Conclusion / prochaine étape** : gate (vet, tests Go sans tag et `integration`, tsc, vitest, eslint, lint:fields, lint:colors, types générés) vert ; `make gate-push` puis fusion dans `release/v8.1.0` par le pilote (demander avant push).
 
 ## [2026-10-27] Plan positions de force v3 — En cours (projet de plan, aucune exécution ; `release/v8.1.0`)
-**Décision technique principale** : `.ai/PLAN_POSITIONS_DE_FORCE_V3_2026-10-27.md`, plan de RECHERCHE (verdict, pas de production) : unités monde partout (D2), niveau des joueurs en covariable du duel (D3), largeur de zone par reproductibilité entre moitiés de matchs (D4), trois signaux classés relativement (duel corrigé, occupation des bons joueurs, géométrie en unités), familles de mode séparées, calibrage Recharge / Aquarius / Streets, critères écrits avant mesure (rappel ≥ 0,70 et précision ≥ 0,60 sur 4 cartes de validation, témoin géographique, reproductibilité, tenue sans Nuzzles). Acquisition recommandée : instance de recherche isolée par `LEVELUP_REPO_ROOT` et CLI existantes (`sync-full`, `archive-films`, `backfill-killsource`, `backfill-replay`), jetons en jonction jamais copiés, serveur local arrêté.
+**Décision technique principale** : `.ai/PLAN_POSITIONS_DE_FORCE_V3_2026-10-27.md`, plan de RECHERCHE (verdict, pas de production) : unités monde partout (D2), niveau des joueurs en covariable du duel (D3), largeur de zone par reproductibilité entre moitiés de matchs (D4), trois signaux classés relativement (duel corrigé, occupation des bons joueurs, géométrie en unités), familles de mode séparées, calibrage Recharge / Aquarius / Streets, critères écrits avant mesure (rappel ≥ 0,70 et précision ≥ 0,60 sur 4 cartes de validation, témoin géographique, reproductibilité, tenue sans joueur_074). Acquisition recommandée : instance de recherche isolée par `LEVELUP_REPO_ROOT` et CLI existantes (`sync-full`, `archive-films`, `backfill-killsource`, `backfill-replay`), jetons en jonction jamais copiés, serveur local arrêté.
 **Résultats observés** : inventaire du code (agent Sonnet, lecture seule) : pas de `--data-root` global ; aucune CLI n'insère l'historique d'un joueur sans profil ; `archive-films` exige le match au registre ; `match_player_positions` sans joueur (inutile pour l'occupation) ; rejeu ~800 fois la taille du film en mémoire, un décodage à la fois par instance ; ~29 % des films absents côté serveur. Réservoir : 2 991 matchs classés jamais décodés dans la sauvegarde.
 **Conclusion / prochaine étape** : décisions user du 27/10 versées au plan (D10 instance isolée avec jetons du dépôt principal en jonction, D11 matchs ≥ 2023, D12 plafond 100 Go puis redemander, D13 branche `research/positions-de-force-v3`) ; reste le go d exécution, rien lancé.
 
 ## [2026-10-27] Audit de reprise des positions de force — Complété (registre, aucun code ; `release/v8.1.0`)
 **Décision technique principale** : registre `.ai/AUDIT_POSITIONS_DE_FORCE_2026-10-27.md`, lecture seule (sauvegarde `shared_matches_v2.duckdb.avant-purge-20261026` en `read_only`, cache de films, VPS par `ls`/`du`/`df`). Pas de plan ni d'exécution (consigne user).
-**Résultats observés** : 375 096 kills positionnés sur 3 399 matchs dans la sauvegarde (x5 vs v1) ; 1 798 matchs avec le CSR de tout le lobby, 782 lobbys à moyenne ≥ 1500 ; 51 % des matchs sont de Nuzzles, dont 0 film local et 11 au VPS depuis la purge du 26/10 ; le VPS re-télécharge des films de 2024 ; décalage Live Fire - Ranked résolu. Doute d'échelle : mêlée médiane 0,3, Live Fire 34 × 30 : coordonnées probablement en unités Halo (~3 m) et non en mètres, ce qui touche la géométrie (yeux à 1,7) et les largeurs de zone v1 ; contre-indice : saut à 0,85.
-**Conclusion / prochaine étape** : décisions user du jour au registre §7 : dossier de recherche autonome créé (`../LevelUp-recherche-positions/`, copie vérifiée de la sauvegarde) ; échelle TRANCHÉE = unités monde ×3,048 (collision entre Spartans p0,1 0,26-0,48 sur 5 rejeux, palette Forge, mêlée) ; élargir calloussss (CSR médian 1 686) et Brooks au-delà de 2026, re-télécharger et cuire les films Onyx. Suite : plan (voie de re-téléchargement sans profil suivi, branche/worktree, budget disque et mémoire).
+**Résultats observés** : 375 096 kills positionnés sur 3 399 matchs dans la sauvegarde (x5 vs v1) ; 1 798 matchs avec le CSR de tout le lobby, 782 lobbys à moyenne ≥ 1500 ; 51 % des matchs sont de joueur_074, dont 0 film local et 11 au VPS depuis la purge du 26/10 ; le VPS re-télécharge des films de 2024 ; décalage Live Fire - Ranked résolu. Doute d'échelle : mêlée médiane 0,3, Live Fire 34 × 30 : coordonnées probablement en unités Halo (~3 m) et non en mètres, ce qui touche la géométrie (yeux à 1,7) et les largeurs de zone v1 ; contre-indice : saut à 0,85.
+**Conclusion / prochaine étape** : décisions user du jour au registre §7 : dossier de recherche autonome créé (`../LevelUp-recherche-positions/`, copie vérifiée de la sauvegarde) ; échelle TRANCHÉE = unités monde ×3,048 (collision entre Spartans p0,1 0,26-0,48 sur 5 rejeux, palette Forge, mêlée) ; élargir joueur_386 (CSR médian 1 686) et Brooks au-delà de 2026, re-télécharger et cuire les films Onyx. Suite : plan (voie de re-téléchargement sans profil suivi, branche/worktree, budget disque et mémoire).
 
 ## [2026-10-27] Audit de découplage : images de carte, décodeur de film, API Halo — Complété (registre, aucun code ; `release/v8.1.0`)
 **Décision technique principale** : registre `.ai/AUDIT_DECOUPLAGE_BRIQUES_2026-10-27.md`. Critère d'autonomie d'une brique : elle n'importe rien de LevelUp hors d'elle (ou d'une brique de rang inférieur). Pour l'API Halo, coupe « API » (sans état ni politique : chaîne d'auth, transport, adresses, DTO bruts, octets de film) / « exploitation » (stockage et mise en commun des jetons, boucles, budget, caches, traduction vers le domaine, décodage des films). Question du dépôt séparé laissée ouverte ; ordre recommandé D1 (cartes), D2 (décodeur), D3 (API), garde-fou d'imports posé avant chaque déplacement.
@@ -2254,7 +2260,7 @@ branche lancée au push ; prochaine étape = lot 4, revue adversariale (une rond
 ## [2026-10-27] Fixtures de test sorties de .ai, citations repointées vers l'archive — Complété (branche `fix/fixtures-hors-ai`)
 **Décision technique principale** : décision user (27/10) : un test ne dépend pas de `.ai` (espace de travail). Les 5 fixtures de cartes suivies (découpage de Ridgeline, carte de référence, 3 `.mvar`) passent sous `internal/testfixtures/testdata/cartes/`, lues par `testfixtures.Carte(...)` ; les entrées de deux outils ponctuels (inventaire UGC, liste des écarts de score d'équipe) dans le dossier `donnees/` de leur outil. Les citations `.ai/V7.5/` sont repointées vers `.ai/archive/V7.5/` partout hors archive (CLAUDE.md, skills, docs, code, `.gitignore`, `.gitleaks.toml`). Garde-rail `archlint/pas_de_lecture_sous_ai_test.go` : aucun littéral Go ne construit un chemin sous `.ai`, hors 27 sites listés au compte exact (dumps locaux `re_dump`, sorties de recherche, contrôles de documents ; une dette nommée : `objectives/named_test.go` lit `.ai/refs/`).
 **Résultats observés** : les 12 tests rouges de la CI de `release/v8.1.0` passent (deux oracles de mapdecoupe se déclarent absents faute de cache de rejeu, comme en CI) ; `go vet` des paquets touchés et `-tags gamefiles` de himap, `go test` de 11 paquets, `gofmt`, `golangci-lint --new-from-rev` 0 issue. Aucun reste `.ai/V7.5` hors archive. L'agent a été coupé par la fin de session (mémoire du poste saturée, cause externe) ; vérifications finales rejouées par le pilote, une commande à la fois.
-**Conclusion / prochaine étape** : fusion dans `release/v8.1.0` et push sur accord du user. Hors périmètre : tests de recherche à chemins absolus d'un ancien poste (`C:/Users/Guillaume/Projects/LevelUp/.ai/re_dump`), fixture `.ai/refs/TABLE_STATS_STATBORG.tsv`.
+**Conclusion / prochaine étape** : fusion dans `release/v8.1.0` et push sur accord du user. Hors périmètre : tests de recherche à chemins absolus d'un ancien poste (`<poste>/Projects/LevelUp/.ai/re_dump`), fixture `.ai/refs/TABLE_STATS_STATBORG.tsv`.
 
 ## [2026-10-27] Cartes : variantes, republications et versions Forge regroupées — vérification à l'écran et clôture — Complété (`release/v8.1.0`, poussée)
 **Décision technique principale** : décision user (26/10) « Go pour Houseki et Shogun » : les versions successives d'une carte Forge (même nom, sans clé de module) forment un groupe, comme les republications d'une carte intégrée (`analysis.republiees`, 36044d56f) ; seule exception gardée, un nom qui couvre plusieurs clés de module (un groupe par clé, les identifiants sans clé restent seuls). Les versions Forge réunies par la règle de variante restent telles quelles (décision user du 26/10, risque de tracé jugé acceptable).
@@ -2285,13 +2291,13 @@ branche lancée au push ; prochaine étape = lot 4, revue adversariale (une rond
 
 ## [2026-10-27] Le mode d'un match fourni par le titre : E4 close — Complété (`release/v8.1.0`, non poussé)
 **Décision technique principale** : la copie principale passe sur `release/v8.1.0` (le worktree des variantes est détaché) pour que le serveur de dev lise le `config/` de la v8.1.0 ; `feat/modes-par-titre` (log `mode_source` au boot) fusionnée ; les deux commits post-release de `release/v8.0.7` repris sans la sauvegarde DuckDB de 2,5 Go ni l'outil jetable (ajouté puis retiré).
-**Résultats observés** : Synthèse Halo 5 « Par mode » : 12 modes (Chocoboflor), 13 (JGtm), courbe de performance présente ; filtre Modes 12 options ; Accueil H5 nomme les modes ; Infinite (JGtm) 21 modes, inchangé. Changelog `[8.1.0]` Fixed et bloc v8.1 des notes de version (EN/FR).
+**Résultats observés** : Synthèse Halo 5 « Par mode » : 12 modes (joueur_165), 13 (JGtm), courbe de performance présente ; filtre Modes 12 options ; Accueil H5 nomme les modes ; Infinite (JGtm) 21 modes, inchangé. Changelog `[8.1.0]` Fixed et bloc v8.1 des notes de version (EN/FR).
 **Conclusion / prochaine étape** : rien à pousser sans accord du user ; `release/v8.0.7` porte toujours la sauvegarde de 2,5 Go dans son commit « Archivage » (à ne jamais pousser). Caches `modes-titre` et `notes-v810` à purger.
 
 ## [2026-10-26] Le mode d'un match fourni par le titre, une fois, pour toutes les pages — E0 à E3 faites, E4 (écran, changelog, livraison) à venir — En cours (branche `feat/modes-par-titre`, depuis `release/v8.1.0`)
 **Décision technique principale** : la règle « où est le mode » est une donnée par titre déclarée au manifeste (`[title].mode_source` de `title.toml`, validée par le loader, `TitleDescriptor.ModeSource`, injectée par `PlayerPoolConfig` -> `PlayerDB.ModeSource` ; D4 du plan) lue UNE fois par la source de lecture qui sert réellement les pages (`PlayerMatchesRepo`, générique ; `projectH5MatchSummary` n'en sert aucune, D2 amendée) via `duckdb.ModeAssetReference` : pour Halo 5, `PairMode` = copie de la référence du type de jeu (`Kind` game_variant), traduite par l'enrichissement existant (dictionnaires des types de jeu choisis par `Kind`, nom normalisé une fois). Replis supprimés : `modeLabels` (Accueil), `modeLabelForFilter` et `buildSharedMatch` (Escouade). Garde-rails `archlint/mode_gamevariant_fallback_test.go` (AST, allowlist de 6 fichiers à compte exact) et `archlint/title_slug_literal_test.go` (aucun littéral de slug dans `analysis/` et `platform/duckdb/`, 7 sites existants allowlistés, dont `campaign_exclusion.go` à migrer plus tard).
 **Résultats observés** : Infinite identique à l'octet sur 16 sections sur 17 (lignes canoniques, Accueil, Synthèse, formes, Tactique, filtre Escouade ; JGtm, 1 182 matchs, copies sauvegardées du 02 et 07/10), faits marquants non déterministes dans les deux arbres ; Halo 5 réel : 1 706 matchs avec un mode, noms NON MESURÉS (métadonnée H5 tenue par le serveur, aucune sauvegarde). `go test ./internal/...` vert sauf `TestReleaseNotesDocs_NewestBlockMatchesChangelog` (rouge sur la base, docs non touchées), `golangci-lint` 0 issue, openapi à jour, web 10 383 tests verts.
-**Conclusion / prochaine étape** : le user mesure la couverture des noms H5 (requête en Mesures du plan) AVANT E4, puis gate visuel Halo 5 (Chocoboflor puis JGtm) et Infinite, changelog `[8.1.0]`, entrée Complété, `delivery-checklist`, commit sur accord ; découvertes en fin de plan (source H5 sans appelant, famille « ligne brute » à repli centralisé, `squad_service_v2_history`).
+**Conclusion / prochaine étape** : le user mesure la couverture des noms H5 (requête en Mesures du plan) AVANT E4, puis gate visuel Halo 5 (joueur_165 puis JGtm) et Infinite, changelog `[8.1.0]`, entrée Complété, `delivery-checklist`, commit sur accord ; découvertes en fin de plan (source H5 sans appelant, famille « ligne brute » à repli centralisé, `squad_service_v2_history`).
 ## [2026-10-26] Score de performance par carte et par mode dans la Synthèse — E0 à E2 faites, fusionné dans release/v8.1.0, gate visuel à venir — En cours (branche `feat/synthese-performance-carte-mode`)
 **Décision technique principale** : les deux graphes « Par carte » et « Par mode » gagnent une grille du haut (barre du score moyen, couleur `perf-tier-N`, pointillé si aucun match noté) sur le même axe que les issues empilées ; côté Go, comptage d'une ligne extrait dans `tallyBreakdown` / `breakdownTally`, `performance_avg` et `perf_tier` ajoutés aux entrées ; clé de regroupement des cartes non touchée (lot variantes).
 **Résultats observés** : E0 sur copies : 91,5 % des matchs Halo Infinite (sauvegarde du 16/10, la base live est verrouillée) et 89,5 % des matchs Halo 5 ont un score ; aucun match non terminé n'en a. E1 : tests service/domain/api verts, `golangci-lint` 0 issue, contrat et types régénérés. E2 : typecheck, 10 376 tests web, lint (0 erreur) et garde-rails couleurs/libellés verts.
@@ -2322,7 +2328,7 @@ branche lancée au push ; prochaine étape = lot 4, revue adversariale (une rond
 **Résultats observés** : E0 sur copies : 91,5 % des matchs Halo Infinite (sauvegarde du 16/10, la base live est verrouillée) et 89,5 % des matchs Halo 5 ont un score ; aucun match non terminé n'en a. E1 : tests service/domain/api verts, `golangci-lint` 0 issue, contrat et types régénérés. E2 (refaite en forme D6) : typecheck, 10 377 tests web, lint (0 erreur) et garde-rails couleurs/libellés verts.
 **Conclusion / prochaine étape** : rendu en bande refusé par le user, refait en courbe sur axe secondaire (D6), validé le 2026-10-26 ; à fusionner dans `release/v8.1.0` ; ligne de changelog avec les notes de la v8.1.0. Contexte de la première version : E3 (rendu à l'écran FR/EN, clair/sombre, cividis ; hauteur revenue à 360 px, courbe non vue à l'écran ; profil Halo 5 sans nom de carte au registre) puis commit sur accord du user ; prévenir la session du lot variantes avant fusion.
 
-## [2026-10-26] Suppression locale de Nuzzles, calloussss et Brooks SVP (bases, matchs partagés, films) — Complété (branche `release/v8.0.7`)
+## [2026-10-26] Suppression locale de joueur_074, joueur_386 et joueur_272 (bases, matchs partagés, films) — Complété (branche `release/v8.0.7`)
 **Décision technique principale** : `levelup identity purge --yes` pour les trois profils (ni compte ni jeton) ; matchs retirés de la base partagée par un outil jetable (une transaction, toutes les tables de base portant `match_id`, plus `player_skill_state_v2` des trois xuid), puis `compact-passes --rewrite-file`. Caches film (morceaux, manifestes, rejeux, rasters, faits) supprimés par clé courte, après contrôle d'absence de collision avec les matchs gardés. L'outil jetable, embarqué par le commit « Archivage » (778f67fa6), est retiré dans ce commit.
 **Résultats observés** : 8 024 matchs retirés, aucun partagé avec un joueur restant ; `match_registry` 10 026 -> 2 002 ; fichier partagé 2,5 Go -> 230 Mo ; 2 624 films (morceaux + manifestes), 2 137 fichiers de rejeu, 150 rasters, 2 013 faits supprimés. Sauvegarde gardée : `shared_matches_v2.duckdb.avant-purge-20261026`.
 **Conclusion / prochaine étape** : vérifier l'appli puis supprimer la sauvegarde. Local seulement, rien sur le VPS.
@@ -2554,7 +2560,7 @@ branche lancée au push ; prochaine étape = lot 4, revue adversariale (une rond
 
 **Décision technique principale** : squash de la PR #100 (feat/v75) ; décision de l'utilisateur du 22/10 de reprendre les bases LOCALES en prod (pertes acceptées : likes, favoris, notifications et rattachements de médias faits en prod depuis le 20/10), ce qui remplace les recalculs en prod (résumés par match, usages, paliers, véhicules, modèle d'assistances : déjà dans les bases locales). Rejeux recuits au schéma 101 mis en place avant la fusion (la v8.0.0 les lit sans contrôle de schéma).
 
-**Résultats observés** : CI, déploiement, démo et ouvrier verts ; sauvegarde restic 08:29 UTC ; bascule des 23 bases en 25 s ; 2 508 artefacts de prod au schéma 101 ; aucun 5xx ; seule réparation de clé refusée : `streak` de Chocoboflor (décidé) ; `LEVELUP_REPLAY_PUBLIC` retiré ; compactage de nuit installé (WARN : `match_kill_events` 8,4 M brutes / 420 k gardées, bases locales jamais compactées) ; ~3 Go d'images Docker inutiles purgées à la main.
+**Résultats observés** : CI, déploiement, démo et ouvrier verts ; sauvegarde restic 08:29 UTC ; bascule des 23 bases en 25 s ; 2 508 artefacts de prod au schéma 101 ; aucun 5xx ; seule réparation de clé refusée : `streak` de joueur_165 (décidé) ; `LEVELUP_REPLAY_PUBLIC` retiré ; compactage de nuit installé (WARN : `match_kill_events` 8,4 M brutes / 420 k gardées, bases locales jamais compactées) ; ~3 Go d'images Docker inutiles purgées à la main.
 
 **Conclusion** : contrôles authentifiés à faire par l'utilisateur ; compactage cette nuit (ou à la main sur accord) ; correctif du service de purge Docker (images de base étiquetées) et décision sur `cache/film_chunks` (13 Go) ; suppression des anciennes bases sur accord ; mises à jour Dependabot ensuite. Détail : `.ai/PLAN_RELEASE_V8_2026-10-17.md` (branche `feat/release-v8`).
 
@@ -2673,7 +2679,7 @@ branche lancée au push ; prochaine étape = lot 4, revue adversariale (une rond
 
 **Décision technique principale** : banc isolé (`scripts/bench-pages.sh`) sur une copie des bases de PROD tirée par flux ssh en lecture seule (les bases locales sont verrouillées par le serveur local des autres sessions sous Windows), serveur du worktree sur 8010, réglages DuckDB de prod, aucun jeton, réglages assainis, proxy fermé ; chaque passage redémarre le serveur à neuf (un serveur gardé dérivait de 6 à 15 % par passage).
 
-**Résultats observés** : passages 2 et 3 stables (0 page hors ±20 %). Accueil 2,8 / 6,2 / 3,1 s (3,1 / 18,3 / 3,4 Mo) pour JGtm / Nuzzles / Madina97294, dominé par l'arme favorite (1,6-2,0 s) et les frags assistés (0,9-3,5 s), deux recomptes du journal du film ; vue match 1,3-4,1 s, dominée par Q23b et Q28c (tout l'historique) ; artefact de rejeu 0,05-0,09 s ; Comparaison 6,3 s. Décisions du user : vue match allégée abandonnée (étape 5 `[~]`), modes « tout l'historique » et Explorer non prioritaires, pistes parallèles A (Sonnet) et B (Opus).
+**Résultats observés** : passages 2 et 3 stables (0 page hors ±20 %). Accueil 2,8 / 6,2 / 3,1 s (3,1 / 18,3 / 3,4 Mo) pour JGtm / joueur_074 / joueur_117, dominé par l'arme favorite (1,6-2,0 s) et les frags assistés (0,9-3,5 s), deux recomptes du journal du film ; vue match 1,3-4,1 s, dominée par Q23b et Q28c (tout l'historique) ; artefact de rejeu 0,05-0,09 s ; Comparaison 6,3 s. Décisions du user : vue match allégée abandonnée (étape 5 `[~]`), modes « tout l'historique » et Explorer non prioritaires, pistes parallèles A (Sonnet) et B (Opus).
 
 **Conclusion** : piste A (Accueil en fenêtre, étapes 3-4) confiée à un agent ; piste B commence par l'ADR 0039 (étape 6).
 ## [2026-10-21] Go 1.26.10 pour la v8.0.1 (GO-2026-6809) — Complété (branche `feat/v75`)
@@ -2694,7 +2700,7 @@ branche lancée au push ; prochaine étape = lot 4, revue adversariale (une rond
 
 ## [2026-10-21] Clés primaires (v8.0.1) : revue adversariale ronde 2, décisions utilisateur — Complété (branche `fix/v802-cles-primaires`)
 
-**Décision technique principale** : décisions de l'utilisateur du 2026-10-21. (1) Une sauvegarde sans `_ddl_*.json` (toutes celles d'avant cette version) se restaure comme avant le lot : tables et lignes par `CREATE TABLE AS`, sans clés, défauts, séquences ni vues, que le démarrage ne recrée pas (registre complet) ; aucun chemin de réparation des anciennes sauvegardes ; sortie de `cmd/restore`, journaux, `BACKUP_RESTORE` (EN/FR) et changelog le disent sans promesse, et recommandent une sauvegarde juste après la mise à jour. (2) Seul le `_ddl_<ts>.json` du même export que les Parquet retenus est rejoué ; schéma d'un autre export ignoré (WARN), table dont le Parquet vient d'un export antérieur en repli. (3) Le lot part dans la v8.0.1 : entrées déplacées dans la section `[8.0.1] - 2026-10-20` des deux changelogs, section `[Unreleased]` supprimée. (4) `streak` de Chocoboflor : on n'y touche pas.
+**Décision technique principale** : décisions de l'utilisateur du 2026-10-21. (1) Une sauvegarde sans `_ddl_*.json` (toutes celles d'avant cette version) se restaure comme avant le lot : tables et lignes par `CREATE TABLE AS`, sans clés, défauts, séquences ni vues, que le démarrage ne recrée pas (registre complet) ; aucun chemin de réparation des anciennes sauvegardes ; sortie de `cmd/restore`, journaux, `BACKUP_RESTORE` (EN/FR) et changelog le disent sans promesse, et recommandent une sauvegarde juste après la mise à jour. (2) Seul le `_ddl_<ts>.json` du même export que les Parquet retenus est rejoué ; schéma d'un autre export ignoré (WARN), table dont le Parquet vient d'un export antérieur en repli. (3) Le lot part dans la v8.0.1 : entrées déplacées dans la section `[8.0.1] - 2026-10-20` des deux changelogs, section `[Unreleased]` supprimée. (4) `streak` de joueur_165 : on n'y touche pas.
 
 **Résultats observés** : `TestImport_SchemaDUnAutreExportIgnore` et `TestImport_TableDUnCycleAnterieurRepli` rouges avant le correctif, verts après. Gate : `go vet` (avec et sans tag) propre ; `go test -tags=integration -p 1` vert sur les paquets touchés (duckdbbackup, duckdbkeys, ops, migration, migrations Halo Infinite, sync, platform/duckdb, archlint) ; golangci-lint `--new-from-merge-base` 0.
 
@@ -2703,16 +2709,16 @@ branche lancée au push ; prochaine étape = lot 4, revue adversariale (une rond
 
 **Décision technique principale** : P1-a — la restauration ne pose plus le schéma du code courant : l'export écrit le schéma complet de la base (séquences, tables, index, vues) au même instant que les lignes et le registre, la restauration le rejoue puis verse les tables par colonnes nommées sans écarter aucune ligne ; repli `CREATE TABLE AS` journalisé et compté seulement si le schéma manque, est illisible ou refuse la table ; `FinalizeRestoredDB` aligne les séquences. Principe : la base revient dans l'état de son époque, le démarrage suivant applique les étapes manquantes puis la passe C2 rétablit les clés. P1-b — la passe C2 refuse une table dont une ligne a une colonne de clé primaire NULL (WARN + compteur de refus, table inchangée) ; `duckdbkeys` ne filtre plus ces lignes (une clé NULL fait échouer la recopie). P1-c — schéma écrit par `atomicfile.WriteFileStrict` ; un schéma illisible replie la seule clé concernée (entré avec P1-a, test dédié).
 
-**Résultats observés** : `TestRestore_SauvegardeAnterieureAUneConversionAppendOnly` rouge sur `80431c8e7` (`match_favorites_latest` = 0), vert après `8e65715b3` ; `TestRepairDeclaredKeys_CleePrimaireNullRefusee` rouge avant `d107532d4` ; `TestImport_SchemaTronqueDegradeLaCleSeulement` rouge si l'erreur de lecture du schéma est remontée. `TestRestore_BaseJoueurClesVuesEtSequencesAlignees` échoue (clé dupliquée) sans `FinalizeRestoredDB` : la finalisation est couverte. Copies : Chocoboflor, JGtm, metadata, shared restaurés à l'identique (lignes, vues, tables sans clé de la source), shared 20 s, puis clés rétablies par le cycle de démarrage. Gate : `go test -tags=integration -p 1 ./...` vert (209 paquets) ; golangci-lint `--new-from-merge-base` 0 sur les paquets touchés.
+**Résultats observés** : `TestRestore_SauvegardeAnterieureAUneConversionAppendOnly` rouge sur `80431c8e7` (`match_favorites_latest` = 0), vert après `8e65715b3` ; `TestRepairDeclaredKeys_CleePrimaireNullRefusee` rouge avant `d107532d4` ; `TestImport_SchemaTronqueDegradeLaCleSeulement` rouge si l'erreur de lecture du schéma est remontée. `TestRestore_BaseJoueurClesVuesEtSequencesAlignees` échoue (clé dupliquée) sans `FinalizeRestoredDB` : la finalisation est couverte. Copies : joueur_165, JGtm, metadata, shared restaurés à l'identique (lignes, vues, tables sans clé de la source), shared 20 s, puis clés rétablies par le cycle de démarrage. Gate : `go test -tags=integration -p 1 ./...` vert (209 paquets) ; golangci-lint `--new-from-merge-base` 0 sur les paquets touchés.
 
 **Conclusion / prochaine étape** : P2 consignés, NON corrigés (décision du coordinateur) — (1) `internal/sync/no_art_upsert_migrations_test.go` ne voit pas un UPSERT sur table protégée écrit en littéraux concaténés, en nom qualifié (`main.x`) ou derrière un CTE, et n'a pas de témoin « au moins un fichier de migration scanné » ; (2) les refus « plus de 5 M de lignes » et « colonne de clé absente » de `declared_keys_repair.go` ne sont pas testés (seuil constant) ; (3) les tests de restauration ne couvrent que les cibles joueur et shared_social (Finalize couvert par `TestRestore_BaseJoueurClesVuesEtSequencesAlignees`) ; (4) en-tête du garde-rail des migrations ramené au contrat (`d6224446a`, corrigé).
 ## [2026-10-21] Clés primaires perdues : restauration, réparation au démarrage, `prestige-seed`, garde-rail ART des migrations (v8.0.1, constats C1 à C4) — Complété (branche `fix/v802-cles-primaires`, partie de `origin/feat/v75` ; registre `.ai/AUDIT_ON_CONFLICT_TABLES_HERITEES_2026-10-20.md`, section « Statut des correctifs »)
 
 **Décision technique principale** : C1 — la restauration Parquet pose d'abord le schéma canonique de chaque base (`ops.RestoreSchema` = `migration.RunForTitleDB` du titre et de la cible décodés de la clé de sauvegarde), puis verse chaque table par colonnes nommées (`pkg/duckdbkeys.CopyInto`, doublons de clé écartés : la plus récente gardée, sinon la plus petite selon toutes les colonnes) ; une table hors schéma canonique est recréée depuis le DDL que l'export écrit désormais (`_ddl_<horodatage>.json`), repli `CREATE TABLE AS` journalisé seulement sans DDL ; un NOT NULL canonique dont la sauvegarde porte des NULL est relâché (remplir par le défaut changerait le sens d'un `written_at` dans une vue `_latest`). C2 — passe générique en fin de `runSteps` : une table SANS AUCUNE clé dont le schéma canonique (même jeu d'étapes appliqué à une base vierge en mémoire, cache par jeu et par processus) déclare des clés est reconstruite en transaction ; refus journalisés et comptés : append-only (vue `_latest`), clé alimentée par une séquence perdue, plus de 5 M de lignes, étapes title-owned non câblées. Le seed Prestige garde son `ON CONFLICT` (clé garantie ; si une montée de version tombe le même démarrage que la réparation, le backfill échoue une fois en WARN et passe au suivant). C3 — `cmd/prestige-seed` supprimé. C4 — garde-rail statement-level `TestNoUpsertOnProtectedTablesInMigrations` ; seed des playlists classées en SELECT-then-write via `duckdbkeys.Upsert`, implémentation unique déplacée de `platform/duckdb` (import depuis les migrations de titre = cycle en test), `UpsertRowNoConflict` y délègue.
 
-**Résultats observés** : restauration de COPIES — Chocoboflor 60 272 lignes identiques, tables sans clé 23 → 9 ; JGtm 105 713 identiques ; metadata 44 153 identiques ; shared 20 461 480 identiques (46 s). Réparation au démarrage sur copies — metadata : `challenge_template` (27 lignes) ; Chocoboflor : 13 tables, 0 doublon, lignes identiques, 0,43 s ; 4 autres bases joueur, shared Halo Infinite et Halo 5 : rien. Gate : `go test -tags=integration -p 1 ./...` vert (209 paquets) ; golangci-lint `--new-from-merge-base` 0 sur les paquets touchés.
+**Résultats observés** : restauration de COPIES — joueur_165 60 272 lignes identiques, tables sans clé 23 → 9 ; JGtm 105 713 identiques ; metadata 44 153 identiques ; shared 20 461 480 identiques (46 s). Réparation au démarrage sur copies — metadata : `challenge_template` (27 lignes) ; joueur_165 : 13 tables, 0 doublon, lignes identiques, 0,43 s ; 4 autres bases joueur, shared Halo Infinite et Halo 5 : rien. Gate : `go test -tags=integration -p 1 ./...` vert (209 paquets) ; golangci-lint `--new-from-merge-base` 0 sur les paquets touchés.
 
-**Conclusion / prochaine étape** : à décider par l'utilisateur — `streak` de Chocoboflor (append-only, 1 ligne) sans sa clé `id`, refusée par principe. Découvertes non traitées : le staging de sauvegarde garde chaque export horodaté sans purge (l'import ne prend désormais que le dernier) ; les tables créées à l'exécution hors migrations (metadata : `career_ranks`, `season_calendars`…) ne sont pas couvertes par la réparation au démarrage (seulement par le DDL à la restauration). Vérification de prod : relire au premier démarrage de la v8.0.1 les journaux `clés déclarées rétablies` / `réparation refusée`.
+**Conclusion / prochaine étape** : à décider par l'utilisateur — `streak` de joueur_165 (append-only, 1 ligne) sans sa clé `id`, refusée par principe. Découvertes non traitées : le staging de sauvegarde garde chaque export horodaté sans purge (l'import ne prend désormais que le dernier) ; les tables créées à l'exécution hors migrations (metadata : `career_ranks`, `season_calendars`…) ne sont pas couvertes par la réparation au démarrage (seulement par le DDL à la restauration). Vérification de prod : relire au premier démarrage de la v8.0.1 les journaux `clés déclarées rétablies` / `réparation refusée`.
 ## [2026-10-20] Accueil et vue match : sections de durée pour mesurer en prod — Complété (branche `feat/v801-chronos`, vers `feat/v75`)
 
 **Décision technique principale** : chaque étape de l'Accueil porte sa section (`home_*` : chargement de l'historique, identité, compteurs, cartes, placements, rejeux, sessions, coéquipiers, analyse en cours ; enrichissements par tuile une section par liste, `home_<étape>_recent|favorites`, extraits dans `enrichRecentLists`) ; chaque chargeur de la vue match ouvre `mv_<source>` dans `goLoad`/`goLoadSection`, sauf les quatre sources dont le repo chronomètre déjà ses lectures (sections = feuilles, ADR 0036 I6).
@@ -2731,7 +2737,7 @@ branche lancée au push ; prochaine étape = lot 4, revue adversariale (une rond
 
 **Décision technique principale** : audit en lecture seule, périmètre = les 22 `ON CONFLICT` exécutables de `apps/go-api` (+ 37 `INSERT OR IGNORE/REPLACE`, même erreur, relevés à part), axe unique A2 (la clé du conflit existe-t-elle sur une base héritée ?) plus un volet ART. Contraintes lues avec `cmd/diag_q` (lecture seule) sur 22 bases, en copie ; les fichiers vivants de `halo_infinite` (metadata, shared, shared_social, 5 player DB) sont verrouillés par le serveur local, remplacés par les sauvegardes du 08/10 et du 16/10. Aucune base de production lue. Aucun code modifié.
 
-**Résultats observés** : 22 `ON CONFLICT` : 19 SÛR, 3 RISQUE, 0 INCONNU ; famille voisine 37 SÛR. Constats : 1 P1 (la restauration Parquet, `pkg/duckdbbackup/importer.go:157`, recrée toutes les tables sans clé primaire et rien ne la rétablit : la player DB `Chocoboflor` en a perdu 23, `schema_migrations` comprise ; sur une base partagée restaurée, le chemin chaud de la synchronisation en `INSERT OR IGNORE` échouerait à chaque match), 2 P2 (`challenge_template` sans PK sur la metadata locale alors que le seed Prestige fait `ON CONFLICT (id)`, latent car le seed est déjà appliqué ; `arc` et `challenge` de `Chocoboflor` sans PK pour l'outil jetable `prestige-seed`), 1 P2 à trancher (`DO UPDATE` sur `playlists_catalog` dans une migration, hors portée du garde-rail ART qui exclut `/migrations/`). 5 constats écartés. Le cas `medal_definitions` du 14/09 n'est pas reproductible sur les bases locales (PK présente dès le 01/09) : les bases locales ne représentent pas tout le parc.
+**Résultats observés** : 22 `ON CONFLICT` : 19 SÛR, 3 RISQUE, 0 INCONNU ; famille voisine 37 SÛR. Constats : 1 P1 (la restauration Parquet, `pkg/duckdbbackup/importer.go:157`, recrée toutes les tables sans clé primaire et rien ne la rétablit : la player DB `joueur_165` en a perdu 23, `schema_migrations` comprise ; sur une base partagée restaurée, le chemin chaud de la synchronisation en `INSERT OR IGNORE` échouerait à chaque match), 2 P2 (`challenge_template` sans PK sur la metadata locale alors que le seed Prestige fait `ON CONFLICT (id)`, latent car le seed est déjà appliqué ; `arc` et `challenge` de `joueur_165` sans PK pour l'outil jetable `prestige-seed`), 1 P2 à trancher (`DO UPDATE` sur `playlists_catalog` dans une migration, hors portée du garde-rail ART qui exclut `/migrations/`). 5 constats écartés. Le cas `medal_definitions` du 14/09 n'est pas reproductible sur les bases locales (PK présente dès le 01/09) : les bases locales ne représentent pas tout le parc.
 
 **Conclusion / prochaine étape** : aucune correction faite (règle de l'audit). À décider : (1) rétablir les clés après `cmd/restore` ou refuser l'import sans elles ; (2) corriger le seed Prestige avant sa prochaine montée de version ; (3) lister les tables sans PK de la base partagée et de la metadata de PRODUCTION (sauvegarde restic ou arrêt du serveur) ; (4) décider de la portée du garde-rail ART pour les migrations. Reste à lire : `shared_social` et `metadata` vivantes quand le serveur local est arrêté.
 ## [2026-10-20] Rejeu : retrait du garde « local seulement » et de `LEVELUP_REPLAY_PUBLIC` — Complété (branche `fix/v801-garde-rejeu`, partie de `origin/feat/v75`)
@@ -3441,7 +3447,7 @@ passage : 5 garde-rails balayant `src/` en timeout 5 s sous charge, verts seuls)
 couleurs/fields/inter-features/knip verts, CI verte après relance du job Go Coverage annulé à
 45 min (diff 100 % web). Go — build/vet/tests + archlint + integration sharedprovider verts,
 CI verte (un ratchet `shared_social` attrapé sur un COMMENTAIRE, corrigé). Tokens morts
-(Chocoboflor, Madina97294, XxDaemonGamerxX, AADSTS70000 depuis le 2026-06-14) : ignorés sur
+(joueur_165, joueur_117, joueur_291, AADSTS70000 depuis le 2026-06-14) : ignorés sur
 décision utilisateur. Classement mondial : Waypoint HTTP 500 le 19/09, persistance échouée
 le 20/09 (drain), cron quotidien.
 
@@ -4405,11 +4411,11 @@ duckdb, openapi à jour, tsc, eslint (0 erreur), lint couleurs, vitest palmares/
 
 **Révision d'échelle (retour utilisateur, même jour)** : la longueur des barres était la PART
 rapportée au maximum de la carte — un binôme à 3 assistances remplissait sa demi-barre, et un
-fidèle à 1 match mesuré écrasait Chocoboflor (250 assistances). Décision : longueur = VOLUME sur
+fidèle à 1 match mesuré écrasait joueur_165 (250 assistances). Décision : longueur = VOLUME sur
 échelle log commune à toute la page (`assistVolumeMax` sur toutes les relations,
 `Math.log1p(n)/Math.log1p(max)`), tranches au prorata ; les parts restent en chiffres et
-infobulles. Mesuré à 1440 px (demi-barre 99 px) : Madina 422 → 99, Chocoboflor 250 → 91,
-Nilton410 15 → 47, SirAvlas 3 → 22 ; binôme MASTER551446 3 → 43/189 px au lieu de pleine.
+infobulles. Mesuré à 1440 px (demi-barre 99 px) : joueur_075 422 → 99, joueur_165 250 → 91,
+joueur_006 15 → 47, SirAvlas 3 → 22 ; binôme JOUEUR_825 3 → 43/189 px au lieu de pleine.
 
 **Découvertes (non traitées)** : au boot local, `data_health` signale l'index `match_skill_rank`
 désynchronisé pour JGtm (2 clés) — préexistant, hors périmètre.
@@ -4430,7 +4436,7 @@ désynchronisé pour JGtm (2 clés) — préexistant, hors périmètre.
 - 5.11 bis / 5.13 (9f0c17f1e, c423188dc) : grammaire de trame — tables par vue, paquets fermes 0 -> 99,5 % sur dad793c7, rang de vue = deux bits de tete de l identifiant d image-cle, i57 porte en entier, mantling = queue de i54 (initiate_mobility_action, quatre valeurs sans etiquette).
 - 5.14 (a9eae032c) : les trois classes de vue (A messages, B entites, C controle par participant), dispatch par rang, faux DEL supprimes (+15 114 records ti=35), second bit d amorce nomme (terminateur de la vue A vide).
 - 5.15 a 5.21 (e13fafde1, 58b4aba74, 5a5fbfaf5, d976be4e0, 5007af47c, f0352e6bf, f0bd32b0a) : le residu du film dense (23 852 paquets abandonnes a mi-lecture sur bfecd02b) instruit chez l ecrivain sans reduction — acquis : branche vive de FUN_1406cd128 et table de datums (image-cle = son dump), baseline = valeur, type 8 = liste des joueurs, controle de corruption = bit de l en-tete de chunk_00 (faux sur 1 605 films), lecteur d image-cle en entier, bloc de type 1 = table de datums du chunk (masques de composants) ; cause nommee : les naissances entre deux images-cles ne sont lues par rien (zero NEW sur 1 196 paquets du chunk 2). Sept lots, ~3,2 M tokens : la serie s arrete la sur decision utilisateur.
-- 5.22 (a5ab25f3c) : le declencheur du saut sur le temoin Madina97294 (bfecd02b, sept sauts verifies dans Theater) — aucun composant exclusif au decollage sur 64 ; le saut est l action d unite 0x16 ; bloc d action de la vue C cable (trou de cablage, pas de grammaire) ; SCHEMA 68 : `mobility` -> `clamber` (« Escalade »/« Clamber »), prouve 9/9 dans Theater ; la barre Theater = horloge relative du film ; le 7e saut (0,97 m, vers un rebord) est hors de la fenetre de hauteur du derive : faiblesse structurelle du critere d apogee, consignee.
+- 5.22 (a5ab25f3c) : le declencheur du saut sur le temoin joueur_117 (bfecd02b, sept sauts verifies dans Theater) — aucun composant exclusif au decollage sur 64 ; le saut est l action d unite 0x16 ; bloc d action de la vue C cable (trou de cablage, pas de grammaire) ; SCHEMA 68 : `mobility` -> `clamber` (« Escalade »/« Clamber »), prouve 9/9 dans Theater ; la barre Theater = horloge relative du film ; le 7e saut (0,97 m, vers un rebord) est hors de la fenetre de hauteur du derive : faiblesse structurelle du critere d apogee, consignee.
 - 5.23 (f3d52514b) : table anticipee (slot, tete) -> archetype depuis toutes les images-cles, consultee avant le rejet (repli nomme, date, compte) — bfecd02b paquets fermes 2 884 -> 3 919, records +36 %, ti=35 129 572 -> 164 232, stances 616 -> 841 ; killsource et les marches d objets anticipaient deja (facts.Rev inchangee, pas de backlog) ; reste 25,3 % (entites nees et mortes entre deux images-cles).
 - Revisions : grammar-2026-09-22.12 (chronique fusionnee aux rangs .11 et .12 pour les lots paralleles 5.22 / 5.23), killsource-2026-09-21.9 (5.11 bis : les faits ont change -> backfill killsource a jouer une fois), schema 68.
 
@@ -4468,7 +4474,7 @@ désynchronisé pour JGtm (2 clés) — préexistant, hors périmètre.
 - 5.1.5 : `vehicleCycles[]` PAR EMPLACEMENT de naissance (miroir de `weaponPads`/`PadCycle`, agglomeration 2 m, juge `gwPadsCycleFromGaps` reutilise) ; 2 cycles etablis sur 17 films (`4f77afc1` ghost 44,1 s ; `50247b26` mongoose 70,6 s), les manques dominent — aucune surface web vehicule dans ce lot (aucune infobulle vehicule n existe : transmis au lot de rendu).
 - Schema 62 -> 63 ; `SchemaDesFaits` 2 -> 3 (la jauge voyage par les gardes de mode, blob d entrees inchange : aucun film redecode) ; `grammar.Rev` -> `grammar-2026-09-18.3`, `facts.Rev` par valeur (meme rang `killsource-2026-09-18`) ; Wraith = chassis `10754375` (Theater utilisateur).
 
-**Verdicts Theater de l utilisateur (2026-09-19)** : lecteur de morts de vehicule juste 5/5 a la seconde (`4f77afc1` 800/1, 864/1 = Wraith, 916/1 ; `bfecd02b` 777/1) ; la mort de la BASE M2 sur le Razorback 776/1 etait FAUSSE (despawn sans explosion a 3:29) — la question du lot 3.4 est fermee dans le sens de la tete. Occupant « Yessireezy siege 1 » FAUX (tue a cote par un mortier de Wraith) -> decouverte. Theater ne montre que les matchs du compte : `084a804d` et 4 autres non consultables ; les 5 fins contestees de `084a804d` sont acceptees comme correction de grammaire (lues par une largeur prouvee fausse : `param` 0 par ex aequo contre 3 chez l ecrivain), reversible avant recuisson.
+**Verdicts Theater de l utilisateur (2026-09-19)** : lecteur de morts de vehicule juste 5/5 a la seconde (`4f77afc1` 800/1, 864/1 = Wraith, 916/1 ; `bfecd02b` 777/1) ; la mort de la BASE M2 sur le Razorback 776/1 etait FAUSSE (despawn sans explosion a 3:29) — la question du lot 3.4 est fermee dans le sens de la tete. Occupant « joueur_706 siege 1 » FAUX (tue a cote par un mortier de Wraith) -> decouverte. Theater ne montre que les matchs du compte : `084a804d` et 4 autres non consultables ; les 5 fins contestees de `084a804d` sont acceptees comme correction de grammaire (lues par une largeur prouvee fausse : `param` 0 par ex aequo contre 3 chez l ecrivain), reversible avant recuisson.
 
 **Gates avec decodage** : corpus 17 temoins `--base=83a562ea1` : gains 988, pertes 104 toutes NOMMEES (`084a804d` deathsRead 9 -> 4 et derives, `11de8353` deathsRead 5 -> 4 / noPosition 26 -> 1, `bombArmings.rises` 73 -> 65 = denominateur, `vehicles.ambiguous` +1 sur deux films = doute publie) ; `killsource`, `grenades`, positions de bipede intacts sans exception. `replay-equiv` 20 : 20 differents, meme ecart partout (etape `flagGauge` inseree = decalage positionnel + flag/artifact/killsource/vehicles/pads/killRefs), re-figes par le pilote : 20 x vehicles / killsource / flagGauge / flag / artifact, 9 x pads, 3 x killRefs, et sur UN film chacun abilityRanks / inventoryDeltas / equipmentChanges (+-1 ligne : largeur de `biped-malleable-property` lue au registre sur un build HI_1_10_0 — correction par la doctrine du film autoportant) et bombReads (5.1.8). S8 `-deux-passes` 3 films : identiques a l octet.
 
@@ -4912,7 +4918,7 @@ corpus gate vs da258bf76) ; voie au 2.7g ; tranches killsource suivantes entre l
 ---
 ## [2026-09-16] Robustesse du sync par le pool : verdict fidèle, rejeu du 429, plafond de slots sains, migrations CLI, rang de carrière public — Complété (branche `wt/sync-robustesse`, non poussée)
 
-**Six défauts d'une même passe réelle** (premier `sync-full` servi par le pool, Nuzzles,
+**Six défauts d'une même passe réelle** (premier `sync-full` servi par le pool, joueur_074,
 6 slots x 3 req/s). Plan exécuté : `.ai/PLAN_ROBUSTESSE_SYNC_2026-09-16.md`, six étapes, six
 commits sur `wt/sync-robustesse`.
 
@@ -4931,15 +4937,15 @@ le rejeu vit donc dans le sous-paquet `internal/sync/historyretry` et `engine.go
 lignes. Le ratchet a fait exactement son travail, comme le 2026-08-14.
 
 **C-B — `--token-pool-size N` comptait les sources, pas les slots sains.** `NewPool` tronquait
-`sources[:MaxSize]` AVANT de résoudre : avec `1`, la première source du scan (Chocoboflor,
+`sources[:MaxSize]` AVANT de résoudre : avec `1`, la première source du scan (joueur_165,
 révoquée) était la seule tentée → « aucun slot créé ». Le scan vient d'une map, donc l'ordre
 changeait à chaque exécution. **D2** : copie triée par gamertag, parcours complet, sortie quand
 le nombre de slots RÉSOLUS atteint le plafond.
 
 **C-D — le rang de carrière n'est pas privé : mesure contre prémisse.** `GET /careerranks`
-interrogé pour un xuid TIERS avec trois prêteurs (JGtm, DankerGlue, Trimbutton) rend 200 avec le
+interrogé pour un xuid TIERS avec trois prêteurs (JGtm, joueur_1016, joueur_1018) rend 200 avec le
 MÊME rang et la MÊME XP que l'appel du propriétaire (JGtm `rank=202 xp=2555` vu par deux
-prêteurs ; Nuzzles `rank=272 xp=0`, 272 = rang maximal). `PolicyPinnedPlayer` reposait sur une
+prêteurs ; joueur_074 `rank=272 xp=0`, 272 = rang maximal). `PolicyPinnedPlayer` reposait sur une
 prémisse fausse, déjà contredite par `career_live_target.go`. **D4** : `GetCareerRank` passe en
 `PolicyAnyPublic`, `ErrNoPinnedToken` et les champs `pinned*` disparaissent, six appelants de
 production retouchés — et le code mort qui en découlait (`newPooledClient` perdait l'usage de son
@@ -4990,7 +4996,7 @@ arrêté, et ne pas faire tourner les jetons du parc pendant qu'un serveur tourn
 ## [2026-09-16] Sync d'un profil sans token propre : pool partout, seams title-owned câblés par toutes les CLI, dérive de schéma `match_registry` — Complété (branche `wt/sync-pool`, non poussée)
 
 **Trois défauts distincts, tous rencontrés sur la même passe** (premier sync d'un profil suivi
-sans token propre, Nuzzles, 2 023 matchs en 65 min). Plan exécuté :
+sans token propre, joueur_074, 2 023 matchs en 65 min). Plan exécuté :
 `.ai/PLAN_SYNC_POOL_SEAMS_SCHEMA_2026-09-16.md`, quatre étapes, quatre commits.
 
 **D-A — le pool sert tout le monde, sauf là où trois appelants disaient le contraire.** Le pool
@@ -5045,7 +5051,7 @@ en-tête.
 
 **Conclusion / prochaine étape** : branche `wt/sync-pool` prête, 4 commits, rien de poussé, rien
 de fusionné. Restent au pilote la revue adversariale (deux relecteurs : auth/pool, puis
-sync/migration) et la CI. Ensuite seulement, la reprise du sync de Nuzzles (annexe A du plan) :
+sync/migration) et la CI. Ensuite seulement, la reprise du sync de joueur_074 (annexe A du plan) :
 `replay_build_location` est à `off` depuis le 2026-09-16 et doit revenir à `local` après la
 cuisson ; les deux matchs rejetés rentreront d'eux-mêmes grâce à l'étape 3. Aucune base sous
 `data/` n'a été ouverte pendant tout le chantier.
@@ -5695,7 +5701,7 @@ changement (150 -> 158 fichiers haches, `film_table.go` neuf) ; accepte par le p
 entre la table et la bijection inferee ; les 8 ecarts en deux familles, aucune contradiction
 entre deux lectures fiables : 6 gamertags ABSENTS du kill feed (le feed ne nomme que qui tue ou
 meurt ; l'inference mettait un autre joueur sur leur indice — `FlukiestGolf` 111fa685 i10,
-`MarshallG6443` e5adf7b2 i13, `manistoff` a521164d i18, `Iskra 20252993` 11de8353 i23,
+`joueur_680` e5adf7b2 i13, `manistoff` a521164d i18, `Iskra 20252993` 11de8353 i23,
 `probablybxllets` 1c5c10cc i22, `Alpha122092` 23ffd885 i4) et 2 sur des films a marge de
 bijection nulle (l'inference se declarait elle-meme ambigue). Les 13 films a vacant intercale
 rendent 119/123 : c'est le RANG ABSOLU que le dead-state emploie (D3 (1.5) fermee a moitie).
@@ -7315,7 +7321,7 @@ seule mesure figee du superviseur (8 pontes, 20 frags / 6 assistances / 3 captur
 **Parc : 78 films cuits HORS LIGNE deux fois** (binaire AVANT tire de `git archive 1690aec04`,
 APRES de `261e86c98`, faits derives des exports commites et valides a l'octet contre
 `01e1f945.facts.json`, aucune base ouverte). Sur 604 joueurs publies, **2 series bougent** :
-`1b2d9e08` / 2533274806449978 (15 616 assistances -> 2, feuille 2) et `bf2a9f05` / 2533274903615304
+`1b2d9e08` / 2542679132084921 (15 616 assistances -> 2, feuille 2) et `bf2a9f05` / 2709615471229653
 (56 -> 1, feuille 1). Ecart total serie-feuille **15 669 -> 0**, ecart moyen par joueur
 **25,94 -> 0,00**, joueurs exacts **602/604 -> 604/604**. **76 artefacts sur 78 identiques a
 l'octet**, et le calque `objectives` ne bouge sur AUCUN film (il passait deja par la borne).
@@ -7576,7 +7582,7 @@ portage**. Une fin CHEZ LUI n'est pas un lacher : `endsHome()` regroupe la captu
 les trois endroits qui posent le drapeau apres une fin la traitent pareil ; un retour qui vient de
 fermer un portage ne se compte plus en abstention. Mesure : **1,1229 -> 1,0665**, joueurs au-dessus
 45 -> 39, periodes 469 -> 477, `16ea3668` 1,443 -> **1,031** et son cas nomme au gate de B1
-(2535417044536883) 55,1 s -> **1,3 s** pour 0,9 s d'oracle.
+(2659168014067630) 55,1 s -> **1,3 s** pour 0,9 s d'oracle.
 
 **Item 3 — le DOMAINE des compteurs au niveau de l'ENREGISTREMENT (`6066e462c`).** Les dix prises
 fausses de `fb1a1a72` ne venaient ni d'une erreur d'identite (les huit slots sont nommes sans
@@ -7588,9 +7594,9 @@ deroulage de B1 (16) : la borne PAR PAS ne pouvait pas le voir. C'est la decouve
 posee. Seuil MESURE sur 11 films, tous modes : pire valeur d'un enregistrement sain **102 934**,
 plus petite valeur aberrante **2 415 919 104** — rien entre les deux ; `statMaxCounter = 2^20` est
 dix fois au-dessus de l'une et sous l'autre. Gate : sur les **69 films du parc, la SEULE action qui
-change est `fb1a1a72` / 2535450323793545 `flag_grabs` 10 -> 0**.
+change est `fb1a1a72` / 2759150029385955 `flag_grabs` 10 -> 0**.
 
-**Item 4 — `4ecdf3e7` / 2533274877168586 : `[!]`, cause etablie.** Le joueur n'a AUCUN slot
+**Item 4 — `4ecdf3e7` / 2595499236340293 : `[!]`, cause etablie.** Le joueur n'a AUCUN slot
 statborg. La feuille de match dit pourquoi : il part a 157 s (`left_in_progress`), un bot tient le
 siege UNE seconde, un remplacant arrive — **un siege, trois occupants dans la meme manche**. Le
 film le confirme a la seconde : la serie `comp 22 A` du slot 12 ne porte qu'un point, `t = 155 197 :
@@ -8137,8 +8143,8 @@ A CET INSTANT.
 sieges recycles que le report 1.6 invoquait n'en produisent qu'UNE ambiguite — les correctifs
 E2-bis (« le corps est (slot, generation) ») avaient deja supprime le defaut a la racine, et le
 report etait reste ecrit dans les termes d'avant. Servi faux a l'ecran : DEUX ramassages
-(frames 9802 et 9968) nommes `2533274817603732` alors que le record de creation donne le siege a
-`2535419608696209`, plus une lecture d'inventaire qualifiee `dead` sans porteur etabli. Zero frag
+(frames 9802 et 9968) nommes `2624504411370806` alors que le record de creation donne le siege a
+`2623045058294279`, plus une lecture d'inventaire qualifiee `dead` sans porteur etabli. Zero frag
 sous equipement (1 146 episodes, `killsRead` vrai sur 7 films, 33 frags et 7 assistances), zero
 portage de bombe. Le site du sync (`kill_positions`, servi a Tactique) que le report designait
 comme le plus grave est en fait le MOINS expose : sa fenetre vaut UNE frame de 100 ms sur tout le
@@ -9303,7 +9309,7 @@ de generated.ts, les deux commites, aucun diff residuel.
 
 `go test -tags=integration -p 1 -count=1 ./...` : UN ECHEC, **preexistant et prouve tel**.
 `internal/api/wire` / `TestOuvrierReel_ConstruitEtLivre` echoue sur trois mesures figees
-d'IDENTITE (« 0 vies anonymes, attendu 1 » ; xuid 2535458702376288 nomme par le film mais
+d'IDENTITE (« 0 vies anonymes, attendu 1 » ; xuid 2643148600905879 nomme par le film mais
 absent des mesures figees). Je ne l'ai pas suppose : j'ai rejoue le MEME test au point de
 branche `32821ba86` dans un worktree detache jetable (supprime depuis — ni ma branche ni mon
 worktree touches), echec identique et artefact identique a l'octet pres (291 655 octets,
@@ -9635,12 +9641,12 @@ cascade, qui ignore et la composition selectionnee et `filter_exact_composition`
 donc structurellement >= au corps de page des que l'option est active.
 
 **Mesure sur la session du 27 aout 2026** (`diag_q` sur `shared_matches_v2`, xuid JGtm
-`2533274823110022`) : 8 matchs joues, dont 7 avec Madina97294 + Chocoboflor. Exclus par la
-composition exacte : `a0c36016` (Nilton410, rang 4 du top coequipiers « avec amis »),
-`faff9935` et `94a28b8b` (passivemarquise, rang 35) -> 4 matchs en page contre ~7 en L2.
+`2533274823110022`) : 8 matchs joues, dont 7 avec joueur_117 + joueur_165. Exclus par la
+composition exacte : `a0c36016` (joueur_006, rang 4 du top coequipiers « avec amis »),
+`faff9935` et `94a28b8b` (joueur_1027, rang 35) -> 4 matchs en page contre ~7 en L2.
 
-**Le match du crash de Chocoboflor n'est PAS la cause.** `2cf24f30` (19:39 UTC) porte bien
-`present_at_completion = FALSE` pour Chocoboflor et un bot `bid(3.0)` en `joined_in_progress`
+**Le match du crash de joueur_165 n'est PAS la cause.** `2cf24f30` (19:39 UTC) porte bien
+`present_at_completion = FALSE` pour joueur_165 et un bot `bid(3.0)` en `joined_in_progress`
 a sa place ; ni `Q30SquadMatchesSharedQuery` ni `Q32bMainTeamParticipantsTemplate` ne filtrent
 sur la presence, et les bots sont hors du top coequipiers (`NOT LIKE 'bid(%'`) donc hors
 `extraPool` : ce match est CONSERVE par `matchHasExactComposition`. L'ecart vient des trois
@@ -10221,10 +10227,10 @@ cinq lecteurs, et poser le garde-rail exige par la regle n°6.
 
 **Ce que j'avais rate, et pourquoi.** Sur le point 4 (« des joueurs attribues a la mauvaise
 equipe », match Origin `8bc6074f`) j'avais conclu REFUTE. L'utilisateur a maintenu son constat.
-Il avait raison : **Chocoboflor (t0) et StevenW5318 (t1) sont INTERVERTIS sur les 77 premieres
+Il avait raison : **joueur_165 (t0) et joueur_571 (t1) sont INTERVERTIS sur les 77 premieres
 secondes**. Preuve : Origin est une carte CTF symetrique (base t0 a x~-22, base t1 a x~+22) et les
-positions de depart de vie le montrent — Chocoboflor spawne a x=+22.62 (base adverse),
-StevenW5318 a x=-22.51. Les vies 3 (images 874+) retombent du bon cote (x=-13.09 / x=+13.74) :
+positions de depart de vie le montrent — joueur_165 spawne a x=+22.62 (base adverse),
+joueur_571 a x=-22.51. Les vies 3 (images 874+) retombent du bon cote (x=-13.09 / x=+13.74) :
 l'interversion se resorbe.
 
 **Mes deux « preuves » initiales ne valaient rien, et la lecon est generale.** (1) « Zero frag
@@ -10651,7 +10657,7 @@ match ». La feuille dit le contraire en une ligne : morts par joueur 19, 21, 13
 candidat et l'élimination sur le roster sort avant même son journal. Le code de P2 n'était pas
 en panne — le cas qu'il ferme n'existe pas sur ce film. Le vrai cas « joueur à zéro mort » existe
 bien, mais PAR MANCHE, et c'est le pont statborg qui le résout déjà (`d9781168` manche 1, slot 12
-→ `elimination_roster`, parce que `DinoR00` n'a aucune mort en manche 1). La vérification de R2
+→ `elimination_roster`, parce que `joueur_366` n'a aucune mort en manche 1). La vérification de R2
 était statuée `[~]` « couverte ailleurs » et n'avait jamais été faite sur ce film : la leçon est
 qu'un `[~]` sur une VÉRIFICATION de fait n'est pas un statut, c'est un report.
 
@@ -10674,7 +10680,7 @@ plus de vies que de joueurs, c'est que la découpe ou le roster est faux, la pr�
 un slot » ne tient plus.
 
 **Corroboration indépendante.** Le pont statborg, qui ne partage aucune donnée avec le pont des
-bipèdes, nomme le slot 12 de la manche 1 par élimination (`DinoR00`, zéro mort en manche 1) ;
+bipèdes, nomme le slot 12 de la manche 1 par élimination (`joueur_366`, zéro mort en manche 1) ;
 l'exclusion temporelle attribue au même joueur la vie `575 [2773..4224]`, qui couvre toute la fin
 de cette manche. Deux méthodes, la même conclusion.
 
@@ -10842,7 +10848,7 @@ GoDoc. Consigne en §8 Decouvertes du plan pour memoire (deja resolu, rien a re-
 (`TestGetPage_ExactComposition_PublishesRosterCountAndExcludedMatches`) a d'abord ECHOUE en
 COMPILATION (`MatchCountRoster`/`ExcludedByExactComposition` inexistants,
 `domain.CompositionExcludedMatch` indefini), observe AVANT toute implementation. Apres code :
-vert, avec un scenario a 4 matchs ecartes (Nilton410 seul, passivemarquise seul, un xuid
+vert, avec un scenario a 4 matchs ecartes (joueur_006 seul, joueur_1027 seul, un xuid
 connu SANS gamertag resolu -> repli "Joueur 0009" meme convention que Q32b, et les deux
 ensemble -> `extra_gamertags` trie). Log `teammates.exact_composition_gap` observe :
 `sessions=1 kept_matches=1 excluded_matches=4 distinct_culprits=3`.
@@ -10873,10 +10879,10 @@ fixe : le main a joue le match ET chaque coequipier selectionne figure sur son e
 devient la source UNIQUE d'un compte de session en contexte escouade ; `/filters/resolve` n'est
 qu'un repli de chargement.
 
-**Resultats observes** — le match du crash mesure (`2cf24f30`, 27/08 19:39 UTC : Chocoboflor
+**Resultats observes** — le match du crash mesure (`2cf24f30`, 27/08 19:39 UTC : joueur_165
 `present_at_completion=false`, bot `bid(3.0)` en remplacement) est bien CONSERVE par le moteur
 actuel. L'ecart de la session venait de trois autres matchs, ou un coequipier connu hors
-selection etait sur l'equipe (Nilton410 rang 4, passivemarquise rang 35).
+selection etait sur l'equipe (joueur_006 rang 4, joueur_1027 rang 35).
 
 Deux verrous poses, declares RATCHETS et non TDD (le moteur passait deja) :
 `composition_presence_test.go` (scenario du crash sur toutes les surfaces + aucun champ de
@@ -11357,7 +11363,7 @@ entrees de `replays`, 466 de `film_chunks`, `git status -- data` sans nouveaute)
 **Resultats observes.**
 
 1. **R4 — VERDICT : LECTEUR.** L'ecart cumule K/D/A a la feuille sur `51ebbc0f` vaut **9**, pas 69 :
-   **7 joueurs sur 8 sont EXACTS** et tout l'ecart tombe sur `2535469889270266`, dont la manche 0
+   **7 joueurs sur 8 sont EXACTS** et tout l'ecart tombe sur `2808450491243056`, dont la manche 0
    n'est publiee nulle part (K -8, A -1, D 0). Les trois hypotheses du plan sont ECARTEES sur
    pieces (derniere emission entre les frames 2706 et 4369 pour 4514 frames ; `truncated=false` ;
    `originResolved=true` ; `deathOffsetMatched/RunnerUp` 71:10, marge x7,1). La cause est un DEFAUT
@@ -12185,7 +12191,7 @@ traiter par le lot des vies anonymes. Detail :
 ## [2026-09-07] Drapeaux, complement : une lecture vraie n'est ni perdue ni masquee — Complete
 
 **Le mandat.** Le pilote refuse la cloture du lot drapeaux en l'etat : sa decouverte n° 2 faisait
-PERDRE de la duree servie. Sur `bcb6d393`, la duree publiee de `2533274858283686` passait de 358
+PERDRE de la duree servie. Sur `bcb6d393`, la duree publiee de `2623439693412443` passait de 358
 a 282 frames — or ces 358 venaient d'etre retablis par le lot des durees (schema 45) contre le
 parc. Doctrine du chantier : une lecture vraie n'est jamais perdue ni masquee ; l'axe des durees
 d'un gate en mode base serait sorti EN ECHEC.
@@ -12213,8 +12219,8 @@ cinq films re-cuits des deux cotes, un par processus sous verrou. Duree totale p
 `bcb6d393` 948 -> 1 423, `e94163af` 664 -> 1 159, `cde26226` 4 119 -> 6 422, `64e8adfa`
 2 441 -> 4 388, `c0a82e88` 67 -> 67. **AUCUN joueur en baisse sur aucun des cinq films**
 (`replay-diff`, axe `duree-totale/par-xuid`), spans masques a 0 partout (10, 17, 63, 41 avant).
-Sur `bcb6d393` : `2533274858283686` TIENT ses 358 frames, `2533274823110022` passe de 441 a 666,
-`2535429985869093` de 96 a 346 ; 0 portage sur son propre drapeau, les trois captures sur le
+Sur `bcb6d393` : `2623439693412443` TIENT ses 358 frames, `2533274823110022` passe de 441 a 666,
+`2669605393856835` de 96 a 346 ; 0 portage sur son propre drapeau, les trois captures sur le
 drapeau adverse. Deux compteurs de couverture publient desormais ce que les regles ont DECIDE —
 `assignedByPlay` (attribution par elimination) et `dropsWithheld` (lacher retenu) —, tous deux
 servis jusqu'au contrat (`replaydoc` -> `replayview` -> `openapi.yaml` -> `generated.ts`,
@@ -12286,7 +12292,7 @@ pas visibles a cet endroit) — la reprise demande de PARTAGER la machine a etat
 pieces ; (b) un portage ferme par la prise SUIVANTE DU MEME JOUEUR se publie `dropped` alors qu il
 est porte (10 sur 16 sur `bcb6d393`, avant comme apres — la fin est datee une frame APRES
 l ouverture suivante), defaut preexistant dont ce lot subit une consequence mesuree : la duree
-publiee de `2533274858283686` passe de 358 a 282 frames, le portage etant desormais au milieu du
+publiee de `2623439693412443` passe de 358 a 282 frames, le portage etant desormais au milieu du
 trafic du bon drapeau ; (c) aucun compteur de couverture ne publie ce que la troisieme regle a
 decide. Detail : `.ai/archive/V7.5/v2/INSTRUCTION_DRAPEAUX_2026-09-06.md`.
 ## [2026-09-07] Lot « vies anonymes » — decision produit, nommage a la source, 9 constats corriges (schema 47) — Complete
@@ -12455,7 +12461,7 @@ d episode. Worktree dedie `LevelUp-wt-v2-durees`, branche `feat/v2-durees` basee
 une vie » du schema 36, dont trois consommateurs avaient ete rattrapes au schema 41 et un
 quatrieme au 43. Ceux-ci sont les cinquieme et sixieme, et les premiers que seule une mesure de
 DUREE pouvait reveler. (A) `tracksByXUID` n indexait que les pistes NOMMEES : les 9 dernieres
-prises de `2535429985869093` tombaient dans la vie ANONYME de son slot 536 et sortaient
+prises de `2669605393856835` tombaient dans la vie ANONYME de son slot 536 et sortaient
 `NoTrack` — une vie sans nom est une PRESENCE SANS IDENTITE, pas une absence (meme principe qu au
 schema 43). Correctif : l identite de la piste anonyme vient du PONT CANONIQUE `ResolveSlotXUID`,
 celui qui nomme deja les marques de portage — jamais d une deduction locale, et un slot que le
@@ -14091,8 +14097,8 @@ SEULE etape `artifact` — 1 583 856 -> 1 584 146 octets (+290). AUCUNE des 48 e
 precedent ne bouge, `killRefs` compris : la seconde sortie ne passe pas par l'observateur, et
 c'est delibere (l'observer aurait fait bouger 13 films pour un fait qui n'ajoute aucun balayage).
 
-`bomb_carriers_killed` sur `9f57c612`, lu dans l'artefact cuit : **2535446563676950 = 2**,
-**2533274974091007 = 1**, et **0** chez les quatre autres joueurs — des zeros MESURES, plus des
+`bomb_carriers_killed` sur `9f57c612`, lu dans l'artefact cuit : **2667774381241558 = 2**,
+**2573225322239947 = 1**, et **0** chez les quatre autres joueurs — des zeros MESURES, plus des
 NULL (`coverage.killsRead: true`). Denominateur : 58 couples fournis, 0 ecarte. RECOUPEMENT
 INDEPENDANT, non construit pour ca : `periodsByDeath = 3` (trois periodes de portage fermees par
 la MORT du porteur) tombe exactement sur `killsOnCarrier = 3`, alors que les deux comptes sortent
@@ -16151,7 +16157,7 @@ exactement comme l'annoncaient les en-tetes corriges le 2026-08-27.
 
 **Un point de l'etat de l'art s'est revele faux sur pieces** : le corpus de `.mvar` (« 96
 fichiers, 257 variantes ») N'EST PLUS SUR LE DISQUE — `.ai/archive/V7.5/dumps/mapvar/` ne portait que
-3 fichiers, et `C:\Users\Guillaume\Projects\LevelUp\.ai\re_dump\mapvar` (chemin en dur dans
+3 fichiers, et `<poste>\Projects\LevelUp\.ai\re_dump\mapvar` (chemin en dur dans
 `sonde_locs_gamefiles_test.go`) n'existe pas. La matiere premiere a ete re-telechargee.
 
 **Decision technique principale.** Deux espaces de cles dans un seul fichier, jamais melanges :
@@ -17545,7 +17551,7 @@ Gardes G1/G2/G3 de la table ECS rejoués verts sur les deux films (1 067 lignes 
 
 **ADDENDUM B — la section 3 de `chunk_00` ne porte PAS de catalogue d'objets. Négatif propre.**
 0/21 identifiants d'équipement, sur les deux films. Trois témoins écrits avant : B-POS retrouve
-`whiteknight2519` à `0x13CCA6`, exactement où la carte de `chunk_00` le documente (l'instrument
+`joueur_283` à `0x13CCA6`, exactement où la carte de `chunk_00` le documente (l'instrument
 lit les bons octets) ; B-NEG plancher à 0,0005 occurrence par valeur ; **B-REF : 0/15 des
 familles d'ARME jouées par le film n'y sont pas non plus** — c'est lui qui interdit de
 sur-interpréter, l'absence ne vise pas l'équipement.
@@ -22985,7 +22991,7 @@ filmdec/replay/killsource verts (fixtures armées), gofmt/vet/golangci 0.
 entier — rien à rouvrir côté lunette. Doctrine corrigée (commentaires 118→50, 116→49). Détail :
 `film_re/NOTE_COMPTE_REGISTRE_2026-08-30.md`. Suite : lot 1 (les 528 262 paquets écartés).
 
-## [2026-08-28] Rejeu Oddball — 4 lots intégrés dans feat/v75 (score par joueur/manche, deux-DinoR00, bandeau par manche, crâne socle) — Complété
+## [2026-08-28] Rejeu Oddball — 4 lots intégrés dans feat/v75 (score par joueur/manche, deux-joueur_366, bandeau par manche, crâne socle) — Complété
 
 **Contexte** : chantier modes porteurs. Demande utilisateur : le score de manche doit repartir de 0,
 et le crâne doit être visible quand il repose sur son socle. 4 lots sur worktrees dédiés, revus
@@ -22995,7 +23001,7 @@ adversarialement, fusionnés dans feat/v75.
 1. **Score PAR JOUEUR par manche** (wt/score-parmanche, Go) : fork `buildPlayerScores` sur
    `RealRounds>1` → identité par manche (`ResolveRoundIdentity`/`AtRound`) ; mono-manche byte-exact.
 2. **Identité slot→joueur PAR IMAGE** (wt/slot-parmanche, web) : `buildSlotOwnership`/`ownerAtFrame`
-   + résolveurs frame-aware ; corrige « deux DinoR00 ». Régression P2 (revue) : objets lâchés à la
+   + résolveurs frame-aware ; corrige « deux joueur_366 ». Régression P2 (revue) : objets lâchés à la
    mort (`t0=finVie+1` → couleur neutre) corrigée par `ownerAtFrameOrLast` confiné aux frontières
    (inkOf, killFx, marque « révélé »).
 3. **Bandeau = score de la MANCHE COURANTE remis à 0** (wt/score-manche, web) : `teamRoundScoreAtFrame`
@@ -23362,7 +23368,7 @@ demander, et l'incident ci-dessus rend la question moins anodine que d'habitude.
 ## [2026-08-29] Kills hors arme a feu — etape 4 : la vue match — Complete (etape 4 close, verification visuelle CONFIRMEE)
 
 **VERIFICATION VISUELLE, faite le 2026-08-29 sur le `make dev` de l utilisateur** : match
-`78919882-f47d-4460-9e78-673f5afdd338` (Chocoboflor, High Ground, 14 frags). Le sunburst
+`78919882-f47d-4460-9e78-673f5afdd338` (joueur_165, High Ground, 14 frags). Le sunburst
 affiche la classe « Environnement — 14,3 % » (2 kills), son niveau 2 nomme « Bobine a fusion
 UNSC — 2 · 14,3 % » avec sa ligne de rappel et sa couleur propre, « Non attribue » retombe a
 71,4 %, et « Melee » reste a 14,3 % — le compteur API n a pas bouge d une unite. C est le
@@ -23668,7 +23674,7 @@ GRENADE 4 534, VEHICULE 1 227, INCONNU 575, **OBJET_EXPLOSIF (bobines) 547**, **
 valide le sequencement D7 (vue match d abord, agregats seulement avec le denominateur affiche).
 
 **LE RESULTAT DECISIF** : **UN SEUL kill au repulseur dans toute la base** (`0x07104b31`), sur
-74 569 sources mesurees — match `215e7022`, 2026-02-03, Argyle, t = 325 526 ms, Elmo910 -> aK2fResHv3,
+74 569 sources mesurees — match `215e7022`, 2026-02-03, Argyle, t = 325 526 ms, joueur_622 -> aK2fResHv3,
 passe non publiable. La classe `equipment` de la decision D1 vaudrait donc 1 kill : une poussiere, pas
 un arc. D1 est rouverte, trois options ecrites au §10 du plan (recommandee : garder la classe sans arc —
 cout marginal, comptee automatiquement le jour ou un kill arrive). Le lot garde tout son sens pour les
@@ -24655,13 +24661,13 @@ font le travail.
 les tics de score de MODE (comp 0 A) s'incrementent ; prises = comp 21 B. Signal identifie contre
 l'oracle sur 7 films (non ajuste a d9781168). Correction d'infra prealable : identite slot->joueur
 PAR MANCHE (`SlotIdentityByRound`/`RoundIdentity`), les slots d'entite etant REATTRIBUES entre manches
-(slot 22 = scuderiasven en M0 puis LadyJezz en M1-2) ; migration des calques LIVRES couronne VIP +
+(slot 22 = joueur_829 en M0 puis joueur_766 en M1-2) ; migration des calques LIVRES couronne VIP +
 drapeau CTF (bug latent multi-manche corrige au passage), neutralite mono-manche prouvee bit-identique.
 Mecanique du VIDE : mort hors-zone -> crane au SOCLE, mais n'affecte PAS l'attribution (les tics
 identifient le porteur ou que le crane retombe) — position seulement.
 
 **Resultats** : confrontation verite terrain manche 1 : prises 9/9, porteurs d'intervalle 8/9 (gate
-8/9 tenu). Gate oracle : porteur PRINCIPAL correct 7/7 films (d9781168 scuderiasven, c88ec007 Ratsolla)
+8/9 tenu). Gate oracle : porteur PRINCIPAL correct 7/7 films (d9781168 joueur_829, c88ec007 Ratsolla)
 reproduit PAR LE CODE DE PRODUCTION, 3 manches gerees. Calque `skullCarrierLayer` web au patron
 couronne VIP, garde de mode par capability. Golden mono-manche = 1 ligne (schema). Gates verts (build,
 contracttest 40->41, replay/objectiveevents/replaybuild, tsc, vitest 1556, lint). REVUE ADVERSARIALE
@@ -25989,11 +25995,11 @@ Wwise Vorbis (`fmt` = `0xFFFF`, verifie sur piece) et `ffmpeg` 8.0.1 ne les deco
 (`unknown codec`). `vgmstream-cli.exe` n'etait plus sur cette machine (le dossier
 `Desktop/Halo Infinite - Sons armes/_outils/` n'existe pas ici) ; reinstalle depuis la release
 GitHub officielle du projet (`vgmstream/vgmstream` r2117) vers
-`C:\Users\Guillaume\Downloads\vgmstream\`, sur accord explicite de l'utilisateur.
+`<poste>\Downloads\vgmstream\`, sur accord explicite de l'utilisateur.
 
 **Rendu livre et VALIDE** : les 39 evenements sont reconstruits (une variante par couche, gain
 de chemin applique, somme a t = 0, gain LINEAIRE strict jusqu'a -1 dBTP) — 74 `.wav` plus leurs
-`.mp3` d'ecoute dans `C:\Users\Guillaume\Downloads\Halo Infinite - Sons v75\`, publies en
+`.mp3` d'ecoute dans `<poste>\Downloads\Halo Infinite - Sons v75\`, publies en
 planche de validation. L'utilisateur les a valides le jour meme, en signalant deux manques :
 la capture de base et la pose du translocateur.
 
@@ -26748,7 +26754,7 @@ par executeurs Opus/Sonnet en worktrees dedies, revues adversariales a 2 relecte
 
 **Verdicts des soaks (mesures prod du 2026-08-25, lecture seule)** :
 - **Soak D2 (legacy_source_used)** : spam eteint le 25/07 (store-first), 3 occurrences isolees
-  ensuite (31/07, 07/08, 11/08 — duckdb_oauth Madina/XxDaemon), **0 depuis le 11/08 (14 j)** ;
+  ensuite (31/07, 07/08, 11/08 — duckdb_oauth joueur_075/joueur_639), **0 depuis le 11/08 (14 j)** ;
   store watcher_tokens sain (rotations du jour, 0 reauth/AADSTS depuis le 01/08). Phase 5
   ADR 0023 ARMEE ET EXECUTEE (lot D2, branche `refactor/adr0023-phase5`, 9 commits).
 - **Soak 30 j B7.4** : cascade LUSR eteinte ; ERROR aout ~6/j `/health` 503 (benin documente)
@@ -26778,7 +26784,7 @@ reelles prouvees. Les revues ont attrape : 1 regression CLI `--all` + rotation R
 seed_demo copie oauth_refresh_token vers la demo (hygiene secrets, avec le drop des colonnes
 sync_meta) ; `RunBackfillCompositeOnlyCitations` ouvre en RO direct un chemin provider ;
 fallback `sql.Open` nu media.go/healthcheck.go ; trou de ratchet `ORDER BY start_time` non
-qualifie ; type mort front SetupAuthInfo ; token orphelin `watcher_tokens/2533274796795729.json`
+qualifie ; type mort front SetupAuthInfo ; token orphelin `watcher_tokens/2676423891261051.json`
 (xuid hors db_profiles). Registre v7.5 : +2 lignes (voie provider media ; retrait migration
 boot cible 2026-10-01).
 
@@ -31625,11 +31631,11 @@ redevient rejouable.
 
 **Ce que l oracle Vagabond peut, et ce qu il ne peut PAS.** Le releve
 (`RELEVE_TERRAIN_CAPTURES_2026-07-31.md`) porte quatre ancres, dont **une seule** nomme une
-base : « 0:48 flyguy8773 capture la base B ». Elle la nomme par une LETTRE, qu aucune donnee
+base : « 0:48 joueur_780 capture la base B ». Elle la nomme par une LETTRE, qu aucune donnee
 decodee ne porte (etat de l art Forge/zones) et que le plan classe hors perimetre. **Le
 releve ne peut donc pas arbitrer une egalite de zone** : annoncer une matrice bonne/mauvaise
 zone sur cette base serait la fabriquer. Ce qu il valide reellement est verifie et tombe
-juste : l action de FlyGuy8773 est datee 48,9 s et attribuee DEDANS, et les trois rangs de
+juste : l action de joueur_780 est datee 48,9 s et attribuee DEDANS, et les trois rangs de
 zone sont tous captures a 90,0 s au plus tard — ce que le releve dit a 1:30 (« une equipe
 controle les trois bases »).
 
@@ -36846,7 +36852,7 @@ exécutés que par le job couverture/intégration (`ci.yml:316-337`, `CGO_ENABLE
 `-tags=integration -p 1 ./...`) et par `check_test_baseline.sh`.
 
 **Environnement à consigner** : la note `reference_cgo_linker_winlibs_not_msys64` est
-PÉRIMÉE sur ce poste — le gcc winlibs (`C:\Users\Guillaume\mingw-winlibs\...`) n'existe
+PÉRIMÉE sur ce poste — le gcc winlibs (`<poste>\mingw-winlibs\...`) n'existe
 plus, `CC` est vide, et le seul gcc disponible est msys64 ucrt64 **15.2.0** (la version qui
 échouait au lien `libduckdb_static` était la 16.1.0). Build, tests unitaires et intégration
 passent avec lui : plus de contournement `CC` nécessaire ici.
@@ -38203,7 +38209,7 @@ Python 3.12.10 + JDK 21 (installé par l'utilisateur, l'élévation admin étant
 portée d'un agent), greffon `GhidraMCP-5.12.0` installé dans Ghidra, serveur MCP
 `ghidra` déclaré en portée utilisateur avec `PYTHONIOENCODING=utf-8` (sans quoi l'aide
 du pont plante sur un caractère non-cp1252) — état `Connected`. Outillage Ghidra déplacé
-vers `C:\Users\Guillaume\Downloads\` sur demande, venv **recréé** et non déplacé (chemins
+vers `<poste>\Downloads\` sur demande, venv **recréé** et non déplacé (chemins
 absolus). Comptabilité de la copie vérifiée à l'unité : hors venv, 549 fichiers
 identiques des deux côtés.
 
@@ -38373,7 +38379,7 @@ inchangee).
   ni une cellule de rang du tableau Matchs) : signale, non corrige.
 
 **Conclusion / prochaine etape** : chantier clos, modifications non commitees dans le
-worktree `C:\Users\Guillaume\Projects\LevelUp\.claude\worktrees\agent-a17bbdd166cd7ad7a`
+worktree `<poste>\Projects\LevelUp\.claude\worktrees\agent-a17bbdd166cd7ad7a`
 (commit laisse a l'utilisateur). Fichiers touches : `apps/go-api/internal/service/
 match_history_placement.go` + `match_history_placement_test.go` ; `apps/web/src/lib/
 staticAssets.ts` ; `apps/web/src/features/explorer/ExplorerMatchesTable.{tsx,
@@ -38479,7 +38485,7 @@ risqué un état déchiré sur les bases ouvertes (modèle mono-process, ADR 001
 restauration a donc été menée en **additif strict** : comparaison fichier par fichier
 d'abord, copie uniquement des manques réels, jamais d'écrasement d'un fichier plus
 récent. Corollaire : les 21 Go de binaires du jeu et d'outillage Ghidra ont été
-installés HORS du dépôt (`C:\Users\Guillaume\Projects\LevelUp-re`), pour ne pas exposer
+installés HORS du dépôt (`<poste>\Projects\LevelUp-re`), pour ne pas exposer
 un arbre git à `HaloInfinite.exe` et 17 Go de modules.
 
 **Résultats observés** : workspace — hooks Claude restaurés avec réécriture des chemins
@@ -39434,10 +39440,10 @@ RÉCOMPENSES DE SCORE que le serveur en dérive. La table portait les noms de
   `hill_*`). Le lot n'a pas d'objet : il n'y a rien à nommer.
 - **Lot 3 (oracle 8 joueurs) — il corrige un NOM FAUX.** `comp 22 A`, nommé `flag_taken`,
   est en réalité **`flag_grabs`** : ses valeurs sont la copie exacte de la colonne
-  `flag_grabs` de `match_objective_stats_latest`, slot par slot (16 pour Madina97294 là où
+  `flag_grabs` de `match_objective_stats_latest`, slot par slot (16 pour joueur_117 là où
   la récompense dit 4). Le §18.3 avait mis l'écart au compte d'un « film plus fin » —
   c'était une erreur de nom. Le binaire le disait depuis le début (`CtfStats_FlagGrabs`), et
-  l'explication de l'utilisateur (« Madina lance et ramasse le drapeau pendant sa course »)
+  l'explication de l'utilisateur (« joueur_075 lance et ramasse le drapeau pendant sa course »)
   était juste dès le départ.
 - **La recette passe de 30 à 64 confrontations, toutes exactes** : 16 sur `696a9d7c` (8
   joueurs x 2 compteurs) et 48 sur `1bc77d2e` (8 joueurs x 6 compteurs). Elle change de
@@ -39562,7 +39568,7 @@ devient le repli (quota connu mais film absent), plus le chemin principal.
 **Résultats observés** :
 
 - **Recette : 30 confrontations exactes sur 30.** Zones `696a9d7c` : slot 22 = JGtm 4/4,
-  slot 20 = Madina97294 4/4 (le zéro de `zone_secured` inclus). CTF `1bc77d2e` : trois
+  slot 20 = joueur_117 4/4 (le zéro de `zone_secured` inclus). CTF `1bc77d2e` : trois
   joueurs suivis, exact sur tout sauf `flag_taken`. Recette sur 6 films CTF
   (`cmd/tmp_namedcheck`) : exact partout, même seul écart.
 - **Contrôle d'ensemble indépendant de toute correspondance slot -> joueur** : sur
@@ -39570,7 +39576,7 @@ devient le repli (quota connu mais film absent), plus le chemin principal.
 - **`flag_taken` : le film est PLUS FIN que l'API**, et l'écart n'a qu'un sens — film >=
   API, **0 contre-exemple sur 8 couples** (+11 au total, pire +5). L'explication vient de
   l'utilisateur et colle à la mesure : ramasser le drapeau au sol pendant sa course se
-  compte à chaque fois mais ne se récompense pas à chaque fois (Madina 16 contre 4, JGtm 3
+  compte à chaque fois mais ne se récompense pas à chaque fois (joueur_075 16 contre 4, JGtm 3
   contre 1). Le test encode donc une INÉGALITÉ, pas une égalité.
 - **Deux pièges payés sur le filtrage.** Sous-suite NON décroissante (un composant est
   réémis dès que l'UNE de ses deux valeurs bouge) ; et surtout **les émissions négatives se
@@ -40370,7 +40376,7 @@ code soit correct, puis vérifie-le ») plutôt que l'injonction hostile, qui pr
   settings globaux, et les 192 fichiers de mémoire agent. Tout le reste (13 skills,
   `lefthook.yml`, les 8 scripts de hooks, `.golangci.yml`, eslint, les 6 ratchets `tools/*.mjs`)
   revient avec un `git clone`.
-- Trois chemins absolus vers `C:\Users\Guillaume\...` cassent en silence au changement de
+- Trois chemins absolus vers `<poste>\...` cassent en silence au changement de
   poste : les deux hooks déclarés dans `.claude/settings.json`, `core.hooksPath`, et le nom du
   dossier de mémoire (dérivé du chemin projet). Documentés en §4 de `RESTAURATION.md`.
 - Piège worktree relevé : le dossier de travail n'est pas un dépôt mais un worktree de
@@ -40684,8 +40690,8 @@ tombent sur la mesure.
 **Résultats observés** :
 - **Le résultat fort — les zones.** En Strongholds, un événement de mode du footer type-3 est
   une prise OU une sécurisation de zone, par joueur, à l'unité. Trois chaînes sans étape
-  commune : le relevé terrain écrit avant tout décodage (« 0:48 flyguy8773 capture la base B »)
-  contre le premier événement décodé (t = 48,90 s, FlyGuy8773) ; le total 77 = 77 ; et surtout
+  commune : le relevé terrain écrit avant tout décodage (« 0:48 joueur_780 capture la base B »)
+  contre le premier événement décodé (t = 48,90 s, joueur_780) ; le total 77 = 77 ; et surtout
   **l'égalité par joueur 8/8** avec `zone_captures + zone_secures`, multisets identiques, les
   deux joueurs nommés tombant nominativement. Contrôle négatif : le Slayer porte 0 événement
   de mode et 0 statistique de zone.
@@ -43551,7 +43557,7 @@ par l'entrée démo ci-dessous.
 
 **Établissement des faits (sur pièces).** Deux identités coexistaient dans un même type
 `string` : le **player_slug** applicatif (`arc.user_id`, `challenge.user_id` — en prod
-c'est le gamertag : `JGtm`, `Chocoboflor`, cf. `config_players.go:142`) et le **xuid**
+c'est le gamertag : `JGtm`, `joueur_165`, cf. `config_players.go:142`) et le **xuid**
 Xbox (`match_participants.xuid` — numérique : `2533274823110022`, cf. `db_profiles.json`).
 `HaloBaselineProvider.RecentMatches` déclarait `userID string` et l'injectait dans
 `WHERE mp.xuid = ?` ; ses TROIS appelants le remplissaient avec `Challenge.UserID`
@@ -44506,7 +44512,7 @@ Lots A2 (saisons) et A3 (dégradation muette) NON TRAITÉS (statut `[!]` justifi
 A0 = action utilisateur (SSO). Pas de commit (superviseur). Branche `feat/v7.2-notion-batch`.
 
 **Challenge user** : « le fetch d'infos Explorer n'utilise pas du tout le pool de tokens —
-avec Madina97294 (RT expiré) aucune donnée live, alors que le pool a 4-6 tokens valides ».
+avec joueur_117 (RT expiré) aucune donnée live, alors que le pool a 4-6 tokens valides ».
 
 **Décision technique principale** : nouveau `enrichWithHaloTokensPublicRead(ctx, pdb)`
 (registry_auth.go) réservé au player-query Explorer (lectures PUBLIQUES de tiers, xuid cible
@@ -44527,16 +44533,16 @@ re-capture, le pool porte une lecture PUBLIQUE avec un RT vivant, jamais une don
 re-flag lll d'alignement gofmt sur 4 commentaires pré-existants). TEST RÉEL via l'API
 locale (serveur reconstruit lancé avec LEVELUP_AUTH_MODE=none pour ouvrir la garde
 d'ownership, fetchs live RÉELS ; air arrêté puis relancé après) :
-- **Madina97294 (RT mort) → Nilton410** : `auth_available:true`, carrière/identité/top
+- **joueur_117 (RT mort) → joueur_006** : `auth_available:true`, carrière/identité/top
   médailles (20)/saisons (14) NON NULLES, rang live « Héros » — IDENTIQUE à JGtm (RT sain).
-- Log `halo_auth: fallback pool profile_xuid=2533274858283686 pool_gamertag=JGtm` (1 fois) ;
-  expvar `explorer_live_token_source_pool:1` (Madina) + `_profile:1` (JGtm, contrôle).
+- Log `halo_auth: fallback pool profile_xuid=2623439693412443 pool_gamertag=JGtm` (1 fois) ;
+  expvar `explorer_live_token_source_pool:1` (joueur_075) + `_profile:1` (JGtm, contrôle).
 Le pool ne contient que des tokens sains (boot skip des slots RT mort ; size=7 local).
 
 **Investigation annexe — latence des suggestions de gamartags** (diagnostiquée + mesurée,
 NON corrigée) : cause = fallback live SYNCHRONE (`LiveFallbackGamertagSearch`, timeout 6 s)
 sur toute query plausible sans match exact local. Mesures : `Mad`/`abc` = 2,0–2,9 s (1er hit),
-`Madina97294` (match exact) = 0,22 s, 2e `Mad` (neg-cache) = 0,21 s. La SQL locale
+`joueur_117` (match exact) = 0,22 s, 2e `Mad` (neg-cache) = 0,21 s. La SQL locale
 (`Q11GamertagSearch`) n'est PAS le goulot (~200 ms). Correctif recommandé (non appliqué,
 UX/comportement hors périmètre + risque collision front) : fallback live non bloquant pour
 le typeahead (`?live=0` défaut, `live=1` sur intention explicite) ou résolution async.
@@ -45013,7 +45019,7 @@ disjoints, aucun build agent-side, gates batchés par le superviseur).
                           death_count_i ~ truncated(N((w_p·perf_i + w_o·perf_opp_i)·t_i, v·t_i))
 ```
 
-avec `w_p, w_o, v` comme hyperparamètres par groupe (initialisés sur defaults Halo 5, ré-estimés Phase 5). C'est cette extension qui devrait corriger le verdict Phase 1d (Madina sous-évaluée vs Choco/JGtm sur-évalués — discrimination intra-squad impossible sans signal individuel par match).
+avec `w_p, w_o, v` comme hyperparamètres par groupe (initialisés sur defaults Halo 5, ré-estimés Phase 5). C'est cette extension qui devrait corriger le verdict Phase 1d (joueur_075 sous-évaluée vs joueur_901/JGtm sur-évalués — discrimination intra-squad impossible sans signal individuel par match).
 
 ---
 
@@ -45529,7 +45535,7 @@ Séquence : `levelup seed citation-mappings` → `levelup backfill --all
 (cutoff défaut 2026-06-26T15:00Z).
 
 **Résultats observés** : seed_rc=0 ; citations 8/8 joueurs, 0 échec, invariants V1–V4
-OK (JGtm 1 088 matchs réécrits, Madina 1 222, Chocoboflor 534) ; H5 kill-mechanics
+OK (JGtm 1 088 matchs réécrits, joueur_075 1 222, joueur_165 534) ; H5 kill-mechanics
 2 742 carnages re-fetchés, 0 sauté, **4 990 lignes corrigées sur 1 883 matchs** —
 volume identique au run local du même jour (cohérence attendue). OAuth JGtm rafraîchi
 avec rotation. `/health` post-restart : ok, v7.1.0, sync repartie. Vérification UI
@@ -45611,7 +45617,7 @@ Exécution du plan `.ai/PLAN_XP_CARRIERE_ESTIMEE_2026-07.md` sous contrat plan-e
 **Décision technique principale** :
 - Mesures lecture seule sur parquets staging du 23/07 (diag_parquet_q, droits go exclusifs).
 - Formule `×2 × personal_score` validée sur les 3 joueurs suivis : 86/87 fenêtres à un seul
-  match propres à ±1 % du delta xp_total réel (JGtm 28/29, Madina 28/28, Chocoboflor 30/30).
+  match propres à ±1 % du delta xp_total réel (JGtm 28/29, joueur_075 28/28, joueur_165 30/30).
   Méthode = « une transition distincte d'xp_total = un match PvP en base », miroir des paires
   gardes 6 min. Toutes les fenêtres sont post-18/11 (snapshots démarrent 2026-02/03) → le ×1
   pré-doublement est invérifiable localement (B0.2 = `[!]`, source officielle seule).
@@ -45621,8 +45627,8 @@ Exécution du plan `.ai/PLAN_XP_CARRIERE_ESTIMEE_2026-07.md` sous contrat plan-e
   `games` (miroir `EffectiveHpToKill`). Capability fine `analytics.career_xp_estimate`.
 
 **Résultats observés** :
-- Part d'XP « invisible » (fenêtres à 0 match connu) : JGtm 0,37 % · Chocoboflor 3,07 % ·
-  Madina 5,83 % — tous < 10 % → PAS de chantier audit sync PvE (aucun Firefight en base).
+- Part d'XP « invisible » (fenêtres à 0 match connu) : JGtm 0,37 % · joueur_165 3,07 % ·
+  joueur_075 5,83 % — tous < 10 % → PAS de chantier audit sync PvE (aucun Firefight en base).
 - Oracle : la fenêtre JGtm Δxp=173 230 (re-crédit serveur 25/05, rang 179→184) confirme
   qu'il ne faut PAS tracer xp_total brut ; correctement écartée par la méthode 1-match.
 - Éras versionnées ajoutées à `config/titles/halo_infinite/constants.toml` (`[[career_xp_eras]]`).
@@ -46999,7 +47005,7 @@ réels, mono-process respecté), vérifications, puis RESTAURATION du serveur d'
 
 **Constats (détail au plan, Gate H)** : JGtm = 4×ok bannière `mapping_hit` (Microsoft
 a publié la nameplate 3806589 — scénario anticipé, fixture E4 = preuve pérenne du
-upstream_missing) en 2,0 s UI ; Chocoboflor (RT mort AADSTS70000) = 4×auth_required +
+upstream_missing) en 2,0 s UI ; joueur_165 (RT mort AADSTS70000) = 4×auth_required +
 valeurs servies (carry) + CTA SSO, zéro 500 ; halo_5 = 4×not_supported ; slug inconnu
 = 404. Bonus au même boot : couverture armes H5 = 100 % (reconcile C6 réel, 0 non
 résolu contre 7), journal 200, « Aucun cycle enregistré » (C1). Navigateur réel 8/8.
@@ -47023,7 +47029,7 @@ plus, inventaire DBs explicite) ; armes H5 100 % (reconcile registre au boot) ;
 purge totale parité/lab (−1434 L) ; et le diagnostic apparence de bout en bout
 (resolver byte-identique → service verdicts → endpoint admin → panneau UI), vérifié
 sur données réelles : JGtm 4×ok en 2,0 s (Microsoft a publié la nameplate 3806589 —
-fixture E4 = preuve pérenne du upstream_missing), Chocoboflor 4×auth_required + CTA
+fixture E4 = preuve pérenne du upstream_missing), joueur_165 4×auth_required + CTA
 SSO, H5 4×not_supported, 404 propre.
 
 **Gates de clôture (delivery-checklist)** : go test -tags=integration -p 1 ./...
@@ -47306,7 +47312,7 @@ recommandée au review. Lot D (stats de modes objectifs + H5) reste à faire, UI
 **Constat** : l'API Waypoint CSR (csrRankRaw : Value/Tier/SubTier/MeasurementMatchesRemaining,
 y compris AllTimeMax) N'A PAS de date d'obtention — rien n'est jeté au parsing, le champ
 n'existe pas. La SEULE voie = corrélation avec l'historique CSR par-match `match_csrs`
-(shared, vue match_csrs_latest). Validé sur données réelles (Madina xuid 2533274858283686 :
+(shared, vue match_csrs_latest). Validé sur données réelles (joueur_075 xuid 2623439693412443 :
 pic all-time 1400 Diamant IV == match 74a8614e du 2025-11-06 21:25 UTC).
 
 **Décision** : loadCSRAlltimePeak corrèle (bestTier, bestSub, bestVal) avec match_csrs_latest
@@ -47580,7 +47586,7 @@ déclenché par le 2e titre sur sa branche dédiée).
   best_kda, accuracy ≤ 1, KDA plausibles), jalons avec dates RÉELLES variées
   (ex 2025-12-23, plus aucun 2026-05-30) + condition_fr/en localisées (7/19, autres
   sans condition affichable = rien d'affiché), skill_trend servi (266/114/174 pts,
-  null propre pour XxDaemon), activity-calendar peuplé (36/12/12/0 jours), séries
+  null propre pour joueur_639), activity-calendar peuplé (36/12/12/0 jours), séries
   interrompues datées, filtre ?status= opérationnel, liste par défaut = actifs seuls,
   campaigns/history 200. Note données : 0 défi terminal à ce jour (l'objectif FDA
   JGtm est encore actif) → blocs Historique sur états vides tant que rien n'est clos.
@@ -47961,16 +47967,16 @@ data/auth/watcher_tokens, re-vérification sur pièces des lignes décisives).
    (`enrichWithHaloTokens` → `ResolveFreshPlayerTokens(pdb.XUID)`, registry_auth.go:145-158).
    Aucun pool sur ce chemin (le pool `internal/platform/auth/pool` ne sert que le sync ;
    `AnyPlayerTokens` ne sert que les handlers d'assets). RT morts (AADSTS70000 « different
-   client id », classe revoked, app pré-SISU du 15/07) : Madina97294, XxDaemonGamerxX,
-   Chocoboflor → reauth_required=true. Seul JGtm sain ; les 5 comptes auth_only du pool sont
+   client id », classe revoked, app pré-SISU du 15/07) : joueur_117, joueur_291,
+   joueur_165 → reauth_required=true. Seul JGtm sain ; les 5 comptes auth_only du pool sont
    sains. Échecs avalés : closures errgroup → nil, réponse 200 avec sections manquantes ;
    `career_live: progress fetch returned nil (API silent skip)` observé 4 fois le 22/07 pour la
-   cible 2535427927026623, et snapshots api_empty intermittents même pour JGtm (1er hit après
+   cible 2548036979862261, et snapshots api_empty intermittents même pour JGtm (1er hit après
    inactivité).
 2. Matchs par saison : auth morte → fallback bucketing local shared DB (matchs communs
    seulement) ; auth OK → live limité aux saisons de `Subqueries.SeasonIds` du service record,
    groupées par `extractSeasonNumber` (premier entier de la chaîne, fragile) → 5 saisons
-   résolues sur 14 pour Nilton410 (log explorer_season_breakdown ; URLs seasonId= observées :
+   résolues sur 14 pour joueur_006 (log explorer_season_breakdown ; URLs seasonId= observées :
    Season3, Season4, Winter-Break-22, Season6, Season6-2, Season7) → somme ~1700 vs ~7000.
    Aucun cap de pagination (hypothèse écartée). seasons_catalog : fetch live en échec permanent
    → fallback TOML statique à chaque requête (bruit + axe figé si nouvelle saison).
@@ -48010,7 +48016,7 @@ social). SpartanRecord (xp = score brut, BTB x1,8) affiche donc la moitié de l'
 actuelle. Pièges relevés : saut artefact +173 230 XP (JGtm, 25/05) car xp_total est dérivé
 du catalogue de rangs (pas un compteur de jeu) ; masse d'XP issue de matchs absents de
 shared (sessions du soir ~10 min — Firefight vraisemblable) alors que pve_match_stats est
-quasi vide (JGtm 2, Madina 4 matchs depuis 2026-02) → découverte hors périmètre consignée,
+quasi vide (JGtm 2, joueur_075 4 matchs depuis 2026-02) → découverte hors périmètre consignée,
 non traitée : couverture sync PvE à auditer. Multiplicateurs FF/bots/BTB non calibrés
 (échantillon vide chez nos joueurs).
 
@@ -48538,7 +48544,7 @@ INTACT. 3 tâches ciblées post-P7, hors périmètre des phases initiales.
 
 **Décision technique (probe empirique tranchée)** : sur H5, `melee_kills` et `assassination_kills` sont des compteurs
 API **DISJOINTS** — `melee_kills` n'inclut PAS les assassinats (contrairement à l'hypothèse d'inclusion du code P0→P7).
-Preuve : match `3066a511-ebd0-428f-9555-50422caebaba`/xuid `2535421586125737` → melee=6, assass=4, per-kill 6+4 (0
+Preuve : match `3066a511-ebd0-428f-9555-50422caebaba`/xuid `2664543533134265` → melee=6, assass=4, per-kill 6+4 (0
 chevauchement) ; contre-preuve d'inclusion : match `9bb09267…` melee=2 < assass=4 (impossible si assass ⊆ melee) ;
 1212/1213 couples disjoints.
 
@@ -50662,7 +50668,7 @@ table absente → résultat vide sans erreur ; colonne `source` absente → év�
 "unknown" (le joueur n'est PAS perdu) au lieu d'un binder error qui skippait toute la DB.
 
 **Exécution réelle (données locales, lecture seule)** : `go run ./cmd/prestige-tuning-analyze` scanne
-4 player DBs (JGtm, Chocoboflor, Madina97294, XxDaemonGamerxX), 0 événement jointé, 0 acceptation →
+4 player DBs (JGtm, joueur_165, joueur_117, joueur_291), 0 événement jointé, 0 acceptation →
 rapport « données insuffisantes » propre pour les 13 métriques de grammaire, « aucun ajustement
 recommandé » en synthèse. Aucun plantage. `--format json` produit un JSON valide (roundtrip testé).
 Comportement conforme au cadrage (télémétrie coach non encore produite localement).
@@ -50826,8 +50832,8 @@ moins une ligne CSR exploitable via `match_csrs_latest` (vue append-only shared,
 n°2). CLI `duckdb` absent de l'environnement → mesure via sonde Go jetable sur une COPIE
 read-only de `shared_matches_v2.duckdb` (scratchpad), puis sonde + copie supprimées.
 
-**Mesure observée (G0)** : **0 % de couverture**. Par joueur : Chocoboflor 0/2, JGtm 0/7,
-Madina97294 0/17, XxDaemonGamerxX 0/0. Union distincte des rivaux : **0/22**. Sanity :
+**Mesure observée (G0)** : **0 % de couverture**. Par joueur : joueur_165 0/2, JGtm 0/7,
+joueur_117 0/17, joueur_291 0/0. Union distincte des rivaux : **0/22**. Sanity :
 `match_csrs_latest` = 64 lignes / 37 xuids distincts (essentiellement les 3 joueurs syncés,
 8 lignes CSR chacun) — le shared ne capture le CSR que sur un sous-ensemble étroit de
 matchs classés, jamais le CSR des adversaires long-tail. 0 % << seuil 30 % → **G statué
@@ -52131,8 +52137,8 @@ Périmètre = 1 item. Reproduit sur données réelles avant fix.
 **Constat (READ_ONLY, serveur arrêté)** : Halo 5 = **287 matchs Campagne** (game_variant_id
 `00000003-...389b71` Campaign + `67ffc2ff-...961061` Campaign Score Attack) sur 3032, 239 solo
 + 48 co-op, is_firefight=0 / is_ranked=0 / game_variant_name & mode_category NULL → seul
-`game_variant_id` discrimine. **399 lignes match_participants** (JGtm 115, Chocoboflor 149,
-Madina97294 79, XxDaemonGamerxX 52...) + **player_match_enrichment_latest pollué** (mêmes
+`game_variant_id` discrimine. **399 lignes match_participants** (JGtm 115, joueur_165 149,
+joueur_117 79, joueur_291 52...) + **player_match_enrichment_latest pollué** (mêmes
 volumes) → biais des agrégats. **match_skill_rank campagne=0** (LUSR/CSR carrière NON pollués).
 Infinite : 0 match Campagne dans match_registry (PvE Firefight isolé dans shared_pve). Pas de
 DELETE (anti-ART ADR 0019/0026) → masquage à la LECTURE.
@@ -53477,7 +53483,7 @@ endpoint device-code + doc `auth_provider` FR/EN + D3 contournement local) puis 
 **Statut** : Complété — plan `PLAN_EXPLORER_BRIEFING_CARDS_2026-07` SOLDÉ (A/B/C/D), déplacé en `.ai/V7/`.
 
 **Vérification visuelle (navigateur chrome-devtools, auth_mode=none temporaire puis xbox
-restauré)** : Infinite (JGtm 1001 matchs) ET H5 (XxDaemon 309). Le contexte de titre est
+restauré)** : Infinite (JGtm 1001 matchs) ET H5 (joueur_639 309). Le contexte de titre est
 piloté par le header `X-LevelUp-Title` (absent = halo_infinite par défaut) + session
 serveur (`POST /session/context`) — j'avais d'abord testé H5 sans le savoir (session=halo_5),
 ce qui a en fait validé le scénario 5 (H5 : bandeau rendu, module classé absent).
@@ -54217,7 +54223,7 @@ plans clôturés (`docs/cloture-salve-2026-07-12`).
   (10 480 matchs H5 pass 2), schema_version 194, fenêtre 09:33→09:40 UTC.
 - **Lot V (plan H5 matchview)** : COMPLET — V1 overrides prod (26 armes / 184 médailles /
   1 map par id Tidal) → 48/48 maps résolues ; V2 : 1002 lignes « Placement » écrites
-  (JGtm 303 / Madina97294 293 / Chocoboflor 277 / XxDaemonGamerxX 129, placement_csr_null
+  (JGtm 303 / joueur_117 293 / joueur_165 277 / joueur_291 129, placement_csr_null
   = 100 %, zéro skip) ; V3 : purge 84 media_files étrangers + CHECKPOINT (dry-run préalable
   = 84 exactement). Reste utilisateur : vérif VISUELLE prod (galerie/média/témoins).
 - **Hotfix LUSR (H6)** : critères mesurables VERTS (3 h de logs post-deploy) — zéro
@@ -54317,7 +54323,7 @@ sur pièces avant/après.
   Gate : pas de `docker build --dry-run` ; vérifié par lecture croisée Dockerfile (COPY)
   + docker-compose (data monté en bind-volume APRÈS build, ne transite pas par le contexte).
 - 2 Bruit spartan_cron : les WARN « refresher failed: No such file or directory » pour
-  Trimbutton/GeleJugefi/DankerGlue/QuiteSiren/UppedJoker = profils `auth_only` (comptes
+  joueur_1018/joueur_1017/joueur_1016/QuiteSiren/UppedJoker = profils `auth_only` (comptes
   token-only, db_path vide, PAS de player DB). Le cron itérait `LoadPlayers` BRUT ;
   correction à la SOURCE : `domain.SyncablePlayers` (filtre canonique des chemins de
   refresh : exclut SyncEnabled=false ET AuthOnly) appliqué dans runOnceForTitle, +
@@ -55233,7 +55239,7 @@ redémarré (air, port 8000).
 - H5 : 0 échec, 10480 matchs ×2.
 
 **Vérif chiffrée (Infinite, cmd/tmpdbq)** : (a) 3 bins n=66 PvP_unranked pour
-JGtm/Madina/Chocoboflor ; (b) rejets hors-AFK 0/0.5/0 % (<5 %, seuil 0.75 gardé) ;
+JGtm/joueur_075/joueur_165 ; (b) rejets hors-AFK 0/0.5/0 % (<5 %, seuil 0.75 gardé) ;
 (c) match témoin bc918a5a JGtm → bin chaotique, expected_basis=bin, pace_attendu 2.70 ≠
 pace_team 2.597 (confond levé) ; (d) 0 coef hors [0.1,5.0]. H5 : 6 bins/joueur peuplés.
 
@@ -55367,7 +55373,7 @@ décomposé en slots après gocyclo).
 
 **Statut** : Complété (code + 4 runs locaux + D4 vérifié ; CI branche verte sur le commit D).
 
-**Clôture (2026-07-11 soir)** : runs Madina97294 (293), Chocoboflor (277), XxDaemonGamerxX
+**Clôture (2026-07-11 soir)** : runs joueur_117 (293), joueur_165 (277), joueur_291
 (129) via auth_as=JGtm — ventilation IDENTIQUE : 100 % placement_csr_null, 0 autre cause
 (total 1002/1002). Couverture finale classés avec ligne CSR/Placement = 100 % × 4 joueurs
 (1306/1100/893/219). D4 : les 3 témoins classés servent rank={CSR, Placement} et le front
@@ -55391,7 +55397,7 @@ Tests integration -p 1 (persist + halo_5) verts, dont le nouveau
 csr_match_summary_integration_test (fake carnage, 6 cas). Lint 0 issue.
 
 **Conclusion / prochaine étape** : runs --missing-only des 3 autres joueurs (auth
-propre par joueur ; RT Chocoboflor/Madina morts → LEVELUP_H5_AUTH_AS=JGtm, les carnages
+propre par joueur ; RT joueur_165/joueur_075 morts → LEVELUP_H5_AUTH_AS=JGtm, les carnages
 sont publics par match), puis D4 (vérif témoins).
 
 ## [2026-07-11] Résidus H5 match view — fix CI front (types du test LOT C)
@@ -56591,7 +56597,7 @@ spécifié bout-à-bout. Modes ajoutés : c4dead, srcprobe, e6scan, a0probe, dea
 
 J'ai branché le walker ECS EXISTANT (internal/analysis/filmdec = mature : traverse.go + 65 desers +
 consumeObjectDeadStateBiped BIT-EXACT qui lit DÉJÀ +0x00 et +0x4c mais les JETAIT). Capturé SrcTag0
-(+0x00) / SrcTag4c (+0x4c) dans DeadState et testé sur film 000d5950 (kills mêlée narrés : IKE ILYA->JGtm
+(+0x00) / SrcTag4c (+0x4c) dans DeadState et testé sur film 000d5950 (kills mêlée narrés : JOUEUR_417->JGtm
 MARTEAU). Statut = En cours -> CONCLU.
 
 3 VÉRIFS DÉCISIVES (pur-film, aucune corrélation stats) :
@@ -56691,8 +56697,8 @@ TRAJECTOIRES (chantier séparé), pas pour l'arme-par-kill. Outil : tmp_acurtis 
 
 tmp_acurtis mode feed (corrélation événements mêlée/grenade -> kills chunk_27) : la METHODE MARCHE.
 VALIDATION FORTE sur les 2 kills marteau narrés (variante EXACTE, pas juste "hammer") :
-- 147.6s LORD PEINX13->Akatsuki : MÊLÉE=Diminisher of Hope (Δ188ms) = narré "Diminisher" ✓
-- 323.9s Akatsuki->LORD PEINX13 : MÊLÉE=Rushdown Hammer (Δ471ms) = narré "Rushdown" ✓
+- 147.6s JOUEUR_731->joueur_700 : MÊLÉE=Diminisher of Hope (Δ188ms) = narré "Diminisher" ✓
+- 323.9s joueur_700->JOUEUR_731 : MÊLÉE=Rushdown Hammer (Δ471ms) = narré "Rushdown" ✓
 Distribution mêlée cohérente (Rushdown/Diminisher = armes de map ; Elite Bloodblade = épée ; Mk51 Sidekick
 = pistol-whip). 14/93 kills ont une mêlée dans ±800ms, 21/93 une grenade.
 
@@ -56727,8 +56733,8 @@ MÊLÉE — 3 corrections décisives :
    décode la famille Gravity Hammer 0x841ac5e5 43/43 (VALIDÉ Ghidra). Le type = classe-mêlée de l'arme
    (0x47 marteau / 0x60 épée powered / 0x42 mêlée normale), qui fixe l'offset du weapon-id.
 3. DEUX vues mêlée : (a) paquets 0xD3 type-0 avec id64 complet = ÉTAT d'entité-arme (bon pour "quelle arme"
-   + variante, aligné LORD PEINX/Akatsuki 147.6/323.9s) ; (b) record marqueur 0x534/0x535 = ÉVÉNEMENT
-   d'attaque (aligné IKE). Les deux donnent la famille d'arme.
+   + variante, aligné JOUEUR_779/joueur_700 147.6/323.9s) ; (b) record marqueur 0x534/0x535 = ÉVÉNEMENT
+   d'attaque (aligné JOUEUR_502). Les deux donnent la famille d'arme.
 
 GRENADE KILL (vs lancer) — Ghidra a trouvé le pipeline de mort : FUN_142a509d0 (unit-died) -> FUN_140b478d8
 (kill core) -> FUN_140a24f6c (télémétrie) portant Killer/Victim + CAUSE (DamageEffectDefinitionGlobalTagId,
@@ -57339,8 +57345,8 @@ objective_assigned émise à CHAQUE cycle de sync avec le MÊME compteur
 (`PersonalAwardCount` aux deux lignes 81 et 87 de postSyncCounterDeltas) = 26/57 ;
 (3) skill_tier sans hystérésis = 5 notifs de flapping Or IV↔V arena_slayer dans la
 soirée ; (4) media_added sans coalescence = 5 notifs pour 5 clips du même acteur en
-5 min. Constat transverse : personne ne marque lu (JGtm 57/59, Madina 32/32 depuis
-avril, Chocoboflor 10/10) — problème de cycle de vie, pas de débit moyen (59 notifs en
+5 min. Constat transverse : personne ne marque lu (JGtm 57/59, joueur_075 32/32 depuis
+avril, joueur_165 10/10) — problème de cycle de vie, pas de débit moyen (59 notifs en
 6 semaines ; cap rétention 500 jamais approché).
 
 **Résultats observés** : ~46/57 notifs évitables (≈80 %) via baseline silencieuse au
@@ -57462,7 +57468,7 @@ plan-execution. Rien n'est codé dans cette session.
 
 **Décision technique principale** : investigation du signalement « courbe Équipe et
 courbe Joueur attendu strictement identiques » sur le match Infinite bc918a5a-ed48
-(Arena:CTF on Catalyst, 2026-07-03, unranked, joueurs suivis : Madina/JGtm/Chocoboflor).
+(Arena:CTF on Catalyst, 2026-07-03, unranked, joueurs suivis : joueur_075/JGtm/joueur_165).
 Chaîne vérifiée : `pace_attendu(t) = coef_team_share × pace_team(t)` point à point
 (engagement_curve.go l.80-85) → superposition ⟺ coef ≈ 1.0.
 
@@ -57470,7 +57476,7 @@ Chaîne vérifiée : `pace_attendu(t) = coef_team_share × pace_team(t)` point �
 - API locale `/matches/{id}/engagement` : les 3 joueurs donnent des courbes distinctes
   (ratios constants 1.311 / 1.005 / 0.830). Le cas signalé = vue JGtm.
 - Coefficients persistés : JGtm PvP_unranked `coef_team_share` = 1.0050 (local,
-  n=198) et 1.0019 (copie prod du 2026-06-27, n=198). Madina 1.31, Choco 0.83 →
+  n=198) et 1.0019 (copie prod du 2026-06-27, n=198). joueur_075 1.31, joueur_901 0.83 →
   le calcul de médiane n'est PAS dégénéré ; JGtm est réellement au partage médian
   de ses équipes. Écart courbes 0,2-0,5 % = invisible à l'écran, tooltip arrondi
   2 décimales affiche souvent des valeurs égales → perçu « strictement identique ».
@@ -60023,8 +60029,8 @@ et `WorldSeasonPlayers` échouaient (« column xuid not found »). Ajout de l'ap
 auto-migration PROUVÉE sur DB fraîche (5 insérées sans apply_shared_migrations préalable).
 Débloquage immédiat du sample via `cmd/apply_shared_migrations` (applied=2).
 
-**Découverte (token pool)** : 3 comptes ont un RT périmé (XxDaemonGamerxX, Chocoboflor,
-Madina97294 — `invalid_grant`) — les xuids périmés connus, NE PAS re-capturer (ADR 0023) ; le
+**Découverte (token pool)** : 3 comptes ont un RT périmé (joueur_291, joueur_165,
+joueur_117 — `invalid_grant`) — les xuids périmés connus, NE PAS re-capturer (ADR 0023) ; le
 pool tourne sur 7 comptes valides. [[feedback_token_model_rt_never_recapture]]
 
 **État data** : la DB locale a reçu les 2 migrations (add_xuid + season_catalog) + Shadows a
@@ -61066,7 +61072,7 @@ de la branche courante landé (pré-requis P1 du plan).
 **Cause racine unifiée (prouvée)** : aucune isolation des ressources partagées entre le sync (background) et le service (pages, switch). Le sync tenait le writer RW du SharedProvider pendant tout le fetch réseau → lectures parquées jusqu'à 30s → `/bootstrap` timeout → rollback silencieux du switch (`appShellStore.switchTitle` catch). Deux couplages aggravants : bootRepo figé sur Infinite (un switch H5 attendait la base Infinite) ; un seul 429 mettait les 7 tokens en cooldown global scorched-earth.
 
 **Décisions techniques livrées (working tree, branche `fix/h5-ui-adjustments-batch`, non committé)** :
-- **A1** front : `switchTitle` reset `useSoloFilterStore`/`useSquadFilterStore` (fuite de filtre localStorage cross-titre). **A2** : `domain.SyncablePlayers` exclut `AuthOnly` (les 5 comptes-tokens DankerGlue/QuiteSiren/… ne sont plus des cibles de sync).
+- **A1** front : `switchTitle` reset `useSoloFilterStore`/`useSquadFilterStore` (fuite de filtre localStorage cross-titre). **A2** : `domain.SyncablePlayers` exclut `AuthOnly` (les 5 comptes-tokens joueur_1016/QuiteSiren/… ne sont plus des cibles de sync).
 - **B1** : décompte matchs du bootstrap TITLE-AWARE via `cfg.SharedReaderForTitle` (résolveur `sharedReaderForTitle` existant) injecté par `WithMatchCountResolver`. **B2** : ce décompte est best-effort borné (2s, goroutine) → dégradation `profile_ready_no_sync`, jamais un blocage.
 - **C1** : `sharedprovider.WithSwapWaitBudget` (budget d'attente de swap porté par ctx, ne borne QUE l'attente, pas les requêtes) + middleware `UserFacingReadBudget(3s)` sur le groupe `/players/{slug}` + mapping `ErrSwapTimeout/ErrSwapFailed/ErrProviderClosed` → 503 Retry-After (home). Fail-fast au lieu de pendre 31s.
 - **D1** : 429 PAR-TOKEN (`Pool.On429ForToken`, cooldown temporel `rateLimitedUntil` sans re-exchange, `acquirable(now)`) — fini le scorched-earth ; sonde de fond proactive (refresh near-expiry). **D2** : sémaphore process-wide `xblUserAuthMaxConcurrent=2` dans `requestUserToken` (sérialise refresher pool + user-facing, anti-429 `currentRequests`). **D3** : `eg.SetLimit(syncFetchParallelism=4)` sur le fan-out fetch (engine.go).
@@ -61092,7 +61098,7 @@ Tests de filet ajoutés pour les changements load-bearing sans couverture : `sho
 
 **Tâche** : supprimer les WARN `mediaStoredPathToURL: aucun mapping trouvé (path legacy absolu hors layout) slug=JGtm abs_path=…\data\media\JGtm\Halo_5_Guardians\…`. Les chemins média H5 étaient stockés en ABSOLU Windows → non portables (local Windows ↔ VPS Debian) + média non servi.
 
-**Cause racine (prouvée)** : l'infra de stockage relatif existe déjà (`insertMediaFile` → `MediaPathStore.ToRel` → `{slug}/{rel}`, base = `media_captures_base_dir`). Mais les 7 lignes média H5 de JGtm avaient été indexées depuis `…\data\media\JGtm\…` (copie interne obsolète du repo), PAS depuis le dossier configuré `C:\Users\Guillaume\Videos\Captures`. Hors base → `ToRel` échoue → fallback chemin absolu stocké. Les mêmes fichiers existent aussi dans `Videos\Captures\JGtm\` (le vrai dossier). Infinite était déjà propre (217 lignes relatives).
+**Cause racine (prouvée)** : l'infra de stockage relatif existe déjà (`insertMediaFile` → `MediaPathStore.ToRel` → `{slug}/{rel}`, base = `media_captures_base_dir`). Mais les 7 lignes média H5 de JGtm avaient été indexées depuis `…\data\media\JGtm\…` (copie interne obsolète du repo), PAS depuis le dossier configuré `<poste>\Videos\Captures`. Hors base → `ToRel` échoue → fallback chemin absolu stocké. Les mêmes fichiers existent aussi dans `Videos\Captures\JGtm\` (le vrai dossier). Infinite était déjà propre (217 lignes relatives).
 
 **Décision technique — 2 volets** :
 1. **Data (hors git)** : `go run ./cmd/migrate-media-paths --db data/titles/halo_5/warehouse/shared_social.duckdb --captures-base "…\Videos\Captures"` (serveur dev arrêté). Résultat : file_path 7/7 convertis, thumbnail 7/7 convertis (0 cassé), 0 absolu résiduel. Les relatifs `JGtm/…` résolvent contre `Videos\Captures\JGtm\…` (fichiers présents) → portable Debian (résolution contre le `media_captures_base_dir` du VPS). Infinite : 0 absolu, non touché.
@@ -62030,7 +62036,7 @@ Le plafond historique ~50% sur le match de référence `000d5950` était attribu
 purement offline** par fit linéaire packet-ts→TimeMS, raffiné 3 iters « plus proche » (bootstrap) puis 3 iters
 « dernier-avant » (anchors létaux précis) ; (5) arme = dernier record `0xd2` du tueur avant l'instant warpé.
 **Résultat : 96% par kill** (85/89) sur `000d5950`, validé vs vérité-terrain live (même kill, horloge convertie).
-Slots offline == idx live (8/8, alignés par signature d'armes). whiteknight offline Stalker:8/Needler:3 ≈ live
+Slots offline == idx live (8/8, alignés par signature d'armes). joueur_026 offline Stalker:8/Needler:3 ≈ live
 Stalker:9/Needler:4.
 
 **Réfuté définitivement** : held-weapon (interdit user), frères=dégât, champ victime offline, décodeur FRAME requis.
@@ -62145,10 +62151,10 @@ user 06-04). Réf : RESEARCH_THEATER_RE §M.
   faux « global-id R5+R32 non stable » (l'instabilité = les 5 bits attaquant collés devant la famille). C'était
   exactement « le mauvais angle » pressenti par le user.
 - **Résultats** : R5 corrigé = 8 valeurs paires {0..14} = `joueur×2` ; même arme sous plusieurs R5 (preuve
-  joueur≠arme). Mapping identité `R5>>1==pi` (ancre live IKE=slot4=pi4). Pipeline : décoder 0xd2
+  joueur≠arme). Mapping identité `R5>>1==pi` (ancre live JOUEUR_502=slot4=pi4). Pipeline : décoder 0xd2
   (attaquant·arme·temps) + kill-feed chunk_27 + cross-corrélation des bases de temps (offset ≈−20.3s auto-calé)
   → arme du kill = tick attaquant==tueur le plus proche. **50/93 kills firearm attribués offline, validé
-  IKE→LORD=Disruptor (= vérité-terrain live de la veille).** Reste ≈43 = mêlée/grenade (scanners offline déjà
+  JOUEUR_502→LORD=Disruptor (= vérité-terrain live de la veille).** Reste ≈43 = mêlée/grenade (scanners offline déjà
   résolus) + résidus.
 - **Conclusion / prochaine étape** : le live n'est plus qu'une ANCRE de validation, plus une dépendance →
   l'arme-à-feu-par-kill est offline ET scalable. Port production : package `internal/analysis/weaponkill/`
@@ -62160,7 +62166,7 @@ user 06-04). Réf : RESEARCH_THEATER_RE §M.
 - **Correction** : l'entrée précédente disait « 50/93 firearm, reste = mêlée/grenade ». FAUX (doute user
   fondé). Le suffixe arme 0x42c9679f apparaît dans ~1095 records sur ~12 marqueurs (0xe9,0x89,0xc0,0xc7,
   0xc2,0xc3…), pas que 0xd2. Couverture donnée d'arme = 92/93 kills (ensemble dense, même offset -20.3s,
-  IKE→LORD=Disruptor validé). Donc les 43 « manquants » ne sont PAS mêlée/grenade.
+  JOUEUR_502→LORD=Disruptor validé). Donc les 43 « manquants » ne sont PAS mêlée/grenade.
 - **Limite** : seul 0xd2 expose l'attaquant net (slot×2 ∈ {0..14} au bit 36). Les frères n'ont aucun champ
   5b donnant les 8 joueurs (bit-scan + ancre-suffixe + test victime/tueur : plafond 44-50% = bruit).
   Intuition user : ce sont des events de dégât avec MONTANT (scalaires), d'où l'absence de slot-joueur net.
@@ -62178,8 +62184,8 @@ user 06-04). Réf : RESEARCH_THEATER_RE §M.
   - Décodage idx joueur : (handle-0xEC500000)/0x10002 (dégât) ; (handle-0xE1500000)/0x10002 (kill).
 - **Matching exact** : arme du kill = dernier dégât du tueur (attaquant==tueur) avec tsc <= tsc_kill.
   Horloge partagée → pas d'alignement temps-film (le linéaire tsc->film échouait : replay non-uniforme).
-- **Résultat 000d5950** : 605 dégâts + 98 kills capturés → 97/98 attribués. IKE→LORD=Disruptor validé.
-  Breakdown par joueur cohérent (whiteknight=Stalker9, aldusbroncus=S7Sniper7, LORD/IKE=M41x7).
+- **Résultat 000d5950** : 605 dégâts + 98 kills capturés → 97/98 attribués. JOUEUR_502→LORD=Disruptor validé.
+  Breakdown par joueur cohérent (joueur_026=Stalker9, joueur_389=S7Sniper7, LORD/JOUEUR_502=M41x7).
 - **Capture sauvée** : tools/ce/{dmgcapture_run2.bin (605x32), killcapture.bin (118x16)}.
   Outils : cmd/{tmp_livedmg,tmp_dualcap}. Hooks AA : cave dégât @0x..EE80000, cave kill @0x..EC70000.
 - **Portée** : LIVE = vérité-terrain EXACTE par match (non scalable, 1 replay+CE). OFFLINE 0xd2 = 50/93
@@ -62224,7 +62230,7 @@ user 06-04). Réf : RESEARCH_THEATER_RE §M.
 - **Statut** : Diagnostic verrouillé. Fix = synchro horloges via morts → finir décodeur FRAME.
 - **Preuve** : diag tmp_offgen — pour chaque kill, l'écart au tick-tueur-le-plus-proche varie de −109s à +14s
   (dérive non-linéaire entre highlight TimeMS et packet ts). Aucun offset global ne marche (34200 = ~50%).
-  La donnée EST là (whiteknight a 14 ticks Stalker dans 0xd2) mais non liable sans synchro.
+  La donnée EST là (joueur_026 a 14 ticks Stalker dans 0xd2) mais non liable sans synchro.
 - **Écartés** : biais équipe (testé, équilibré 22-28/43-50) ; marqueurs frères (= apparence d'arme
   variantName/styleName/property-name, PAS dégât — FUN_14080d878/b1b8 décompilés) ; held-weapon (interdit user).
 - **Fix** : les morts sont dans les 2 horloges (highlight death TimeMS + dead-state Mort dans le flux FRAME
@@ -62241,14 +62247,14 @@ user 06-04). Réf : RESEARCH_THEATER_RE §M.
   handler = FUN_1407e00ac (apply degat, replay-actif) dont param_3 porte famille+attaquant+victime. Entrelacer avec
   FUN_1406730c4 (kill-event = finishing-blow) dans un buffer ordonne. Tout en LECTURE PURE (zero call injecte).
 - **Resultats observes (000d5950, valides)** :
-  - param_3+0x10 = famille high-32 ; +0x14 = suffixe 0x42c9679f. IKE 1er kill = 0x84BD29ED = Disruptor (= narration).
+  - param_3+0x10 = famille high-32 ; +0x14 = suffixe 0x42c9679f. JOUEUR_502 1er kill = 0x84BD29ED = Disruptor (= narration).
   - attaquant degat = param_3+0x0c (0xEC5x+idx*0x10002) ; victime = *param_2 (biped). tueur kill = [event+0x08]
     (0xE15x+idx*0x10002) ; finishing-blow = le kill-event lui-meme (bool +0xC du kill-event component documente).
   - 98 kills (93+5 outro), totaux/tueur EXACTS, 17 familles = decode offline. Breakdown arme-par-kill par joueur :
-    IKE(15): SPNKr7 Stalker4 Disruptor2 BR75 Cindershot. JAVIERLOLITO(15): SPNKr4 Needler3 Ravager3 Disruptor2 Mangler MA40 Skewer.
-    LORD(15): SPNKr7 Disruptor2 Stalker2 Hydra2 Needler Sidekick. aldusbroncus(13): Sniper7 +6 varies.
-    whiteknight(14): Stalker9 Needler4 melee1. Akatsuki(10): Skewer4 Sniper2 SPNKr2 Disruptor Ravager.
-    JGtm(8): Disruptor4 Bulldog2 MA40 BR75. VitaminA(8): Disruptor4 Needler2 Ravager Sidekick.
+    JOUEUR_502(15): SPNKr7 Stalker4 Disruptor2 BR75 Cindershot. JOUEUR_315(15): SPNKr4 Needler3 Ravager3 Disruptor2 Mangler MA40 Skewer.
+    LORD(15): SPNKr7 Disruptor2 Stalker2 Hydra2 Needler Sidekick. joueur_389(13): Sniper7 +6 varies.
+    joueur_026(14): Stalker9 Needler4 melee1. joueur_700(10): Skewer4 Sniper2 SPNKr2 Disruptor Ravager.
+    JGtm(8): Disruptor4 Bulldog2 MA40 BR75. joueur_602(8): Disruptor4 Needler2 Ravager Sidekick.
 - **Caveats / raffinements (offline, sur donnees recapturables)** : (1) melee/grenade mal attribue (0 tick degat ->
   derniere arme ranged) -> chemin dead-state categorie. (2) AoE (SPNKr) sur-compte -> matcher tueur ET victime
   (map biped->idx via chunk_27 b36/b37). Le live = ground-truth non scalable ; sert d'ancre pour la Voie A offline.
@@ -62272,7 +62278,7 @@ user 06-04). Réf : RESEARCH_THEATER_RE §M.
 
 **Décision.** Workflow Ghidra `killfeed-weapon-deadstate-re` (wf_ffb67697-847, 5 fils RE + synthèse) lancé pour : grammaire bit-exacte dead-state jusqu'à +0x10, résolution offline du global-id (table reconstructible du film ?), table object-description-session-index (dumpable du film ?), composant kill-event, nature du global-id +0x10 (arme tenue / projectile / biped tueur). Puis sonde Go de validation `EnumB==tueur` + résolution GlobalID.
 
-**Validation empirique (sonde `cmd/tmp_killeridx`, slot-isolée).** Décode les dead-states CLEAN Mort==true et corrèle EnumA(+4)/EnumB(+8)/GID(+0x10) vs kill feed 94/94, en isolant le slot 519 (seul biped décodé de façon fiable) en spans de mort. RÉSULTAT NÉGATIF/INFORMATIF : slot 519 = 201 « onsets de mort » alors que son joueur (whiteknight2519) ne meurt que ~9×; EnumB ne bijecte PAS le tueur (0%), EnumA pas la victime, GID présent ~10% à valeurs dispersées. => le composant dead-state est lu sur des frames où le biped est VIVANT (Mort=true faux-positif) : le décodeur per-frame n'est PAS bit-exact jusqu'au dead-state (mask/présence-composant errronés, ou désalignement avant i11). La donnée EST dans le film (binaire le prouve) mais le décodeur ECS biped ne la lit pas fiablement = le mur du handoff persiste.
+**Validation empirique (sonde `cmd/tmp_killeridx`, slot-isolée).** Décode les dead-states CLEAN Mort==true et corrèle EnumA(+4)/EnumB(+8)/GID(+0x10) vs kill feed 94/94, en isolant le slot 519 (seul biped décodé de façon fiable) en spans de mort. RÉSULTAT NÉGATIF/INFORMATIF : slot 519 = 201 « onsets de mort » alors que son joueur (joueur_283) ne meurt que ~9×; EnumB ne bijecte PAS le tueur (0%), EnumA pas la victime, GID présent ~10% à valeurs dispersées. => le composant dead-state est lu sur des frames où le biped est VIVANT (Mort=true faux-positif) : le décodeur per-frame n'est PAS bit-exact jusqu'au dead-state (mask/présence-composant errronés, ou désalignement avant i11). La donnée EST dans le film (binaire le prouve) mais le décodeur ECS biped ne la lit pas fiablement = le mur du handoff persiste.
 
 **Workflow wf_ffb67697-847 (5 fils RE + synthèse) — résultats.** (1) Grammaire dead-state confirmée bit-exacte (Thread 1 s'est trompé sur +0xc : `FUN_1406d310c(10)`=ceil(log2 10)=**4 bits**, le code Go a raison). +8=killer-index R(1)+R(5), +0x10=R(32) brut. (2) **Composant kill-event** (deser FUN_14104bd08) = victim/killer/**assistant** handles, FILM-NATIF, décodable offline, mais NE porte PAS l'arme (param_3[2]/[5]=scalaires) ; archétype non épinglé. (3) Tables de résolution global-id→entité (DAT_144b404f0/144eae7b8/14494a908) **nulles au repos = live-only**, non sérialisées dans le film.
 
@@ -62304,7 +62310,7 @@ RÉSULTAT MAJEUR : **10/12 desers Go sont DÉJÀ fidèles** (vérifiés ligne-à
 ### État après tous les fixes (2026-06-10, fin de session)
 Replay : bipeds=25528, **clean=49%**, reachDead=3159. **Bijection EnumB→tueur = ~50%** (records DesyncAt==-1), **pureté EnumA par slot = ~40%**. Les fixes i26+WST n'ont PAS bougé l'aiguille → le désalignement résiduel vient d'ailleurs.
 
-**BLOCAGE RÉSIDUEL CERNÉ.** Seuls slots **515 et 519** atteignent le dead-state ; slot 519 produit **759 « morts »** (vs ~9 réelles) à EnumA dispersé. Slot 519 = très probablement **whiteknight2519 = OWNER** (cf. obs. user : killfeed visible seulement pour lui). HYPOTHÈSE FORTE : le biped de l'owner est encodé DIFFÉREMMENT (état local complet vs delta répliqué des distants) → son record désaligne en boucle → faux dead-states + empêche le record-loop d'atteindre les autres bipeds (morts des autres joueurs jamais lues). Autres suspects résiduels : i0 axis-widths (smart-calib 47/101 = workaround, pas le vrai deser ; FUN_140cc5128 axes runtime non sourcés) ; décode du mask (consumeMask) sur les records owner.
+**BLOCAGE RÉSIDUEL CERNÉ.** Seuls slots **515 et 519** atteignent le dead-state ; slot 519 produit **759 « morts »** (vs ~9 réelles) à EnumA dispersé. Slot 519 = très probablement **joueur_283 = OWNER** (cf. obs. user : killfeed visible seulement pour lui). HYPOTHÈSE FORTE : le biped de l'owner est encodé DIFFÉREMMENT (état local complet vs delta répliqué des distants) → son record désaligne en boucle → faux dead-states + empêche le record-loop d'atteindre les autres bipeds (morts des autres joueurs jamais lues). Autres suspects résiduels : i0 axis-widths (smart-calib 47/101 = workaround, pas le vrai deser ; FUN_140cc5128 axes runtime non sourcés) ; décode du mask (consumeMask) sur les records owner.
 
 **PROCHAINE ÉTAPE (reprise).** (1) Vérifier si slot 519 = owner et si son biped a une grammaire spéciale (RE du record owner / world_dump + FrameConfig) — c'est LE verrou pour lire les morts des autres joueurs. (2) Sourcer les vraies axis-widths position (FUN_140cc5128 / DAT_1445cc9e0) au lieu du smart-calib. (3) Une fois le record-loop franchissant tous les bipeds → re-valider bijection. Sondes : tmp_autocal (clean+bijection+EnumA/slot), tmp_deathcompo, tmp_deltacal.
 
@@ -62374,10 +62380,10 @@ Go `consumeMask` (traverse.go:393) MATCHE `FUN_1406d7610` exactement : R(1) ; bi
      API `highlight_events.raw_json` (kill+death) = **aucun champ arme**. ⇒ l'arme n'est NI en DB NI API.
   3. La paire X/Y (tueur/victime) du film est PROUVÉE correcte : bijection film<->DB couvre la DB à 1 kill
      près (sur 93), +5-6 kills d'outro isolés (dont 2 self-kills idx3/idx4 = artefacts fin de match).
-     Roster résolu : 0=whiteknight2519 1=JAVIERLOLITO540 2=JGtm 3=LORD PEINX13 4=IKE ILYA 5=Akatsuki fire17
-     6=aldusbroncus 7=VitaminA1688.
+     Roster résolu : 0=joueur_283 1=JOUEUR_156 2=JGtm 3=JOUEUR_731 4=JOUEUR_417 5=joueur_700 fire17
+     6=joueur_389 7=joueur_362.
   4. Tentative de sauvetage `p0C` comme catégorie de dégât (mémoire dead-state : mêlée=0x40000) : ÉCHEC.
-     high=4 représente 52% des kills (51/98), réparti sur tous les joueurs, IKE/marteau seulement 9/15 high4
+     high=4 représente 52% des kills (51/98), réparti sur tous les joueurs, JOUEUR_502/marteau seulement 9/15 high4
      ⇒ p0C = bitfield de flags, pas une catégorie d'arme exploitable.
 - **Conclusion / prochaine étape** : le breakdown d'armes par joueur reste bloqué sur l'extraction de la
   **source de dégât** de l'event de mort, jamais localisée (event+0x538 réfuté). Seule piste crédible restante :
@@ -62444,7 +62450,7 @@ Go `consumeMask` (traverse.go:393) MATCHE `FUN_1406d7610` exactement : R(1) ; bi
 
 ## [2026-06-10] Chaîne complète kill->arme RE-finie (crash jeu sur hooks lourds) — reste capture légère
 - **Statut** : En cours — RE 100% finie, reste une capture légère propre.
-- **Décision technique** : pause sur le 1er kill (IKE->LORD au Disruptor, ground-truth user), capture high live
+- **Décision technique** : pause sur le 1er kill (JOUEUR_502->LORD au Disruptor, ground-truth user), capture high live
   (0xE826029C dans la session crashée), puis RE Ghidra de la chaîne de résolution.
 - **Résultats observés** :
   1. Chaîne PROUVÉE (replay-active) : high=[killer+0x1f30] -> FUN_140477618(high,0x1003)=entité-arme (=RAX
@@ -62466,15 +62472,15 @@ Go `consumeMask` (traverse.go:393) MATCHE `FUN_1406d7610` exactement : R(1) ; bi
   - Bijection player_index <-> slot tueur ÉTABLIE et VALIDE : chunk_27 (duo=b36, team=b37) donne 8 combos
     distincts, 1 par joueur. Mapping pi0..pi7 -> (duo,team) : pi0=(3,0) pi1=(3,1) pi2=(1,0) pi3=(2,0)
     pi4=(1,1) pi5=(2,1) pi6=(0,1) pi7=(0,0). xuid->pi identité (roster stable). Confirmé par distribution
-    des events (fire concentré sur pi2/3/6/7 = tireurs actifs ; grenade pi4=IKE x20).
+    des events (fire concentré sur pi2/3/6/7 = tireurs actifs ; grenade pi4=JOUEUR_502 x20).
   - Attribution par kill (tueur pi + temps T -> event même pi, tms<=T le plus proche, fenêtre [-400,+2500ms]).
 - **Résultats observés** :
   - Couverture : 21/93 kills reçoivent UN event auteur dans la fenêtre, mais la plupart avec dt grand
     (1-2s) = coïncidences, pas la vraie source. 72/93 sans aucun event auteur près de T.
-  - NARRATION ÉCHOUE : marteau IKE(pi4)->JGtm aux kills 115.5/292.5/355.7/375.1s : les events melee de pi4
+  - NARRATION ÉCHOUE : marteau JOUEUR_502(pi4)->JGtm aux kills 115.5/292.5/355.7/375.1s : les events melee de pi4
     existent (75/271.9/274.9/307.3/324.5/335.1/462.6s) mais NE coïncident avec AUCUN kill narré ; et leur
     famille décode "Diminisher of Hope", pas Gravity Hammer (offset weapon melee suspect pour ces events).
-    BR75 JGtm(pi2)->Akatsuki aux kills 112.9/329.8s : les events fire BR75 de pi2 sont TOUS dans la rafale
+    BR75 JGtm(pi2)->joueur_700 aux kills 112.9/329.8s : les events fire BR75 de pi2 sont TOUS dans la rafale
     151-158s, jamais près des kills.
 - **Cause racine** : le décode porte un player_index FIABLE par event (auteur), mais les TIMESTAMPS des events
   d'action (rafales de tir, frappes melee, snapshots) sont DÉSYNCHRONISÉS des instants kill-feed. Les events
@@ -62550,7 +62556,7 @@ pour lier ultérieurement chaque record de dégât à sa victime PAR POSITION. *
    ou fallback bruité. Aux temps narrés, le sample direct-abs le + proche est souvent à >1.5s ; l'accumulation dax
    dérive (slot519 @292.5s = 25/62/122, hors boîte).
 3. **Mapping slot→joueur = maillon faible** (déjà documenté) : vote mort = 2/8 slots, INSTABLE (tmp_victimpos vote
-   519→whiteknight ; tmp_killfeed_weapons vote 519→JGtm). JGtm/Akatsuki non identifiés de façon fiable.
+   519→joueur_026 ; tmp_killfeed_weapons vote 519→JGtm). JGtm/joueur_700 non identifiés de façon fiable.
 
 **Verdict.** Position victime extractible offline = **PARTIEL**. La MÉCANIQUE marche (continuité prouvée, déquant
 correct) mais précision = ±3.1 u quantisé, aliasing hors boîte ±100, couverture éparse, et le slot→joueur reste à
@@ -62593,8 +62599,8 @@ Sensibilité W : à 400ms → 26 non-ambigu / 54 non-résolus ; à 3000ms → 41
 **Le "non-ambigu" n'est PAS une preuve d'exactitude** : il signifie seulement qu'une seule arme a tiré dans la fenêtre
 — ça peut être le tueur, un autre joueur, ou un tick non-létal (le record ne lie ni attaquant ni victime, A1).
 
-**Validation narration : ÉCHEC sur 6/6 kills narrés.** Les 4 morts marteau IKE→JGtm (115.5/355.7/375.1s = non-résolus ;
-292.5s = FAUX POSITIF "Stalker Rifle" dt=-13ms, alors que c'est un marteau). Les 2 BR75 JGtm→Akatsuki (112.9/329.8s) =
+**Validation narration : ÉCHEC sur 6/6 kills narrés.** Les 4 morts marteau JOUEUR_502→JGtm (115.5/355.7/375.1s = non-résolus ;
+292.5s = FAUX POSITIF "Stalker Rifle" dt=-13ms, alors que c'est un marteau). Les 2 BR75 JGtm→joueur_700 (112.9/329.8s) =
 non-résolus. ⇒ le marteau n'émet aucun record (Hammer 0/519) et les médailles M1 ne couvrent pas ces kills ; le BR75
 de JGtm est noyé dans le bruit Fiesta. Confirme A1+M1 : l'appariement temporel produit des faux positifs.
 
@@ -62610,7 +62616,7 @@ reste celui de A1/E1/E2 : le record de dégât ne porte ni attaquant ni victime 
 
 **Contexte / mission.** Le record de dégât-arme (519 paquets type-0 `0xd2`) ne couvre PAS melee/grenade/terrain
 (Gravity Hammer = 0/519). Mission : le kill feed chunk_27 / dead-state distingue-t-il déjà la catégorie ? Établir
-le mapping medalType→catégorie, et statuer sur le kill marteau IKE ILYA→JGtm (classable melee sans record d'arme ?).
+le mapping medalType→catégorie, et statuer sur le kill marteau JOUEUR_417→JGtm (classable melee sans record d'arme ?).
 Probes Go : `apps/go-api/cmd/tmp_killmethod/` (médailles type-100 ⋈ kills) + `cmd/tmp_killmethod_fields/` (dump
 bit-exact du bloc 60o KILL/DEATH). Source noms médailles : parquet `medal_definitions_20260607_184630` (la metadata
 DuckDB est lockée RW par le server.exe — lecture via backup parquet ; ZÉRO Python).
@@ -62622,17 +62628,17 @@ DuckDB est lockée RW par le server.exe — lecture via backup parquet ; ZÉRO P
 1. **Le bloc 60o KILL/DEATH ne porte AUCUN champ de méthode (preuve bit-exacte).** Octets variables = `b36`(duo/slot),
    `b37`=`b38`(team), `b48-51`(time_ms BE), `b55`/`b59`(is_medal/medal_type, non-nuls SEULEMENT sur les events médaille).
    Les **4 morts marteau de JGtm** (115.5/292.5/355.7/375.1s) ont un bloc **STRICTEMENT IDENTIQUE** à ses 10 morts à
-   l'arme : `00…00 01 00…00 14 00 [time] 00…00 01` — seul time_ms diffère. Côté tueur, les kills marteau d'IKE sont
+   l'arme : `00…00 01 00…00 14 00 [time] 00…00 01` — seul time_ms diffère. Côté tueur, les kills marteau d'JOUEUR_502 sont
    identiques à ses kills arme (`…01 01 01…32…`). ⇒ melee/grenade/terrain NON distingués dans l'event lui-même.
 2. **Médailles type-100 = couverture partielle + décodage b59 ambigu.** 44 events médaille pour 93 kills ; 59/93 kills
    sans aucune médaille @t (±200ms). Le `b59` (enum local {0,9,26,72,75,82,85,91,98,99,100,101,105,108,109,110,114,
    117,127,141,165}) **n'est PAS** un index direct de `medal_name_id` (confirme le constat antérieur « PAS mid&0xFF »).
    Vote count-match exact par joueur → mapping sous-déterminé (plusieurs b59 collent à la même médaille : b59=0/9/72/85
    → tous "Double Kill") ⇒ non-bijectif, peu fiable. Au mieux 15/93 kills classés (distance/explosif/melee), dont la
-   plupart douteux. Médailles de méthode présentes dans le match : Back Smack (548533137, melee, VitaminA1688),
-   Bulltrue (3114137341, IKE), Snipe (4229934157), No Scope (2602963073), Stick (3655682764, grenade).
-3. **Kill marteau IKE→JGtm : NON classable melee via chunk_27.** Les 4 occurrences ont **0 médaille @t**. Le seul
-   Bulltrue d'IKE = "Sur le fil" (contre une tentative de melee adverse), pas un kill marteau franc ⇒ ne le couvre pas.
+   plupart douteux. Médailles de méthode présentes dans le match : Back Smack (548533137, melee, joueur_362),
+   Bulltrue (3114137341, JOUEUR_502), Snipe (4229934157), No Scope (2602963073), Stick (3655682764, grenade).
+3. **Kill marteau JOUEUR_502→JGtm : NON classable melee via chunk_27.** Les 4 occurrences ont **0 médaille @t**. Le seul
+   Bulltrue d'JOUEUR_502 = "Sur le fil" (contre une tentative de melee adverse), pas un kill marteau franc ⇒ ne le couvre pas.
 
 **Mapping medalType→catégorie (medal_definitions, autoritaire) :** la colonne `medal_type` du catalogue ne porte PAS
 melee/grenade (tout est `skill`/`multikill`/`style`/`spree`/`proficiency`) ; la catégorie de méthode se déduit du NOM
@@ -62641,7 +62647,7 @@ melee/grenade (tout est `skill`/`multikill`/`style`/`spree`/`proficiency`) ; la 
 
 **Conclusion / prochaine étape.** **NON** : on ne peut PAS classer chaque kill en {arme/melee/grenade/terrain} via
 chunk_27. Le kill feed ne porte la méthode QUE via les médailles type-100 — couverture partielle (≈15-23/93) ET
-décodage b59→médaille non-bijectif. Le **kill marteau IKE→JGtm est NON classable melee** par cette voie (0 médaille @t).
+décodage b59→médaille non-bijectif. Le **kill marteau JOUEUR_502→JGtm est NON classable melee** par cette voie (0 médaille @t).
 Le proxy medal_type est donc clos comme source de catégorie-de-mort fiable (cohérent §2/§3 KILLFEED_STATE : dead-state
 réfuté ; medalType=proxy partiel). Pour melee/grenade : il faudra le **slot/cause `+0x08` du record de dégât** (4 valeurs
 corrélées à la famille, §0) OU les EnumA/EnumB du dead-state — mais ce dernier exige le walk biped bit-exact (bloqué).
@@ -62724,8 +62730,8 @@ Probe : `apps/go-api/cmd/tmp_dmgrecord/main.go` (5 phases A→E, Go pur CGO_ENAB
   frames de kill décodent ~toutes en desync (le walk biped casse précisément quand un biped meurt) ⇒ tail des
   frames de kill **inaccessible**. (1 frame "clean" avec endBit>total = recEnd faux lu dans le padding.)
 - **Concentration stricte (Phase E).** Frame type-0 du kill ±100ms : 25/93 kills ont ≥1 famille, 12/93 une famille
-  unique. Kills narrés : 1 seule occurrence correcte (Gravity Hammer 0x841ac5e5 à 292490ms IKE→JGtm, coïncidence
-  d'un spawn/respawn d'entité-arme marteau), 0 BR75 sur les 2 kills JGtm→Akatsuki. ⇒ le high32 capté = les NEW
+  unique. Kills narrés : 1 seule occurrence correcte (Gravity Hammer 0x841ac5e5 à 292490ms JOUEUR_502→JGtm, coïncidence
+  d'un spawn/respawn d'entité-arme marteau), 0 BR75 sur les 2 kills JGtm→joueur_700. ⇒ le high32 capté = les NEW
   records d'entités-armes (pickup/spawn), pas un record de dégât par kill.
 
 **RE complémentaire (HTTP :8089) — confirme le verrou structurel de L1/L2.**
@@ -63026,7 +63032,7 @@ COMPLETS (id64 = high32|low32 contigus)** émis aux swaps/pickups (records d'ent
   décodeur sort `Diminisher of Hope` (gravity hammer) @292.5s, `S7 Sniper` en rafale 285-298s, `BR75` en
   rafale 308-310s, `Rushdown Hammer` (antigrav) @311-324s. Concordance temps↔arme observée.
 - **Kill feed killer→victime+temps** : 93 appariés, gamertags via map pi, séquence = narration user
-  (IKE ILYA→JGtm @292.5, whiteknight→IKE @296.3, Akatsuki→JGtm @308, JGtm→Akatsuki @329.8, …).
+  (JOUEUR_417→JGtm @292.5, joueur_026→JOUEUR_502 @296.3, joueur_700→JGtm @308, JGtm→joueur_700 @329.8, …).
 
 **Limite (attribution per-killer NON faite).** Les littéraux portent (temps, arme) mais PAS le slot/joueur
 (ils sont dans les records d'entité-arme, pas le biped ; scan biped = 0). slot→xuid par timing de mort =
@@ -63124,8 +63130,8 @@ kills. Doc : KILLFEED_STATE.md §0ZÉRO.
 - **Résultats chiffrés (000d5950, 93 kills)** :
   - Kill feed chunk_27 : 93/93 (tueur/victime/temps OK). medalType=0 sur 93/93 (pas de méthode).
   - Proxy littéral présent fenêtre [-3s,+200ms] : 87/93 (94%) MAIS non-ambigu (1 seule famille) : 24%.
-  - **Kills narrés : 0/10 matchés par le proxy le plus proche.** Marteau IKE->JGtm (115.5/292.5/355.7/
-    375.1s) : AUCUN Gravity/Rushdown Hammer (0x841ac5e5) en fenêtre ±1.5s. BR75 JGtm->Akatsuki
+  - **Kills narrés : 0/10 matchés par le proxy le plus proche.** Marteau JOUEUR_502->JGtm (115.5/292.5/355.7/
+    375.1s) : AUCUN Gravity/Rushdown Hammer (0x841ac5e5) en fenêtre ±1.5s. BR75 JGtm->joueur_700
     (112.9/329.8s) : aucun BR75. Le proxy capte les armes de TOUS les joueurs du Fiesta, pas du tueur.
   - Record de dégât : 'weap' (0x77656170) = 0 dans le flux delta (chunks 02-26, byte ET bit-aligné) ;
     19 'weap' + 319 'obje' UNIQUEMENT dans chunk_00 (registre/schéma ECS). => le datum-id 'weap' du
@@ -63161,8 +63167,8 @@ kills. Doc : KILLFEED_STATE.md §0ZÉRO.
   WALK_PORT_NOTES.md. Probes worktree (untracked) : cmd/tmp_meleegrenade (grenade OK + melee scaffold),
   cmd/tmp_fireevents (à refaire en scan bit-packé).
 - **Prochaine étape** : (1) caler player-index mêlée ; (2) décoder fire events (heuristique co-localisation) ;
-  (3) mapper player_index↔slot chunk_27 ; (4) croiser par kill ; (5) valider narration (marteau IKE→JGtm,
-  BR75 JGtm→Akatsuki) + cross-check 519 records.
+  (3) mapper player_index↔slot chunk_27 ; (4) croiser par kill ; (5) valider narration (marteau JOUEUR_502→JGtm,
+  BR75 JGtm→joueur_700) + cross-check 519 records.
 
 ## [2026-06-07] Test décisif held-weapon (tmp_heldweapon) — mêlée attribuable, gun encore épars
 - **Statut** : En cours (milestone : modèle held-weapon validé sur la mêlée ; gun à densifier).
@@ -63173,10 +63179,10 @@ kills. Doc : KILLFEED_STATE.md §0ZÉRO.
   - Fire events : 792 en paquets type-0 (réels) + 255 en type-2 keyframe (snapshots arme-tenue) => le scan
     brut mélangeait events de tir et snapshots d'état d'entité-arme (la "désync" était un artefact de scan).
   - Modèle A (event-à-T) = 21/93 ; **Modèle B (held-weapon carry-forward) = 80/93**.
-  - NARRATION : Marteau IKE(pi4)->JGtm = **4/4 famille CORRECTE** (arme tenue = Rushdown Hammer, famille
+  - NARRATION : Marteau JOUEUR_502(pi4)->JGtm = **4/4 famille CORRECTE** (arme tenue = Rushdown Hammer, famille
     0x841ac5e5, aux 4 kills appariés chunk_27 ±37ms). Le décode mêlée + held-weapon FONCTIONNE pour la
     mêlée. (L'arme mêlée type 0x47 lit bien un marteau sur le scan propre ; le "Diminisher of Hope" du
-    workflow était de la contamination.) BR75 JGtm->Akatsuki = 2/2 ÉCHEC (arme tenue SPNKr/Energy Sword ;
+    workflow était de la contamination.) BR75 JGtm->joueur_700 = 2/2 ÉCHEC (arme tenue SPNKr/Energy Sword ;
     rafale BR75 à 151-157s, loin des kills) => capture fire type-0 trop éparse (792/match != per-shot).
 - **Verdict** : held-weapon carry-forward (= Voie A sans walk biped) marche pour MÊLÉE (4/4) + couverture
   80/93, mais la fiabilité ARME À FEU n'est pas démontrée (events fire type-0 épars/sémantique à qualifier).
@@ -63192,12 +63198,12 @@ kills. Doc : KILLFEED_STATE.md §0ZÉRO.
   - Modèle event-à-T (le précis) : ±500ms => 13/93 kills ont un event auteur, gun=12 corroborés=9 (75%) ;
     ±1500 => 22/93 (60%) ; ±3000 => 34/93 (41%, corrob plafonne à 9). => DÉCODE FIRE CORRECT (75% quand serré)
     mais CAPTURE ÉPARSE (~13/93). Le verrou n'est ni l'identité ni la corrélation mais la DENSITÉ de capture.
-  - Narration : marteau IKE->JGtm held=Hammer 4/4 ; BR75 JGtm->Akatsuki = held SPNKr/Sword + 0 record BR75 à
+  - Narration : marteau JOUEUR_502->JGtm held=Hammer 4/4 ; BR75 JGtm->joueur_700 = held SPNKr/Sword + 0 record BR75 à
     ±1.5s aux 2 kills (rafale BR75 à 151-157s, ailleurs) => temps de narration probablement faux (narration != GT).
 - **A.1 (tmp_firemarker)** : densifier la capture fire => MUR.
   - 1159 high32-in-cat (type-0) ; 792 (68%) low32==0x42c9679f ; élargir le low32 ramène des NEW records d'entité,
     pas des tirs. AUCUN marqueur de fire event court (pas d'analogue 0x4c0c00/0x534). bp-4 = signal tireur PARTIEL :
-    couvre {2,3,4,5,6,7}, JAMAIS 0/1 (= whiteknight/JAVIER, joueurs passifs) => pas un player_index 0-7 propre.
+    couvre {2,3,4,5,6,7}, JAMAIS 0/1 (= joueur_026/JOUEUR_1043, joueurs passifs) => pas un player_index 0-7 propre.
   - VERDICT : le film n'enregistre pas chaque tir comme event trackable ; arme-à-feu-par-kill plafonne ~9-13/93.
 - **SYNTHÈSE** : MÊLÉE (event 0x534/0x535, pidx@anchor+23 couvre les 8) + GRENADE (0x4c0c00, pidx 5b) =
   ATTRIBUABLES PAR AUTEUR (acquis nouveau, nié avant). ARME À FEU = partielle (plafond capture). 519 records =
@@ -63398,8 +63404,8 @@ porte l'arme), pas du held-weapon.
 
 **Capture CE validée** (hook @0x673161 puis @0x67316a pour aussi tenter le def-id ; film 000d5950, 12 kills) :
 `event+0x04`=victime, `event+0x08`=tueur (idx `0xE15C0000+idx*0x10002`), `event+0x538`=handle d'arme. Croisé
-avec la narration kill-par-kill : 3964796932=BR75 (JGtm 5:29), 3964993546=sniper (Akatsuki 5:08),
-3964928008=marteau (IKE), 3965059084=plasma (aldus→LORD PEINX 5:44). ⇒ **kill feed complet reconstitué du
+avec la narration kill-par-kill : 3964796932=BR75 (JGtm 5:29), 3964993546=sniper (joueur_700 5:08),
+3964928008=marteau (JOUEUR_502), 3965059084=plasma (joueur_193→JOUEUR_779 5:44). ⇒ **kill feed complet reconstitué du
 film : tueur·arme·modificateur·victime.**
 
 **Limites** : `weaponDefId = FUN_14049d198(handle)` = -1 offline (11/12) → résolveur d'event-def, pas l'arme.
@@ -63430,7 +63436,7 @@ vers le mécanisme du kill feed.
 **Acquis (confirmés vs narration)** :
 - **Dead-state de la victime** (`FUN_140c1dce0`→`FUN_140c1dd44`, struct `RDI+0x74`) : `+0x04` =
   **player-index VICTIME**, `+0x08` = **player-index TUEUR** (encodage `0xE15C0000+idx*0x10002`).
-  ⇒ tueur↔victime directs (ex. JGtm←IKE, LORD PEINX←aldus plasma, Akatsuki←JGtm BR75). La RE avait
+  ⇒ tueur↔victime directs (ex. JGtm←JOUEUR_502, JOUEUR_779←joueur_193 plasma, joueur_700←JGtm BR75). La RE avait
   mal étiqueté ces 2 champs (« damage-type » → en fait joueurs).
 - **Modificateur** (headshot/parfait) présent dans le dead-state (`+0x14`/`+0x18`/`+0x38`).
 - **L'arme N'EST PAS dans le dead-state** : marteau == marteau antigrav (struct identique) ; BR75
@@ -63667,13 +63673,13 @@ qui ferait rater les tirs du tueur (JGtm xuid 2533274823110022, Frag Parfait Sid
 ScanFireEventsB5/ScanFireEventsV3 (4 layouts) + corrélation killer_victim_pairs->fires + footer b36 chunk-27.
 
 **Résultats observés (réels)** :
-- acurtis pi JGtm = **2** (confirme RESEARCH §N p=0.006). Roster: whiteknight=0, JAVIERLOLITO=1, JGtm=2, LORD PEINX=3,
-  IKE ILYA=4, Akatsuki=5, aldusbroncus=6, VitaminA=7.
+- acurtis pi JGtm = **2** (confirme RESEARCH §N p=0.006). Roster: joueur_026=0, JOUEUR_315=1, JGtm=2, JOUEUR_779=3,
+  JOUEUR_417=4, joueur_700=5, joueur_389=6, joueur_602=7.
 - Mapping acurtis<->fire-pi = **IDENTITÉ** : la corrélation kills->fires donne fire-pi dominant == acurtis pour 7/8
-  joueurs (JGtm fires dominants à pi2:5). Pas de remap. (whiteknight=0 = bruit d'échantillon, peu de kills isolés.)
+  joueurs (JGtm fires dominants à pi2:5). Pas de remap. (joueur_026=0 = bruit d'échantillon, peu de kills isolés.)
 - Sidekick total film = **15** (pas 18), à fire-pi {3,6,7} (4high), JAMAIS pi=2 ; relax3 idem (aucun pi=2).
-- Les 15 Sidekick appartiennent à d'AUTRES joueurs : pi6 près de 192884 = aldusbroncus (la VICTIME), pi7≈237k =
-  VitaminA, pi3≈476k = LORD PEINX. Pas les tirs de JGtm.
+- Les 15 Sidekick appartiennent à d'AUTRES joueurs : pi6 près de 192884 = joueur_389 (la VICTIME), pi7≈237k =
+  joueur_602, pi3≈476k = JOUEUR_779. Pas les tirs de JGtm.
 - À fire-pi=2 (JGtm) près de ses kills, le scanner TROUVE bien ses tirs : **Bulldog** (104995,112869 Δ=-3ms),
   **Disruptor** (149471 Δ=-54ms) ; AUCUN fire pi=2 pour 192884/230628/258590.
 - JGtm a **1** médaille Perfect Kill (1512363953), pas 6 : l'oracle a confondu « Frag Parfait » avec ses 8 kills.
@@ -64223,7 +64229,7 @@ Résultat observable : un fetch live qui rend `cachedCustom != nil` mais `Banner
    - `TestOverlayIdentityFromFallback` : matrice 5 cas (nil/non-nil × identity/fallback × champs présents/absents) — cadenasse la sémantique du merge.
    - `TestCareerLive_GetIdentity_LiveBannerNil_DBHasOne` : test end-to-end qui simule le scénario de prod (mock fetcher retourne `custom != nil` mais `BannerImageURL = ""`, DB porte une bannière historique) → vérifie que l'API retourne la bannière DB. C'est LE test du bug « les bannières vont et viennent ».
 
-**Validation live** : 3 joueurs (JGtm, Chocoboflor, Madina97294), 5 appels rapides successifs au home endpoint → bannière stable à chaque appel. Smoke endpoint `/api/v1/healthz/home` retourne `banner=ok` une fois le cache warm.
+**Validation live** : 3 joueurs (JGtm, joueur_165, joueur_117), 5 appels rapides successifs au home endpoint → bannière stable à chaque appel. Smoke endpoint `/api/v1/healthz/home` retourne `banner=ok` une fois le cache warm.
 
 **Note hors scope** : un bug de migration `purge_data_health_warning_notifs` (cf. autres modifs uncommitted) cause une invalidation DuckDB pendant ~5 s au cold-restart, ce qui rend même le DB fallback indisponible pendant cette fenêtre. À investiguer séparément — pas le sujet de ce commit qui se concentre sur le contrat UX banner.
 
@@ -64353,13 +64359,13 @@ Résultat observable : un fetch live qui rend `cachedCustom != nil` mais `Banner
 
 6. **`admin_auto_sync.go::ProbeTokens` réécrit** pour passer par Discovery + Resolver au lieu de `os.Getenv` direct + DuckDB direct. Expose `discovered_in_pool`, `source`, `resolve_ok`, `refresh_token_was_rotated`, fingerprint (sha256 + head/tail tronqués). Le RT rotaté est persisté via le même callback qu'en production — le probe ne brûle plus les RT du caller.
 
-7. **Bug `$$` dans `.env.local`** (découvert dans la même session) : Microsoft inclut parfois `$$` à la fin des refresh_tokens (Madina97294). Quand `make dev` source `.env.local` via bash, `$$` est expandé en PID du shell, polluant la valeur transmise au serveur Go. Fix : guillemets simples autour des 3 RT dans `.env.local` (single quotes désactivent l'expansion bash, et `loadEnvLocal` Go les retire à la lecture). Nécessite Ctrl+C + relance de `make dev` pour effacer l'env du shell parent.
+7. **Bug `$$` dans `.env.local`** (découvert dans la même session) : Microsoft inclut parfois `$$` à la fin des refresh_tokens (joueur_117). Quand `make dev` source `.env.local` via bash, `$$` est expandé en PID du shell, polluant la valeur transmise au serveur Go. Fix : guillemets simples autour des 3 RT dans `.env.local` (single quotes désactivent l'expansion bash, et `loadEnvLocal` Go les retire à la lecture). Nécessite Ctrl+C + relance de `make dev` pour effacer l'env du shell parent.
 
 **Résultats observés (probe live des 4 joueurs après tous les patches)** :
 - JGtm : `discovered_in_pool=true source=duckdb_oauth resolve_ok=true rotated=true spartan_len=1147`
-- Chocoboflor : idem (RT tail `ljdg$$` préservé)
-- Madina97294 : idem (RT tail `f3AQ$$` préservé — fix `$$` validé)
-- XxDaemonGamerxX : `discovered_in_pool=false` (pas d'env var configurée — skip silencieux attendu)
+- joueur_165 : idem (RT tail `ljdg$$` préservé)
+- joueur_117 : idem (RT tail `f3AQ$$` préservé — fix `$$` validé)
+- joueur_291 : `discovered_in_pool=false` (pas d'env var configurée — skip silencieux attendu)
 - Pool boot : `size=3` tokens vivants
 - Snapshot exposé via `GET /api/v1/_diag/auto-sync/{snapshot,run,probe}` (loopback only, sans auth)
 
@@ -64384,7 +64390,7 @@ Résultat observable : un fetch live qui rend `cachedCustom != nil` mais `Banner
 
 ## [2026-05-14] fix(sync) — Auto-sync planifiée silencieuse : 5 bugs cumulés (DuckDB shared, RT rotation, observabilité)
 
-**Statut** : Complété (4 patches livrés ; Madina97294 nécessite régénération manuelle du refresh_token côté utilisateur).
+**Statut** : Complété (4 patches livrés ; joueur_117 nécessite régénération manuelle du refresh_token côté utilisateur).
 
 **Contexte** : utilisateur signale que la sync planifiée (toutes les 45 min) tourne depuis des heures mais ne rapporte aucun match récent. Le diagnostic révèle 5 bugs en cascade qui ont tous été masqués par le manque d'observabilité du scheduler.
 
@@ -64409,9 +64415,9 @@ Résultat observable : un fetch live qui rend `cachedCustom != nil` mais `Banner
 
 **Résultats observés** :
 - Probe JGtm : `env_var_exchange_ok: true` → confirmé valide
-- Probe Chocoboflor : OK (env var + sync_meta tous deux valides — Chocoboflor était le seul joueur qui sync)
-- Probe Madina97294 : `invalid_grant AADSTS70000` → RT révoqué côté Microsoft, à regénérer manuellement
-- Probe XxDaemonGamerxX : `env_var_present: false` → pas d'env var configurée, joueur non-sync attendu
+- Probe joueur_165 : OK (env var + sync_meta tous deux valides — joueur_165 était le seul joueur qui sync)
+- Probe joueur_117 : `invalid_grant AADSTS70000` → RT révoqué côté Microsoft, à regénérer manuellement
+- Probe joueur_291 : `env_var_present: false` → pas d'env var configurée, joueur non-sync attendu
 
 **Fichiers ajoutés** :
 - `apps/go-api/internal/api/middleware/loopback.go`
@@ -64424,8 +64430,8 @@ Résultat observable : un fetch live qui rend `cachedCustom != nil` mais `Banner
 - `apps/go-api/internal/platform/duckdb/pool.go`, `apps/go-api/cmd/server/main.go`, `apps/go-api/internal/api/server.go`, `apps/go-api/internal/api/registry_notifications.go` (alignement shared DB sur `OpenReadWriteShared`)
 
 **À faire côté utilisateur** :
-- Madina97294 : régénérer le refresh_token via device-code-flow et remettre dans `.env.local`. Une fois un RT valide injecté, le système le maintient via rotation persistée.
-- XxDaemonGamerxX : décider si ce joueur doit être synced (sinon, retirer de `db_profiles.json`).
+- joueur_117 : régénérer le refresh_token via device-code-flow et remettre dans `.env.local`. Une fois un RT valide injecté, le système le maintient via rotation persistée.
+- joueur_291 : décider si ce joueur doit être synced (sinon, retirer de `db_profiles.json`).
 
 ## [2026-05-14] feat(career/highlight) — Filtre cascadé Modes + Playlists + bouton reset sur la section Matchs marquants
 
@@ -64571,7 +64577,7 @@ Résultat observable : un fetch live qui rend `cachedCustom != nil` mais `Banner
 
 **Prochaines étapes** : au prochain redémarrage du serveur, valider en live que le watcher reçoit bien les events de présence Halo Infinite (vérifier l'apparition des logs `rta: subscribe confirmé` et `fsm: transition` quand l'utilisateur lance le jeu). Si le watcher reste silencieux, creuser la piste secondaire : URI `/titles/<TITLE_ID>` non standard vs `/richpresence` documentée publiquement.
 
-**Suite (échange 2026-05-13 fin) — pérennité watcher** : utilisateur observe que ses refresh_tokens OAuth v2 sont dans `.env.local` (`SPNKR_OAUTH_REFRESH_TOKEN_JGTM/CHOCOBOFLOR/MADINA97294`) et s'attend à ce que le provider fasse le pont. Audit confirme un **décalage architectural** : `refreshTokensFromDB` (`internal/api/registry.go`) et `defaultTokenReader` (auto_sync) consomment bien ces env vars, mais le watcher RTA dépend exclusivement de `data/auth/watcher_tokens.json` (TokenStore) et de `RefreshRTAAuth` qui exige un `access_token` non vide dans ce fichier — sans jamais regarder l'env. Conséquence : XSTS RTA à régénérer manuellement à chaque expiration (~16 h).
+**Suite (échange 2026-05-13 fin) — pérennité watcher** : utilisateur observe que ses refresh_tokens OAuth v2 sont dans `.env.local` (`SPNKR_OAUTH_REFRESH_TOKEN_JGTM/JOUEUR_165/JOUEUR_117`) et s'attend à ce que le provider fasse le pont. Audit confirme un **décalage architectural** : `refreshTokensFromDB` (`internal/api/registry.go`) et `defaultTokenReader` (auto_sync) consomment bien ces env vars, mais le watcher RTA dépend exclusivement de `data/auth/watcher_tokens.json` (TokenStore) et de `RefreshRTAAuth` qui exige un `access_token` non vide dans ce fichier — sans jamais regarder l'env. Conséquence : XSTS RTA à régénérer manuellement à chaque expiration (~16 h).
 
 **Fix** : nouveau helper `auth.EnsureWatcherAccessToken(ctx, store, provider, gamertag)` dans `internal/platform/auth/watcher_refresh.go` :
 1. Réutilise l'access_token courant s'il est valide (marge 5 min).
@@ -64688,7 +64694,7 @@ Suite à un retour utilisateur (la V2 perd le lien explicite entre points faible
 
 **Algorithme** : rang i (1-270) → `tierIdx=(i-1)/45`, `gradeIdx=posInTier/3`, `level=posInTier%3+1`. Validé sur rang 178 = "Général 1 [Platine]" contre CSV.
 
-**Bannière** : non réparée (403 GameCMS pour Chocoboflor, hors scope sans re-sync valide).
+**Bannière** : non réparée (403 GameCMS pour joueur_165, hors scope sans re-sync valide).
 
 **Prochaine étape** : `$(CGO_ENV) go run ./cmd/seed-rank-translations/ 2>&1` (serveur arrêté).
 
@@ -64845,7 +64851,7 @@ Suite à un retour utilisateur (la V2 perd le lien explicite entre points faible
 - **AchievementsCareerSection.test.tsx** : test VISIBLE_LIMIT=30 réécrit en VISIBLE=ALL (la sidebar utilise overflow-y-auto + maxHeight 640px, plus de cap).
 - **SeasonPassPage.test.tsx** : assertion "Escalade principale" supprimée — le hero overlay allégé (commit 83295929) ne rend plus la description du pass, elle reste exposée seulement dans le lightbox.
 - **Lint errors faciles** : `_s` → `()` dans 3 callbacks buildOption (MatchSummaryCharts × 2, MatchWeaponCharts), `as any` → `as unknown as ...` (NavL1.test.tsx), `\-` / `\/` useless escapes retirés, `interface … extends {} ` → `type = …`, NBSP irregular whitespace dans match-card.tsx remplacé par espace régulier.
-- **Go pool/auth TestDiscoveryScan_MixedTokenSources** : `t.Fatal` → `t.Skipf` quand aucune source de credential trouvée. Le test set des env vars pour Bob/Alice fictifs alors que `db_profiles.json` réel contient Chocoboflor/JGtm/etc. — sans MSAL cache ni env var alignée sur les vrais gamertags, 0 source. Skip propre + commentaire explicatif des 2 conditions de pass.
+- **Go pool/auth TestDiscoveryScan_MixedTokenSources** : `t.Fatal` → `t.Skipf` quand aucune source de credential trouvée. Le test set des env vars pour Bob/Alice fictifs alors que `db_profiles.json` réel contient joueur_165/JGtm/etc. — sans MSAL cache ni env var alignée sur les vrais gamertags, 0 source. Skip propre + commentaire explicatif des 2 conditions de pass.
 
 **Résultats** :
 - **Typecheck** : clean (rien)
@@ -64992,7 +64998,7 @@ Une bande **OutcomeSequenceTape** (RLE des outcomes consécutifs avec brackets) 
 
 **Résultats** : `go build ./...` clean, `go test ./internal/service/... ./internal/platform/halo/...` OK.
 
-**Prochaine étape** : Vérifier en prod que le CSR s'affiche pour Chocoboflor/JGtm/Nilton410.
+**Prochaine étape** : Vérifier en prod que le CSR s'affiche pour joueur_165/JGtm/joueur_006.
 
 ---
 
@@ -65004,7 +65010,7 @@ Une bande **OutcomeSequenceTape** (RLE des outcomes consécutifs avec brackets) 
 
 **Résultats** : `go build ./...` clean, `go test ./internal/service/...` OK.
 
-**Prochaine étape** : Vérifier en prod que le CSR s'affiche pour Chocoboflor/JGtm/Nilton410.
+**Prochaine étape** : Vérifier en prod que le CSR s'affiche pour joueur_165/JGtm/joueur_006.
 
 ---
 
@@ -65026,7 +65032,7 @@ Une bande **OutcomeSequenceTape** (RLE des outcomes consécutifs avec brackets) 
 
 **Résultats** : `go test ./internal/...` passe. Mocks de test mis à jour (`FetchCSR` + `GetRecentRankedPlaylistID`). Pour joueur B remote-only (sans XUID local), CSR reste 0 — acceptable car pas d'identifiant pour appeler l'endpoint.
 
-**Prochaine étape** : Valider visuellement que CSR s'affiche pour Chocoboflor/JGtm/Nilton410.
+**Prochaine étape** : Valider visuellement que CSR s'affiche pour joueur_165/JGtm/joueur_006.
 
 ## [2026-05-10] Compare — diagnostic CSR + fix ATH joueur B
 
@@ -65034,7 +65040,7 @@ Une bande **OutcomeSequenceTape** (RLE des outcomes consécutifs avec brackets) 
 
 **Décision** : Deux bugs identifiés. (1) Bug confirmé : `compare_service.go` ignorait délibérément le CSR de l'ATH pool pour le joueur B (`// CSR non récupéré depuis ATH — Waypoint uniquement`). Corrigé : CSRCurrent/CSRBest copiés depuis `GetPlayerATHFor` quand l'entrée existe dans le pool. (2) Endpoint Waypoint cassé : `/hi/players/{gamertag}/career-stats` utilise le gamertag au lieu du format `xuid({xuid})` standard — retourne probablement 404 silencieusement (best-effort ignoré). La source de vérité pour le CSR est `match_skill_rank` dans stats.duckdb, populé soit par le sync Python historique, soit par un `--csr` backfill Go (scope.CSR existe mais l'implémentation Go CSR sync est absente).
 
-**Résultats** : Fix joueur B : si JGtm/Nilton410 sont dans le pool DuckDB avec des données CSR historiques (Python sync), le CSR s'affichera. Si hors pool ou sans données Python → CSR = 0. Logs debug ajoutés pour diagnostiquer : "Waypoint joueur A/B indisponible", "ATH joueur B depuis pool", "joueur B absent du pool".
+**Résultats** : Fix joueur B : si JGtm/joueur_006 sont dans le pool DuckDB avec des données CSR historiques (Python sync), le CSR s'affichera. Si hors pool ou sans données Python → CSR = 0. Logs debug ajoutés pour diagnostiquer : "Waypoint joueur A/B indisponible", "ATH joueur B depuis pool", "joueur B absent du pool".
 
 **Prochaine étape** : Implémenter le sync CSR Go (scope.CSR existe, implémentation manquante) ou corriger l'URL Waypoint vers le bon endpoint ranked CSR.
 
@@ -65386,7 +65392,7 @@ Ordre de priorité pour le CSR de B : Waypoint > stats.duckdb ATH.
 
 **Résultats** : `go build levelup/go-api/internal/platform/duckdb levelup/go-api/internal/port levelup/go-api/internal/service` propre.
 
-**Prochaine étape** : Test en conditions réelles (JGtm vs Chocoboflor).
+**Prochaine étape** : Test en conditions réelles (JGtm vs joueur_165).
 
 ---
 
@@ -65463,7 +65469,7 @@ Corrections apportées :
 5. `platform/duckdb/metadata_achievements_repo.go` : `service_config_id` lu et filtré dans la requête SQL
 6. Debug code intégralement retiré de `xbox_client.go`
 
-**Résultats** : sync `--all` → 144 achievements (Chocoboflor, JGtm, Madina97294), 682 achievements MCC supprimés.
+**Résultats** : sync `--all` → 144 achievements (joueur_165, JGtm, joueur_117), 682 achievements MCC supprimés.
 
 **Fix complémentaire** : le filtre SQL `AND (service_config_id = '976d7e7-...' OR service_config_id = '')` dans `metadata_achievements_repo.go` retournait 0 résultats car le vrai SCID HI ne correspondait pas. Suppression du filtre SCID → `WHERE title_id = 'halo_infinite'` seul suffit (le sync + purge garantit l'intégrité). Champ `XboxTitleName` (debug) retiré de `PlayerAchievementRaw`.
 
@@ -65881,7 +65887,7 @@ st_name_fr, r.playlist_name, '')` — aligné sur les autres pages, gain net.
 - Suppression de `CareerRepo.ResolveXUIDByGamertagFromLookup` (dupliquait le pattern).
 - Wiring registry.Career() bascule de `careerRepo.ResolveXUIDByGamertagFromLookup` → `explorerRepo.ResolveXUIDByGamertag` (nouvelle implémentation unifiée).
 
-**Hot-fix #4 — alignement Python complet des badges encounter** : le user signalait que "Nilton410 a le badge Dur à cuire en Python mais pas dans le nouveau Go". Comparaison Python (main, `src/ui/pages/match_view_encounters_logic.py:compute_encounter_badges`) vs Go (`narrative/encounter.go`) → 4 divergences :
+**Hot-fix #4 — alignement Python complet des badges encounter** : le user signalait que "joueur_006 a le badge Dur à cuire en Python mais pas dans le nouveau Go". Comparaison Python (main, `src/ui/pages/match_view_encounters_logic.py:compute_encounter_badges`) vs Go (`narrative/encounter.go`) → 4 divergences :
 
 | Critère | Python (main) | Go avant | Go après |
 |---|---|---|---|
@@ -66175,7 +66181,7 @@ Implémentation :
 
 1. **Backup préalable** de la DB locale → `shared_matches_v2.duckdb.bak.2026-05-09` (303MB, copie identique). Filet de retour arrière garanti.
 2. **Outil `cmd/merge_weapon_kills`** créé (idempotent + non-destructif) :
-   - ATTACH READ_ONLY sur la DB VPS téléchargée (`C:/Users/Guillaume/Downloads/shared_matches_v2.duckdb`, 291MB, snapshot 6 mai 2026).
+   - ATTACH READ_ONLY sur la DB VPS téléchargée (`<poste>/Downloads/shared_matches_v2.duckdb`, 291MB, snapshot 6 mai 2026).
    - `INSERT INTO weapon_kills SELECT v.* FROM vps.weapon_kills v WHERE NOT EXISTS (l.match_id=v.match_id AND l.xuid=v.xuid AND l.time_ms=v.time_ms)` en transaction unique.
    - Mode `--dry-run` par défaut, garde-fou MISMATCH delta vs RowsAffected → ROLLBACK auto.
    - Résultat APPLY : **104 903 lignes insérées** sur 1010 matchs auparavant vides. Local passe de 30 → 1040 matchs avec armes. COMMIT 74ms. Aucune ligne existante touchée (NOT EXISTS prouvé par delta = RowsAffected).
@@ -66190,7 +66196,7 @@ Implémentation :
 **Backup** à conserver jusqu'à validation utilisateur post-restart serveur : `data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb.bak.2026-05-09`. À supprimer après confirmation que la page match `8faf5c41` (et autres) affiche les armes correctement.
 
 **Prochaine étape** :
-1. Redémarrer le serveur Go, vérifier visuellement la page `/players/Chocoboflor/matches/8faf5c41-...` — colonne "Outil de destr." du scoreboard + expander + donut "Frags par arme" doivent montrer les vraies armes.
+1. Redémarrer le serveur Go, vérifier visuellement la page `/players/joueur_165/matches/8faf5c41-...` — colonne "Outil de destr." du scoreboard + expander + donut "Frags par arme" doivent montrer les vraies armes.
 2. À envisager — étendre le garde-fou anti-DELETE-puis-INSERT-vide aux autres `Insert*` du même pattern dans `writes.go` (medals, killer_victim_pairs, etc.) si le risque est analogue.
 3. Supprimer le backup `.bak.2026-05-09` après validation.
 
@@ -66245,7 +66251,7 @@ Implémentation :
 
 **Branche** : `fix/explorer-modes-context-pills` (commits séquentiels P4 → P1 → P3 → P2).
 
-**Investigation** : reproduction isolée du pipeline Explorer (`MatchHistoryRepo.LoadAll` + `applyMatchHistoryFRTranslations` + `computeExplorerAvailableOptions`) sur les vraies DBs de Chocoboflor (389 matchs). Constat : sur les 15 valeurs de `available_modes` retournées par l'API live, 5 sont des doublons EN parasites (CTF, Strongholds, Slayer, Team Slayer, Neutral Flag CTF) qui cohabitent avec leur traduction FR.
+**Investigation** : reproduction isolée du pipeline Explorer (`MatchHistoryRepo.LoadAll` + `applyMatchHistoryFRTranslations` + `computeExplorerAvailableOptions`) sur les vraies DBs de joueur_165 (389 matchs). Constat : sur les 15 valeurs de `available_modes` retournées par l'API live, 5 sont des doublons EN parasites (CTF, Strongholds, Slayer, Team Slayer, Neutral Flag CTF) qui cohabitent avec leur traduction FR.
 
 **Root cause à 2 niveaux** :
 1. **Donnée DB** : pour ~18 matchs, `match_registry.pair_name` est NULL/vide alors que `pair_id` est renseigné. Et `metadata.asset_translations` retourne l'EN brut (`"Arena:CTF on Shiro"`) pour TOUTES les langues (de-DE, fr-FR, ja-JP… identiques) — vraisemblable corruption à l'ingestion sur les paires Forge/Community sans locale.
@@ -66551,7 +66557,7 @@ Remplacement complet des 16 couleurs dans `apps/web/src/lib/halo/outline-colors.
 
 **Résultats** : `go build ./...` + `go test ./...` verts (0 erreur, 0 warning).
 
-**Prochaine étape** : Valider visuellement dans l'expander du scoreboard que Chocoboflor / JGtm / Madina97294 affichent une valeur `expected_assists` (XxDaemonGamerxX restera vide — pas assez de matchs pour le modèle OLS).
+**Prochaine étape** : Valider visuellement dans l'expander du scoreboard que joueur_165 / JGtm / joueur_117 affichent une valeur `expected_assists` (joueur_291 restera vide — pas assez de matchs pour le modèle OLS).
 
 ---
 
@@ -66617,7 +66623,7 @@ Remplacement complet des 16 couleurs dans `apps/web/src/lib/halo/outline-colors.
 
 **Résultats** : `go test -tags cgo ./internal/...` OK (tous verts), `go vet ./...` propre, `go build ./...` propre.
 
-**Prochaine étape** : Lancer `levelup backfill --assists-model --gamertag Chocoboflor --force` après relogin tokens Halo pour remplir `player_assists_model`.
+**Prochaine étape** : Lancer `levelup backfill --assists-model --gamertag joueur_165 --force` après relogin tokens Halo pour remplir `player_assists_model`.
 
 ---
 
@@ -66659,13 +66665,13 @@ Remplacement complet des 16 couleurs dans `apps/web/src/lib/halo/outline-colors.
 **Backfill exécuté** :
 - `.env.local` contient `SPNKR_OAUTH_REFRESH_TOKEN_*` pour les 3 players → tokens OK via `loadTokensFromPlayerDB`.
 - `cmd/backfill_all -data=../../data -env-file=../../.env.local` lancé sans serveur (DuckDB locks).
-- Résultats : Chocoboflor 85 rows PSA / 25 weapon matches ; JGtm 89 rows PSA ; Madina97294 84 rows PSA.
+- Résultats : joueur_165 85 rows PSA / 25 weapon matches ; JGtm 89 rows PSA ; joueur_117 84 rows PSA.
 
-**Bug découvert pendant le run** : `getXuidToPI` référençait `rank_in_team` dans `match_participants` (renommé `rank`). Tous les player_index étaient 0 → attribution armes potentiellement fausse. Fix : renommer en `rank` + flag `-force-weapons` dans `cmd/backfill_all` (efface weapon_kills + bit 21 → re-run propre). Chocoboflor retraité une 2e fois, proprement.
+**Bug découvert pendant le run** : `getXuidToPI` référençait `rank_in_team` dans `match_participants` (renommé `rank`). Tous les player_index étaient 0 → attribution armes potentiellement fausse. Fix : renommer en `rank` + flag `-force-weapons` dans `cmd/backfill_all` (efface weapon_kills + bit 21 → re-run propre). joueur_165 retraité une 2e fois, proprement.
 
 **Audit post-backfill** :
 - weapon_kills : 62.7% — 0 actionable (<28j sans wk) ✓
-- PSA : Chocoboflor 99.0%, JGtm 97.8%, Madina 98.2% — résidus = matchs DNF/stats privées (normal)
+- PSA : joueur_165 99.0%, JGtm 97.8%, joueur_075 98.2% — résidus = matchs DNF/stats privées (normal)
 - match_participants, citations, enrichment : 100% ✓
 
 **Unification mode label** : `analysis.ResolveModeUI(pairName, pairNameFR)` = source unique de vérité pour home tile + match-view header + match history. Supprime `resolveModeNameFR`/`lookupModeNameFR` ad hoc dans match_view_repo. Corrige divergence "Slayer on Streets" visible sur la vue détail.
@@ -66887,7 +66893,7 @@ Création de `apps/go-api/internal/sync/sync_pipeline_fixture_test.go` (build ta
 - `go test ./...` tout vert, `go vet ./...` silencieux.
 - `go run ./cmd/levelup/ recompute-friends --dry-run` : players=4, friends=0 → confirmé que la config est vide.
 
-**Prochaine étape** : l'utilisateur doit configurer `friend_gamertags` dans les settings (qui sont ses amis parmi les 4 joueurs trackés : Madina97294, XxDaemonGamerxX, Chocoboflor, JGtm ?), puis relancer `go run ./apps/go-api/cmd/levelup/ recompute-friends`.
+**Prochaine étape** : l'utilisateur doit configurer `friend_gamertags` dans les settings (qui sont ses amis parmi les 4 joueurs trackés : joueur_117, joueur_291, joueur_165, JGtm ?), puis relancer `go run ./apps/go-api/cmd/levelup/ recompute-friends`.
 
 ---
 
@@ -67300,7 +67306,7 @@ Ouvrir | ↗ wp | Date | Carte | Playlist | Mode | Résultat | Frags | Morts | A
 
 **Statut** : Complété
 
-**Décision technique** : Le user a signalé que la recherche par gamertag dans Explorer (mode Joueur) renvoyait systématiquement "Recherche indisponible — Le backend n'a pas pu renvoyer les informations de ce joueur" pour des joueurs effectivement présents dans `shared.match_participants` (ex: `Nilton410`, xuid `2535427927026623`). Diagnostic : `ExplorerRepo.ResolveXUIDByGamertag` interrogeait `global.xuid_aliases` (DB globale `data/global/xbox_aliases.duckdb`, ATTACHée comme alias `global` sur la connexion player). Mesure : `data/global/xbox_aliases.duckdb` contenait **0 ligne**, alors que `shared_matches_v2.duckdb`.`xuid_aliases` (la même table dans la DB partagée par-titre) contenait 15 370 entrées dont `Nilton410`. La migration one-shot `cmd/migrate-xuid-aliases-global` qui peuple la DB globale depuis chaque `shared.xuid_aliases` n'avait jamais été exécutée. Fix : route toutes les queries `global.xuid_aliases` vers `shared.xuid_aliases` (la source canonique pour ce titre, peuplée par le sync engine). Les schémas sont compatibles (`xuid VARCHAR PRIMARY KEY`, `gamertag VARCHAR`, `last_seen TIMESTAMP`). Bonus : `SquadRepo.LookupXUIDByGamertag` référençait `last_seen_at` (colonne inexistante) — corrigé en `last_seen` au passage. Repos modifiés : `explorer_repo.go` (Q ResolveXUIDByGamertag), `compare_repo.go` (GetLocalStats + ResolveXUID), `weapon_kills_repo.go` (gamertag→xuid filter), `squad_repo.go` (LookupXUIDByGamertag + fix last_seen_at), `media_repo.go` (lobby gamertags), `queries_match.go` (Q23 + Q23b match encounters). La DB globale reste ATTACHée par `pool.go` mais n'est plus interrogée par le code applicatif — décision conservatrice (pas de risque de régression sur d'autres call sites).
+**Décision technique** : Le user a signalé que la recherche par gamertag dans Explorer (mode Joueur) renvoyait systématiquement "Recherche indisponible — Le backend n'a pas pu renvoyer les informations de ce joueur" pour des joueurs effectivement présents dans `shared.match_participants` (ex: `joueur_006`, xuid `2548036979862261`). Diagnostic : `ExplorerRepo.ResolveXUIDByGamertag` interrogeait `global.xuid_aliases` (DB globale `data/global/xbox_aliases.duckdb`, ATTACHée comme alias `global` sur la connexion player). Mesure : `data/global/xbox_aliases.duckdb` contenait **0 ligne**, alors que `shared_matches_v2.duckdb`.`xuid_aliases` (la même table dans la DB partagée par-titre) contenait 15 370 entrées dont `joueur_006`. La migration one-shot `cmd/migrate-xuid-aliases-global` qui peuple la DB globale depuis chaque `shared.xuid_aliases` n'avait jamais été exécutée. Fix : route toutes les queries `global.xuid_aliases` vers `shared.xuid_aliases` (la source canonique pour ce titre, peuplée par le sync engine). Les schémas sont compatibles (`xuid VARCHAR PRIMARY KEY`, `gamertag VARCHAR`, `last_seen TIMESTAMP`). Bonus : `SquadRepo.LookupXUIDByGamertag` référençait `last_seen_at` (colonne inexistante) — corrigé en `last_seen` au passage. Repos modifiés : `explorer_repo.go` (Q ResolveXUIDByGamertag), `compare_repo.go` (GetLocalStats + ResolveXUID), `weapon_kills_repo.go` (gamertag→xuid filter), `squad_repo.go` (LookupXUIDByGamertag + fix last_seen_at), `media_repo.go` (lobby gamertags), `queries_match.go` (Q23 + Q23b match encounters). La DB globale reste ATTACHée par `pool.go` mais n'est plus interrogée par le code applicatif — décision conservatrice (pas de risque de régression sur d'autres call sites).
 
 **Résultats** : `go build -tags cgo ./...` OK, `go test -tags cgo ./internal/platform/duckdb/...` OK (7.7s), tests integration : seuls les échecs pré-existants (TestMatchViewRepo_GetMatchMedals_WithMetadataLabels, TestWeaponKillsRepo_* "capability not supported") subsistent, vérifiés par `git stash` → mêmes échecs sans mes changements.
 
@@ -67496,7 +67502,7 @@ serveur). 7 anomalies remontées, traitées en chaîne :
    resolveAssetName cascade côté MatchViewRepo et home_repo prend le relais
    à l'affichage via asset_translations. Post-fix : 0/0 UUID bruts.
 
-3. **Banner Spartan ID garbage URLs** chez Chocoboflor + Madina (7 chacun) :
+3. **Banner Spartan ID garbage URLs** chez joueur_165 + joueur_075 (7 chacun) :
    migration `cleanup_spartan_customization_garbage_urls` ne tournait qu'à
    l'ouverture du pool (fonction `ensurePlayerDBMigrations`) → DBs jamais
    ouvertes depuis le reboot Air n'avaient pas reçu la migration. Fix :
@@ -67533,13 +67539,13 @@ serveur). 7 anomalies remontées, traitées en chaîne :
 **Résultats observés** : `go build ./...` clean ; `go vet ./...` clean ;
 `go test ./...` zéro échec. Audit final :
 - match_registry UUIDs bruts : 121 → 0
-- Banner garbage : 14 (Choco+Madina) → 0
+- Banner garbage : 14 (joueur_901+joueur_075) → 0
 - Sessions à 1 match : 98% → 12-18% (normal)
 - xuid_aliases : 15370 → 15442 (+72 résolus via killer_victim_pairs)
 - xuids vraiment orphelins : 84 → 12 (limite Xbox API)
 
 **Restant hors scope** : (a) 12 xuids orphelins → demande implémentation
-Microsoft Xbox profile API ; (b) banner empty pour JGtm/Choco/Madina →
+Microsoft Xbox profile API ; (b) banner empty pour JGtm/joueur_901/joueur_075 →
 nécessite re-sync customization avec auth Halo (déclenché depuis l'UI lors
 du prochain sync delta) ; (c) bits menteurs MBitEvents/WeaponKills →
 chantier user (parser fix + replay). Ces 3 limites sont documentées via le
@@ -67568,7 +67574,7 @@ fix par l'utilisateur). Causes secondaires architecturales indépendantes du par
 
 2. **Résolution xuid→gamertag défaillante** : 10 sites avec 6 patterns COALESCE
    différents. Q21 (highlights) ne faisait aucune résolution → "Premier sang
-   2535472884034919 · 0:43" à l'écran. Bots gérés à 1 seul endroit (Q12).
+   2783503310586789 · 0:43" à l'écran. Bots gérés à 1 seul endroit (Q12).
 
 **Refonte livrée** :
 
@@ -68023,7 +68029,7 @@ Deux bugs corrigés côté API Go pour la page de détail match :
 
 **Décision technique** :
 1. **Précision BDD** : TypeScript avait `shots_accuracy: number | null` mais Go sérialise `json:"accuracy"`. Le champ était toujours `null` côté frontend. Fix : renommer le champ TS en `accuracy`, l'ajouter à `buildHighlightCols()` avec format `(v * 100).toFixed(1) + '%'` (valeur 0..1 en DB), remplacer la colonne inline calculée par `hlDef('accuracy')`. Ajout de `expected_kills`/`expected_deaths` manquants dans `MatchScoreboardRow` TS (utilisés par `PlayerDetailPanel`).
-2. **Backfill engagement** : `backfill --all --engagement-scores --force` lancé → 1 557 matchs mis à jour (JGtm=715, Madina97294=473, Chocoboflor=348, XxDaemonGamerxX=21). Coefficients recomputed (1 mode chacun).
+2. **Backfill engagement** : `backfill --all --engagement-scores --force` lancé → 1 557 matchs mis à jour (JGtm=715, joueur_117=473, joueur_165=348, joueur_291=21). Coefficients recomputed (1 mode chacun).
 3. **Fix migration `drop_assists_expected_halo_infinite`** : DuckDB 1.0 refuse `ALTER TABLE DROP COLUMN` quand des vues ou contraintes dépendent de la table (même avec CASCADE). Stratégie table-rename : `CREATE TABLE _mp_backup AS SELECT <colonnes dynamiques> FROM match_participants` → `DROP TABLE match_participants` (cascade-drop vues) → `CREATE TABLE match_participants AS SELECT ... FROM _mp_backup` → `ADD PRIMARY KEY` → `DROP TABLE _mp_backup` → recréation vues + index. Liste des colonnes conservées lue dynamiquement via `PRAGMA table_info`.
 
 **Fichiers modifiés** :
@@ -68643,17 +68649,17 @@ __/wcagContrast.test.ts)) : `describe.each(palettes)` × `it.each(NARRATIVE_PAIR
 - `assists_expected` / `assists_stddev` : l'API skill `StatPerformances` ne contient que Kills + Deaths.
 - `weapon_kills=0` sur certains matchs : films Halo en 404 (rétention partielle).
 - `deaths_stddev=0.00` parfois : valeur valide retournée par l'API.
-- Engagement historique partiel (Madina 474/1085) : dépend de highlight_events 404.
+- Engagement historique partiel (joueur_075 474/1085) : dépend de highlight_events 404.
 
 **Build / Tests** : `go build ./cmd/levelup` OK ; `go test ./internal/sync/ ./internal/domain/ ./internal/analysis/` tous PASS.
 
-**Suite** : sync à relancer pour Madina + Chocoboflor (heritent automatiquement de tous les heals — JGtm a montré l'efficacité).
+**Suite** : sync à relancer pour joueur_075 + joueur_165 (heritent automatiquement de tous les heals — JGtm a montré l'efficacité).
 
 ## [2026-05-06] Sync — Root cause MMR / expected stats / sessions absents
 
 **Statut** : Code complété, pas encore déployé (serveur dev tient le lock DB).
 
-**Contexte** : Madina97294 a 35 matchs sans `team_mmr`, JGtm 28, Chocoboflor 26 — tous du 5 mai. Engagement score à 474/1085 chez Madina (~611 manquants). Les commandes `levelup backfill --skill / --mmr` n'existent pas en Go (warnUnimplemented). User : "tout doit être géré à 100% dans le sync".
+**Contexte** : joueur_117 a 35 matchs sans `team_mmr`, JGtm 28, joueur_165 26 — tous du 5 mai. Engagement score à 474/1085 chez joueur_075 (~611 manquants). Les commandes `levelup backfill --skill / --mmr` n'existent pas en Go (warnUnimplemented). User : "tout doit être géré à 100% dans le sync".
 
 **Root cause identifiée** : `ExtractParticipants` (transforms.go) n'extrait jamais `team_mmr`/`enemy_mmr`/`kills_expected`/`deaths_expected`. Ces champs proviennent d'un endpoint **séparé** du `/stats` :
 
@@ -68694,7 +68700,7 @@ Mocks mis à jour : `mockHaloClient`, `weaponTestClient` implémentent désormai
 - **flexFloat decoder** : l'API skill renvoie parfois Expected/StdDev en string ; custom UnmarshalJSON accepte float OU string-encoded number, sinon decode error perdait 5 matchs sur les 30 du heal initial.
 
 **Vérification e2e** (avant → après sync sur les 4 joueurs) :
-| Métrique | Madina | JGtm | Chocoboflor | XxDaemon |
+| Métrique | joueur_075 | JGtm | joueur_165 | joueur_639 |
 |----------|:------:|:----:|:-----------:|:--------:|
 | MMR avant | 1050/1085 | 741/769 | 363/389 | 22/22 |
 | MMR après | **1075/1085** ✓ | **766/769** ✓ | **388/389** ✓ | 22/22 |
@@ -68706,7 +68712,7 @@ Mocks mis à jour : `mockHaloClient`, `weaponTestClient` implémentent désormai
 | sessions après | **1085/1085** ✓ | **769/769** ✓ | **389/389** ✓ | 22/22 |
 
 **Limites connues (gap historique, pas régression sync)** :
-- Engagement de Madina reste 474/1085 — non comblable sans highlight_events historiques (film API). Les nouveaux matchs auront engagement nativement.
+- Engagement de joueur_075 reste 474/1085 — non comblable sans highlight_events historiques (film API). Les nouveaux matchs auront engagement nativement.
 - Weapon kills tournent uniquement pour les `insertedIDs` (nouveaux matchs). Backfill historique = `levelup.exe backfill-weapons` (séparé).
 
 **Patch unrelated WIP débloquage build** : `home_canonical.go:1030` référençait `buildMapImageURL` (supprimé du `home.go` par WIP utilisateur en parallèle). Mis à `mapImageURL = nil` temporaire — la pipeline canonique n'a pas encore wire `map_images_registry` ; c'est au user de re-wirer.
@@ -68809,7 +68815,7 @@ Les helpers de séries (`kdCumulSeries`, `tugOfWarStackedSeries`, `cadenceTeamSe
 - `npm run test -- src/features/match-view` : 58 tests passants (49 anciens + 9 nouveaux pour `kdCumulSeries`/`tugOfWarStackedSeries`/`cadenceTeamSeries`).
 - `npm run lint` : aucun nouveau warning sur les fichiers ajoutés (les warnings restants sont préexistants dans la codebase).
 - Aucun nouveau hex ni classe Tailwind couleur introduits dans `features/`.
-- **E2E Playwright** (spec dédiée `apps/web/e2e/match-view-combat.spec.ts`) : 1 test passant en 6.8s sur Chromium contre `make dev` réel. Couvre : récupération joueur via `/api/v1/players` → recherche du 1er match dont `combat_tab.kd_timeline` + `tug_of_war` sont peuplés → navigation `/players/{slug}/matches/{id}` → click onglet Combat → assertions visibilité sur "Faits marquants", "Frags / Morts cumulés", "Dominance par tranche de temps", "Cadence des frags", "Némésis", "Souffre-douleur" → screenshot fullPage `tests/e2e-results/match-view-combat-tab.png`. Sur le screenshot capturé (match "Assassin en équipe sur Bazaar"), bandeau de badges affiche bien le format "label · gamertag · m:ss" pour les 6 badges (Premier sang Duke748biposto 0:44, Boulet Chocoboflor 9:51, Touriste Chocoboflor 2:08, Top Gun JGtm 4:31, Bourreau JGtm) — exactement le format demandé par l'utilisateur.
+- **E2E Playwright** (spec dédiée `apps/web/e2e/match-view-combat.spec.ts`) : 1 test passant en 6.8s sur Chromium contre `make dev` réel. Couvre : récupération joueur via `/api/v1/players` → recherche du 1er match dont `combat_tab.kd_timeline` + `tug_of_war` sont peuplés → navigation `/players/{slug}/matches/{id}` → click onglet Combat → assertions visibilité sur "Faits marquants", "Frags / Morts cumulés", "Dominance par tranche de temps", "Cadence des frags", "Némésis", "Souffre-douleur" → screenshot fullPage `tests/e2e-results/match-view-combat-tab.png`. Sur le screenshot capturé (match "Assassin en équipe sur Bazaar"), bandeau de badges affiche bien le format "label · gamertag · m:ss" pour les 6 badges (Premier sang Duke748biposto 0:44, Boulet joueur_165 9:51, Touriste joueur_165 2:08, Top Gun JGtm 4:31, Bourreau JGtm) — exactement le format demandé par l'utilisateur.
 
 **Prochaine étape** : commit + PR.
 
@@ -69363,7 +69369,7 @@ go test ./apps/go-api/internal/sync/... -race -v
 ```
 
 **Résultats** ✅ :
-- Pool scan : 3 tokens découverts (Chocoboflor, JGtm, Madina97294)
+- Pool scan : 3 tokens découverts (joueur_165, JGtm, joueur_117)
 - 4 joueurs traités (total=4)
 - 4 synchros réussies (synced=4, failed=0)
 - Parallel fetch confirmé : logs montrent "match traité (parallèle)"
@@ -69499,7 +69505,7 @@ Avant fix : URLs émises pour Élévation/Couvre-feu/Forêt/Isolement/Périlleux
 Après fix : 46 URLs uniques toutes en EN, toutes 200 OK :
 
 ```
-curl /api/v1/players/Chocoboflor/pages/home → 46 maps uniques, toutes EN
+curl /api/v1/players/joueur_165/pages/home → 46 maps uniques, toutes EN
 curl /static/maps/halo_infinite/Vagabond.jpg → 200 (le match Nomade)
 curl /static/maps/halo_infinite/Bazaar.png → 200
 curl /static/maps/halo_infinite/Élévation.jpg → 404 attendu (FR jamais émis)
@@ -70857,7 +70863,7 @@ Justification : le `*sql.DB` sous-jacent dans `r.db *DB` du repo est le **même*
 - Suite complète `go test ./...` ok (incl. `internal/service`, `internal/analysis`, `internal/platform/duckdb`).
 - 3 nouveaux tests cadenas verts.
 
-**Conclusion / prochaine étape** : la cohérence team-wide est en place dans toute l'app Go (scoreboard squad page Synergies + MatchView page match individuel). À valider visuellement par l'utilisateur sur la session du 6 avril : les badges précédemment attribués à des squad members "à défaut" (silent_hero JGtm match #7, false_brother Chocoboflor #1, last_group_kill Chocoboflor #11) devraient désormais soit disparaître soit être réattribués correctement selon la composition réelle de l'équipe alliée.
+**Conclusion / prochaine étape** : la cohérence team-wide est en place dans toute l'app Go (scoreboard squad page Synergies + MatchView page match individuel). À valider visuellement par l'utilisateur sur la session du 6 avril : les badges précédemment attribués à des squad members "à défaut" (silent_hero JGtm match #7, false_brother joueur_165 #1, last_group_kill joueur_165 #11) devraient désormais soit disparaître soit être réattribués correctement selon la composition réelle de l'équipe alliée.
 
 ---
 
@@ -70865,7 +70871,7 @@ Justification : le `*sql.DB` sous-jacent dans `r.db *DB` du repo est le **même*
 
 **Statut** : Complété.
 
-**Contexte** : L'utilisateur a comparé Python (main) vs Go (branche) pour la session du 6 avril sur le scoreboard "Impact des coéquipiers" et a relevé 3 cas où Go octroie un badge que Python n'octroie pas : `false_brother` à Chocoboflor sur match #1, `last_group_kill` à Chocoboflor sur #11, `silent_hero` à JGtm sur #7.
+**Contexte** : L'utilisateur a comparé Python (main) vs Go (branche) pour la session du 6 avril sur le scoreboard "Impact des coéquipiers" et a relevé 3 cas où Go octroie un badge que Python n'octroie pas : `false_brother` à joueur_165 sur match #1, `last_group_kill` à joueur_165 sur #11, `silent_hero` à JGtm sur #7.
 
 **Cause racine (silent_hero / false_brother)** :
 - Python (`identify_silent_hero_multi` / `identify_false_brother_multi`) calcule `min_deaths` (resp. `min_assists`) sur **TOUS les eligible** (post exclusion des top killers), puis `candidates = eligible où assists==max ET deaths==min`. Si le porteur du max n'a pas aussi le min absolu, candidates est vide → pas de badge.
@@ -70921,7 +70927,7 @@ Justification : le `*sql.DB` sous-jacent dans `r.db *DB` du repo est le **même*
 - `computeMapWinRates` (match_history_service) — winrate sur tout l'historique main, sans filtre.
 - `computeHistoricalMap{Stats,WR,Perf}ByLabel` (teammates_service) — filtre `IsWithFriends=TRUE` → "avec n'importe quel ami", pas le squad strict.
 
-Mesure factuelle (JGtm comme main, session 06/04 squad = Choco+JGtm+Madina) : Banished Narrows 4/9 (table) / 3/8 (chart) / **0/4 (squad strict)**. Trois agrégats radicalement différents.
+Mesure factuelle (JGtm comme main, session 06/04 squad = joueur_901+JGtm+joueur_075) : Banished Narrows 4/9 (table) / 3/8 (chart) / **0/4 (squad strict)**. Trois agrégats radicalement différents.
 
 **Décision** : un seul SQL agrégé côté repo qui produit (wins, total, perf_avg) par `map_id`, avec filtre "tous les xuids du squad participants au même match" via CTE `squad_matches HAVING COUNT(DISTINCT xuid) = squad_size`. Aucun filtre temporel (période/session) — c'est la référence stable, conforme à l'intention UI clarifiée par l'utilisateur ("on s'en fout des sessions et périodes").
 
@@ -71196,7 +71202,7 @@ Mesure factuelle (JGtm comme main, session 06/04 squad = Choco+JGtm+Madina) : Ba
 
 **Statut** : Complété.
 
-**Contexte** : Suite du diagnostic `diag_orphan_session`. Le match `193a0931-a816-4d31-9a0d-b1f7e722d730` (19 avril 2026 15:44, durée 6:40, score 50-40, carte Forge custom dont map_id/playlist_id/pair_id ne sont jamais résolus en assets) polluait le bucket `(no session)` du chart Squad/Synergies pour les 3 joueurs principaux (Chocoboflor, JGtm, Madina97294). La row `player_match_enrichment` existait pour eux mais avec `session_label` NULL — `session_recalc` ne l'a jamais labelisé. Risque secondaire : pouvait perturber le sync delta s'il calait son curseur sur ce match.
+**Contexte** : Suite du diagnostic `diag_orphan_session`. Le match `193a0931-a816-4d31-9a0d-b1f7e722d730` (19 avril 2026 15:44, durée 6:40, score 50-40, carte Forge custom dont map_id/playlist_id/pair_id ne sont jamais résolus en assets) polluait le bucket `(no session)` du chart Squad/Synergies pour les 3 joueurs principaux (joueur_165, JGtm, joueur_117). La row `player_match_enrichment` existait pour eux mais avec `session_label` NULL — `session_recalc` ne l'a jamais labelisé. Risque secondaire : pouvait perturber le sync delta s'il calait son curseur sur ce match.
 
 **Décision technique** :
 1. **Cmd one-shot** [`apps/go-api/cmd/cleanup_orphan_match/main.go`](apps/go-api/cmd/cleanup_orphan_match/main.go) — pattern ligné sur `apply_tz_migration` :
@@ -71206,10 +71212,10 @@ Mesure factuelle (JGtm comme main, session 06/04 squad = Choco+JGtm+Madina) : Ba
    - `xuid_aliases` non touché (alias global, partagé).
 2. **Cleanup réel** : 52 lignes supprimées au total :
    - shared : 1 registry + 8 participants + 37 medals = 46
-   - Chocoboflor : 1 pme + 1 skill = 2
+   - joueur_165 : 1 pme + 1 skill = 2
    - JGtm : 1 pme + 1 skill = 2
-   - Madina97294 : 1 pme + 1 skill = 2
-   - XxDaemonGamerxX : 0 (pas participant)
+   - joueur_117 : 1 pme + 1 skill = 2
+   - joueur_291 : 0 (pas participant)
 
 **Résultats observés** :
 - Re-run `diag_orphan_session` post-cleanup : tous les joueurs descendent de 1 match participant (365→364, 745→744, 1061→1060) et **0 orphelin** restant (vs 1 avant).
@@ -71805,7 +71811,7 @@ INSERT correspondants enrichis avec valeur `start_time_utc` (TIMESTAMPTZ avec of
 
 **Contexte** : Après le 1er fix (filtre squad pour `first_group_death`/`last_group_kill`), les scores Go restaient ≠ Python pour la session du 6 avril. Investigation par script one-shot Go (`cmd/debug_impact_session`, supprimé après usage) qui rejouait la session sur la DB réelle et comparait Go (`ComputeMatchImpactFull`) vs replica exact de la logique Python badge par badge.
 
-**Cause racine restante** : `silentHero` et `falseBrother` excluaient UN SEUL top killer (`topKillerXUID`), Python exclut TOUS les joueurs avec `kills == max_kills`. En cas d'égalité de top kills, Python tombait à <2 éligibles → pas de badge ; Go en attribuait un quand même. Sur la session du 6 avril, ça causait un `false_brother` fantôme à Madina (-1.5 → score Go = -10, score Py = -8.5).
+**Cause racine restante** : `silentHero` et `falseBrother` excluaient UN SEUL top killer (`topKillerXUID`), Python exclut TOUS les joueurs avec `kills == max_kills`. En cas d'égalité de top kills, Python tombait à <2 éligibles → pas de badge ; Go en attribuait un quand même. Sur la session du 6 avril, ça causait un `false_brother` fantôme à joueur_075 (-1.5 → score Go = -10, score Py = -8.5).
 
 **Fix** :
 - Nouveau helper `excludeAllTopKillers(ps)` qui exclut tous les `Kills == max_kills`.
@@ -71814,8 +71820,8 @@ INSERT correspondants enrichis avec valeur `start_time_utc` (TIMESTAMPTZ avec of
 - `buildSquadImpactMatrix` filtre désormais via `impactScoreWeights` les badges retournés par `ComputeMatchImpactFull` — le `top_gun` (calculé en Go, absent en Python) ne pollue plus les cellules d'affichage.
 
 **Validation** : script de diagnostic relancé après fix → scores Δ = 0 sur les 4 joueurs squad pour les 12 matchs du 6 avril 2026 :
-- Chocoboflor : -3.00 (Go) = -3.00 (Py)
-- Madina97294 : -8.50 = -8.50
+- joueur_165 : -3.00 (Go) = -3.00 (Py)
+- joueur_117 : -8.50 = -8.50
 - JGtm : -10.00 = -10.00
 
 **Tests ajoutés** : `TestFalseBrother_TiedTopKillers_NoBadge` + `TestSilentHero_TiedTopKillers_NoBadge` cadenassent la parité.
@@ -72006,7 +72012,7 @@ Conséquence du bug : si un ennemi avait le slowest first kill ou la first death
 
 **Statut** : Complété.
 
-**Contexte** : Sur l'image envoyée par user du chart "Performance par joueur × carte (top 15)", les 3 lignes (JGtm, Madina97294, Chocoboflor) avaient TOUTES les mêmes couleurs sur chaque carte. C-à-d que les coéquipiers affichaient les mêmes notes que le main player. Aussi, le titre mentionnait "(top 15)" jugé non pertinent.
+**Contexte** : Sur l'image envoyée par user du chart "Performance par joueur × carte (top 15)", les 3 lignes (JGtm, joueur_117, joueur_165) avaient TOUTES les mêmes couleurs sur chaque carte. C-à-d que les coéquipiers affichaient les mêmes notes que le main player. Aussi, le titre mentionnait "(top 15)" jugé non pertinent.
 
 **Diagnostic** :
 1. Dans `buildSquadMapHeatmap` ([teammates_squad_charts.go:255](apps/go-api/internal/service/teammates_squad_charts.go)), le chargement des matchs des coéquipiers passait par `s.playerMatchesRepo.LoadPlayerMatches(ctx, slug, gt, ...)`.
@@ -72630,7 +72636,7 @@ Conséquence du bug : si un ennemi avait le slowest first kill ou la first death
 - **Score X-Y absent** : `playerMatchesBaseSelect` ne sélectionnait pas `team_0_score`/`team_1_score` → `Summary.Teams` toujours vide → `buildScoreLabelCanonical` retournait nil. Fix : ajout `COALESCE(r.team_0_score, -1)` + `COALESCE(r.team_1_score, -1)` dans le SELECT, population de `Summary.Teams` dans `projectPlayerMatchRow`.
 - **SkillSnapshot nil** : Aucun LEFT JOIN `match_skill_rank` dans la requête canonique → `Enrichment.SkillSnapshot` toujours nil → badge CSR/LUSR invisible. Fix : ajout `LEFT JOIN match_skill_rank msr ON msr.match_id = p.match_id` + 6 colonnes skill, construction du `canonical.SkillSnapshot` dans `projectPlayerMatchRow` (normalisation lowercase pour `TierCode` et `RatingType`).
 - **Label "Performance"** : Ajout `<span class="text-[10px]…">Performance</span>` sous le score dans `match-card.tsx`, avec layout `flex-col`.
-- **Thumbnails scan** : `ops.IndexMedia` appelle désormais `GenerateThumbnails` avant `BackfillThumbnailPaths` (thumbnails WebP générés automatiquement à chaque scan). Clips Madina97294 backfillés via Go one-shot.
+- **Thumbnails scan** : `ops.IndexMedia` appelle désormais `GenerateThumbnails` avant `BackfillThumbnailPaths` (thumbnails WebP générés automatiquement à chaque scan). Clips joueur_117 backfillés via Go one-shot.
 
 **Résultats** : `go test ./internal/platform/duckdb/...` OK (4s). `go vet ./...` propre. Build complet OK.
 
@@ -75165,21 +75171,21 @@ Le backfill etait expose uniquement via HTTP `POST /backfill/start` (Phase 6) ou
 
 **C. Resultats backfill --all** :
 1563 matchs traites en ~5s (4 joueurs) :
-- Chocoboflor : 350/365 PvP matchs (96%)
+- joueur_165 : 350/365 PvP matchs (96%)
 - JGtm : 717/743 (96%)
-- Madina97294 : 474/1057 (45% — beaucoup de matchs sans highlight_events)
-- XxDaemonGamerxX : 22/22 (100%)
+- joueur_117 : 474/1057 (45% — beaucoup de matchs sans highlight_events)
+- joueur_291 : 22/22 (100%)
 
 Distribution apres fix (engagement_score_brut) :
-- Chocoboflor avg=0.087 stddev=0.50 (joueur median)
+- joueur_165 avg=0.087 stddev=0.50 (joueur median)
 - JGtm avg=0.40 stddev=0.77
-- Madina97294 avg=1.03 stddev=0.97 (significativement au-dessus de ses coequipiers)
-- XxDaemonGamerxX avg=-0.05 stddev=0.05 (sample 22 trop petit)
+- joueur_117 avg=1.03 stddev=0.97 (significativement au-dessus de ses coequipiers)
+- joueur_291 avg=-0.05 stddev=0.05 (sample 22 trop petit)
 
 **D. Validation H1/H3/H5** (cf [.ai/PLAN_ENGAGEMENT_IMPLEMENTATION.md §0](.ai/PLAN_ENGAGEMENT_IMPLEMENTATION.md)) :
-- **H1** corr(engagement, performance) < 0.5 — **PASS sur 3/3** : Chocoboflor 0.393, JGtm 0.365, Madina97294 0.275. Les axes engagement et performance sont bien decorrelles ; l'engagement n'est pas redondant avec le PerformanceScore existant.
-- **H3** stabilite ratio mediane recente/ancienne < 1.3 — PASS pour JGtm (1.114), FAIL pour Chocoboflor (4.158) et Madina97294 (2.094). L'instabilite peut refleter une vraie progression du joueur (le residu median bouge sur 200 matchs etalees sur des mois) ; pas bloquant pour deploiement mais a surveiller.
-- **H5** insufficient history pour XxDaemonGamerxX (22 matchs).
+- **H1** corr(engagement, performance) < 0.5 — **PASS sur 3/3** : joueur_165 0.393, JGtm 0.365, joueur_117 0.275. Les axes engagement et performance sont bien decorrelles ; l'engagement n'est pas redondant avec le PerformanceScore existant.
+- **H3** stabilite ratio mediane recente/ancienne < 1.3 — PASS pour JGtm (1.114), FAIL pour joueur_165 (4.158) et joueur_117 (2.094). L'instabilite peut refleter une vraie progression du joueur (le residu median bouge sur 200 matchs etalees sur des mois) ; pas bloquant pour deploiement mais a surveiller.
+- **H5** insufficient history pour joueur_291 (22 matchs).
 
 **E. Suite E2E Playwright** ([apps/web/e2e/engagement.spec.ts](apps/web/e2e/engagement.spec.ts)) — 6/6 PASS :
 - GET `/engagement/timeseries` (Mock 11) : 200 + items avec pace_*
@@ -78735,9 +78741,9 @@ Refonte complète du système de filtres web suivant le plan `wild-fluttering-wa
 **Statut** : Complété — corpus validé à 100 %.
 
 **Décision technique** :
-Avant de chiffrer le portage des 3 chantiers (scoreboard match view + expander, citation engine, tableau d'impact Boulet/Touriste), valider que toutes les tables/vues/colonnes nécessaires sont effectivement présentes et peuplées en BDD. Probe ad-hoc Go (`cmd/inspect_corpus/main.go`, supprimé après run) qui ATTACH shared/meta/pve sur la DB joueur Chocoboflor et : (a) vérifie la liste de colonnes attendues par le `_SCOREBOARD_SQL` Python, (b) compte Perfect (medal_id 1512363953) et Steaktacular (1169390319), (c) liste les `mapping_type` actifs et les `custom_function` présentes dans `citation_mappings`, (d) confirme que les kill events `highlight_events` sont tous joignables avec `match_participants.team_id`, (e) **exécute le `_SCOREBOARD_SQL` end-to-end sur 1 match réel**.
+Avant de chiffrer le portage des 3 chantiers (scoreboard match view + expander, citation engine, tableau d'impact Boulet/Touriste), valider que toutes les tables/vues/colonnes nécessaires sont effectivement présentes et peuplées en BDD. Probe ad-hoc Go (`cmd/inspect_corpus/main.go`, supprimé après run) qui ATTACH shared/meta/pve sur la DB joueur joueur_165 et : (a) vérifie la liste de colonnes attendues par le `_SCOREBOARD_SQL` Python, (b) compte Perfect (medal_id 1512363953) et Steaktacular (1169390319), (c) liste les `mapping_type` actifs et les `custom_function` présentes dans `citation_mappings`, (d) confirme que les kill events `highlight_events` sont tous joignables avec `match_participants.team_id`, (e) **exécute le `_SCOREBOARD_SQL` end-to-end sur 1 match réel**.
 
-DB cible : `C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/` (production Python active, 304 MB shared, 65 MB metadata, 4 joueurs synchronisés).
+DB cible : `<poste>/Downloads/Scripts/LevelUp/data/` (production Python active, 304 MB shared, 65 MB metadata, 4 joueurs synchronisés).
 
 **Résultats observés** :
 - `match_participants` : 24 395 lignes, 28 colonnes attendues toutes présentes (kills_expected/deaths_expected/assists_expected/team_mmr/enemy_mmr inclus).
@@ -78931,7 +78937,7 @@ Les données réelles de janvier 2026 indiquent que `start_time` est en UTC, pas
 
 **Architecture delta-detection** : pattern closure `PostSyncDeltaHook(ctx, slug) → after func(ctx)`. Le handler appelle le hook AVANT engine.RunDelta (capture snapshot before), reçoit une closure `after` qui sera appelée APRÈS le succès du sync (capture snapshot after + diff + emit). Évite cycle d'imports (handlers/ → api/) en gardant le type PlayerSnapshot opaque côté handler.
 
-**Contexte** : Création d'un système de notifications in-app per-player traité comme une "API interne découplée" (exigence utilisateur). 9 catégories MVP : `app_release`, `match_synced`, `media_added`, `objective_assigned/completed`, `challenge_added/completed`, `season_pass_level`, `sync_error`, `personal_record`, `threshold_crossed`. Plan complet dans `C:\Users\Guillaume\.claude\plans\j-ai-chang-d-avis-et-dapper-conway.md`.
+**Contexte** : Création d'un système de notifications in-app per-player traité comme une "API interne découplée" (exigence utilisateur). 9 catégories MVP : `app_release`, `match_synced`, `media_added`, `objective_assigned/completed`, `challenge_added/completed`, `season_pass_level`, `sync_error`, `personal_record`, `threshold_crossed`. Plan complet dans `<poste>\.claude\plans\j-ai-chang-d-avis-et-dapper-conway.md`.
 
 **Architecture backend** :
 - Package autonome `internal/notifications/` (doc.go, types.go, id.go, port.go, emitter.go, service.go, service_test.go) ne dépendant que de la stdlib. Service implements Emitter (Emit interface réduite pour les hooks).
@@ -79165,7 +79171,7 @@ Les données réelles de janvier 2026 indiquent que `start_time` est en UTC, pas
 
 **Statut** : En cours — surface API backend posée et compile, hooks d'émission et frontend à venir.
 
-**Contexte** : User demande un système de notifications in-app per-player, traité comme une "API interne découplée". 9 catégories au MVP (app_release, match_synced, media_added, objective_assigned/completed, challenge_added/completed, season_pass_level, sync_error, personal_record, threshold_crossed). Plan détaillé dans `C:\Users\Guillaume\.claude\plans\j-ai-chang-d-avis-et-dapper-conway.md`.
+**Contexte** : User demande un système de notifications in-app per-player, traité comme une "API interne découplée". 9 catégories au MVP (app_release, match_synced, media_added, objective_assigned/completed, challenge_added/completed, season_pass_level, sync_error, personal_record, threshold_crossed). Plan détaillé dans `<poste>\.claude\plans\j-ai-chang-d-avis-et-dapper-conway.md`.
 
 **Décision technique** : Package autonome `internal/notifications/` (doc.go, types.go, id.go, port.go, emitter.go, service.go) ne dépendant que de la stdlib. Repository implementé dans `internal/platform/duckdb/notifications_repo.go` (+ helpers). Stockage 2 tables per-player dans `stats.duckdb` : `player_notifications` (snowflake-like ID = (unix_ms<<12) | seq, JS-safe) + `notification_preferences` (seed à TRUE pour toutes les catégories MVP). i18n par clés title_key/body_key + params (pas de FR/EN en dur côté serveur, conforme audit V7). Emitter interface réduite + NoopEmitter pour DI. Service cache `*notifications.Service` par xuid via `sync.Map` dans registry pour préserver la monotonicité ID. 8 endpoints REST sous `/api/v1/players/{slug}/notifications`. Cap rétention 500/joueur appliqué après chaque Emit (best-effort).
 
@@ -79218,17 +79224,17 @@ Les données réelles de janvier 2026 indiquent que `start_time` est en UTC, pas
    - Fix : ajout de `regexp_replace(..., '^[^:]+:\s*', '', '')` en première position dans `q37MediaModeLabelExpr`
    - Résultat testé : `mode_filter="Assassin"` → 39 médias tous mode "Slayer" ✓
 
-3. **Section "mine" hardcodée** : `buildMediaItems` mettait `Section: "mine"` pour tous les médias indépendamment du `player_slug`. Sur le social feed (Chocoboflor sans captures voit 92 médias des autres players), tous étaient marqués "mine".
+3. **Section "mine" hardcodée** : `buildMediaItems` mettait `Section: "mine"` pour tous les médias indépendamment du `player_slug`. Sur le social feed (joueur_165 sans captures voit 92 médias des autres players), tous étaient marqués "mine".
    - Fix : ajout de `CurrentPlayerSlug() string` à `port.MediaRepository` (impl par MediaRepo qui retourne `r.pdb.Gamertag`, et noopMediaRepo qui retourne "")
    - Fix : `buildMediaItems(rows, currentPlayerSlug)` calcule `section = "teammate"` si `*r.PlayerSlug != currentPlayerSlug`, sinon "mine"
-   - Résultat testé : médias de JGtm vus dans la galerie de Chocoboflor → `section: "teammate"` ✓
+   - Résultat testé : médias de JGtm vus dans la galerie de joueur_165 → `section: "teammate"` ✓
 
 **Procédure exécutée pendant la session** :
 1. `make build` du serveur Go (CGo MinGW ucrt64 pour DuckDB)
 2. Lancement en background sur port 8000
 3. Reassociate via `POST /media/reassociate` pour les 4 players :
-   - Chocoboflor : 66 → 60 assocs (6 doublons éliminés, confirme bug multi-assoc)
-   - JGtm/Madina/XxDaemon : 60 → 60 (déjà clean)
+   - joueur_165 : 66 → 60 assocs (6 doublons éliminés, confirme bug multi-assoc)
+   - JGtm/joueur_075/joueur_639 : 60 → 60 (déjà clean)
 4. Tests curl directs sur les filtres pour confirmer les fixes
 
 **Fichiers modifiés** :
@@ -79241,7 +79247,7 @@ Les données réelles de janvier 2026 indiquent que `start_time` est en UTC, pas
 
 **Conclusion / prochaine étape** : Les filtres map et mode marchent maintenant. Section mine/teammate par item est correcte. Reste pour le user :
 - Refresh frontend (Ctrl+Shift+R) pour clear cache TanStack Query
-- Si la galerie de Chocoboflor doit montrer SES propres médias par défaut (pas le social feed), changer le frontend pour envoyer `section_filter="mine"` par défaut.
+- Si la galerie de joueur_165 doit montrer SES propres médias par défaut (pas le social feed), changer le frontend pour envoyer `section_filter="mine"` par défaut.
 
 ## [2026-04-26] fix(media): cause racine - 1 média associé à plusieurs matchs (multi-assoc)
 
@@ -81282,7 +81288,7 @@ La sync Go (`processMatch` dans `engine.go`) ne récupère jamais les `highlight
 
 **Décision technique** : l'archéologie ciblée de la branche `v7/cockpit` a montré que la bannière Python ne venait pas d'un champ `BannerImagePath` explicite. Le flux legacy utilisait d'abord `player_title_path`, puis reconstruisait une URL Waypoint de `nameplate` depuis `emblem_path + configuration_id` quand `player_title_path` était nul. Le backend Go n'avait porté ni `PlayerTitlePath` ni ce fallback dérivé, d'où l'absence persistante de bannière malgré des données emblème/backdrop correctes. Le correctif a donc été appliqué à la racine dans `internal/sync/halo_client.go` : ajout de `PlayerTitlePath` aux clés candidates, puis génération de `banner_image_url` via `hi/Waypoint/file/images/nameplates/<emblem_stem>_<configuration_id>.png` quand aucun champ bannière direct n'est disponible.
 
-**Résultats observés** : validation ciblée réussie avec `go test ./internal/sync -run 'TestGetCareerRank_(UsesCareerAndCustomizationEndpoints|DerivesBannerFromEmblemWhenNameplateMissing)'`. Une resync batch `go run ./cmd/levelup sync-delta --all --max-matches 1` a ensuite resynchronisé `Chocoboflor`, `JGtm` et `Madina97294` (`career_synced=true`, `XxDaemonGamerxX` ignoré faute de token). Vérification HTTP finale sur le serveur local actif : `GET /api/v1/players/JGtm/pages/home?lang=fr` et `GET /api/v1/players/Chocoboflor/pages/home?lang=fr` publient maintenant tous deux `banner_image_url` via `/api/v1/assets/spartan/banner/halo_infinite/hi/Waypoint/file/images/nameplates/...`, en plus de `emblem_image_url`, `backdrop_image_url` et `adornment_image_url`.
+**Résultats observés** : validation ciblée réussie avec `go test ./internal/sync -run 'TestGetCareerRank_(UsesCareerAndCustomizationEndpoints|DerivesBannerFromEmblemWhenNameplateMissing)'`. Une resync batch `go run ./cmd/levelup sync-delta --all --max-matches 1` a ensuite resynchronisé `joueur_165`, `JGtm` et `joueur_117` (`career_synced=true`, `joueur_291` ignoré faute de token). Vérification HTTP finale sur le serveur local actif : `GET /api/v1/players/JGtm/pages/home?lang=fr` et `GET /api/v1/players/joueur_165/pages/home?lang=fr` publient maintenant tous deux `banner_image_url` via `/api/v1/assets/spartan/banner/halo_infinite/hi/Waypoint/file/images/nameplates/...`, en plus de `emblem_image_url`, `backdrop_image_url` et `adornment_image_url`.
 
 **Conclusion** : la bannière Home suit enfin le même mécanisme que le legacy Python `v7/cockpit`. Le problème n'était ni un mauvais rendu React ni une confusion persistante avec le backdrop, mais un fallback de source de données qui n'avait jamais été porté côté Go.
 
@@ -81292,7 +81298,7 @@ La sync Go (`processMatch` dans `engine.go`) ne récupère jamais les `highlight
 
 **Décision technique** : le manque de bannière n'était pas un simple oubli frontend. Un probe Go live sur l'endpoint Waypoint `customization?view=public` a montré que les profils resynchronisés exposent `ServiceTag`, `BackdropImagePath`, `Emblem` et `ActionPosePath`, mais aucune clé `Banner`/`Nameplate`; `PlayerTitlePath` est `null`. En revanche, la sync carrière persistait bien `adornment_path` dans `career_progression` pour les joueurs resynchronisés. Le correctif a donc été double : 1) la Home Go relit désormais aussi `career_progression.adornment_path` et l'expose comme `spartan_identity.career_rank.adornment_image_url`, avec fallback metadata si besoin ; 2) la Home React rend un vrai shell de bannière décoratif permanent et superpose l'adornment carrière comme ornement visuel du bloc identitaire. En parallèle, la CLI `levelup sync-delta` accepte maintenant `--all` pour relancer la sync delta sur tous les profils configurés sans boucle manuelle externe.
 
-**Résultats observés** : validations ciblées OK avec `go test ./internal/analysis ./internal/service -run 'Test(BuildSpartanIdentity_UsesRequestedLanguage|HomeService_GetHomePage_IncludesSpartanIdentity)'`, `go test -tags=integration ./internal/platform/duckdb -run 'TestHomeRepo_LoadSpartanIdentity_(WithData|FallsBackToLatestNonEmptyIdentityAssets)'` et `npm run test:run -- src/features/home/HomePage.test.tsx`. Exécution live : `go run ./cmd/levelup sync-delta --all --max-matches 1` a synchronisé `Chocoboflor`, `JGtm` et `Madina97294` avec `career_synced=true`, et a ignoré `XxDaemonGamerxX` faute de token disponible. Vérification HTTP finale : les trois joueurs synchronisés servent maintenant `spartan_id`, `emblem_image_url`, `backdrop_image_url` et `adornment_image_url`; `banner_image_url` reste absent car non fourni par la customisation publique Halo sur ces profils.
+**Résultats observés** : validations ciblées OK avec `go test ./internal/analysis ./internal/service -run 'Test(BuildSpartanIdentity_UsesRequestedLanguage|HomeService_GetHomePage_IncludesSpartanIdentity)'`, `go test -tags=integration ./internal/platform/duckdb -run 'TestHomeRepo_LoadSpartanIdentity_(WithData|FallsBackToLatestNonEmptyIdentityAssets)'` et `npm run test:run -- src/features/home/HomePage.test.tsx`. Exécution live : `go run ./cmd/levelup sync-delta --all --max-matches 1` a synchronisé `joueur_165`, `JGtm` et `joueur_117` avec `career_synced=true`, et a ignoré `joueur_291` faute de token disponible. Vérification HTTP finale : les trois joueurs synchronisés servent maintenant `spartan_id`, `emblem_image_url`, `backdrop_image_url` et `adornment_image_url`; `banner_image_url` reste absent car non fourni par la customisation publique Halo sur ces profils.
 
 **Conclusion** : la Home ne traite plus les joueurs un par un côté outillage, et le rendu Spartan peut enfin afficher un ornement réel pour tous les profils resynchronisés. L'absence de bannière réelle sur ces profils vient de la source Waypoint elle-même, pas d'une confusion persistante avec le backdrop.
 
@@ -81878,7 +81884,7 @@ Logique canonique (4 étapes) :
 **Résultats** :
 - `go test ./internal/platform/halo -run 'TestFetchChallengeBadgeDataURL_(SeasonalFallsBackToWeekly|WeeklyVehicleUsesVehicleBadgeFirst)' -count=1` : PASS
 - validation live sur `GET /api/v1/players/JGtm/pages/palmares/season-pass` : `Bravoure dans la victoire`, `Oiseau de fête` et `Score Moar !` remontent tous avec `image_url`
-- validation live sur `GET /api/v1/players/Chocoboflor/pages/palmares/season-pass` : `Attention !`, `Bravoure dans la victoire` et `Score Moar !` remontent aussi avec `image_url`
+- validation live sur `GET /api/v1/players/joueur_165/pages/palmares/season-pass` : `Attention !`, `Bravoure dans la victoire` et `Score Moar !` remontent aussi avec `image_url`
 
 **Conclusion** : le backend utilise maintenant le bon schéma de badges hebdo pour les défis saisonniers actifs, et les cartes de défis manquantes réapparaissent bien dans le payload live.
 
@@ -84137,8 +84143,8 @@ Phase 0 terminée. Ouvrir Sprint 4 (squelette HTTP Go + `oapi-codegen` + CI GitH
 **Résultats observés** :
 - `go build ./...` : 0 erreur
 - `GET /health` → `{"status":"ok","match_count":1544,"db_version":"v1.5.2"}`
-- `GET /api/v1/bootstrap` → `setup_required:false`, 4 joueurs réels (Chocoboflor, JGtm, Madina97294, XxDaemonGamerxX)
-- `GET /api/v1/players` → `{items:[4], default_player_slug:"Chocoboflor"}`
+- `GET /api/v1/bootstrap` → `setup_required:false`, 4 joueurs réels (joueur_165, JGtm, joueur_117, joueur_291)
+- `GET /api/v1/players` → `{items:[4], default_player_slug:"joueur_165"}`
 - MSAL poc → `user_code:F5KJ56F9`, `verification_uri:https://www.microsoft.com/link` ✓
 
 **Gates Sprint 0 — tous verts ✅** :
@@ -85113,7 +85119,7 @@ Prochaine étape : Sprint 27 (Bascule progressive, ~3-5j).
 **Tâche** : Passer Slice 2 Phase A (Carrière) de `preview` à `canonical` — correction du 500 en DEMO_MODE, 5 E2E Playwright verts.
 
 **Décision technique** :
-1. **Bug racine** : `resolve_player()` en DEMO_MODE hardcodait `xuid="0000000000000000"`. La base DuckDB de fixtures appartient à `xuid="2535469190789936"`. Résultat : `career_service.get_career_page()` retournait `summary=None` → FastAPI tentait de sérialiser un `CareerPageResponse` avec champs requis à `None` → HTTP 500.
+1. **Bug racine** : `resolve_player()` en DEMO_MODE hardcodait `xuid="0000000000000000"`. La base DuckDB de fixtures appartient à `xuid="2547408409520575"`. Résultat : `career_service.get_career_page()` retournait `summary=None` → FastAPI tentait de sérialiser un `CareerPageResponse` avec champs requis à `None` → HTTP 500.
 2. **Fix** : `_read_demo_xuid(fixtures_dir)` lit `xuid.txt` dans les fixtures. Si absent, fallback sur `"0000000000000000"`. La fonction est appelée dans `_demo_players()` et `resolve_player()` pour avoir un xuid cohérent.
 3. **Tests E2E Playwright** : créé `apps/web/e2e/slice-2-career.spec.ts` avec 5 tests : no JS error, API HTTP 200 + rank > 0, "Gold" visible, pas d'erreur fatale, titre "Carrière". Correction du test `not.toContainText('500')` → `not.toContainText('Internal Server Error')` (la page contient "500" dans les données légitimes).
 
@@ -85200,11 +85206,11 @@ Prochaine étape : Sprint 27 (Bascule progressive, ~3-5j).
 
 ---
 
-## [2026-04-13] fix(parity): corpus Chocoboflor + 5 corrections services API — Complété
+## [2026-04-13] fix(parity): corpus joueur_165 + 5 corrections services API — Complété
 
 **Statut** : Complété
 
-**Tâche** : Générer le corpus de tests de parité (500 matchs Chocoboflor) et valider les 20 tests de parité.
+**Tâche** : Générer le corpus de tests de parité (500 matchs joueur_165) et valider les 20 tests de parité.
 
 **Décision technique** :
 1. **Double alias SQL** (`AS ms ms`) : `_build_source_sql()` retournait `... ) AS ms` et le template SQL ajoutait aussi `ms`. Correction : supprimer le `AS ms` dans le retour de `_build_source_sql()` dans `filter_service.py` et `match_history_service.py`.
@@ -85215,8 +85221,8 @@ Prochaine étape : Sprint 27 (Bascule progressive, ~3-5j).
 6. **VIEW `mv_player_matches` incomplète dans le corpus** : la VIEW copiée depuis LevelUp ne contenait pas `time_played_seconds`, `my_team_score`, `enemy_team_score`, `my_team_ps_score`, `enemy_team_ps_score`. Enrichissement de `create_test_corpus.py` pour la recréer avec les colonnes complètes.
 
 **Résultats** :
-- Corpus généré : 364 matchs, rang 133, XP 791970 (Chocoboflor)
-- Tests parité : **19 passés, 1 skipped** (skip légitime : lusr_rating=None pour Chocoboflor)
+- Corpus généré : 364 matchs, rang 133, XP 791970 (joueur_165)
+- Tests parité : **19 passés, 1 skipped** (skip légitime : lusr_rating=None pour joueur_165)
 - 0 test failed
 
 **Conclusion** : Tous les tests de parité fonctionnellement actifs passent. La suite logique est de corriger les mêmes colonnes manquantes dans les vraies vues matérialisées Streamlit (LevelUp repo) si elles y sont aussi incomplètes.
@@ -85299,8 +85305,8 @@ Prochaine étape : Sprint 27 (Bascule progressive, ~3-5j).
 - Le document maître a ensuite été enrichi avec une section "Facteurs de réussite et d'échec" par domaine, ainsi qu'une matrice de risques opérationnels (`ID`, domaine, gravité, probabilité, mitigation) pour faciliter les revues de sprint et les décisions Go / No-Go.
 
 **Conclusion** : Le corpus V7 est désormais plus exécutable et plus défendable pour une migration de cette envergure. La prochaine étape recommandée est de lancer le Sprint 1 en suivant la matrice de contrats, puis d'utiliser la checklist Go / No-Go avant d'ouvrir plusieurs sous-chantiers en parallèle.
-| Madina97294 | 72.8 MB | 10.3 MB | −62.5 MB |
-| XxDaemonGamerxX | 10 MB | 6 MB | −4 MB |
+| joueur_117 | 72.8 MB | 10.3 MB | −62.5 MB |
+| joueur_291 | 10 MB | 6 MB | −4 MB |
 | **Total** | **275 MB** | **37 MB** | **−238 MB** |
 
 **Conclusion** : 238 MB récupérés. Les DBs joueurs sont maintenant proportionnelles à leurs données. À noter : si d'autres migrations DROP TABLE importantes ont lieu à l'avenir, il faudra re-exécuter le même compactage (ou intégrer un step de compactage dans le workflow de migration).
@@ -85851,7 +85857,7 @@ Prochaine étape : Sprint 27 (Bascule progressive, ~3-5j).
 - Sur ces longues fenêtres, les années trop creuses sont automatiquement écartées si elles n'atteignent pas un minimum de 12 matchs et 4 semaines actives.
 
 **Résultats** :
-- Les profils comme `JGtm` ou `Chocoboflor` n'étalent plus des bouts d'années quasi vides qui cassent la lecture du graphe.
+- Les profils comme `JGtm` ou `joueur_165` n'étalent plus des bouts d'années quasi vides qui cassent la lecture du graphe.
 - Validation `ruff check` OK sur `src/visualization/_distributions_outcomes_helpers.py` et `src/ui/i18n/viz/labels.py`.
 
 **Prochaine étape** : si besoin, exposer un toggle explicite `hebdo / mensuel` plus tard, mais la règle auto suffit pour la Synthèse actuelle.
@@ -87555,7 +87561,7 @@ Les fonctions de `win_loss.py` sont importées directement dans `timeseries.py` 
 
 | Joueur | Avant | Après | Gain |
 |---|---|---|---|
-| Chocoboflor | 103 MB | 8.8 MB | −94 MB |
+| joueur_165 | 103 MB | 8.8 MB | −94 MB |
 | JGtm | 89.5 MB | 12 MB | −77.5 MB |
 
 ---
@@ -87737,7 +87743,7 @@ Audit exhaustif des 4 fichiers de tests sync (shared_writes, fanout, nonregressi
 **Branche** : `fix/lusr-schema-backfill-teammates`  
 **Commits** : `88e1ce13` (LUSR fix), `bbed7633` (settings/teammates)
 
-**Problème** : "Rating non encore calculé / LUSR calculé automatiquement au prochain sync" persistant pour Madina97294 sur le VPS Docker, même après ~22 tentatives de fix dans les sessions précédentes.
+**Problème** : "Rating non encore calculé / LUSR calculé automatiquement au prochain sync" persistant pour joueur_117 sur le VPS Docker, même après ~22 tentatives de fix dans les sessions précédentes.
 
 **Root cause identifiée** : Binder Error silencieux dans deux endroits : 
 1. `_LUSR_UPSERT_SQL` référence `start_time` → `Binder Error: column not found` si colonne absente → 0 rows écrits silencieusement
@@ -87813,10 +87819,10 @@ Ajout d'un panneau de filtres complet sur la page Médias, en exploitant `df_ful
 
 **Statut** : Complété
 
-**Problème** : "Rating non encore calculé" persistant pour Madina sur le dernier match, même après 22 syncs.
+**Problème** : "Rating non encore calculé" persistant pour joueur_075 sur le dernier match, même après 22 syncs.
 
 **Root cause** :  
-Le fan-out (step 6 du post-sync) calculait le LUSR des co-joueurs enregistrés **uniquement** quand `result.inserted_match_ids` était non vide, c'est-à-dire quand le joueur principal avait de nouveaux matchs **et** que ces matchs étaient communs avec le co-joueur. Les matchs **solo** de Madina (sans le joueur principal) n'apparaissaient jamais dans `inserted_match_ids`, donc leur LUSR n'était jamais calculé.
+Le fan-out (step 6 du post-sync) calculait le LUSR des co-joueurs enregistrés **uniquement** quand `result.inserted_match_ids` était non vide, c'est-à-dire quand le joueur principal avait de nouveaux matchs **et** que ces matchs étaient communs avec le co-joueur. Les matchs **solo** de joueur_075 (sans le joueur principal) n'apparaissaient jamais dans `inserted_match_ids`, donc leur LUSR n'était jamais calculé.
 
 **Fix** :  
 - Ajout de `_run_lusr_for_other_players()` dans `FanoutEnrichmentMixin` (`_engine_fanout.py`) : itère sur tous les joueurs enregistrés et appelle `batch_compute_lusr(force=False)` pour chacun (mode incrémental, rapide si rien de nouveau).  
@@ -87837,7 +87843,7 @@ Le fan-out (step 6 du post-sync) calculait le LUSR des co-joueurs enregistrés *
 **Fix** : `_get_pending_events_ids()` — exclut les matchs ≤7j avec `events_loaded=FALSE` de l'ensemble `existing_ids`.
 
 **Root cause #2 — Données incohérentes** :  
-Migration `add_highlight_events_autoincrement` (7 mars 2026) a recréé la table `highlight_events` en perdant 579 matchs, mais a laissé `events_loaded=TRUE` dans `match_registry`. Madina97294 : 575 matchs affectés (55% de son historique).  
+Migration `add_highlight_events_autoincrement` (7 mars 2026) a recréé la table `highlight_events` en perdant 579 matchs, mais a laissé `events_loaded=TRUE` dans `match_registry`. joueur_117 : 575 matchs affectés (55% de son historique).  
 **Fix** : Migration `fix_events_loaded_inconsistency` — remet `events_loaded=FALSE` pour tous les matchs sans HE correspondants.
 
 **Chronologie régression** : Bug introduit dans `40af10f7` (26 mars, hardening pipeline) — présent en v6.2.1 et v6.3. Pas de régression spécifique à v6.3.
@@ -88368,7 +88374,7 @@ Deux actions prises :
 
 ### [2026-04-04] — fix(scoreboard): citations incohérentes entre panneau expandable et onglet Citations — Complété
 
-**Problème** : En cliquant sur un joueur (ex: Chocoboflor) dans la partie expandable du scoreboard, les citations affichées ne correspondaient pas à celles de l'onglet Citations de la page match view pour ce même joueur.
+**Problème** : En cliquant sur un joueur (ex: joueur_165) dans la partie expandable du scoreboard, les citations affichées ne correspondaient pas à celles de l'onglet Citations de la page match view pour ce même joueur.
 
 **Cause** : `_load_citation_items` (scoreboard) n'appliquait pas le filtre "déjà maître avant ce match" que `render_match_citations_section` (onglet Citations) applique — via `_compute_mastery_display` + `_parse_tier_targets`. Le scoreboard affichait donc des citations pour lesquelles le joueur était déjà maître depuis avant le match en question.
 
@@ -88561,7 +88567,7 @@ Revue du plan de refacto i18n pipeline + ChartData. Constat d'écart entre le pl
 
 ---
 
-### [2026-04-03] — fix(hero): adornment disparu + backdrop sur KPIs pour Chocoboflor — Complété
+### [2026-04-03] — fix(hero): adornment disparu + backdrop sur KPIs pour joueur_165 — Complété
 
 **Statut** : Complété
 
@@ -88572,12 +88578,12 @@ Deux bugs liés :
 
    **Fix** : quand `download_enabled=False` et que le cache avec le préfixe exact existe (même périmé), le retourner directement avant d'appeler `resolve_local_image_path`.
 
-2. **Backdrop déborde sur les KPIs** (`styles.css`) : L'image backdrop de Chocoboflor (1000×776 px) s'affiche à ~256×199 px dans `.spartan-id` (82px de hauteur, `overflow: visible`). Sans adornment pour forcer la hauteur du wrapper, `.spartan-id-wrapper` ne faisait que ~94px → le backdrop en position absolue débordait de ~60px sur les éléments suivants (section `render_top_summary`).
+2. **Backdrop déborde sur les KPIs** (`styles.css`) : L'image backdrop de joueur_165 (1000×776 px) s'affiche à ~256×199 px dans `.spartan-id` (82px de hauteur, `overflow: visible`). Sans adornment pour forcer la hauteur du wrapper, `.spartan-id-wrapper` ne faisait que ~94px → le backdrop en position absolue débordait de ~60px sur les éléments suivants (section `render_top_summary`).
 
    **Fix** : `min-height: 200px` sur `.spartan-id-wrapper` — la hauteur du backdrop calculé (~199px) est entièrement contenue ; les KPIs s'affichent dessous.
 
 **Résultats** :
-- Adornment Colonel Or III de Chocoboflor visible de nouveau
+- Adornment Colonel Or III de joueur_165 visible de nouveau
 - Backdrop ne déborde plus sur la section "Matchs joués / Durée / Victoires..."
 
 **Branche** : `fix/map-ui-fr-mismatch`
@@ -88708,7 +88714,7 @@ La page Dernier Match affichait "Quick Play" (EN) au lieu de "Jeu rapide" (FR) d
 **Statut** : Complété
 
 **Décision technique** :
-Les records stats/min (frags/min, morts/min, assists/min) n'apparaissaient que pour un seul joueur (Madia97294). Deux causes indépendantes :
+Les records stats/min (frags/min, morts/min, assists/min) n'apparaissaient que pour un seul joueur (joueur_407). Deux causes indépendantes :
 1. `compute_player_pm_records` : si le filtre `pair_name` retournait un sous-ensemble vide, la fonction retournait `(None, None, None)` au lieu d'utiliser tous les matchs en fallback.
 2. `render_trio_view` : `_pm_records` n'était calculé que pour les joueurs dans `_full_raw`, lequel excluait f2/f3 si `load_all_teammate_stats()` retournait un df vide (xuid introuvable). Aucun fallback sur les données de session.
 
@@ -89011,11 +89017,11 @@ Deux bugs en cascade :
 
 **Décision technique** :
 - Bug 1 : `_teammates_trio.py` sauvegardait `radar_squad_ids` avant le filtre de session → radar figé toutes sessions. Fix : supprimer `radar_squad_ids`, utiliser `squad_ids` (filtré) + `base_for_trio` pour `radar_me_df`.
-- Bug 2 (découvert en testant) : `render_trio_synergy_radar` incluait les DataFrames vides dans l'intersection `shared` → `shared=set()` → radar entier masqué quand Madina n'a pas de données sur une vieille session.
+- Bug 2 (découvert en testant) : `render_trio_synergy_radar` incluait les DataFrames vides dans l'intersection `shared` → `shared=set()` → radar entier masqué quand joueur_075 n'a pas de données sur une vieille session.
 - Fix : extraire `_compute_shared_match_ids()` (fonction pure) qui exclut les DFs vides des joueurs optionnels (f2/f3) de l'intersection. f1 reste obligatoire.
 
 **Tests ajoutés** : 9 cas dans `TestComputeSharedMatchIds` (39 total dans le fichier) :
-- f3 vide ne collapse pas shared (régression Madina)
+- f3 vide ne collapse pas shared (régression joueur_075)
 - f2 vide idem
 - f1 vide → [] (f1 obligatoire)
 - None ignoré
@@ -89091,10 +89097,10 @@ Deux bugs en cascade :
 
 ### [2026-03-31] — fix(radar): recalibrage seuils objectifs axe Complémentarité — Complété
 
-**Tâche** : L'axe Objectifs du radar escouade affichait <30% pour de bons joueurs (JGtm, Chocoboflor) sur la session du 24 mars.
+**Tâche** : L'axe Objectifs du radar escouade affichait <30% pour de bons joueurs (JGtm, joueur_165) sur la session du 24 mars.
 
 **Décision technique** : Recalibré `RADAR_THRESHOLDS_PER_MODE` depuis valeurs ~p95 imaginaires vers des seuils basés sur données réelles.
-- Audit historique : 130+ matchs obj JGtm (p80 CTF=500, SH=600), 90+ matchs Chocoboflor.
+- Audit historique : 130+ matchs obj JGtm (p80 CTF=500, SH=600), 90+ matchs joueur_165.
 - Cible utilisateur : un "bon joueur" doit afficher 70-75% sur l'axe.
 - Calcul : threshold_session(1 SH + 3 CTF) = 420 + 350×3 = 1470; JGtm=1060/1470=**72%** ✓
 
@@ -89110,7 +89116,7 @@ Deux bugs en cascade :
 
 **Statut** : Complété
 
-**Cause racine** : `stats_json` retourné par `get_match_stats()` contient les `PersonalScores[]` de TOUS les participants. Mais `extract_personal_score_awards(stats_json, self._xuid)` filtre uniquement sur le joueur courant. Le fanout (`_run_other_player_enrichment`) distribuait perf_scores, sessions, citations, dominance et LUSR vers les DBs coéquipiers — mais jamais les PSA. Résultat : Madina97294 avait des enrichissements (créés par fanout de JGtm/Chocoboflor) mais 0 PSA depuis le 12 mars.
+**Cause racine** : `stats_json` retourné par `get_match_stats()` contient les `PersonalScores[]` de TOUS les participants. Mais `extract_personal_score_awards(stats_json, self._xuid)` filtre uniquement sur le joueur courant. Le fanout (`_run_other_player_enrichment`) distribuait perf_scores, sessions, citations, dominance et LUSR vers les DBs coéquipiers — mais jamais les PSA. Résultat : joueur_117 avait des enrichissements (créés par fanout de JGtm/joueur_165) mais 0 PSA depuis le 12 mars.
 
 **Décision technique** :
 1. `_pending_other_psa: dict[str, list] = {}` sur `DuckDBSyncEngine.__init__` — accumule les PSA des co-joueurs pendant le traitement
@@ -89187,16 +89193,16 @@ Deux bugs en cascade :
 
 ### [2026-03-31] — Audit BDD + fix compute_sessions.py — Complété
 
-**Tâche** : Audit BDD (assets non traduits, tables/colonnes supprimées). Backfill sessions XxDaemonGamerxX.
+**Tâche** : Audit BDD (assets non traduits, tables/colonnes supprimées). Backfill sessions joueur_291.
 
 **Décision technique** :
 - **Traductions `asset_translations`** : 100% couvertes — 691 assets × 14 langues, aucun `name` NULL/vide
 - **Tables legacy v5.0** : toutes absentes dans les 4 player DBs (`match_stats`, `match_participants`, `highlight_events`, etc.)
 - **`highlight_events.gamertag`** : absent de `shared_matches_v2` (drop v5.8 Wave 4 bien appliqué)
-- **Root cause `sessions` manquante pour XxDaemonGamerxX** : `scripts/compute_sessions.py` line 416 référençait `shared_matches.duckdb` (ancien fichier supprimé) au lieu de `shared_matches_v2.duckdb`. Les syncs réguliers appellent `backfill_sessions_for_player` (→ `player_match_enrichment.session_id` uniquement), jamais `populate_sessions_table`. Les 3 autres joueurs avaient la table créée avant la migration v2.
-- **Fix** : correction du path hardcodé + `compute_sessions.py --gamertag XxDaemonGamerxX --force` → 5 sessions créées pour 22 matchs.
+- **Root cause `sessions` manquante pour joueur_291** : `scripts/compute_sessions.py` line 416 référençait `shared_matches.duckdb` (ancien fichier supprimé) au lieu de `shared_matches_v2.duckdb`. Les syncs réguliers appellent `backfill_sessions_for_player` (→ `player_match_enrichment.session_id` uniquement), jamais `populate_sessions_table`. Les 3 autres joueurs avaient la table créée avant la migration v2.
+- **Fix** : correction du path hardcodé + `compute_sessions.py --gamertag joueur_291 --force` → 5 sessions créées pour 22 matchs.
 
-**Résultats** : 482 MB total BDD, 0 fichier WAL orphelin, table `sessions` créée pour XxDaemonGamerxX. Commit `5714015`.
+**Résultats** : 482 MB total BDD, 0 fichier WAL orphelin, table `sessions` créée pour joueur_291. Commit `5714015`.
 
 ---
 
@@ -89497,7 +89503,7 @@ Appliquer la décision dans le code en auditant les usages agrégés de `kda`, p
 **Statut** : Complété  
 **Décision technique** :
 
-Bug signalé : match 1561d357 (score 50-13) affichait "domination totale" dans match_view mais "contre remontada" dans le tableau top performance de la carrière de Madina97294.
+Bug signalé : match 1561d357 (score 50-13) affichait "domination totale" dans match_view mais "contre remontada" dans le tableau top performance de la carrière de joueur_117.
 
 Diagnostic :
 - Commit `4c8472c` avait `max_deficit >= 1` dans la condition CONTRE_REMONTADA → faux positifs massifs sur victoires dominantes (le score 50-13 avec max_lead=42 et max_deficit=1 recevait flag=5)
@@ -89602,9 +89608,9 @@ La vraie source de vérité :
 Root cause : `_sync_internal` short-circuit (HEAD-first delta) retournait sans appeler `_run_post_sync_pipeline` → `_save_sync_metadata` jamais appelée en cas de "aucun nouveau match".
 Fix : Appel de `_save_sync_metadata(delta_mode=True, matches_inserted=0)` + `commit()` dans la branche short-circuit avant le `return result`.
 
-**Bug 2 — Heatmap Madina PME manquant (7ème tentative)**
-Root cause : Même short-circuit. `_enrich_other_registered_players` (fanout) est dans `_run_post_sync_pipeline` → skippé → les 7 matchs du 27/03 22:26–23:34 (session JGtm+Madina) absents du PME Madina.
-Fix : Nouvelle méthode `fanout_repair_missing_scores()` dans `FanoutEnrichmentMixin` : vérifie pour chaque joueur enregistré si des `match_participants` manquent dans son PME (`performance_score IS NOT NULL`), et lance `_run_other_player_enrichment` si besoin. Appelée dans le short-circuit. + Backfill immédiat des 7 matchs via `--force-performance-scores --player Madina97294`.
+**Bug 2 — Heatmap joueur_075 PME manquant (7ème tentative)**
+Root cause : Même short-circuit. `_enrich_other_registered_players` (fanout) est dans `_run_post_sync_pipeline` → skippé → les 7 matchs du 27/03 22:26–23:34 (session JGtm+joueur_075) absents du PME joueur_075.
+Fix : Nouvelle méthode `fanout_repair_missing_scores()` dans `FanoutEnrichmentMixin` : vérifie pour chaque joueur enregistré si des `match_participants` manquent dans son PME (`performance_score IS NOT NULL`), et lance `_run_other_player_enrichment` si besoin. Appelée dans le short-circuit. + Backfill immédiat des 7 matchs via `--force-performance-scores --player joueur_117`.
 
 **Bug 3 — Matrice d'impact absente avec 2 joueurs**
 Root cause : `render_impact_taquinerie` avait `if len(friend_xuids) < 2: return` → avec 1 ami sélectionné, la matrice n'apparaissait pas alors qu'elle est parfaitement valide (joueur principal + 1 ami = 2 participants).
@@ -89678,17 +89684,17 @@ Fix : `if not friend_xuids: return`.
 - **Problème 2 (axe zéro absent sur graphes négatifs)** : `apply_halo_plot_style` (via `theme.py`) force `zeroline=False` sur tous les axes, écrasant tout config antérieure. Fix : déplacer `update_yaxes(zeroline=True, ...)` APRÈS l'appel dans `trio.py` ET `_teammates_trio_helpers.py`.
 - **Problème 3 (KDA/FDA recalculé au lieu de lire l'API)** : SQL de `teammates_service.py` avait `p.kda AS ratio` nu → NULL pour anciens matchs. Fix : COALESCE identique à `mv_player_matches`. De plus `compute_global_ratio` recalculait depuis les totaux → remplacé par lecture directe de la moyenne de `ratio` dans `teammates_views_shared.py`.
 - **Problème 4 (nombre matchs différent)** : Cache Streamlit — basse priorité, non traité.
-- **Problème 5 (sessions manquantes graphe perf)** : `session_id=NULL` pour 12 matchs JGtm et 12 matchs Madina97294 → `_group_by_session` retourne None. Fix : backfill `--sessions` exécuté.
+- **Problème 5 (sessions manquantes graphe perf)** : `session_id=NULL` pour 12 matchs JGtm et 12 matchs joueur_117 → `_group_by_session` retourne None. Fix : backfill `--sessions` exécuté.
 
 **Résultats :**
 - 5 fichiers modifiés : `match_view_encounters.py`, `trio.py`, `_teammates_trio_helpers.py`, `teammates_service.py`, `teammates_views_shared.py`
 - 282 tests passent, 0 failure
 - Backfill JGtm : 705 sessions mises à jour ✓
-- Backfill Madina97294 : 1030 sessions mises à jour ✓
+- Backfill joueur_117 : 1030 sessions mises à jour ✓
 
 **Conclusion / prochaine étape :**
-Tous les problèmes réglés. Vérifier visuellement dans l'app que le graphe "Evolution de la performance d'escouade" affiche bien les sessions 18 mars et 24 mars pour JGtm, Chocoboflor et Madina97294.
-.venv/Scripts/python.exe scripts/backfill_data.py --player Madina97294 --sessions
+Tous les problèmes réglés. Vérifier visuellement dans l'app que le graphe "Evolution de la performance d'escouade" affiche bien les sessions 18 mars et 24 mars pour JGtm, joueur_165 et joueur_117.
+.venv/Scripts/python.exe scripts/backfill_data.py --player joueur_117 --sessions
 ```
 
 ---
@@ -89804,7 +89810,7 @@ Piste E (harmonisation IDs 32/64 bits) à traiter en priorité avant toute écri
 
 **Décision technique :**
 
-**Bug LUSR (Madina97294)** : La batch initiale (25/02) avait utilisé du code dev non commité (`PlayerState.from_csr(1410)` → mu₀=1940), alors que le code commité utilise `INITIAL_MU=1500`. Tous les syncs suivants redémarraient de 1500 → écart permanent de -433pts (Argent V au lieu de Platine VI).
+**Bug LUSR (joueur_117)** : La batch initiale (25/02) avait utilisé du code dev non commité (`PlayerState.from_csr(1410)` → mu₀=1940), alors que le code commité utilise `INITIAL_MU=1500`. Tous les syncs suivants redémarraient de 1500 → écart permanent de -433pts (Argent V au lieu de Platine VI).
 
 **Fix 1 — seed LUSR** (`_skill_rating.py::batch_compute_lusr`) : En mode incrémental (`not force`), la fonction charge maintenant les derniers `(rating_value, rating_deviation)` par `playlist_group` depuis `match_skill_rank` via `_load_existing_lusr_states()` et les passe à `compute_skill_ratings_batch(existing_states=...)`. Empêche tout redépart à `INITIAL_MU=1500`.
 
@@ -89813,10 +89819,10 @@ Piste E (harmonisation IDs 32/64 bits) à traiter en priorité avant toute écri
 **Fix 3 — bypass boucle force** (`orchestrator.py`) : Quand `--force-performance-scores` est le seul flag actif (`_perf_force_only=True`), la boucle séquentielle `get_match_stats` est ignorée (comme `_weapons_only_shortcut`). Le batch vectorisé `_MinimalEngine.batch_compute_performance_scores(force=True)` s'exécute en post-boucle. Résultat : 23s pour 2058 matchs au lieu de ~17min.
 
 **Résultats prod (25/03/2026) :**
-- Madina97294 : 1354 (Argent V) → **1788 (Platine VI)** via `--force-lusr` (seed CSR=1400 → mu=1933)
+- joueur_117 : 1354 (Argent V) → **1788 (Platine VI)** via `--force-lusr` (seed CSR=1400 → mu=1933)
 - JGtm : stable Or III/IV (~1493-1503)
-- Chocoboflor : stable Or II (~1450-1457)
-- XxDaemonGamerxX : stable Or III (~1480-1488)
+- joueur_165 : stable Or II (~1450-1457)
+- joueur_291 : stable Or III (~1480-1488)
 
 **Fichiers modifiés :** `_skill_rating.py`, `_performance.py`, `strategies.py`, `orchestrator.py`
 
@@ -89879,18 +89885,18 @@ Piste E (harmonisation IDs 32/64 bits) à traiter en priorité avant toute écri
 
 **Décision technique :**
 - `batch_compute_lusr` dans `_skill_rating.py` redémarrait à `INITIAL_MU=1500` à chaque sync incrémental, créant une discontinuité permanente. Fix : charge le dernier `(rating_value, rating_deviation)` par `playlist_group` depuis `match_skill_rank` et le passe via `existing_states` à `compute_skill_ratings_batch`.
-- `--force-lusr` (via `strategies.py::compute_lusr_for_player`) utilise `get_best_csr_for_player` → seed CSR correct ; pas besoin d'option spéciale pour corriger Madina.
+- `--force-lusr` (via `strategies.py::compute_lusr_for_player`) utilise `get_best_csr_for_player` → seed CSR correct ; pas besoin d'option spéciale pour corriger joueur_075.
 - Score de performance : passage de "historique complet" à "fenêtre glissante 50 matchs" dans les 3 chemins : `_compute_perf_updates`, `_compute_performance_score`, `compute_performance_score_for_match`.
 - `batch_compute_performance_scores` reçoit maintenant `force: bool = False` pour forcer le recalcul via `--force-performance-scores`.
 
 **Résultats observés (simulation) :**
-- Madina97294 avec `--force-lusr` → 1794.9 Platine VI (vs 1354.9 Argent V actuel, résultant du bug)
+- joueur_117 avec `--force-lusr` → 1794.9 Platine VI (vs 1354.9 Argent V actuel, résultant du bug)
 - Perf score window=50 vs all-history : delta typique ±3-6 pts sur les matchs récents
 - 649 tests passent, 0 erreur
 
 **Prochaine étape :**
 ```bash
-python scripts/backfill_data.py --player Madina97294 --force-lusr
+python scripts/backfill_data.py --player joueur_117 --force-lusr
 python scripts/backfill_data.py --all --force-performance-scores
 ```
 
@@ -90314,7 +90320,7 @@ Deux causes racines identifiées expliquant le delta score (37 page Session vs 3
 **Décision technique** :
 Investigation Phase 0 complète. H1 (sentinels avec `reconciled_as`) infirmée — 0 lignes en base. La vraie cause : dans le film Halo Infinite, les melee kills (coups de crosse) sont attribués au `weapon_id` de l'arme tenue (ex. MA40 AR), PAS au sentinel 1. Or `_enrich_with_grenade_melee` ajoute `match_participants.melee_kills` (API) en sus → double-comptage systématique.
 
-Exemple confirmé (Chocoboflor, match aaaf6c76) : 21 kills API, film 20 kills armes + 1 grenade sentinel, affichage 28 (= 20 + 7 melee + 1 grenade).
+Exemple confirmé (joueur_165, match aaaf6c76) : 21 kills API, film 20 kills armes + 1 grenade sentinel, affichage 28 (= 20 + 7 melee + 1 grenade).
 
 **Fix** : Calcul d'un `remainder = api_total - film_kills` dans les 3 endroits d'enrichissement (`match_view_weapon_kills.py`, `match_view_scoreboard_detail.py`, `teammates_weapons.py`). Le melee/grenade API est limité à ce remainder : si le film couvre déjà tous les kills, aucun ajout. Nouvelle méthode `load_total_kills_for_player()` dans `WeaponKillsMixin`.
 
@@ -90558,9 +90564,9 @@ Audit complet de `scripts/` et `tests/`. Deux passes de nettoyage :
 **Résultats** :
 - Citation insérée dans `metadata.duckdb`
 - Backfill `--force-citations --all` : 2 046 matchs recalculés (4 joueurs)
-- Totaux : Madina97294 = 3 831 | JGtm = 3 122 | Chocoboflor = 1 745 | XxDaemonGamerxX = 54
+- Totaux : joueur_117 = 3 831 | JGtm = 3 122 | joueur_165 = 1 745 | joueur_291 = 54
 
-**Conclusion** : Citation opérationnelle. Tous les joueurs sont au niveau Master sauf XxDaemonGamerxX (palier 5, 54/55).
+**Conclusion** : Citation opérationnelle. Tous les joueurs sont au niveau Master sauf joueur_291 (palier 5, 54/55).
 
 ---
 
@@ -90953,15 +90959,15 @@ Migration b5>>4 entièrement validée. Aucune régression. Prochaine étape : co
 
 ---
 
-### [2026-03-19] — Backfill enrichissement JGtm + Madina97294 + nettoyage BACKLOG
+### [2026-03-19] — Backfill enrichissement JGtm + joueur_117 + nettoyage BACKLOG
 
 **Statut** : Complété ✅
 
-**Contexte** : Après la mise en place du fan-out (Fix 11), les matchs du 18 mars n'avaient pas encore été enrichis pour JGtm (8 matchs manquants) et Madina97294 (8 matchs manquants) car le fan-out ne s'applique qu'aux syncs futurs.
+**Contexte** : Après la mise en place du fan-out (Fix 11), les matchs du 18 mars n'avaient pas encore été enrichis pour JGtm (8 matchs manquants) et joueur_117 (8 matchs manquants) car le fan-out ne s'applique qu'aux syncs futurs.
 
 **Actions exécutées** :
 - Backfill `--performance-scores --sessions --citations` pour JGtm : 8/8 matchs enrichis, 8 performance scores, 682 sessions, 8 citations ✓
-- Backfill `--performance-scores --sessions --citations` pour Madina97294 : 8/8 matchs enrichis, 8 performance scores, 1018 sessions, 8 citations ✓
+- Backfill `--performance-scores --sessions --citations` pour joueur_117 : 8/8 matchs enrichis, 8 performance scores, 1018 sessions, 8 citations ✓
 
 **Nettoyage BACKLOG.md** : Tous les 11 fixes + bonus weapon fusion déplacés dans la table "Récemment complété" avec dates. Descriptions détaillées retirées (code implémenté). Seuls 2 items restent en backlog actif : migration b5>>4 et perf `_MAX_CONCURRENT_CHUNKS`.
 
@@ -91565,7 +91571,7 @@ Audit complet en lecture seule de `shared_matches_v2.duckdb` et des `stats.duckd
 **Résultats** :
 
 *Backfills exécutés :*
-- Sessions (`session_id`) : Chocoboflor (309), JGtm (669), Madina97294 (1010) → toutes mises à jour
+- Sessions (`session_id`) : joueur_165 (309), JGtm (669), joueur_117 (1010) → toutes mises à jour
 
 *shared_matches_v2 (1457 matchs) :*
 - **medals / participants** : 100% OK
@@ -91585,7 +91591,7 @@ Audit complet en lecture seule de `shared_matches_v2.duckdb` et des `stats.duckd
 - `formula_a` (29465) : 89% weapon_id=NULL — faible qualité
 - `none` (2826) : sentinels/raw — bruit, script `_fix_weapon_kills_sentinel.py` créé pour nettoyer
 
-*Madina97294 weapon_kills :* seulement 41.4% couverture (418/1010) — matchs anciens non processés
+*joueur_117 weapon_kills :* seulement 41.4% couverture (418/1010) — matchs anciens non processés
 
 **Conclusion / Prochaines étapes** :
 1. **CRITIQUE** : Backfill participants pour les 166 matchs Fiesta+Assassin de JGtm
@@ -91964,7 +91970,7 @@ Implémentation des 4 optimisations identifiées lors de l'audit du pipeline wea
 
 **Décision technique** :
 - **Cause racine** : L'API Halo `/hi/matches/{id}/stats` ne retourne PAS `PlayerGamertag` dans le modèle `PlayerStats` de SPNKr. Donc `extract_participants()` et `extract_aliases()` obtiennent toujours `gamertag=None`. La table `xuid_aliases` n'avait que les 14 694 entrées de la migration initiale (fév. 2026), jamais mises à jour depuis.
-- **Source fiable identifiée** : `highlight_events.raw_json` stocke `{"gamertag": "frannajera", ...}` — l'API film/events inclut bien les gamertags. 186 gamertags uniques valides dans les données existantes.
+- **Source fiable identifiée** : `highlight_events.raw_json` stocke `{"gamertag": "joueur_290", ...}` — l'API film/events inclut bien les gamertags. 186 gamertags uniques valides dans les données existantes.
 - **Fix sync futur** : Dans `_shared_writes.py` → `_insert_shared_events()` appelle maintenant `_upsert_event_aliases()` qui extrait les paires `xuid→gamertag` de chaque événement filmé et les insère dans `xuid_aliases` (source `"highlight_events"`).
 - **Backfill historique** : `backfill_xuid_aliases_from_events()` dans `strategies.py` — lit `json_extract_string(raw_json, '$.gamertag')` sur toute la table `highlight_events`, insère/met à jour `xuid_aliases` via `ON CONFLICT DO UPDATE`. Résultat : **6 389 aliases insérés/mis à jour**.
 - **Nettoyage** : fallbacks ad hoc supprimés de `_events_repo.py` (COALESCE `raw_json`) et `_gamertag_resolver.py` (méthode `_load_gamertags_fallback` entière).
@@ -91979,8 +91985,8 @@ Implémentation des 4 optimisations identifiées lors de l'audit du pipeline wea
 - `scripts/backfill_data.py` : handler pour ces flags + fix `_open_shared_conn` → `get_shared_matches_path()`
 
 **Résultats** :
-- XUID `2533274825169524` → résolu en `"frannajera"` ✅
-- `v_gamertag_lookup` retourne bien `frannajera` ✅
+- XUID `2628927772824055` → résolu en `"joueur_290"` ✅
+- `v_gamertag_lookup` retourne bien `joueur_290` ✅
 - Total `xuid_aliases` : 15 043 (était 14 694 avant backfill) ✅
 - Pipeline sync : les futurs matchs peupleront automatiquement `xuid_aliases` via les events filmés
 
@@ -92018,7 +92024,7 @@ Implémentation des 4 optimisations identifiées lors de l'audit du pipeline wea
 
 ---
 
-### [2026-03-17] — Fix adornment rang carrière manquant pour JGtm / Chocoboflor
+### [2026-03-17] — Fix adornment rang carrière manquant pour JGtm / joueur_165
 
 **Statut** : Complété
 
@@ -92026,7 +92032,7 @@ Implémentation des 4 optimisations identifiées lors de l'audit du pipeline wea
 - **Cause 1 — `profile.py` incomplet** : `ProfileAssets` ne contenait pas `adornment_path`, `load_profile_assets()` n'extrayait pas `adornment_image_url` de l'API, et `render_profile_header()` ne le passait pas à `get_hero_html()`. Fix : ajout du champ + résolution + passage.
 - **Cause 2 — URL malformée dans `_build_spnkr_coro`** (bug principal) : Dans `_resolve_spnkr_strategy`, les URLs gamecms `/hi/images/file/` extrayaient un `rel` sans `/`, et `_build_spnkr_coro` reconstruisait `https://gamecms-hacs.svc.halowaypoint.com<rel>` (hostname invalide `...halowaypoint.comcareer_rank/...`). Conséquence : `_try_spnkr_fetch_bytes` échouait → fallback `urllib` sans tokens → 401 Unauthorized.
 - **Fix** : Changer la branche `/hi/images/file/` dans `_resolve_spnkr_strategy` pour utiliser `use_direct_get=True, direct_url=raw` (GET direct avec auth headers, comme les autres URLs complètes). Uniform avec la stratégie des URLs `/hi/waypoint/file/images/`.
-- **Pourquoi MAdina fonctionnait** : Son cache JSON profile API avait `adornment_image_url` non-null (obtenu lors d'un fetch API antérieur avec tokens valides + le fichier était déjà en cache disque). JGtm/Chocoboflor avaient `adornment_image_url=null` dans leur cache (endpoint career rank player-gated sans leurs tokens propres) ; le DB fallback fournissait l'URL mais le download échouait à cause du bug URL.
+- **Pourquoi joueur_435 fonctionnait** : Son cache JSON profile API avait `adornment_image_url` non-null (obtenu lors d'un fetch API antérieur avec tokens valides + le fichier était déjà en cache disque). JGtm/joueur_165 avaient `adornment_image_url=null` dans leur cache (endpoint career rank player-gated sans leurs tokens propres) ; le DB fallback fournissait l'URL mais le download échouait à cause du bug URL.
 
 - **Cause 3 — `azure_client_secret` incorrectement requis** : Dans `get_tokens()`, la condition `if not (azure_client_id and azure_client_secret and oauth_refresh_token)` bloquait l'acquisition de tokens pour un client public (pas de secret). Fix : condition simplifiée à `if not (azure_client_id and oauth_refresh_token)`.
 - **Cause 4 — gamertag non transmis → refresh token per-player introuvable** : `ensure_spnkr_tokens` appelait `get_tokens()` sans `gamertag`, donc `SPNKR_OAUTH_REFRESH_TOKEN_JGTM` n'était jamais recherché. Fix en 2 lieux : `ensure_spnkr_tokens` accepte `gamertag: str | None` et le transmet à `get_tokens`; `render_profile_hero` passe `gamertag=_gamertag_for_tokens` (= `me_name`).
@@ -92040,7 +92046,7 @@ Implémentation des 4 optimisations identifiées lors de l'audit du pipeline wea
 **Résultats** :
 - Après fix, `_resolve_spnkr_strategy` retourne `use_direct_get=True` pour toutes les URLs gamecms complètes
 - `ensure_spnkr_tokens(gamertag="JGtm")` → `get_tokens(gamertag="JGtm")` → cherche `SPNKR_OAUTH_REFRESH_TOKEN_JGTM` → tokens obtenus → image téléchargée avec succès
-- La prochaine visite d'une page JGtm/Chocoboflor déclenchera le téléchargement et l'adornment sera mis en cache
+- La prochaine visite d'une page JGtm/joueur_165 déclenchera le téléchargement et l'adornment sera mis en cache
 
 **Prochaine étape** : Commit
 
@@ -92108,7 +92114,7 @@ Implémentation des 4 optimisations identifiées lors de l'audit du pipeline wea
 - 11/11 tests passent (tests qualité + performance v4)
 - `ruff check src/` propre  
 - Backfill JGtm : 2544 events + 1058 weapon_kills (12 matchs)
-- Backfill Chocoboflor : 1772 events + 703 weapon_kills (9 matchs)
+- Backfill joueur_165 : 1772 events + 703 weapon_kills (9 matchs)
 - **Post-backfill** : 21/21 matchs avec events, 21/21 matchs avec weapons
 
 **Conclusion** : BDD `shared_matches_v2.duckdb` est à jour et complète. Architecture `paths.py` propre.
@@ -92215,7 +92221,7 @@ Implémentation des 4 optimisations identifiées lors de l'audit du pipeline wea
 
 **Résultats** : 218 tests passent, zéro régression. `teammates_service.py` maintenu à 495 lignes (sous 500L).
 
-**Prochaine étape** : Vérification visuelle en app (match Chocoboflor 12/03 Live Fire, 71 attendu).
+**Prochaine étape** : Vérification visuelle en app (match joueur_165 12/03 Live Fire, 71 attendu).
 
 ### [2026-03-16] — Application stash : correctifs + refactor taille
 
@@ -92245,7 +92251,7 @@ Implémentation des 4 optimisations identifiées lors de l'audit du pipeline wea
 ### [2026-03-16] — Bug #24-ter : suppression de _pick_best_duckdb_v4_player()
 
 - **Statut** : Complété
-- **Tâche** : Supprimer l'heuristique obsolète "joueur avec le plus de matchs" qui était la vraie root cause du bug récurrent Madina97294.
+- **Tâche** : Supprimer l'heuristique obsolète "joueur avec le plus de matchs" qui était la vraie root cause du bug récurrent joueur_117.
 
 **Analyse :**
 - `_pick_best_duckdb_v4_player()` ouvre chaque DB de `data/players/` pour compter les matchs → O(N × DB), coûteux au démarrage
@@ -92273,10 +92279,10 @@ Implémentation des 4 optimisations identifiées lors de l'audit du pipeline wea
 ### [2026-03-16] — Bug #24-bis : switch joueur sur lien gamertag (régression post-patch)
 
 - **Statut** : Complété
-- **Tâche** : Corriger le switch systématique sur Madina97294 lors d'un clic sur un lien gamertag vers Explorer.
+- **Tâche** : Corriger le switch systématique sur joueur_117 lors d'un clic sur un lien gamertag vers Explorer.
 
 **Root cause (incomplète dans le patch #24) :**
-Le premier patch (2026-03-14) avait supprimé la lecture directe de `st.query_params["gamertag"]` dans `init_source_state()`. Mais il restait `_pick_best_duckdb_v4_player()` qui choisit toujours le joueur avec le plus de matchs. Or, un clic sur un `<a target='_self'>` en HTML injecté dans Streamlit provoque une navigation complète → nouvelle session WebSocket → `session_state` vide → `_pick_best_duckdb_v4_player()` est appelée → Madina97294 (joueur le plus actif) est systématiquement sélectionnée, peu importe le joueur réellement ciblé.
+Le premier patch (2026-03-14) avait supprimé la lecture directe de `st.query_params["gamertag"]` dans `init_source_state()`. Mais il restait `_pick_best_duckdb_v4_player()` qui choisit toujours le joueur avec le plus de matchs. Or, un clic sur un `<a target='_self'>` en HTML injecté dans Streamlit provoque une navigation complète → nouvelle session WebSocket → `session_state` vide → `_pick_best_duckdb_v4_player()` est appelée → joueur_117 (joueur le plus actif) est systématiquement sélectionnée, peu importe le joueur réellement ciblé.
 
 **Fix :**
 - `src/app/data_loader.py` : Ajout de `_is_nav_link = bool(st.query_params.get("gamertag"))` avant l'auto-sélection. Si ce flag est True, `_pick_best_duckdb_v4_player()` est ignoré, et la `default_db` (premier joueur alphabétique) est utilisée. L'`elif` pour SPNKr est aussi conditionné à `not _is_nav_link`.
@@ -93117,7 +93123,7 @@ Baseline de taille mise à jour (`scripts/check_code_size.py --update`) car `_ro
 **Résumé :**
 
 - **17 bugs corrigés (code)** : #2 (label KPI), #4 (filtre équipe impact), #5 (ordre chrono matrice), #7 (courbe ratio supprimée + priorité opérateur), #10 (durée session span), #11 (formulation némésis), #13 (opacité barres + hachures morts), #14 (date tooltips via #28), #15 (finisseur via #4), #17 (bots MVP/LVP), #18 (leetspeak fuzzy), #19 (reset session_state explorer), #20 (fallback sessions), #21 (LUSR retiré net score), #22 (table carte supprimée), #27 (table période supprimée), #28 (labels axe X #N+carte)
-- **3 bugs investigation/opérationnel** : #3 (LUSR -435, non reproductible → --force-lusr), #6 (perf >80 Chocoboflor), #12 (cache stale → Clear Cache)
+- **3 bugs investigation/opérationnel** : #3 (LUSR -435, non reproductible → --force-lusr), #6 (perf >80 joueur_165), #12 (cache stale → Clear Cache)
 - **2 bugs architecture** : #24 (navigation DB switch), #26 (timezone centralisation, root cause #23)
 - **4 bugs non traités** : #1 (non confirmé), #8 (feature), #9 (non reproductible), #16 (resync opérationnel)
 - **2 bugs liés** : #14→#28, #15→#4, #23→#26, #25 (pas de composant mode sur page Escouade)
@@ -93138,7 +93144,7 @@ Baseline de taille mise à jour (`scripts/check_code_size.py --update`) car `_ro
 - **Couche 1 — UI** : `_render_player_search()` utilisait un `st.selectbox` avec la liste brute de gamertags. Le selectbox Streamlit ne fait que du filtrage par préfixe — pas de recherche substring ni fuzzy. Fix : Remplacé par `st.text_input` + `fuzzy_search_gamertags()` + `st.selectbox` pour les résultats.
 - **Couche 2 — Données** (fix session suivante) : `get_all_gamertags()` ne requêtait que `xuid_aliases` (14 677 gamertags). Or 255 gamertags présents dans `highlight_events` n'existaient pas dans `xuid_aliases` (dont "Fadetonull"). Le scoreboard fonctionnait car `GamertagResolverMixin` cascade sur 3 sources (match_participants → xuid_aliases → highlight_events).
 - **Fix couche 2** : `get_all_gamertags()` → requête UNION `xuid_aliases + highlight_events` (14 677 → 14 932 gamertags). `resolve_gamertag_to_xuid()` → fallback highlight_events quand xuid_aliases ne trouve rien. Fichier modifié : `explorer_data.py`.
-- **Validation** : "Fadetonull" trouvé, résolu vers XUID 2535406000408371. fuzzy_search("Fadet") retourne ["Fadestars", "Fadetonull", ...]. 47/47 tests explorer passent.
+- **Validation** : "Fadetonull" trouvé, résolu vers XUID 2652806099316905. fuzzy_search("Fadet") retourne ["Fadestars", "Fadetonull", ...]. 47/47 tests explorer passent.
 
 **Bug #25 — Modes manquants page Victoires/Défaites :**
 - **Mauvais diagnostic initial** : Conclu que "pas de composant mode sur page Escouade" → non traitable.
@@ -93214,7 +93220,7 @@ Baseline de taille mise à jour (`scripts/check_code_size.py --update`) car `_ro
 - **Tâche** : Empêcher le switch de joueur principal quand on clique un lien gamertag ou match.
 
 **Root cause (2 problèmes) :**
-1. **`init_source_state()` lit `st.query_params["gamertag"]` et switch la DB/joueur** : Le commentaire dans le code reconnaissait le problème de timing (`_parse_query_params()` s'exécute après). Le workaround créé (lire le gamertag dans init) est erroné : `gamertag` est un paramètre de **navigation** (cible Explorer), pas un switch de joueur. Si `gamertag=Madina97294` est dans l'URL et que Madina a un dossier `data/players/Madina97294/stats.duckdb`, la DB est switchée.
+1. **`init_source_state()` lit `st.query_params["gamertag"]` et switch la DB/joueur** : Le commentaire dans le code reconnaissait le problème de timing (`_parse_query_params()` s'exécute après). Le workaround créé (lire le gamertag dans init) est erroné : `gamertag` est un paramètre de **navigation** (cible Explorer), pas un switch de joueur. Si `gamertag=joueur_117` est dans l'URL et que joueur_075 a un dossier `data/players/joueur_117/stats.duckdb`, la DB est switchée.
 2. **`gamertag_link()` utilise `target='_blank'`** : Nouvel onglet = nouveau `session_state` vide → `init_source_state` lit le query param gamertag et switch la DB. Même si le guard `if "db_path" not in st.session_state` protège les reruns normaux, un nouvel onglet n'a pas de session_state → le guard est traversé.
 
 **Fix :**
@@ -93443,7 +93449,7 @@ Baseline de taille mise à jour (`scripts/check_code_size.py --update`) car `_ro
 
 **Statut** : Corrigé ✅ — commit `e26a0ce` sur `main`
 
-**Contexte** : Sur le dernier match de Chocoboflor (`20fd2c23…`), 100 % des kills étaient attribués à Sidekick/MA40, alors que les stats API indiquaient 2 melee_kills et 1 grenade_kill. Les médailles contextuelles (Pummel, Back Smack, Stick…) étaient absentes de `highlight_events` → `is_melee=False`, `is_grenade=False` → tous les kills tombaient dans la branche weapon.
+**Contexte** : Sur le dernier match de joueur_165 (`20fd2c23…`), 100 % des kills étaient attribués à Sidekick/MA40, alors que les stats API indiquaient 2 melee_kills et 1 grenade_kill. Les médailles contextuelles (Pummel, Back Smack, Stick…) étaient absentes de `highlight_events` → `is_melee=False`, `is_grenade=False` → tous les kills tombaient dans la branche weapon.
 
 **Cause racine** : `_reconcile_api_aggregates` utilisait `api_melee` et `api_grenade` uniquement pour calculer `api_weapon_kills`, sans injecter les sentinelles manquantes.
 
@@ -93455,10 +93461,10 @@ Baseline de taille mise à jour (`scripts/check_code_size.py --update`) car `_ro
   - `_step4c_promote()` — Step 4c
 - `_reconcile_api_aggregates` réduit à ~40L.
 
-**Backfill** : Chocoboflor (288 matchs, 6 200 lignes) ✅. Autres joueurs lancés en fond.
+**Backfill** : joueur_165 (288 matchs, 6 200 lignes) ✅. Autres joueurs lancés en fond.
 
 **Validation** :
-- Résumé Chocoboflor : `Corps à corps: 2, Sidekick: 5, MA40 AR: 4, Grenade: 1` ✓ (correspond aux stats API : kills=12, melee=2, grenade=1)
+- Résumé joueur_165 : `Corps à corps: 2, Sidekick: 5, MA40 AR: 4, Grenade: 1` ✓ (correspond aux stats API : kills=12, melee=2, grenade=1)
 
 **Résultats hooks** : ruff ✅ ruff-format ✅ check-code-size ✅ (baseline 641L documenté)
 
@@ -94028,8 +94034,8 @@ La zone draw TrueSkill classique (`v_draw(t, eps/c)` avec `t = (mu - mu_opp)/c`)
 
 | Joueur | Seed CSR | Ranked | Arena | BTB | Social |
 |--------|----------|--------|-------|-----|--------|
-| Madina97294 | Diamant V (1933) | 1930 Dia IV | 1770 Plat VI | 1701 Plat IV | 1904 Dia IV |
-| Chocoboflor | Or III (1474) | 1461 Or II | 1449 Or II | 1471 Or III | 1474 Or III |
+| joueur_117 | Diamant V (1933) | 1930 Dia IV | 1770 Plat VI | 1701 Plat IV | 1904 Dia IV |
+| joueur_165 | Or III (1474) | 1461 Or II | 1449 Or II | 1471 Or III | 1474 Or III |
 | JGtm | Or III (1474) | 1446 Or II | 1523 Or IV | 1438 Or II | 1441 Or II |
 
 #### UI Carrière redessinée
@@ -94039,7 +94045,7 @@ La zone draw TrueSkill classique (`v_draw(t, eps/c)` avec `t = (mu - mu_opp)/c`)
 - Ordre d'affichage : ranked → arena → btb → tactical → social → fun
 
 **Décisions clés** :
-- K_ELO=32 calibré empiriquement : Madina BTB composite_avg=0.476 → -232 pts sur 497 matchs (cohérent pour BTB)
+- K_ELO=32 calibré empiriquement : joueur_075 BTB composite_avg=0.476 → -232 pts sur 497 matchs (cohérent pour BTB)
 - TrueSkill sigma conservé à t=0 (réduction d'incertitude symétrique après chaque match) — mu_opp influence c² uniquement
 - Un seul `match_skill_rank` record par match_id (PK) garantit l'exclusivité LUSR/CSR
 
@@ -95102,7 +95108,7 @@ Chaque sprint dispose maintenant de :
 
 **Contexte** : L'utilisateur signale que le script backfill_data.py "ne semble pas bien fonctionner". Symptôme concret : 605 matchs détectés, après traitement de 200 et relance → toujours 605.
 
-**Symptôme utilisateur (Madina97294)** :
+**Symptôme utilisateur (joueur_117)** :
 1. Lance `--all --all-data` → Trouve **605 matchs** à traiter
 2. Traite **200 matchs** puis interrompt (Ctrl+C)
 3. Relance → Trouve toujours **605 matchs** (au lieu de ~405)
@@ -95245,7 +95251,7 @@ Chaque sprint dispose maintenant de :
 
 **Statut** : Terminé
 
-**Problème** : Sur le profil d’un joueur (ex. JGtm), les médias apparaissaient parfois tous sous « Captures de MAdina », parfois sous « Captures de Chocoboflor », sans stabilité. Les captures proviennent pourtant de matchs où le joueur du profil a joué (au minimum).
+**Problème** : Sur le profil d’un joueur (ex. JGtm), les médias apparaissaient parfois tous sous « Captures de joueur_435 », parfois sous « Captures de joueur_165 », sans stabilité. Les captures proviennent pourtant de matchs où le joueur du profil a joué (au minimum).
 
 **Causes identifiées** :
 1. **Association** : On parcourait les BDD joueurs dans un ordre non déterministe (`iterdir()`). Pour chaque média on associait le « meilleur » match **par BDD** puis on insérait une seule ligne (celle du premier joueur trouvé). Résultat : un seul xuid par média, dépendant de l’ordre des dossiers.
@@ -95553,7 +95559,7 @@ L'utilisateur demande où sont stockées les données "qui a tué qui" avec time
    - Events `death` : contiennent la victime (xuid, gamertag, time_ms)
    - Pairing possible par timestamp (±5ms) :
      ```
-     kill @ 40528ms (quisqueyano159) → death @ 40529ms (Ale8037)
+     kill @ 40528ms (joueur_1047) → death @ 40529ms (joueur_668)
      ```
 
 3. **Modules existants** (bien documentés, mais données manquantes) :
@@ -95609,7 +95615,7 @@ L'utilisateur signale que plusieurs données ne sont plus enregistrées en BDD :
 **Statut** : ✅ **CORRIGÉ** - Ne plus refaire cette erreur !
 
 **Contexte** :
-L'onglet "Mes coéquipiers" affichait les mêmes valeurs pour tous les joueurs (ex: JGtm, Madina97294, Chocoboflor avaient tous 1.02, 1.38, 0.48 en stats/min).
+L'onglet "Mes coéquipiers" affichait les mêmes valeurs pour tous les joueurs (ex: JGtm, joueur_117, joueur_165 avaient tous 1.02, 1.38, 0.48 en stats/min).
 
 **CAUSE RACINE** :
 ```python
@@ -96582,7 +96588,7 @@ docs/DATA_ARCHITECTURE.md        # MAJ
 **Contexte** :
 Le service `WeaponExtractionService.process_match` traite **tous les joueurs d'un match** en une
 passe. Dès qu'un match est traité pour un joueur, le bit `WEAPON_KILLS` est posé sur
-`match_registry`. En escouade (xxdaemongamerxx + Chocoboflor + Madina97294 sur le même match),
+`match_registry`. En escouade (joueur_291 + joueur_165 + joueur_117 sur le même match),
 le deuxième joueur à sync retraitait inutilement le match.
 
 **Décision — Point A : guard universel dans `_backfill_weapon_kills_for_match`** :
@@ -96667,18 +96673,18 @@ Assassin    → game_variant_name_fr = 'Assassin : Arène'
 
 ---
 
-### [2026-04-02] — analyse(psa): root cause PSA manquants Madina + backfill — Complété
+### [2026-04-02] — analyse(psa): root cause PSA manquants joueur_075 + backfill — Complété
 
 **Statut** : Complété
 
-**Contexte** : Audit PSA (personal_score_awards) révèle que Madina avait 41 matchs sans PSA dans sa DB joueur. Backfill effectué : +67 lignes insérées. Question : comment des PSA ont-elles pu manquer sur des matchs déjà synchés ?
+**Contexte** : Audit PSA (personal_score_awards) révèle que joueur_075 avait 41 matchs sans PSA dans sa DB joueur. Backfill effectué : +67 lignes insérées. Question : comment des PSA ont-elles pu manquer sur des matchs déjà synchés ?
 
 **Root cause identifiée** : Le fanout PSA était absent avant le commit `c794712` (31/03/2026 21:35).
 
 **Mécanisme du bug** :
 - L'API Halo retourne `stats_json` contenant les PSA de **tous les participants** du match
 - Avant `c794712`, le moteur de sync extrayait les PSA uniquement pour le joueur principal (JGtm, le compte qui fait le sync)
-- Les PSA des coéquipiers (Madina, Chocoboflor) étaient ignorées → `personal_score_awards` vides pour eux
+- Les PSA des coéquipiers (joueur_075, joueur_165) étaient ignorées → `personal_score_awards` vides pour eux
 
 **Fix `c794712`** (3 fonctions ajoutées dans `src/data/sync/_engine_fanout.py`) :
 - `_collect_psa_for_other_players` : parcourt `stats_json`, extrait les PSA de chaque coéquipier
@@ -96687,7 +96693,7 @@ Assassin    → game_variant_name_fr = 'Assassin : Arène'
 
 **Preuve par corrélation temporelle** :
 ```
-Total matchs Madina  : 1048
+Total matchs joueur_075  : 1048
 Matchs avec PSA      : 1029
 Matchs SANS PSA      : 19
   → avant fix (< 2026-03-31) : 19
@@ -96698,13 +96704,13 @@ Corrélation parfaite — tous les matchs sans PSA sont antérieurs au fix.
 **Backfill résultats** :
 | Joueur | Matchs sans PSA | PSA insérées | Restants légitimes |
 |--------|----------------:|-------------:|-------------------:|
-| Madina97294 | 41 | 67 lignes | 19 (score=0 API) |
+| joueur_117 | 41 | 67 lignes | 19 (score=0 API) |
 | JGtm | 17 | 0 | 17 (score=0, abandon/déco) |
-| Chocoboflor | 5 | 4 lignes | 1 (score=0) |
+| joueur_165 | 5 | 4 lignes | 1 (score=0) |
 
 **Score=0 = 0 PSA** : L'API Halo ne génère aucun award pour un joueur avec score=0/kills=0 — comportement normal, non backfillable.
 
-**Conclusion** : Fanout correct depuis le 31/03. Rien à ajuster côté sync. La prochaine sync de JGtm distribuera automatiquement les PSA de Madina et Chocoboflor pour les nouveaux matchs. Les 19+17+1 PSA résiduelles manquantes sont légitimes (parties abandonnées ou score nul).
+**Conclusion** : Fanout correct depuis le 31/03. Rien à ajuster côté sync. La prochaine sync de JGtm distribuera automatiquement les PSA de joueur_075 et joueur_165 pour les nouveaux matchs. Les 19+17+1 PSA résiduelles manquantes sont légitimes (parties abandonnées ou score nul).
 
 ---
 
@@ -96715,7 +96721,7 @@ Corrélation parfaite — tous les matchs sans PSA sont antérieurs au fix.
 **Décision technique** :
 Correction du bug de seed cascade dans `batch_compute_lusr` (mode incrémental).
 
-**Cause racine** : En mode `force=False`, la fonction chargait TOUS les matchs historiques (ex: 404 pour Madina) puis les passait à `compute_skill_ratings_batch` avec `existing_states` injecté comme µ₀ avant le match #1. TrueSkill recalculait toute l'historique depuis cette graine décalée. Chaque sync séparée dérivait le rating de ~160 pts (Madina), ~17 pts (Chocoboflor), +44 pts (JGtm).
+**Cause racine** : En mode `force=False`, la fonction chargait TOUS les matchs historiques (ex: 404 pour joueur_075) puis les passait à `compute_skill_ratings_batch` avec `existing_states` injecté comme µ₀ avant le match #1. TrueSkill recalculait toute l'historique depuis cette graine décalée. Chaque sync séparée dérivait le rating de ~160 pts (joueur_075), ~17 pts (joueur_165), +44 pts (JGtm).
 
 **Fix implémenté dans `src/data/sync/_skill_rating.py`** :
 1. `batch_compute_lusr` — en mode incrémental, filtrer `df_matches` et `df_participants` aux seuls nouveaux matchs (non présents dans `existing_lusr_ids | existing_csr_ids`) avant de passer à `compute_skill_ratings_batch`
@@ -96723,7 +96729,7 @@ Correction du bug de seed cascade dans `batch_compute_lusr` (mode incrémental).
 
 **Tests écrits** (`tests/test_lusr_incremental_seed.py`) — 11 tests, tous verts :
 - `TestIncrementalContinuityInvariant` : incrémental == full batch pour les nouveaux matchs
-- `TestCascadeDriftDetection` : simule le scénario Madina, prouve que le drift est corrigé
+- `TestCascadeDriftDetection` : simule le scénario joueur_075, prouve que le drift est corrigé
 - `TestUpsertLusrRatingsSeedRatings` : delta correct, guard-rail, isolation par groupe
 
 **CLI** : `--reset-lusr` ajouté dans `scripts/backfill/cli.py` (logique déjà présente dans `backfill_data.py`)
@@ -96731,12 +96737,12 @@ Correction du bug de seed cascade dans `batch_compute_lusr` (mode incrémental).
 **Reset données en production** :
 | Joueur | Matchs recalculés | Seed CSR |
 |--------|------------------:|----------|
-| Chocoboflor | 352 | CSR=711 → µ=1474 |
+| joueur_165 | 352 | CSR=711 → µ=1474 |
 | JGtm | 729 | CSR=667 → µ=1445 |
-| Madina97294 | 1042 | CSR=1400 → µ=1933 |
-| XxDaemonGamerxX | 22 | µ=1500 (défaut) |
+| joueur_117 | 1042 | CSR=1400 → µ=1933 |
+| joueur_291 | 22 | µ=1500 (défaut) |
 
-**Résultats** : Madina "Non classé" était à 988.6 (vrai avg ~1843). Après reset complet depuis CSR seed : recalcul propre sans dérive inter-syncs. Le fan-out (`_engine_fanout.py` l.197) bénéficie du fix automatiquement (même code path).
+**Résultats** : joueur_075 "Non classé" était à 988.6 (vrai avg ~1843). Après reset complet depuis CSR seed : recalcul propre sans dérive inter-syncs. Le fan-out (`_engine_fanout.py` l.197) bénéficie du fix automatiquement (même code path).
 
 **Prochaine étape** : Commit + PR.
 
@@ -100244,7 +100250,7 @@ textes i18n FR/EN (actuellement inversifs) + fallback queries.ts + tests. Lot ex
 **Point 2 (note de perf)** : mecanisme etabli — 6 chaines (GetPerformanceChain), fenetre 50,
 seuil 10/chaine, 13 metriques SANS aucune metrique objectif ; isRanked court-circuite la
 famille. Corpus (diag_q read-only, serveur arrete, 4 joueurs, 2948 participations) :
-ranked minuscule (JGtm 8, Choco 8, Madina 34, Daemon 0) ; ecart de famille porte par le
+ranked minuscule (JGtm 8, joueur_901 8, joueur_075 34, Daemon 0) ; ecart de famille porte par le
 score personnel/min (+28 % en objectif, combat quasi plat) MAIS pspm ~95 % combat (awards
 JGtm : kills+assists 1,52 M pts vs objective 85 k) -> il faut isoler la part objectif ;
 personal_score_awards (categorie `objective` explicite, 1101/1120 matchs JGtm) = LA source ;
@@ -100300,13 +100306,13 @@ typecheck/lint/vitest 1321 verts, exit 0. Reste : gate visuel utilisateur + CI d
 
 **Lot 0 (simulation offline) PASSE** : outil cmd/diag_perfsim (worktree
 LevelUp-wt-perfnote, non commite a ce stade) + rapport RAPPORT_SIM_PERF_NOTE_2026-08.md.
-Replique du regime actuel exacte a 0.00 chez JGtm/Daemon ; ecarts Choco/Madina expliques
+Replique du regime actuel exacte a 0.00 chez JGtm/Daemon ; ecarts joueur_901/joueur_075 expliques
 (medal_exploit absent du chemin post-sync). Purge prevue 78/41/118/10 — recoupe le
 diagnostic a l unite. Zero note sur outcome=4. **POIDS FIGES : ospm = 0.12** (gain des
 ecrases-mais-actifs 2x le bruit ; 0.16 punirait les porteurs de combat).
 
 **Decouvertes majeures du lot 0, verifiees sur pieces par le pilote** :
-- Index ART `idx_psa_match` CORROMPU sur la DB XxDaemonGamerxX (2 lignes indexees vs 4
+- Index ART `idx_psa_match` CORROMPU sur la DB joueur_291 (2 lignes indexees vs 4
   au scan force — confirme par diag_q). Le lecteur prod PersonalScoreAwardsRepo (colonne
   Score personnel) est expose des aujourd hui. Reparation = item B2.4 du plan.
 - 26 matchs objectifs classes slayer par la liste de classify.go (Assaut/VIP/ctf 3
@@ -100502,7 +100508,7 @@ RecomputePerformanceScoresWithMedals (chemin backfill AVEC medailles), seams cab
 valides fail-fast, 3 gardes anti-no-op LUSR. RESULTATS contre-sondes pilote : purge =
 prediction A L UNITE 4/4 (78/41/118/10) ; zero note sur outcome=4 ; zero chaine
 `ranked` restante ; aucune perte de ligne ; 26 movers confirmes perf ET LUSR (0
-divergence performance_chain vs playlist_group) ; ranked_objectif Madina 38,8 -> 45,25 ;
+divergence performance_chain vs playlist_group) ; ranked_objectif joueur_075 38,8 -> 45,25 ;
 oracle sentinelle diag_perfsim : purge=0, notes stockees = simulees (ecarts medians
 ±1,2 pt, effet medal_exploit attendu). Temoins gate visuel prets (CR lot 4 §6 : 2/13
 CTF 11->21 ; VIP 11/5 90->77 ; DNF sans note ; Oddball ranked 28,7->42,4).
@@ -100510,7 +100516,7 @@ CTF 11->21 ; VIP 11/5 90->77 ; DNF sans note ; Oddball ranked 28,7->42,4).
 **DECOUVERTE MAJEURE** : 2 461 lignes LUSR des DBs halo_infinite portaient la chaine
 Halo 5 `h5_arena` (jusqu a 80 % de l historique, ecrites 26-28 juin 2026 — signature
 d un binaire h5 sur donnees Infinite). REPAREE a 99,9 % par le replay canonique
-(residu 2 lignes Madina non rejouables). Cause racine + exposition prod a investiguer
+(residu 2 lignes joueur_075 non rejouables). Cause racine + exposition prod a investiguer
 (registre) ; le balayage VPS verifiera aussi h5_arena.
 
 **Conclusion / prochaine etape** : autorisation commit lot 4 + volets D (80 scores
@@ -102424,8 +102430,8 @@ minutes a une question que le decodage n'a pas tranchee. En attente de l'utilisa
 ## [2026-08-30] Visee lunette, phase 6 — TROUVE : le zoom est l'evenement type 114 (« biped_board_vehicle ») — la lunette est un SIEGE — Complete (identification)
 
 **Contexte** : l'utilisateur relit 00162144 dans Theater en premiere personne et fournit une
-CHRONOLOGIE manuscrite : Nilton410 zoome [41-46,3] (frag Counter-snipe), [49-52], ~[61-61,8],
-~[68-68,8], [71-73], ~[85-86] ; Madina97294 [45-46,3] ; et « rien ne change en 3e personne ».
+CHRONOLOGIE manuscrite : joueur_006 zoome [41-46,3] (frag Counter-snipe), [49-52], ~[61-61,8],
+~[68-68,8], [71-73], ~[85-86] ; joueur_117 [45-46,3] ; et « rien ne change en 3e personne ».
 Douze transitions etiquetees en 50 s — l'oracle le plus dense de toute la campagne.
 
 **Instrument** (`visee_chronologie_research_test.go`, garde CHRONO_FILM, fige sur 00162144) :
@@ -102638,7 +102644,7 @@ leve : UN PAQUET DELTA = EN-TETE D'EVENEMENT PUIS FLUX D'ETAT DU TICK.
 (50 s x ~22 Hz ~ 1 100 echantillons par position de bit, bandes de garde ±1,2 s aux transitions)
 correlee bit a bit aux positions fixes [7..512] des payloads (toutes tetes / tetes 80 / offsets
 depuis la fin), seuils declares avant mesure + controle par translation obligatoire,
-contre-verification sur l'onde de Madina.
+contre-verification sur l'onde de joueur_075.
 
 **Integration** : la note du lot B (.ai/archive/V7.5/film_re/NOTE_ENVELOPPE_EVENTS_2026-08-30.md,
 561 lignes — table 0x1451f98d0, largeurs par domaine, handle generation<<30|base+index, sonde
@@ -102651,7 +102657,7 @@ decodage du bloc commandes, soit l'elargissement de l'onde aux autres regions de
 ## [2026-08-30] Visee lunette, LOT C — la correlation d'onde carree : AUCUN bit a position fixe ne porte l'etat de lunette, et pour la premiere fois le negatif est adosse a une PUISSANCE mesuree — Complete
 
 **Mandat** : l'instrument le plus dense du dossier. Au lieu des 12 transitions qui servaient
-d'oracle aux lots precedents, l'onde carree COMPLETE de Nilton410 (relevé Theater de
+d'oracle aux lots precedents, l'onde carree COMPLETE de joueur_006 (relevé Theater de
 l'utilisateur, film 00162144, decalage feed->film +1 171 858 ms) confrontee bit a bit aux
 positions FIXES du payload des paquets delta — un echantillon par paquet, pas un par transition.
 Deux instruments sous garde d'environnement (ONDE_FILM) :
@@ -102670,7 +102676,7 @@ l'asymetrie des classes.
 est precis a +/- 1 s, donc +/- 1,2 s autour de chaque transition est exclu. Consequence : les
 episodes de moins de 2,4 s disparaissent entierement, et {71 -> 73} aussi. Il ne reste que
 3 480 ms classees « zoome » sur 60 s de fenetre. D'ou une variante a garde 0,5 s (7 270 ms),
-DECLAREE d'avance et publiee quel qu'en soit le resultat. **Madina97294 est structurellement
+DECLAREE d'avance et publiee quel qu'en soit le resultat. **joueur_117 est structurellement
 inexploitable** : son creneau unique de 1,3 s laisse 0 ms en garde longue, 290 ms en garde courte.
 
 **LE CONTROLE PAR TRANSLATION, DURCI PAR RAPPORT AU LOT A.** L'onde entiere est translatee — la
@@ -102850,8 +102856,8 @@ donnee dense a partir de `0x0CE6A8`. **Ce n'est pas un flux de paquets** (le dec
 16 octets ne couvre que 2,3 % du volume), **pas de zlib imbrique** (27 en-tetes plausibles la ou le
 hasard en donnerait 131), **aucun pas de structure** (17,0 % a 15,1 % d'octets egaux du pas 2 au
 pas 1024, sans pic). **Mais elle porte l'identite des joueurs, en UTF-16LE** : `vamprym`,
-`Chocoboflor`, `RAZOR BLADE LEO` sur 00162144 ; `whiteknight2519`, `LORD PEINX13` sur 000d5950.
-`Chocoboflor` est un joueur suivi par le projet : ce sont des participants, pas du hasard.
+`joueur_165`, `RAZOR BLADE LEO` sur 00162144 ; `joueur_283`, `JOUEUR_731` sur 000d5950.
+`joueur_165` est un joueur suivi par le projet : ce sont des participants, pas du hasard.
 
 **D1a — AUCUN nom d'evenement dans le film, avec temoin positif.** Les 13 noms du catalogue de
 l'exe (dont les 8 de la famille arme/unite demandes par le pilote) cherches en ASCII et en UTF-16,
@@ -103080,7 +103086,7 @@ temoin >= 30 par classe). Moteur d'onde, gardes et translation REPRIS du lot C s
    cette derniere EST `walkRecordComponents` vue de l'exterieur du paquet. Appariement
    hook <-> record EXACT (meme appel non filtre) : 0 paquet ecarte sur 27 447.
 2. *Le pont slot -> joueur etait troue, et c'etait le meme piege qu'en phase 6.* La premiere mort
-   de Nilton410 tombe a 1 333 133 ms de film ; le fragment du slot 513 court sur
+   de joueur_006 tombe a 1 333 133 ms de film ; le fragment du slot 513 court sur
    [1 211,1 ; 1 337,4] s — sa fin depasse la mort de 4,3 s (le corps reste replique), donc
    `nameLivesByDeaths` ne le nomme pas, et c'est EXACTEMENT le fragment que le releve etiquette.
    Sans lui : 0 record dans la fenetre, et un « negatif » qui n'aurait rien mesure. Rattachement
@@ -103148,8 +103154,8 @@ refuse (23,97 % et 74,56 %). Troisieme fois que ce chantier voit un controle tro
 fabriquer un signal ; premiere fois qu'on voit AUSSI la puissance s'effondrer sous le nombre
 d'hypotheses.
 
-**F4 non applicable** : aucun candidat n'est sorti, donc pas de contre-verification Madina ni
-d'autre film. Rappel du lot C : le creneau unique de Madina97294 (1,3 s) laisse 290 ms en garde
+**F4 non applicable** : aucun candidat n'est sorti, donc pas de contre-verification joueur_075 ni
+d'autre film. Rappel du lot C : le creneau unique de joueur_117 (1,3 s) laisse 290 ms en garde
 courte, soit ~7 records — structurellement sous le seuil de recevabilite.
 
 **BILAN DES CANAUX — LE SEPTIEME TOMBE.** 1. composant du registre ECS : aucun · 2. queue d'i21 :
@@ -103248,7 +103254,7 @@ deja identifies et chacun porte un verdict tranche :
   cote client, question CLOSE.
 
 **Le controle le plus informatif du protocole** : refaire la recherche sur un JOUEUR DISTANT
-(Madina97294, zoomee sur {45 ; 46,3} et quasiment pas ailleurs). Si son octet suit SA propre
+(joueur_117, zoomee sur {45 ; 46,3} et quasiment pas ailleurs). Si son octet suit SA propre
 chronologie pendant le rejeu, l'etat existe par joueur et vient donc du film ; s'il reste a -1 alors
 que l'observe varie, le zoom n'existe que pour l'unite observee et la question est definitivement
 close.
@@ -103281,7 +103287,7 @@ Film 00162144, decalage feed->film +1 171 858 ms (pont des morts, 91 fins de vie
 324 paquets `0xCA`, **324 evenements `unit_zoom` decodes, 0 d'un autre type** (la famille est pure).
 58 unites distinctes portent au moins une entree ; 7 sont actives dans la fenetre du releve.
 
-**Unite 1 (ref0, domaine 4) contre le releve manuscrit de Nilton410 :**
+**Unite 1 (ref0, domaine 4) contre le releve manuscrit de joueur_006 :**
 
 | releve utilisateur (debut d'episode) | evenement ENTREE | ecart |
 |---|---|---|
@@ -103585,7 +103591,7 @@ d'une fermeture, « pas zoome » a >= 1 s de TOUTE periode. **Effectifs en recor
 
 **LE PONT SLOT -> JOUEUR DISPARAIT.** Le lot F avait du rattacher a la main des fragments de vie
 anonymes (critere a trois volets, un slot laisse non rattache) pour savoir quels records etaient
-ceux de Nilton410. Les etiquettes etant indexees par SLOT, exactement comme les records, la
+ceux de joueur_006. Les etiquettes etant indexees par SLOT, exactement comme les records, la
 question « qui est ce joueur » ne se pose plus. Perimetre : seuls les slots portant au moins une
 periode entrent dans la mesure — les deux classes viennent donc des MEMES slots, et le confondant
 « bit qui identifie le porteur » n'existe plus par construction.
@@ -104432,7 +104438,7 @@ sur ces données.
 
 **Statut** : Complété. Le blocage du lot précédent est levé, et le test tranche.
 
-**Diagnostic d'auth avant tout.** Le joueur par défaut (Chocoboflor) échoue sur **AADSTS70000**
+**Diagnostic d'auth avant tout.** Le joueur par défaut (joueur_165) échoue sur **AADSTS70000**
 — token émis pour un autre client id. Aucune re-capture (doctrine). L'inspection du magasin
 montre trois comptes `revoked` depuis le 30/08, trahis par la longueur de leur RT (417/393 =
 ancienne application), et **JGtm sain, rafraîchi la veille**. UN seul essai supplémentaire avec
@@ -106749,7 +106755,7 @@ terrain aux seuls slots que le canal suspect a bien voulu enregistrer.
   de 1851 porte from=4 (grappin, dernier rang vu) -> spentTranslocations le rejette ; la
   derniere lecture abilities du slot est r=4 -> portaitLeTranslocateur rejette un saut de
   22 m. UNE emission manquee aveugle LES DEUX canaux.
-- SpiffyDart86537 slot 560 : saut de 7,8 m a t=3420 (prise r=11 bien decodee a 3191), mort a
+- joueur_160 slot 560 : saut de 7,8 m a t=3420 (prise r=11 bien decodee a 3191), mort a
   3432. Sous le seuil 12 m/3 frames, et aucune emission d epuisement (mort pendant l effet).
 - Auto-mesure du canal sur 67 films : 3 158 emissions decodees, 165 manquees entre deux vues
   (5,0 %), 114 vies sur 2 503 (4,6 %) amputees de leur debut. Le taux brut est conforme au
@@ -109823,7 +109829,7 @@ DERIVEE du systeme de fichiers, plus ecrite.
 
 **Resultats.** Les deux mutations du verdict rejouees apres correction. Mutation 1
 (`fixture.json` kills 7->6 + recopie alignee) : rouge par « 4 joueurs publies, attendu 5 » et
-« joueur 2535463878425995 apparie le 2026-09-05 mais plus publie », AUCUNE ligne de comparaison
+« joueur 2569104772637498 apparie le 2026-09-05 mais plus publie », AUCUNE ligne de comparaison
 de valeurs — exactement ce que la nouvelle documentation annonce. Mutation 4
 (`score_timeline.go:136 V: v+1`) : quatre lignes `SERIE PUBLIEE != CLE D'APPARIEMENT`. Mutation
 14 (`tests/golden/zz_review_ouvre_le_jeu_test.go` non tague), VERTE avant, desormais ROUGE sur
@@ -110402,10 +110408,10 @@ film complet, meme schema 23 de part et d'autre : 17 actions avant, 12 apres.
 NULLE PART : 3 slots nommes par les deux a l'identique, 2 que seul le triplet nomme, 2 que seul le
 pont par morts nomme. Ce sont deux couvertures COMPLEMENTAIRES, et le commit a remplace l'une par
 l'autre au lieu de les additionner. Le pont par morts exige `deathInstantMin` = 3 instants
-coincidents : SweatyYeti75 (2 morts, 7 frags, auteur de LA capture et DU vol de drapeau du match)
+coincidents : joueur_631 (2 morts, 7 frags, auteur de LA capture et DU vol de drapeau du match)
 et DiegoGamer8K (1 mort) lui echappent PAR CONSTRUCTION — ce sont, par definition, les joueurs qui
 meurent le moins. Controle croise independant : les progressions de mort du slot 22 coincident
-avec le fil de SweatyYeti75 et de LUI SEUL (2 sur 2), celles du slot 20 avec DiegoGamer8K et lui
+avec le fil de joueur_631 et de LUI SEUL (2 sur 2), celles du slot 20 avec DiegoGamer8K et lui
 seul (1 sur 1). Verdict : REGRESSION, pas arbitrage. Le commit annoncait une « neutralite
 mono-manche prouvee par construction » — vraie contre le pont PLAT PAR MORTS, mais ce calque-la
 n'etait pas sur ce pont : il etait sur le triplet. La neutralite a ete prouvee contre le mauvais
@@ -110419,7 +110425,7 @@ fois. `lines` vide rend l'identite inchangee : le calque reste publiable hors li
 
 **Resultats observes.** Film complet : 23 actions, 7 joueurs pontes sur 7 presents au film, chacun
 publiant EXACTEMENT sa ligne de la feuille de match (15 frags, 6 assistances au total, conforme a
-l'API). Les deux actions de drapeau reviennent sur SweatyYeti75, aux memes instants qu'au parc.
+l'API). Les deux actions de drapeau reviennent sur joueur_631, aux memes instants qu'au parc.
 Tests : quatre unitaires sur `CompletedByLines` (dont le refus du multi-manche) et des assertions
 E2E figees (7 pontes, egalite avec la feuille, `flag_captures`/`flag_steals` = 1), VERIFIEES PAR
 MUTATION (correctif debranche : « joueurs pontes = 5, attendu 7 » et les deux actions a 0). Gates
@@ -114325,7 +114331,7 @@ offset — c'est toute l'explication du « amorphe » du 30/08.
   enregistrements contre 1 à 2 positions parasites par film, toutes éliminées par deux filtres
   écrits d'avance.
 - Contrôle croisé interne le plus fort du lot : **la longueur d'un enregistrement suit le JOUEUR,
-  pas le match** — `2533274823110022` fait 27 969 bits sur 4 films, `2533274858283686` fait
+  pas le match** — `2533274823110022` fait 27 969 bits sur 4 films, `2623439693412443` fait
   28 081 bits sur 4 films, à travers deux builds. 2/2.
 - Gates : `go vet` net, `go test ./internal/analysis/filmdec/` ok, `go test ./internal/archlint/` ok. Aucun code de production touché, aucune variable de
   paquet ajoutée.
@@ -114547,7 +114553,7 @@ Le dixième est le témoin négatif FFA (`1950c59b`, `HI_1_8_0`, `[0 0 0 0 0 0 0
 candidates écrites avant la mesure, puis un relâchement de critère à la fois. Une seule restitue
 le compte : **le champ de 2 bits de `slot+0x08`**, que le balayage exigeait nul alors que
 `FUN_1407ecb08` l'écrit comme un octet SIGNÉ sur 2 bits. La sonde ciblée le nomme
-(`1c4c63c2` xuid 2535450607961405 au bit 11 137 668, `111fa685` xuid 2535454874175468 au bit
+(`1c4c63c2` xuid 2604240265332618 au bit 11 137 668, `111fa685` xuid 2713822861981385 au bit
 10 812 405 : `b=1/0/0`, `u32=0`, jeton non nul, `deux=1`). Un enregistrement invisible DOUBLE
 l'écart au voisin, et le regroupement terminal perdait alors toute la tête de la table :
 `1c4c63c2` rendait 11 enregistrements au lieu de 24, `a26dbcdb` en rendait 3.
@@ -114754,7 +114760,7 @@ CLAUDE.md, ADR 0026/0030, docs/WEAPONS.md FR/EN, le registre L538 et ~25 fichier
 `openspartan_post_import_service.go:152`) ; `RecomputeLUSRCanonical` (`engine_backfills.go:187`)
 ne stampe pas le titre. Piste nouvelle : la vue `match_skill_rank_latest` est keyée
 (match_id, rating_type) par written_at — faire lire `_latest` à `Q8LUSRHistoryPlayer` efface
-la série « Arène » fantôme sans toucher aux données (reste les 2 lignes Madina non rejouables,
+la série « Arène » fantôme sans toucher aux données (reste les 2 lignes joueur_075 non rejouables,
 à purger par CTAS avant la copie des bases). (4) Dependabot : 5 PR ouvertes sur main (79-83),
 CI verte, 3 alertes de sécurité (js-yaml < 4.3.2 high, browserslist ≤ 4.28.6 high,
 baseline-browser-mapping < 2.11.0 medium) ; le lock de feat/v75 est déjà sain sauf js-yaml
@@ -114769,8 +114775,8 @@ puis plan des lots PSA (S) et LUSR (M).
 
 **Complément (même jour, après décisions utilisateur)** : (a) census LUSR sur pièces, serveur
 arrêté, `diag_q` en lecture seule : lignes brutes `h5_arena` dans les player DB Infinite =
-JGtm 913, Madina 1 064, Chocoboflor 471, Daemon 31, chacune en double LUSR + LUSR_V2
-(4 958 lignes) ; dans `_latest` il ne reste que les 2 lignes Madina ; les 4 bases halo_5 ne
+JGtm 913, joueur_075 1 064, joueur_165 471, Daemon 31, chacune en double LUSR + LUSR_V2
+(4 958 lignes) ; dans `_latest` il ne reste que les 2 lignes joueur_075 ; les 4 bases halo_5 ne
 portent QUE `h5_arena` (pas de corruption miroir). (b) Prod (ssh lvelup, lecture seule) : aucun
 kill-switch surchargé dans `.env.local` ; `auth_migration` : 2 RT migrés le 2026-06-13 puis
 rt_migrated=0 à chaque boot jusqu'au 2026-09-13 (critère 30 j tenu trois fois) ; convergence
@@ -114809,8 +114815,8 @@ index `idx_msr_playlist` DÉSYNCHRONISÉ (famille duckdb#23645, comme PSA le 27/
 bases saines. Séquence : `repair_msr_index -data data` (diag 4 bases : 1 axe en écart sur JGtm) ;
 `repair_msr_index -db …/JGtm/stats.duckdb -repair` (DROP+CREATE idx_msr_playlist, 35 502 lignes
 intactes, 0 écart après) ; `purge_foreign_lusr_chain -db … -commit` sur les 4 bases : JGtm
-35 502 -> 33 676 (-1 826), Madina97294 37 252 -> 35 124 (-2 128), Chocoboflor 18 644 -> 17 702
-(-942), XxDaemonGamerxX 704 -> 642 (-62) ; 0 ligne `h5_arena` après (brut et `_latest`), 3 index
+35 502 -> 33 676 (-1 826), joueur_117 37 252 -> 35 124 (-2 128), joueur_165 18 644 -> 17 702
+(-942), joueur_291 704 -> 642 (-62) ; 0 ligne `h5_arena` après (brut et `_latest`), 3 index
 reposés, vue `_latest` présente. Serveur relancé (200). Défaut d'outil trouvé après coup (une
 seule vue recréée) -> C.9 ; sans effet ici, la vue par type n'était pas encore posée sur ces bases.
 
@@ -115182,7 +115188,7 @@ contention ne s'est pas reproduit.
 dans `/opt/levelup/app_settings.json` (inode 263613 conservé — `sed -i` aurait laissé le conteneur
 sur l'ancien inode), sauvegarde `app_settings.json.bak-20260915194349`, vérifié hôte + conteneur +
 `GET /bootstrap`. Origine : intrusion SSO du 2026-07-23 17:44 UTC (`XxGdakilla187xX`, xuid
-`2533274796795729`), instance jamais verrouillée depuis la livraison du verrou (2026-06-08).
+`2676423891261051`), instance jamais verrouillée depuis la livraison du verrou (2026-06-08).
 
 **Conclusion / prochaine étape** : (a) commit de clôture sur `wt/player-directory` après feu vert
 (44 fichiers, 9 nouveaux) ; (b) merge dans `feat/v75` et déploiement = décision utilisateur ;
@@ -115217,10 +115223,10 @@ invitation sans groupe = admin, page `/admin/management`.
 n'ont jamais été des utilisateurs ; le commentaire de `middleware.FamilyXUIDResolver` parle
 encore de `FriendGamertags` alors que le câblage réel est `groupstore.CoMemberXUIDs` ; la CLI
 `sync-full --gamertag` exige le refresh token DU joueur alors que le serveur emprunte au pool
-(pertinent pour l'ajout de Nuzzles, procédure en annexe du plan).
+(pertinent pour l'ajout de joueur_074, procédure en annexe du plan).
 
 **Conclusion / prochaine étape** : plan `.ai/PLAN_AMIS_PAR_JOUEUR_ET_INVITATIONS_2026-09-15.md`
-(7 étapes, gates, décisions tranchées, annexe Nuzzles). Exécution dans un worktree dédié
+(7 étapes, gates, décisions tranchées, annexe joueur_074). Exécution dans un worktree dédié
 `wt/amis-invitations` sur signal de l'utilisateur. Rien committé.
 ## [2026-09-15] Amis par joueur + invitation sans groupe sur instance verrouillée — Complété (étapes 0 à 7, recette navigateur au pilote)
 
@@ -115297,7 +115303,7 @@ front pour un utilisateur standard peuvent souffrir du même 403 que `GET /setti
 
 **Statut** : Complété (revue + correctifs). Branche `wt/amis-invitations`, 12 commits au-dessus de
 `feat/v75`, ni poussée ni mergée. Recette navigateur NON faite (exige l'arrêt du serveur local et
-un second compte Xbox : la première connexion de Nuzzles la jouera).
+un second compte Xbox : la première connexion de joueur_074 la jouera).
 
 **Décision technique principale** : revue adversariale conforme au skill — deux relecteurs
 aveugles en parallèle (contrôle d'accès + couverture ; migration/sync/front + anti-patterns),
@@ -115326,8 +115332,8 @@ groupe conservée, re-sourcée depuis le friendstore) était la bonne.
 
 **Conclusion / prochaine étape** : lot prêt pour décision de fusion dans `feat/v75` par
 l'utilisateur. Restent à lui : recette navigateur (admin : lien d'invitation, page Rejoindre,
-Amis et groupes, recoloration vue match ; invité : première connexion de Nuzzles), bascule
-`instance_locked` en prod si l'early access doit être fermé, procédure Nuzzles (annexe A).
+Amis et groupes, recoloration vue match ; invité : première connexion de joueur_074), bascule
+`instance_locked` en prod si l'early access doit être fermé, procédure joueur_074 (annexe A).
 
 ## [2026-09-16] Annuaire des joueurs — jonction avec le plan amis/invitations à la fusion de feat/v75
 
@@ -115426,11 +115432,11 @@ par mutation. Quatre P2 consignés au plan §8.
 `-tags=integration -p 1 ./...`) : voir le commit de clôture.
 
 **Conclusion / prochaine étape** : décision de fusion dans `feat/v75` par l'utilisateur. Puis
-annexe A du plan : reprise du sync de Nuzzles (6 500, post-sync complet), backfills de rattrapage,
+annexe A du plan : reprise du sync de joueur_074 (6 500, post-sync complet), backfills de rattrapage,
 films des 200 plus récents, cuisson, `replay_build_location` → `local`, serveur relancé — quand
 la base sera libre.
 
-## [2026-09-16] Nuzzles — sync complet par le pool, rattrapages, films ; rejeux différés — Complété (opérations)
+## [2026-09-16] joueur_074 — sync complet par le pool, rattrapages, films ; rejeux différés — Complété (opérations)
 
 **Statut** : Complété. Aucun code touché (opérations sur les bases locales avec la CLI bâtie sur
 `feat/v75` @ b4de1fc16, après fusion de `wt/sync-pool`).
@@ -115440,20 +115446,20 @@ synchronisé par le pool ». Quatre passes : (1) 6 slots × 3 req/s → un seul 
 `GetMatchHistory` (start=225) a mis fin à la pagination et la passe s'est déclarée `success,
 inserted=0` — défaut de robustesse du moteur (`paginateAndPersistHistory` casse sur la première
 erreur d'historique), consigné ; (2) `--token-pool-size 1` → « aucun slot créé » : le plafond
-compte les sources tentées, pas les slots sains (Chocoboflor, révoqué, pris en premier),
+compte les sources tentées, pas les slots sains (joueur_165, révoqué, pris en premier),
 consigné ; (3) 6 slots × 1 req/s → 5 140 matchs en 83 min sans 429, post-sync complet (perf
 4 874, citations 5 161, dominance 5 140, sessions 7 163, 0 erreur fatale) ; (4) re-parcours après
 application de la migration d'élargissement (`backfill … --dry-run` applique les migrations
 shared sans appel API ; `sync-full` ne le fait pas) → les 2 matchs à gros score insérés.
 Rattrapages : perf 0 (déjà couvert), citations +146, LUSR +2 581, CSR +3 917 (154 sans
 récapitulatif), CSR partagé 4 037 matchs fetchés / 30 041 lignes. Films : `backfill-killsource
---online --limit 200 --gamertag Nuzzles` → les 200 matchs les plus récents de Nuzzles (15/09 →
+--online --limit 200 --gamertag joueur_074` → les 200 matchs les plus récents de joueur_074 (15/09 →
 20/08), 200/200 films au cache, 1 match en échec de fusion crédit/film (victime divergente,
 `0458aba1-65c8-474e-bfe8-a4bcc96ba95f`). Rejeux : NON cuits (décision utilisateur) — le chantier
 décodeur a changé le schéma cette nuit, `backfill-replay --dry-run` voit 1 586 films à
 construire et 0 à jour ; la recuisson du parc revient à ce chantier.
 
-**Résultats observés** : Nuzzles = 7 165 matchs distincts en base (API : 6 818 — l'historique
+**Résultats observés** : joueur_074 = 7 165 matchs distincts en base (API : 6 818 — l'historique
 `matchmaking` renvoie plus que le compteur affiché ; pas un doublon), liste d'amis vide, aucun
 groupe. `match_registry.team_{0,1}_score` = INTEGER sur la base réelle, 7 index intacts.
 `replay_build_location` remis à `local`, serveur relancé 17:51 (`match_count=9132`). Le pool
@@ -115461,7 +115467,7 @@ tourne sur 6 slots (JGtm + 5 `auth_only`) ; 3 RT révoqués inchangés.
 
 **Conclusion / prochaine étape** : découvertes consignées au plan §8 (429 → arrêt silencieux,
 plafond de pool, aide du drapeau `--gamertag`, `snapshot ready DE FORCE`, metadata RO/RW dans le
-même process, token propre encore résolu au post-sync). Nuzzles peut se connecter (SSO Xbox ;
+même process, token propre encore résolu au post-sync). joueur_074 peut se connecter (SSO Xbox ;
 instance non verrouillée en local) ; en prod, `instance_locked` à basculer côté admin si
 l'early access doit être fermé.
 
@@ -115477,8 +115483,8 @@ cuisson entre 17:51 et 17:58. Fusion d'`origin/feat/v75` dans le local = décisi
 ab7fc5695, 10 commits, ni poussée ni fusionnée. Aucune base sous `data/` ouverte.
 
 **Décision technique principale** : (1) mesure avant décision — `/careerranks` lu pour un xuid
-tiers avec trois prêteurs distincts (JGtm, DankerGlue, Trimbutton) rend rang ET XP identiques à
-l'appel du propriétaire (JGtm 202/2 555 ; Nuzzles 272/0, 272 = rang maximal) : l'endpoint est
+tiers avec trois prêteurs distincts (JGtm, joueur_1016, joueur_1018) rend rang ET XP identiques à
+l'appel du propriétaire (JGtm 202/2 555 ; joueur_074 272/0, 272 = rang maximal) : l'endpoint est
 public, `PolicyPinnedPlayer` retiré de `GetCareerRank` avec son épinglage (D4). (2) Plan écrit
 puis relu par un contexte frais (8 P1 / 7 P2 intégrés avant exécution : rejeu du 429 qui ratait
 le cas « pool entier en pause », sommeils réels dans les tests, variante 4.2 qui aurait éteint
@@ -115697,7 +115703,7 @@ lecture seule, sources hls.js 1.7.1 = version verrouillée, le node_modules loca
 sans reproduction navigateur (consigne : pas d'instance Chrome pilotée). Aucun code touché.
 
 **Résultats observés** : (1) Les clips de JGtm sont TOUS des arbres HLS-fMP4 lus par hls.js/MSE
-(148 arbres, vidéo AV1 stream-copiée de 2 à 18 Mbit/s) ; ceux de Chocoboflor sont des `.mp4`
+(148 arbres, vidéo AV1 stream-copiée de 2 à 18 Mbit/s) ; ceux de joueur_165 sont des `.mp4`
 H.264 servis tels quels (aucun arbre `hls/`), donc `<video src>` natif avec Range. Toute la
 dissymétrie vient de là. (2) Aperçus voisins : `ClipPlayer` ne pose aucun `poster` et les voisins
 HLS sont montés `autoStartLoad:false` sans jamais charger un segment → cadre noir, sauf pour un
@@ -115745,7 +115751,7 @@ commit, appelle `hls.stopLoad()` pour un voisin. Or dans hls.js (1.6.16 comme 1.
 → le manifest est avorté. Au recentrage, `startLoad()` trouve `levels` nul →
 `_forceStartLoad = true`, état STOPPED, et rien ne relance jamais `MANIFEST_LOADING` : le clip ne
 lira jamais. Le commentaire du lot B (« loadSource charge le manifest, y compris pour les
-voisins ») est faux depuis son écriture (`8dee69897`, 2026-07-17). Les `.mp4` de Chocoboflor ne
+voisins ») est faux depuis son écriture (`8dee69897`, 2026-07-17). Les `.mp4` de joueur_165 ne
 passent pas par hls.js, d'où l'asymétrie. Correctif minimal : ne jamais appeler `stopLoad()` sur
 une instance qui n'a pas été démarrée (`autoStartLoad:false` suffit à ne rien charger) — un ref
 « démarré » posé au premier `startLoad()` ; garde-rail : test qui monte un voisin et vérifie que
@@ -115866,7 +115872,7 @@ d'usage : `ValueGrid` (largeur plancher calculée) — corrigé pour tous ses co
 0 FAIL, `make go-api-lint` 0 issue, `tsc -b --force` 0, vitest 743 fichiers / 7 967 tests
 verts (17 skips préexistants). Hooks pre-commit (gitleaks, gofmt, go-vet, docs-fr-sync)
 passés sur les trois commits. Investigations préalables (serveur arrêté, `diag_q` + API) :
-au scope complet JGtm+Chocoboflor = 361/451 matchs mesurés, 18 points de nuage (9/joueur),
+au scope complet JGtm+joueur_165 = 361/451 matchs mesurés, 18 points de nuage (9/joueur),
 57 points de session — les « 3 points » et la courbe vide venaient d'une sélection à une
 soirée, pas d'un trou de données ; `equipment_usage` solo porte bien `weapon_pad_parties`
 (lobby 1 249) et `pad_pickups` non nuls.
@@ -115880,7 +115886,7 @@ de 45 % — à juger au gate visuel ; worktree `LevelUp-wt-explorer-rangee3` ent
 à supprimer ; Notion « Ajustements pré-v7.5 » liste plus large que le .txt, hors périmètre.
 
 **Conclusion / prochaine étape** : pile de dev basculée sur le worktree (`make dev
-LEVELUP_DATA_ROOT=C:/Users/Guillaume/Projects/LevelUp`) pour le gate visuel ; sur signal,
+LEVELUP_DATA_ROOT=<poste>/Projects/LevelUp`) pour le gate visuel ; sur signal,
 fusion dans `feat/v75` (CI = verdict d'autorité), suppression des trois worktrees de lot.
 ## [2026-09-19] Citations : « Chasse au rapatrieur » desactivee, visuels « Capture du drapeau » et « Crane intouchable » corriges — Complete (code + docs ; re-seed local et commit en attente du user)
 
@@ -115930,7 +115936,7 @@ fusion dans `feat/v75` (CI = verdict d'autorité), suppression des trois worktre
   sessions ont des modifications non commitees dans le meme arbre : match-card, BACKLOG,
   skill color-tokens).
 - Complement 2026-09-19 (meme lot) : l'ecusson maison de « Crane intouchable » est REMPLACE par
-  la silhouette de crane fournie par l'utilisateur (`C:\Users\Guillaume\Downloads\Nouveau projet.png`,
+  la silhouette de crane fournie par l'utilisateur (`<poste>\Downloads\Nouveau projet.png`,
   PNG palette 247x308, blanc sur alpha) : recadree au carre, redimensionnee (silhouette ~71x89 px),
   bordure noire de 2,5 px ajoutee par dilatation de l'alpha (disque) en 4x puis reduction par
   moyenne de boite -> 100x100, 5 283 o. La dilatation borde aussi les evidements (orbites, nez,
@@ -116268,7 +116274,7 @@ l'ancien libellé. Gates : vitest pageTitle 69 verts, eslint, tsc.
 
 **Demande.** Neuf retours de l'utilisateur, « investigue sur preuve et planifie des solutions » : Ghost
 sans tir ni son ni éclair (81c02726, signalé de nombreuses fois) ; Mongoose inoccupé qui part seul et
-finit hors zone jouable ; Madina97294 qui réapparaît hors carte et « vole » ; fiche de XxDaemonGamerxX
+finit hors zone jouable ; joueur_117 qui réapparaît hors carte et « vole » ; fiche de joueur_291
 sans armes à 2:08 ; b1ad85eb à 3 puis 5 joueurs par équipe ; « Sprint » sur les fiches, jamais demandé ;
 page Tactique qui recharge tout ; ab526724 sans drapeau, score ni frise, avec des véhicules ; doublons
 « Solution » dans le tiroir des assets.
@@ -116290,7 +116296,7 @@ documents réels) et annexes `.ai/archive/V7.5/retours_rejeu_2026-09-23/` (six r
   tirs de tourelle posés à la naissance de la tourelle (44,7 m du porteur en médiane).
 - Positions : faux positifs des balayages ancrés bit à bit (même suite de bits sur des cartes aux
   quantifications différentes), laissés par les filtres et interpolés sans borne par le client, qui ne
-  lit pas `Point.g` ; 33 documents sur 111. Le premier point de Madina précède de 4,65 s la création de
+  lit pas `Point.g` ; 33 documents sur 111. Le premier point de joueur_075 précède de 4,65 s la création de
   son corps.
 - Fiche : l'image-clé t 1494 a perdu le préfixe de sa table (`WalkKeyframeWorld`) ; 7,4 % des images-clés
   du parc trouées, 18,9 % des vies sans arme publiée ; les armes de naissance ne sont lues nulle part.
@@ -116448,7 +116454,7 @@ eslint 0 erreur, lint:colors, vitest 8 510 tests, knip, manifestes i18n) verts.
 
 **Decision technique principale** : selection sous le segment LECTURE (`selectShadowWorkUnderRead`, `internal/sync/skill/skill_v2_watermark.go`) : candidats, filigrane par groupe (vue `_latest`), eligibilite des candidats au-dessus (arret au premier notable). Aucun notable = aucun Write, INFO `lusr_v2: rien de nouveau` (candidates, new=0). Sinon UNE rafale Write par joueur et par cycle (`runSingleWriterBurst`), lots de 3 supprimes, `processOneShadowMatch` inchange, INFO `lusr_v2: rafale terminee`. « Nouveau » inclut l'eligibilite (un joueur sur cinq garde a chaque cycle un match non notable au-dessus de son filigrane). Predicat unique `lusrWatermarkCovers` + garde-rail. Echec d'acquisition en ERROR. Journaux renommes (`LUSR v2 shadow termine` devient `lusr_v2: rafale terminee`, `total_candidates` devient `candidates`) : aucun consommateur hors sync.
 
-**Resultats observes** : parite avant/apres prouvee (lignes, ordre, valeurs identiques sur player_skill_state_v2 et match_skill_rank), 0 ecrivain en stationnaire sur lecteur READ_ONLY, 1 rafale par cycle ; 5 mutations detectees. Gates : gofmt vide, build/vet 0, tests sync 0, integration -p 1 sync+persist 0 (440 s), lint 0 nouveau constat. Attendu : 1 rafale au lieu de 1 233 sur le cycle mesure. Decouvertes (a)-(f) au journal du §5, dont (a) : joueur 2535469190789936, ecriture LUSR canonique en echec a chaque cycle (« Duplicate key id » sur `match_skill_rank` de sa base joueur, sequence en retard sur le max ; 109 occurrences) — a reparer hors campagne (`repair_msr_index`).
+**Resultats observes** : parite avant/apres prouvee (lignes, ordre, valeurs identiques sur player_skill_state_v2 et match_skill_rank), 0 ecrivain en stationnaire sur lecteur READ_ONLY, 1 rafale par cycle ; 5 mutations detectees. Gates : gofmt vide, build/vet 0, tests sync 0, integration -p 1 sync+persist 0 (440 s), lint 0 nouveau constat. Attendu : 1 rafale au lieu de 1 233 sur le cycle mesure. Decouvertes (a)-(f) au journal du §5, dont (a) : joueur 2547408409520575, ecriture LUSR canonique en echec a chaque cycle (« Duplicate key id » sur `match_skill_rank` de sa base joueur, sequence en retard sur le max ; 109 occurrences) — a reparer hors campagne (`repair_msr_index`).
 
 **Prochaine etape** : mesure de fin de campagne : compter les `AcquireWriter` au label `sync_v2_postsync/lusr` sur un cycle d'auto-sync.
 
@@ -116508,7 +116514,7 @@ eslint 0 erreur, lint:colors, vitest 8 510 tests, knip, manifestes i18n) verts.
 
 **Decision technique principale.** Annuaire de L2 reutilise tel quel (`nommerLignes` ; `squad_repo_annuaire.go` garde son nom, seul l'en-tete change) sur les matchs de l'historique du joueur (`QMatchsDuJoueurTpl`, exclusion Campagne comprise) ; Q27 porte un match du duel (`match_rencontre`) pour nommer un adversaire connu du seul kill-feed ; un annuaire pour les deux listes de rivaux ; Q10 (`/career/encounters`, selecteur de composition de l'onglet Tactique) et Comparer (`GetLocalStats`) traites de meme ; les autres lectures de la vue consignees avec leur cout (Relations et vue match : parite non tenue sur quelques lignes ; Q21, ResolveGamertags, recherche par nom : non mecaniques) et figees par un ratchet par fichier (`annuaire_ratchet_test.go`, 11 lectures) ; sections timing sur chaque lecture et son annuaire.
 
-**Resultats observes.** Copie, 2 threads, JGtm : rencontres 2,6-3,7 s vers 0,82-1,33 s ; rivaux 6,6-7,0 s vers 1,94-2,18 s ; Q10 2,25-2,62 s vers 28-30 ms ; Comparer 2,3-2,6 s vers 9-29 ms par appel. « Dizaines de ms » NON atteint pour Q26/Q27 : reste la fenetre `_latest` du kill-feed (0,8-1,1 s par lecture, une liste constante des matchs du joueur la ramenerait a 0,5 s : sujet du plan structurel). Parite : 300 lignes servies et 20 sorties Comparer identiques a l'octet ; Q10 identique hors ex aequo de la coupe LIMIT 50 (deja arbitraire) ; 8 ecarts sur 58 353 couples joueur/croise (Nuzzles, nom hors de son historique), aucun servi, fige par un test. Gate : gofmt, build, vet, tests, integration duckdb -p 1 a 0 ; archlint et garde-rails sync verts ; golangci 0 issue nouvelle. 17 mutations rouges. Fusion : conflit du plan (§9 ter des deux cotes) resolu par le superviseur. Decouvertes : vue match evalue la vue des noms 4-5 fois par ouverture (~10 s, 11 ecarts de nom si annuaire), Relations (2 ecarts), `GetRivals` lit deux fois le meme agregat (~1 s), `FirstSeen` des rencontres jamais pose (badges recrue/ancien eteints), bots dans Q10 (93 lignes sur 224), heatmap Relations sans ordre, 2 973 joueurs recurrents de Nuzzles sans nom.
+**Resultats observes.** Copie, 2 threads, JGtm : rencontres 2,6-3,7 s vers 0,82-1,33 s ; rivaux 6,6-7,0 s vers 1,94-2,18 s ; Q10 2,25-2,62 s vers 28-30 ms ; Comparer 2,3-2,6 s vers 9-29 ms par appel. « Dizaines de ms » NON atteint pour Q26/Q27 : reste la fenetre `_latest` du kill-feed (0,8-1,1 s par lecture, une liste constante des matchs du joueur la ramenerait a 0,5 s : sujet du plan structurel). Parite : 300 lignes servies et 20 sorties Comparer identiques a l'octet ; Q10 identique hors ex aequo de la coupe LIMIT 50 (deja arbitraire) ; 8 ecarts sur 58 353 couples joueur/croise (joueur_074, nom hors de son historique), aucun servi, fige par un test. Gate : gofmt, build, vet, tests, integration duckdb -p 1 a 0 ; archlint et garde-rails sync verts ; golangci 0 issue nouvelle. 17 mutations rouges. Fusion : conflit du plan (§9 ter des deux cotes) resolu par le superviseur. Decouvertes : vue match evalue la vue des noms 4-5 fois par ouverture (~10 s, 11 ecarts de nom si annuaire), Relations (2 ecarts), `GetRivals` lit deux fois le meme agregat (~1 s), `FirstSeen` des rencontres jamais pose (badges recrue/ancien eteints), bots dans Q10 (93 lignes sur 224), heatmap Relations sans ordre, 2 973 joueurs recurrents de joueur_074 sans nom.
 
 **Prochaine etape.** Mesure de reference de la Carriere ; decisions utilisateur sur les decouvertes (vue match, Relations, FirstSeen, bots dans Q10) dans le plan structurel.
 
@@ -116548,7 +116554,7 @@ eslint 0 erreur, lint:colors, vitest 8 510 tests, knip, manifestes i18n) verts.
 
 **Decision technique principale** : la cloture s'est faite au protocole du matin (serveur air du worktree d'integration sur les donnees reelles, `LEVELUP_LOGS_FILE_LEVEL=debug`, instance Chrome du MCP avec la session de l'utilisateur, DuckDB 2 threads / 512 Mo), hors cycle d'auto-sync (toutes les 15 min, post-sync ~60 s) et en excluant la premiere requete abandonnee par StrictMode (D9w.6). C.4 : le reglage local pose dans `.env.local` (8 threads / 4 Go) etait IGNORE — `duckMemoryLimit` / `duckThreads` etaient des variables de paquet evaluees a l'init de `platform/duckdb`, avant `config.BootstrapEnvLocal()` ; le lot C4 (executeur Opus, `feat/perf-c4` 9fa4aa625) les relit a l'ouverture de chaque connexion et dans `BudgetsSnapshot`, test sans tag `TestResourceLimits_EnvSetAfterPackageInitIsHonored` (rouge sur l'ancien code, 4 assertions), aucune autre variable de paquet du meme genre dans `platform/duckdb` (une ailleurs : `handlers/replay_local_gate.go:74`, `LEVELUP_REPLAY_PUBLIC`, consignee). Serveurs de mesure arretes a 20:00 ; worktrees l9web, l9go et c4 retires (jonctions d'abord, jamais `--force`) ; copie de base de 1,5 Go du scratchpad supprimee (disque a 87 %).
 
-**Resultats observes** (matin -> cloture) : Escouade premier passage 194 s -> 2,6 s (une lecture legere de 197 ms puis UNE lourde de 1 256 ms, deja sur la bonne session ; zero 502), rechargement 26,3 s -> 1,6 s, clic du rail 35 s -> 0,24 s ; Synthese 6,2 -> 2,4 s (reste weapon_records 1,6 s) ; Sessions 6,1 -> 0,7 s ; Series temporelles 9,5 -> 0,9 s ; Accueil 4,2 + 2,6 s -> 2,1 s hors sync (reste `pages/home` 1,6 s pour 310 Ko) ; Carriere rencontres / rivaux 10,7 / 10,1 s -> 1,6-4,5 / 2,1-6,5 s hors sync apres L9-go (trois passages ; plus aucune lecture par ami, annuaire 21-60 ms), et 0,8-2,0 s avec 8 threads / 4 Go dans l'environnement du processus (deux passages) : le cout restant est la fenetre `_latest` du kill-feed sur tout l'historique, tres sensible a la concurrence des six lectures de la page ; socle (`/filters/resolve`, field-mappings, `/bootstrap`) 0,2-0,6 s x2-3 par page -> 1-8 ms apres le premier appel ; cycle d'auto-sync 1 243 bascules RO/RW -> 11. Gates sur l'arbre fusionne (98c79d9d5 puis C4) : gofmt vide, build 0, vet 0, `go test ./...` 190 paquets sans echec, integration `-p 1` sync/persist/duckdb/migration 18 paquets sans echec (13 min), `tsc -b --force` 0, eslint 0 erreur (26 avertissements anterieurs), vitest 791 fichiers / 8 503 tests ; C4 : paquet duckdb (defaut et integration), api, observability, archlint, golangci 0 issue. Revue adversariale (C.2) : quatre relecteurs Opus, une ronde, 1 P0 / 3 P1 / 12 P2, tous traites par L9-go et L9-web ou consignes au §11. Garde-rails C.6 verifies sur pieces. Decouvertes de cloture au plan §11 (charge utile de l'accueil, `logDBError` en ERROR sur `context canceled`, `friends_xp` qui ouvre en RW des DB d'amis non suivis, Chocoboflor en `reauth_required` donc en echec a chaque cycle, crons de boot pendant les premieres requetes, `LEVELUP_REPLAY_PUBLIC` lu a l'init).
+**Resultats observes** (matin -> cloture) : Escouade premier passage 194 s -> 2,6 s (une lecture legere de 197 ms puis UNE lourde de 1 256 ms, deja sur la bonne session ; zero 502), rechargement 26,3 s -> 1,6 s, clic du rail 35 s -> 0,24 s ; Synthese 6,2 -> 2,4 s (reste weapon_records 1,6 s) ; Sessions 6,1 -> 0,7 s ; Series temporelles 9,5 -> 0,9 s ; Accueil 4,2 + 2,6 s -> 2,1 s hors sync (reste `pages/home` 1,6 s pour 310 Ko) ; Carriere rencontres / rivaux 10,7 / 10,1 s -> 1,6-4,5 / 2,1-6,5 s hors sync apres L9-go (trois passages ; plus aucune lecture par ami, annuaire 21-60 ms), et 0,8-2,0 s avec 8 threads / 4 Go dans l'environnement du processus (deux passages) : le cout restant est la fenetre `_latest` du kill-feed sur tout l'historique, tres sensible a la concurrence des six lectures de la page ; socle (`/filters/resolve`, field-mappings, `/bootstrap`) 0,2-0,6 s x2-3 par page -> 1-8 ms apres le premier appel ; cycle d'auto-sync 1 243 bascules RO/RW -> 11. Gates sur l'arbre fusionne (98c79d9d5 puis C4) : gofmt vide, build 0, vet 0, `go test ./...` 190 paquets sans echec, integration `-p 1` sync/persist/duckdb/migration 18 paquets sans echec (13 min), `tsc -b --force` 0, eslint 0 erreur (26 avertissements anterieurs), vitest 791 fichiers / 8 503 tests ; C4 : paquet duckdb (defaut et integration), api, observability, archlint, golangci 0 issue. Revue adversariale (C.2) : quatre relecteurs Opus, une ronde, 1 P0 / 3 P1 / 12 P2, tous traites par L9-go et L9-web ou consignes au §11. Garde-rails C.6 verifies sur pieces. Decouvertes de cloture au plan §11 (charge utile de l'accueil, `logDBError` en ERROR sur `context canceled`, `friends_xp` qui ouvre en RW des DB d'amis non suivis, joueur_165 en `reauth_required` donc en echec a chaque cycle, crons de boot pendant les premieres requetes, `LEVELUP_REPLAY_PUBLIC` lu a l'init).
 
 **Prochaine etape** : CI verte au niveau job le 2026-09-23 a 21:44 (run 35907271317, apres retrait de 8 tests remplaces de la baseline), go utilisateur recu, fusion dans `feat/v75` faite dans la foulee (C.3 et C.5 clos) ; ensuite, decision utilisateur sur l'ADR « lectures par perimetre » et un eventuel plan structurel (fenetres `_latest` et annuaire materialises pour les pages a historique complet, charge utile de l'accueil, vue match).
 
@@ -116785,7 +116791,7 @@ défaut : le garde rougit (180 000 > 90), code restauré. Gates : voir le compte
 
 **Résultats observés.** Gates complets une fois : build, vet (défaut / research / integration), `go test ./...` 190 paquets 0 FAIL, intégration `-p 1 -json` 17 637 pass / 787 skip / 0 fail, baseline 9 693 présents, golangci 0 issue, openapi-gen -check à jour ; web tsc, eslint 0 erreur, couleurs, champs, vitest 8 659, knip 0/0/0, i18n sans écart, build Vite, rastérisation 3/3 (suite Playwright complète non jouable sans serveur). `replay-equiv` 20/20 identiques après re-figeage. Gate de corpus (8 témoins non BTB, base `1a8390e9f`) : pertes toutes attribuées aux classes déclarées de M4b et de la vague 70, un cas antérieur non déclaré consigné (§8.27 : prise d'une arme identique à la dotation lue ré-annonce, d9781168) ; tête contre `c9eb3b6bd` : 0 écart. Règle des places tenue sur les huit témoins. G1 81c02726 6/6 au code intégré. Commande de re-décodage testée sur f75e7053 (16,4 s, pic 275 Mio ; killsource crédit 3 min 11). `data/cache` vivant intact (find -newer vide avant/après chaque exécution).
 
-**Conclusion / prochaine étape.** Prête pour le superviseur : push + CI au niveau job, puis re-décodage des 111 films serveur arrêté (commande et ordre au §9 du plan : backfill-replay, usage-summary, pad-tiers --force, killsource --workers 1, tactical-rasters). Questions ouvertes au §9 : 3e montée de G MONEY (`ti=43` i20-i22), cibles M3, décor du Falcon, retrait de `turretRidesNotRideable`, verdicts visuels.
+**Conclusion / prochaine étape.** Prête pour le superviseur : push + CI au niveau job, puis re-décodage des 111 films serveur arrêté (commande et ordre au §9 du plan : backfill-replay, usage-summary, pad-tiers --force, killsource --workers 1, tactical-rasters). Questions ouvertes au §9 : 3e montée de JOUEUR_441 (`ti=43` i20-i22), cibles M3, décor du Falcon, retrait de `turretRidesNotRideable`, verdicts visuels.
 
 ## [2026-09-25] Retours rejeu : republication des 111 matchs au schéma 71 et CI de l'intégration D — Complété (feat/retours-rejeu)
 
@@ -116793,7 +116799,7 @@ défaut : le garde rougit (180 000 > 90), code restauré. Gates : voir le compte
 
 **Résultats observés.** `backfill-replay -only-existing` 111/111 construits (code 0, 42 min, pic max 929 Mio) ; résumé d'usage, pad-tiers (--force) et rasters tactiques : 111 écrits chacun, 0 échec. Vies publiées sans identité sur 10 matchs (23 vies) : même mesure au code de feat/v75 = 27 vies, défaut antérieur en légère baisse (§8.33). `data/cache` vivant : seules les écritures de la republication.
 
-**Conclusion / prochaine étape.** CI de 95308bf3c au niveau job, puis fusion dans feat/v75 et push (pas main), signal à la session de ménage. En attente de l'utilisateur : backfill killsource (1 624 films, environ 2 h 45 à un ouvrier), 3e montée de G MONEY (`ti=43` i20-i22), cibles M3, décor du Falcon de Behemoth, retrait de `turretRidesNotRideable`, verdicts visuels et sonores.
+**Conclusion / prochaine étape.** CI de 95308bf3c au niveau job, puis fusion dans feat/v75 et push (pas main), signal à la session de ménage. En attente de l'utilisateur : backfill killsource (1 624 films, environ 2 h 45 à un ouvrier), 3e montée de JOUEUR_441 (`ti=43` i20-i22), cibles M3, décor du Falcon de Behemoth, retrait de `turretRidesNotRideable`, verdicts visuels et sonores.
 
 ## [2026-09-25] Plan de suite de l'audit : decision DU-9 (largeurs presumees par mesure) — En cours (docs seules, rien lance)
 
@@ -116811,7 +116817,7 @@ défaut : le garde rougit (180 000 > 90), code restauré. Gates : voir le compte
 
 **Résultats observés.** Campagne fusionnée dans feat/v75 (569932b42, tête 3cca6cf47), CI verte sur tous les jobs (E2E compris), 111 matchs republiés au schéma 71.
 
-**Conclusion / prochaine étape.** Session suivante : lire le handoff ; décisions utilisateur sur la 3e montée de G MONEY, les armes de naissance des anciennes versions, le backfill killsource ; correction du Falcon de Behemoth ; retrait technique de `turretRidesNotRideable` à la prochaine montée de schéma.
+**Conclusion / prochaine étape.** Session suivante : lire le handoff ; décisions utilisateur sur la 3e montée de JOUEUR_441, les armes de naissance des anciennes versions, le backfill killsource ; correction du Falcon de Behemoth ; retrait technique de `turretRidesNotRideable` à la prochaine montée de schéma.
 
 ## [2026-09-25] Bascule vers le dossier `LevelUp` + menage worktrees/branches (tache Notion 10) ; backfill killsource — Complete (bascule faite, backfill termine)
 
@@ -116837,7 +116843,7 @@ logs, coverage, `.tanstack/tmp`) laisses dans l ancien dossier.
   film_facts 1 ; node_modules 377 — identiques.
 - Chemins absolus repointes dans `.env.local` (RESTIC_REPOSITORY), `.claude/settings.json` (hooks),
   `.claude/settings.local.json`. `go build ./...` OK, `npm run typecheck` OK, `/health` 200 (9170 matchs).
-- Memoire agent fusionnee dans `~/.claude/projects/c--Users-Guillaume-Downloads-Scripts-LevelUp/memory`
+- Memoire agent fusionnee dans `~/.claude/projects/c--Users-poste-Downloads-Scripts-LevelUp/memory`
   (369 fichiers ; index de l ancien + 23 entrees propres au dossier LevelUp en fin d index).
 - Archivage `.ai/` : rien a deplacer (plan/etat perf encore vivants et cites par du code).
 
@@ -116958,7 +116964,7 @@ Vérification superviseur, puis L3.
 
 **Decision technique principale** : le superviseur accepte le périmètre étendu du lot et trois écarts à la maquette :
 - libellé « Grenade frag » du registre ;
-- mêlée lue sur la feuille, avec l'écart d'un frag chez Chocoboflor ;
+- mêlée lue sur la feuille, avec l'écart d'un frag chez joueur_165 ;
 - ligne bidon à la couleur « Non attribué ».
 
 Il ajoute L2.6 : `SquadFragSection` quitte Usages pour Contributions, section « Frags et armes » placée entre la rangée Stats par minute / Radar synergie et « Performance ». « Répartition des frags » est pleine largeur, « Outils de destruction » juste en dessous. Le code devenu mort sur Usages est retiré.
@@ -117050,9 +117056,9 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 
 ## [2026-09-26] Suite de la campagne perf : ADR 0036 « lectures par périmètre », lot A (vue match et Relations sans la vue des noms), notes de release 7.5.0 — Complété côté code et docs (branche `feat/perf-perimetre`, ni poussée ni fusionnée sur consigne utilisateur)
 
-**Décision technique principale** : reprise du handoff du 2026-09-24, recommandation §6 retenue (ADR tout de suite, lot A avant la mesure prod, lots B et C après). Plan `.ai/PLAN_PERF_LECTURES_PERIMETRE_2026-09-26.md`, worktree dédié `LevelUp-wt-perf-perimetre`. Exécuteurs Opus (consigne quota du jour : Opus au plus, effort ajusté par type d'agent, un puis deux puis quatre en parallèle). Lot A : les lectures de la vue match (tableau de score, événements, rencontres, noms des événements) et de Relations (liste, liste scopée, carte de chaleur) nomment leurs lignes par l'annuaire de lecture en mode « portée base » (alias et participants sur toute la base filtrés par xuid, kill-feed des matchs de la lecture), sans `v_gamertag_lookup`. Le repli kill-feed « toute la base » (3 à 7 s quand il part, 65 % des matchs de Nuzzles) est remplacé par décision du superviseur par deux pas : localiser les matchs candidats dans la table brute `match_kill_events` (lecture de localisation seule, allowlistée et datée dans `no_raw_rating_reads_test.go`, paragraphe « locating read » de l'ADR 0036), lire les valeurs par `_latest` bornée. `ResolveGamertags` reçoit le match.
+**Décision technique principale** : reprise du handoff du 2026-09-24, recommandation §6 retenue (ADR tout de suite, lot A avant la mesure prod, lots B et C après). Plan `.ai/PLAN_PERF_LECTURES_PERIMETRE_2026-09-26.md`, worktree dédié `LevelUp-wt-perf-perimetre`. Exécuteurs Opus (consigne quota du jour : Opus au plus, effort ajusté par type d'agent, un puis deux puis quatre en parallèle). Lot A : les lectures de la vue match (tableau de score, événements, rencontres, noms des événements) et de Relations (liste, liste scopée, carte de chaleur) nomment leurs lignes par l'annuaire de lecture en mode « portée base » (alias et participants sur toute la base filtrés par xuid, kill-feed des matchs de la lecture), sans `v_gamertag_lookup`. Le repli kill-feed « toute la base » (3 à 7 s quand il part, 65 % des matchs de joueur_074) est remplacé par décision du superviseur par deux pas : localiser les matchs candidats dans la table brute `match_kill_events` (lecture de localisation seule, allowlistée et datée dans `no_raw_rating_reads_test.go`, paragraphe « locating read » de l'ADR 0036), lire les valeurs par `_latest` bornée. `ResolveGamertags` reçoit le match.
 
-**Résultats observés** (copie de la base, 2 threads / 512 Mo, machine chargée) : lectures de la vue match 3,3-3,6 s -> 5-89 ms en médiane (JGtm) ; Nuzzles 4,2-4,7 s -> 184-211 ms quand le repli part ; carte de chaleur Relations 5,0-20,4 s -> 78-94 ms ; liste Relations 8,2-14,1 s -> environ 2 s (reste : fenêtre du kill-feed, lot B). Parité exacte sur 93 000 lignes de tableau de score, 1 311 594 événements, 12 289 lignes Relations : 0 nom changé, y compris les 11 couples et 2 lignes que la vue nommait hors de la lecture. Ratchet de la vue : 5 fichiers descendus à 0. Revue adversariale (2 relecteurs aveugles) : 0 défaut de comportement, 1 trou de test (branches « victime » de la localisation) comblé en A.11 avec mutations rouges. Gates rejoués par le superviseur : build, vet, tests unitaires et intégration `-p 1` platform/duckdb, garde-rails sync, golangci 0 issue. Changelog 7.5.0 EN / FR (entrée « Performance des chargements », cinq ADR, trois lignes Ops de réglage) et notes de version in-app (69 puces EN et FR).
+**Résultats observés** (copie de la base, 2 threads / 512 Mo, machine chargée) : lectures de la vue match 3,3-3,6 s -> 5-89 ms en médiane (JGtm) ; joueur_074 4,2-4,7 s -> 184-211 ms quand le repli part ; carte de chaleur Relations 5,0-20,4 s -> 78-94 ms ; liste Relations 8,2-14,1 s -> environ 2 s (reste : fenêtre du kill-feed, lot B). Parité exacte sur 93 000 lignes de tableau de score, 1 311 594 événements, 12 289 lignes Relations : 0 nom changé, y compris les 11 couples et 2 lignes que la vue nommait hors de la lecture. Ratchet de la vue : 5 fichiers descendus à 0. Revue adversariale (2 relecteurs aveugles) : 0 défaut de comportement, 1 trou de test (branches « victime » de la localisation) comblé en A.11 avec mutations rouges. Gates rejoués par le superviseur : build, vet, tests unitaires et intégration `-p 1` platform/duckdb, garde-rails sync, golangci 0 issue. Changelog 7.5.0 EN / FR (entrée « Performance des chargements », cinq ADR, trois lignes Ops de réglage) et notes de version in-app (69 puces EN et FR).
 
 **Conclusion / prochaine étape** : push et fusion de `feat/perf-perimetre` dans `feat/v75` sur signal de l'utilisateur (le lot J1 du plan de suite de l'audit du décodeur doit aussi être dans `feat/v75` avant v7.5 -> main) ; puis mesure en réel (vue match, Relations) et mesure prod avant les lots B (fenêtre du kill-feed, pages à historique complet) et C (compaction). Découvertes au §6 du plan (dont : I6 non gardé, repli de localisation 150-360 ms au-dessus du budget de 100 ms, annuaire du même match chargé trois fois par ouverture).
 
@@ -117072,7 +117078,7 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 
 **Résultats observés** (copie de la base, 2 threads / 512 Mo, machine chargée) : lignes des tables du film 11,27 M → 1,12 M, fichier 1 264 → 351 Mio avec réécriture, 13 vues identiques à l'octet. JGtm : rencontres 1,83-1,87 s → 164-187 ms, rivaux 3,07-3,81 s → 133-247 ms, Relations 1,92-2,43 s → 233-272 ms, rencontres de la fiche du match 1,9-2,5 s → 236-296 ms, morts par carte 2,70-2,93 s → 227-383 ms. Parité : 49 comparaisons sur 5 joueurs, identiques (écart assumé : Campagne Halo 5 hors des frags échangés, 118 morts sur 63 matchs de la copie H5). Revues : 0 P0 ; un P1 sur la réécriture du fichier corrigé par changement de méthode ; tous les P2 corrigés. Gate superviseur : intégration complète verte, lint 0 issue ; seul rouge, le test à seuil de temps connu sur machine chargée. La variante Linux de la réécriture n'est prouvée que par la CI.
 
-**Prochaine étape** : compaction de la base locale avec l'utilisateur (serveur arrêté), puis push / CI / fusion sur son signal ; compaction prod dans la séquence Ops de la v7.5, après les recuissons. Proposé : lier aussi les listes de l'annuaire des noms en un paramètre tableau (Relations de Nuzzles).
+**Prochaine étape** : compaction de la base locale avec l'utilisateur (serveur arrêté), puis push / CI / fusion sur son signal ; compaction prod dans la séquence Ops de la v7.5, après les recuissons. Proposé : lier aussi les listes de l'annuaire des noms en un paramètre tableau (Relations de joueur_074).
 
 **Addendum 2026-09-28 (fusion)** : `feat/perf-perimetre` fusionnée dans `feat/v75` (avance rapide après trois rattrapages de `origin/feat/v75`). Seul rouge de l'arbre fusionné : deux dispenses devenues périmées du nouveau garde d'exclusion de la Campagne, retirées. Gates complets verts (intégration `-p 1` complète, lint contre `origin/main`). Base locale déjà compactée le 2026-09-27 (1 264 → 350 Mio). Reste : mesure des pages après relance du serveur, compaction prod dans la séquence Ops de la v7.5.
 
@@ -117088,7 +117094,7 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 
 **Demande** : l'onglet Usages de l'Escouade porte trop de graphes et se lit mal ; il doit répondre à sept questions tactiques (jouer groupés ou non ; riposter quand on est groupés ; maîtrise des bonus, des armes spéciales et des véhicules face au lobby et à l'adversaire ; ramassé puis utilisé ou perdu ; détail par carte ; bilan de soirée vu de l'extérieur ; par rapport à d'habitude).
 
-**Décision technique principale** : inventaire relevé dans le code (18 cartes en trois sections montées à des dates différentes : frags et armes, bloc « servi ou gâché », formes retenues) croisé aux sept questions ; un enquêteur Opus en lecture seule sur les données (servi / persisté / rejeu seul / inexistant, avec fichier:ligne) ; mesures en lecture seule sur `shared_matches_v2.duckdb` (serveur arrêté, CLI duckdb `-readonly`) pour la soirée du 22/09 (JGtm + Chocoboflor + Madina97294, 7 matchs) et l'historique de la composition (46 soirées). Proposition : onglet renommé « Tactique », quatre blocs et cinq cartes (Qui a tenu la carte ; Match par match ; Ce que chaque camp fait de ses prises ; Morts à portée d'un coéquipier + Morts ripostées en 5 s), uniquement des formes déjà en service, seul le repère « d'habitude » est neuf ; tout l'onglet sur les matchs de la composition ; frags et armes vers Contributions, écart cumulé au FDA attendu vers Dynamique, cartes d'objectif vers Contributions ; nuage « Frags non ripostés » laissé sur Synergies.
+**Décision technique principale** : inventaire relevé dans le code (18 cartes en trois sections montées à des dates différentes : frags et armes, bloc « servi ou gâché », formes retenues) croisé aux sept questions ; un enquêteur Opus en lecture seule sur les données (servi / persisté / rejeu seul / inexistant, avec fichier:ligne) ; mesures en lecture seule sur `shared_matches_v2.duckdb` (serveur arrêté, CLI duckdb `-readonly`) pour la soirée du 22/09 (JGtm + joueur_165 + joueur_117, 7 matchs) et l'historique de la composition (46 soirées). Proposition : onglet renommé « Tactique », quatre blocs et cinq cartes (Qui a tenu la carte ; Match par match ; Ce que chaque camp fait de ses prises ; Morts à portée d'un coéquipier + Morts ripostées en 5 s), uniquement des formes déjà en service, seul le repère « d'habitude » est neuf ; tout l'onglet sur les matchs de la composition ; frags et armes vers Contributions, écart cumulé au FDA attendu vers Dynamique, cartes d'objectif vers Contributions ; nuage « Frags non ripostés » laissé sur Synergies.
 
 **Résultats observés** : trois questions sans réponse dans l'onglet (groupés, riposte en groupe, habitude) et aucun véhicule ; la même part lue six fois sous quatre dénominateurs ; deux titres doublés ; deux populations de matchs (équipement et formes sur `filteredMatches` du joueur principal, décision E6.1bis, `teammates_service.go:446-449` ; frags et riposte sur la composition) ; les prises de socle mêlent les râteliers (BR75, VK78 Commando, Déchiqueteur, MK50 Sidekick = 25 des 95 prises le 22/09). Chiffres du 22/09 : bonus 60 % des prises attribuées (habitude 58 %, 13 soirées mesurées), frags aux armes spéciales 46,5 % (habitude 45,1 %, 46 soirées), prises de socle 46,3 % (habitude 44,3 %), morts à portée d'un coéquipier 85,5 % (habitude 85,9 %), riposte en 5 s groupés 28,5 % (habitude 25,7 %), isolés 19,5 % (habitude 7,3 %).
 
@@ -117104,7 +117110,7 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 
 **Complément 3 (question utilisateur : quels armes, véhicules et bonus sur chaque carte ?)** : maquette v5, « Match par match » détaille les objets de chaque match — une ligne par bonus (Surbouclier, Camouflage, avec le nombre de socles vidés), par arme spéciale (7 le 22/09) et, repliées, par arme de râtelier (13) ; cellule vide = objet absent de la carte ; qui l'a pris chez nous au survol. Véhicules : ligne réservée, donnée non servie (document de rejeu seulement). Le partage armes spéciales / râtelier est posé à la main dans la maquette (en production : niveau du socle, projection à réparer). Conséquence mesurée : sur les seules armes spéciales, les prises de socle du 22/09 tombent à 44,2 % (23 contre 29) contre 49 à 54 % d'habitude — sous l'habitude, alors que le compte râteliers compris (46,3 %) paraissait normal. Bilan et habitude passent à « Armes spéciales · prises sur les socles » ; la ligne mixte « Socles d'armes » disparaît. Données : les prises par arme et par joueur de chaque match sont déjà servies (formes) ; le nombre de socles de bonus vidés est lu mais pas transmis (Go minime).
 
-**Complément 4 (retour utilisateur : bilan en alliés contre adversaires, répartition dans l'escouade à part, sans redite avec les issues)** : maquette v6. « Qui a tenu la carte » n'a plus que deux segments (notre camp, adversaire) ; nouveau bloc « Rôles dans l'escouade », carte « Qui prend quoi chez nous » : grille objet × joueur (JGtm, Chocoboflor, Madina97294, reste du camp, total du camp), comptes dans les cases, encre du joueur, ni parité ni couleur de verdict (reprend « Qui porte quel usage » et « Taux de rafle de chaque coéquipier »). « Ce que chaque camp fait de ses prises » reste camp contre camp, jamais par joueur : trois cartes, trois lectures (combien, qui, ce qu'on en fait). Le 22/09 : JGtm 5 des 9 SPNKr, Madina97294 3 des 5 Sniper et 4 des 6 camouflages. Sept cartes au total.
+**Complément 4 (retour utilisateur : bilan en alliés contre adversaires, répartition dans l'escouade à part, sans redite avec les issues)** : maquette v6. « Qui a tenu la carte » n'a plus que deux segments (notre camp, adversaire) ; nouveau bloc « Rôles dans l'escouade », carte « Qui prend quoi chez nous » : grille objet × joueur (JGtm, joueur_165, joueur_117, reste du camp, total du camp), comptes dans les cases, encre du joueur, ni parité ni couleur de verdict (reprend « Qui porte quel usage » et « Taux de rafle de chaque coéquipier »). « Ce que chaque camp fait de ses prises » reste camp contre camp, jamais par joueur : trois cartes, trois lectures (combien, qui, ce qu'on en fait). Le 22/09 : JGtm 5 des 9 SPNKr, joueur_117 3 des 5 Sniper et 4 des 6 camouflages. Sept cartes au total.
 
 **Complément 5 (retour utilisateur : notion de productivité)** : maquette v7. Le bilan « Qui a tenu la carte » ne compte plus que les prises ; nouvelle carte « Ce que chaque camp en tire » sous les issues : part des frags de notre camp face à l'adversaire, par ressource, avec un trait noir à notre part des prises (prendre plus sans produire plus se voit), rendement à droite. Le 22/09 : bonus 8 frags pendant l'effet contre 5 (3,0 contre 2,7 par minute d'effet ; effet actif 2 min 39 contre 1 min 53) ; armes spéciales 47 frags contre 54, 2,0 contre 1,9 par prise. Données : `camo_kills`, `overshield_kills`, `camo_ms`, `overshield_ms` sont stockés pour tout le lobby mais jamais lus (Go minime) ; véhicules à brancher (frags côté adversaire : agrégat Go ; temps à bord : nouvelle mesure). Réserve relevée : 23 épisodes de camouflage adverses pour 3 prises sur Shogun — compter la durée et les frags, pas le nombre d'épisodes. Huit cartes.
 
@@ -117116,7 +117122,7 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 
 **Complément 9 (retour utilisateur : au fil de la session, pas du match ; pertinence des issues)** : maquette v11. « Au fil du match » (minute de jeu, exemple du 07/09) est remplacé par « Au fil de la session » : une petite courbe par ressource (bonus, armes spéciales, véhicules à brancher), un point par match (taille = volume), courbe = part cumulée depuis le premier match, axe commun heure / carte / résultat. Le 22/09 : bonus 71 % au premier match, 60 % en fin de soirée ; armes spéciales 33 % puis 57 % après Curfew, redescente à 44 % sur Shogun et Catalyst. « Ce que chaque camp fait de ses prises » devient « Prises perdues » : l'« utilisé » est déjà dit par « Ce que chaque camp en tire » ; la carte ne garde que gardé sans servir et lâché en mourant, en part des prises de chaque camp (bonus : 17 % contre 25 %, 2 sur 12 contre 2 sur 8). Plus de donnée « heure de chaque prise » nécessaire ; le résultat de chaque match reste à transmettre au bloc (Go minime).
 
-**Complément 10 (proposition utilisateur : les pertes de bonus dans les pastilles)** : maquette v12. La carte « Prises perdues » disparaît (seuls les bonus ont une perte mesurable par prise). Dans « Qui prend quoi chez nous », une pastille de bonus pleine = activé, vide (anneau à l'encre du joueur) = perdu (gardé sans activation ou lâché en mourant) ; les armes spéciales restent pleines (usage non mesuré par prise, lu dans le rendement). Le reste du camp passe en pastilles pleines grises (le creux est désormais réservé à la perte). Une ligne « Bonus perdus : nous 2 sur 12 (17 %), eux 2 sur 8 (25 %) » garde la comparaison entre camps. Le 22/09 : camouflage perdu par Chocoboflor (gardé) et Madina97294 (lâché en mourant), tous deux sur Shogun. Neuf cartes.
+**Complément 10 (proposition utilisateur : les pertes de bonus dans les pastilles)** : maquette v12. La carte « Prises perdues » disparaît (seuls les bonus ont une perte mesurable par prise). Dans « Qui prend quoi chez nous », une pastille de bonus pleine = activé, vide (anneau à l'encre du joueur) = perdu (gardé sans activation ou lâché en mourant) ; les armes spéciales restent pleines (usage non mesuré par prise, lu dans le rendement). Le reste du camp passe en pastilles pleines grises (le creux est désormais réservé à la perte). Une ligne « Bonus perdus : nous 2 sur 12 (17 %), eux 2 sur 8 (25 %) » garde la comparaison entre camps. Le 22/09 : camouflage perdu par joueur_165 (gardé) et joueur_117 (lâché en mourant), tous deux sur Shogun. Neuf cartes.
 
 **Complément 11 (retour utilisateur : un seul graphe, « parité » peu clair, code couleur global)** : maquette v13. « Au fil de la session » devient un seul graphe : une courbe cumulée par ressource, une seule ligne à 50 %, petits points par match (opacité réduite), étiquettes de fin écartées si elles se chevauchent. « Parité » disparaît de l'onglet au profit de « 50 % : autant que l'adversaire » (ce n'est pas une moyenne). Code couleur des ressources proposé pour toute l'app, validé au validateur de palette (daltonismes, contraste, clair et sombre) : bonus sarcelle #0D9488 / #0FA697, armes spéciales violet #7C3AED (= `frag-heavy`) / #8B5CF6, véhicules orange #D55E00 (= `frag-turret`) / #DD5F14, armes de râtelier bleu #0072B2 / #3B8FD0 ; pastille de couleur devant chaque nom de ressource dans l'onglet. Conséquences à trancher à l'implémentation : camouflage et surbouclier passent de `frag-heavy` (violet) à la couleur des bonus sur Sessions et Synthèse ; `frag-vehicle` (indigo) reste la couleur de la classe de frag, écart assumé à noter.
 
@@ -117148,9 +117154,9 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 
 **Complément 2 (retour utilisateur)** : « Écart cumulé au FDA attendu » VALIDÉ (forme proposée). Refus de la fusion Répartition des frags + Outils de destruction : les cartes restent séparées (idem pour les deux cartes d'objectif). v3 de l'artefact : chaque carte garde sa place et change seulement de forme — Répartition (comptes dans les segments, total au bout), Outils de destruction (légende joueurs, compte au bout de chaque barre, pastille de classe devant l'arme), Rapport de force (barre camp contre camp de « Qui a tenu la carte », comptes dans les segments, temps porteur en durée), Ce que mon camp prend (adversaire `team-enemy`, comptes, « Tenir » en durée). Deux bogues de la v2 corrigés : variable `R` redéclarée qui arrêtait le script (Outils, détail dépliable et section objectif vides) ; `id="tri"` en double (section et table) qui cassait le tableau du tri. Page désormais exécutée sous jsdom avant publication (aucune erreur, chaque conteneur rempli).
 
-**Complément 3 (retour utilisateur)** : VALIDÉS : Répartition des frags (forme proposée) et Outils de destruction (forme proposée). Demandes intégrées en v4 : (1) étiquette d'un segment empilé écrite seulement si elle y tient avec 6 px de marge de chaque côté, sinon ligne de repli au-dessus de la barre (pastille de classe + compte, alignée sur le premier segment masqué) ; (2) légendes des propositions en bas et centrées (préférence notée en mémoire) ; (3) Outils de destruction : plus de fourre-tout. Relevé : « Autres armes » = Mutilateur 1 + VK78 Commando 1 (JGtm), 8 armes gardées par le code ; mêlée et grenades lues sur la feuille de match ; la ligne « Grenade » de Madina97294 (3) vient de `fragdist.go:366` qui abandonne le détail quand le film (4 frag) dépasse la feuille (3) ; bidons (objet explosif) sans arme au registre, rangés « Non attribué » ; Madina97294 121 frags à la feuille, 120 au film. Proposition : tout lu dans le film, une ligne par arme / type de grenade / mêlée / bidon / chute. (4) Cartes d'objectif : section « L'existant » puis « Proposition », sélecteur de soirée 22/09 (Drapeau), 07/09/2026 (4 Bases + 3 Drapeau) et 06/11/2025 (2 Crâne + 1 Roi de la colline + 1 Drapeau : aucune soirée plus récente de la composition n'a de Crâne). Le rapport de force publie un bloc par famille (colonnes `squadformes/formes.go:313-383`) ; « Ce que mon camp prend » additionne toutes les familles (Tenir mélange temps de portage et temps en zone). Utilisateur encore indécis sur les cartes d'objectif.
+**Complément 3 (retour utilisateur)** : VALIDÉS : Répartition des frags (forme proposée) et Outils de destruction (forme proposée). Demandes intégrées en v4 : (1) étiquette d'un segment empilé écrite seulement si elle y tient avec 6 px de marge de chaque côté, sinon ligne de repli au-dessus de la barre (pastille de classe + compte, alignée sur le premier segment masqué) ; (2) légendes des propositions en bas et centrées (préférence notée en mémoire) ; (3) Outils de destruction : plus de fourre-tout. Relevé : « Autres armes » = Mutilateur 1 + VK78 Commando 1 (JGtm), 8 armes gardées par le code ; mêlée et grenades lues sur la feuille de match ; la ligne « Grenade » de joueur_117 (3) vient de `fragdist.go:366` qui abandonne le détail quand le film (4 frag) dépasse la feuille (3) ; bidons (objet explosif) sans arme au registre, rangés « Non attribué » ; joueur_117 121 frags à la feuille, 120 au film. Proposition : tout lu dans le film, une ligne par arme / type de grenade / mêlée / bidon / chute. (4) Cartes d'objectif : section « L'existant » puis « Proposition », sélecteur de soirée 22/09 (Drapeau), 07/09/2026 (4 Bases + 3 Drapeau) et 06/11/2025 (2 Crâne + 1 Roi de la colline + 1 Drapeau : aucune soirée plus récente de la composition n'a de Crâne). Le rapport de force publie un bloc par famille (colonnes `squadformes/formes.go:313-383`) ; « Ce que mon camp prend » additionne toutes les familles (Tenir mélange temps de portage et temps en zone). Utilisateur encore indécis sur les cartes d'objectif.
 
-**Complément 4 (décision utilisateur sur les cartes d'objectif)** : trois lectures sans redite, maquettées en v5. (1) « Rapport de force par famille de mode » = la seule vue camp contre camp (barre de « Qui a tenu la carte », actions rangées Prendre / Défendre / Tenir). (2) « Ce que mon camp prend de l'objectif » devient « Qui prend quoi à l'objectif chez nous » : une fiche par joueur + reste du camp, mêmes lignes (colonnes de chaque famille), barres à l'échelle de la ligne (pas de pastilles : jusqu'à 26 zones capturées pour un joueur aux Bases). (3) Nouvelle carte « Ce qu'on convertit, soirée après soirée » : Drapeau seulement, captures / vols par camp, ce soir à droite, médiane des soirées précédentes en pointillé. Chiffres : 07/09 notre camp 1 sur 15 (7 %) contre 9 sur 16 (56 %) ; 22/09 29 % contre 25 % ; 9 soirées précédentes avec Drapeau depuis le 03/06. Le 01/09 est exclu (drapeau neutre, l'adversaire n'a aucun vol : conversion mécanique de 100 %) ; le Crâne n'a eu qu'une soirée sur 56 sessions de la composition (pas de courbe). Fiches vérifiées : JGtm + Chocoboflor + Madina97294 + reste du camp = notre camp sur chaque colonne des trois soirées. Données à prévoir : historique de la conversion par soirée (agrégat Go, même définition de « soirée comparable » que Tactique), exclusion du Drapeau neutre.
+**Complément 4 (décision utilisateur sur les cartes d'objectif)** : trois lectures sans redite, maquettées en v5. (1) « Rapport de force par famille de mode » = la seule vue camp contre camp (barre de « Qui a tenu la carte », actions rangées Prendre / Défendre / Tenir). (2) « Ce que mon camp prend de l'objectif » devient « Qui prend quoi à l'objectif chez nous » : une fiche par joueur + reste du camp, mêmes lignes (colonnes de chaque famille), barres à l'échelle de la ligne (pas de pastilles : jusqu'à 26 zones capturées pour un joueur aux Bases). (3) Nouvelle carte « Ce qu'on convertit, soirée après soirée » : Drapeau seulement, captures / vols par camp, ce soir à droite, médiane des soirées précédentes en pointillé. Chiffres : 07/09 notre camp 1 sur 15 (7 %) contre 9 sur 16 (56 %) ; 22/09 29 % contre 25 % ; 9 soirées précédentes avec Drapeau depuis le 03/06. Le 01/09 est exclu (drapeau neutre, l'adversaire n'a aucun vol : conversion mécanique de 100 %) ; le Crâne n'a eu qu'une soirée sur 56 sessions de la composition (pas de courbe). Fiches vérifiées : JGtm + joueur_165 + joueur_117 + reste du camp = notre camp sur chaque colonne des trois soirées. Données à prévoir : historique de la conversion par soirée (agrégat Go, même définition de « soirée comparable » que Tactique), exclusion du Drapeau neutre.
 
 **Complément 5** : « Qui prend quoi à l'objectif chez nous » VALIDÉ sur le fond ; rendu repris des fiches de médailles de l'Escouade (`MedalDigest.tsx` : liseré gauche 4 px, emblème 32 px, pastille « Rôle dominant » en haut à droite à la place de « Catégorie dominante », étiquettes 9 px en capitales, puces « ×n » avec icône = initiale de la famille, pied de fiche Prendre / Défendre / Tenir) ; mêmes actions dans le même ordre, zéros atténués, Prises nettes exclues (hors des totaux de rôle). Nouvelle carte « L'objectif au fil de la session » : notre part (camp / lobby) de Prendre, Défendre, Tenir, cumulée match après match, CHAQUE MATCH PÈSE PAREIL (sinon 4 Bases à ~200 actions écrasent 3 Drapeau à ~60), points par match à la taille du volume, bande de résultats, masquée sous 3 matchs à objectif (22/09 : 2). 07/09 : Prendre 39 %, Défendre 37 %, Tenir 44 % ; 06/11/2025 : 65 / 54 / 44 %. Couleurs de rôle provisoires (#6366F1, #0891B2, #C026D3), à passer au contrôle de palette. Conversion renommée « Au Drapeau : ce qu'on convertit » ; sous chaque soirée « matchs Drapeau sur matchs de la soirée » ; une soirée mixte n'entre que par ses Drapeau ; pas de généralisation aux zones (prendre une zone, c'est déjà tenir).
 
@@ -117189,21 +117195,21 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 
 **Complément 8 (clôture de la revue des cartes déplacées)** : « L'objectif, soirée après soirée » VALIDÉ. Toutes les cartes qui quittent Tactique sont tranchées et validées : Écart cumulé au FDA attendu (Dynamique) ; Répartition des frags et Outils de destruction (Contributions, séparées, formes revues, armes toutes nommées par le film) ; section objectif de Contributions en quatre cartes (Rapport de force par famille de mode, L'objectif au fil de la session, Qui prend quoi à l'objectif chez nous, L'objectif soirée après soirée) qui remplacent Rapport de force + Ce que mon camp prend. Maquette de référence : artefact C3EWYk6c v8, copie `.ai/archive/V7.5/MAQUETTE_TRI_CARTES_DEPLACEES_2026-09-26.html`. Reste avant tout plan : le bas de l'onglet Tactique (maquette 6ZKxrug6 v18) n'est pas revu ; couleurs de rôle Prendre / Défendre / Tenir à passer au contrôle de palette.
 
-**Complément 9 (retours utilisateur, les deux maquettes)** : VALIDÉS dans le bas de l'onglet : « Ce que chaque camp en tire » et « Rendement face à l'adversaire ». NON validé : le nuage « Nos morts, groupés ou isolés, ripostées ou non » (« ce concept me donne du fil à retordre ») → proposé en v19 de 6ZKxrug6 : deux cartes à barres sur les mêmes 259 morts, « Isolement et riposte à la mort » (une barre par rang groupés 185 / isolés 33 / hors de vue 41, découpée ripostée en 5 s / plus tard / jamais : 58 · 31 %, 7 · 21 %, 8 · 20 %) et « Isolement à la mort, par joueur » (JGtm 59 / 17 / 10, Chocoboflor 60 / 8 / 17, Madina97294 66 / 8 / 14) ; nuage gardé dessous pour comparer. Fiches « Répartition des prises dans l'escouade » passées au style des fiches de médailles (contenu inchangé, pastille « Ressource dominante »). Demandes transverses appliquées aux deux maquettes : titres factuels (Contrôle des ressources ; … au fil de la session ; … match par match ; … soirée après soirée ; Frags obtenus avec les ressources ; Répartition des prises dans l'escouade ; Rapport de force au fil de la session ; Répartition de l'objectif dans l'escouade ; Rapport de force, soirée après soirée ; Isolement et riposte, soirée après soirée) ; onglet renommé « Emprise » (« Tactique » est déjà une page, `features/tactical`) ; légendes en bas et centrées partout ; graphes centrés verticalement dans leur carte (cartes voisines à hauteur égale). Couleurs de rôle validées au contrôle de palette (`validate_palette.js`, toutes paires) : clair Prendre #4F46E5, Défendre #0891B2, Tenir #A21CAF (pire ΔE daltonisme 9,5) ; sombre #7B80F7 / #0891B2 / #A924BD (8,5) ; l'ancien trio échouait (6,5).
+**Complément 9 (retours utilisateur, les deux maquettes)** : VALIDÉS dans le bas de l'onglet : « Ce que chaque camp en tire » et « Rendement face à l'adversaire ». NON validé : le nuage « Nos morts, groupés ou isolés, ripostées ou non » (« ce concept me donne du fil à retordre ») → proposé en v19 de 6ZKxrug6 : deux cartes à barres sur les mêmes 259 morts, « Isolement et riposte à la mort » (une barre par rang groupés 185 / isolés 33 / hors de vue 41, découpée ripostée en 5 s / plus tard / jamais : 58 · 31 %, 7 · 21 %, 8 · 20 %) et « Isolement à la mort, par joueur » (JGtm 59 / 17 / 10, joueur_165 60 / 8 / 17, joueur_117 66 / 8 / 14) ; nuage gardé dessous pour comparer. Fiches « Répartition des prises dans l'escouade » passées au style des fiches de médailles (contenu inchangé, pastille « Ressource dominante »). Demandes transverses appliquées aux deux maquettes : titres factuels (Contrôle des ressources ; … au fil de la session ; … match par match ; … soirée après soirée ; Frags obtenus avec les ressources ; Répartition des prises dans l'escouade ; Rapport de force au fil de la session ; Répartition de l'objectif dans l'escouade ; Rapport de force, soirée après soirée ; Isolement et riposte, soirée après soirée) ; onglet renommé « Emprise » (« Tactique » est déjà une page, `features/tactical`) ; légendes en bas et centrées partout ; graphes centrés verticalement dans leur carte (cartes voisines à hauteur égale). Couleurs de rôle validées au contrôle de palette (`validate_palette.js`, toutes paires) : clair Prendre #4F46E5, Défendre #0891B2, Tenir #A21CAF (pire ΔE daltonisme 9,5) ; sombre #7B80F7 / #0891B2 / #A924BD (8,5) ; l'ancien trio échouait (6,5).
 
 **Complément 10** : alternatives au nuage des morts ajoutées (6ZKxrug6 v20), pour trancher « la statistique ou le rendu » : (a) « Distance au coéquipier et délai de riposte » = la même statistique en grille 6 distances × 5 délais, comptes dans les cases (somme 259) ; (b) « Délai de riposte selon l'isolement » = part déjà ripostée au fil des secondes (échelle log 0,5-60 s), une courbe par situation, trait à 5 s (en 60 s : groupés 89 %, isolés 76 %, aucun en vue 73 %) ; plus les deux cartes à barres de la v19 et le nuage pour comparer. Pistes de statistique différente, non mesurées : morts en paquet (mort d'un coéquipier dans les secondes qui précèdent) ; temps passé à portée d'un coéquipier (nouvelle mesure du film).
 
-**Complément 11 (décision utilisateur : la riposte est trop contextuelle ; garder l'angle des morts isolées)** : 6ZKxrug6 v21, bloc « Groupés ou isolés » = « Isolement à la mort » (un point par mort ; x = distance 2D au coéquipier VISIBLE le plus proche, `match_death_context_latest.nearest_teammate_m`, trait radar 18 m, bande « aucun visible » ; y = coéquipiers tombés dans les 5 s précédentes, depuis `match_kill_events_latest` + équipe de `match_participants` : 0 / 1 / 2+ ; comptes par zone écrits dans le graphe) + « Isolement à la mort, par joueur » en barres. La riposte sort du bloc (reste sur Synergies) ; question 2 des sept (« riposte quand on est groupés ») abandonnée ; « Par rapport à d'habitude » : « Isolement, soirée après soirée », une seule courbe. Chiffres (220 morts, 6 matchs filmés) : aucun coéquipier tombé 152 morts dont 19 isolées (12,5 %) ; un tombé 61 dont 15 isolées (25 %) ; deux ou plus 7 ; JGtm 18 isolées sur 76, Chocoboflor 8 sur 69, Madina97294 8 sur 75. **Erreur relevée dans les versions précédentes** : le nuage (v18) et ses variantes (v19-v20) comptaient les 38 morts de Detachment (match sans film) comme « hors de vue » (41 « hors de vue » dont 2 réels) ; corrigé. **Découverte non traitée** : `teammates_waiting` du contexte de mort ne compte que 8 morts sur 220 avec un coéquipier en attente de réapparition, alors que le journal des morts en donne 74 avec un coéquipier tombé dans les 5 s : la détection « en attente » (`film/replay/death_context.go`, état EtatEnAttente) semble sous-estimer ; à diagnostiquer avant de s'y fier.
+**Complément 11 (décision utilisateur : la riposte est trop contextuelle ; garder l'angle des morts isolées)** : 6ZKxrug6 v21, bloc « Groupés ou isolés » = « Isolement à la mort » (un point par mort ; x = distance 2D au coéquipier VISIBLE le plus proche, `match_death_context_latest.nearest_teammate_m`, trait radar 18 m, bande « aucun visible » ; y = coéquipiers tombés dans les 5 s précédentes, depuis `match_kill_events_latest` + équipe de `match_participants` : 0 / 1 / 2+ ; comptes par zone écrits dans le graphe) + « Isolement à la mort, par joueur » en barres. La riposte sort du bloc (reste sur Synergies) ; question 2 des sept (« riposte quand on est groupés ») abandonnée ; « Par rapport à d'habitude » : « Isolement, soirée après soirée », une seule courbe. Chiffres (220 morts, 6 matchs filmés) : aucun coéquipier tombé 152 morts dont 19 isolées (12,5 %) ; un tombé 61 dont 15 isolées (25 %) ; deux ou plus 7 ; JGtm 18 isolées sur 76, joueur_165 8 sur 69, joueur_117 8 sur 75. **Erreur relevée dans les versions précédentes** : le nuage (v18) et ses variantes (v19-v20) comptaient les 38 morts de Detachment (match sans film) comme « hors de vue » (41 « hors de vue » dont 2 réels) ; corrigé. **Découverte non traitée** : `teammates_waiting` du contexte de mort ne compte que 8 morts sur 220 avec un coéquipier en attente de réapparition, alors que le journal des morts en donne 74 avec un coéquipier tombé dans les 5 s : la détection « en attente » (`film/replay/death_context.go`, état EtatEnAttente) semble sous-estimer ; à diagnostiquer avant de s'y fier.
 
 **Complément 12 (plan d'implémentation)** : isolement et riposte mis de côté par l'utilisateur. Plan écrit : `.ai/PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26.md` (PROPOSÉ, rien lancé), relu contre la grille `plan-review`. Appuyé sur un relevé Opus du code (fichier:ligne). Décisions tranchées D2-D12 (périmètre composition ∩ filtres, armes spéciales = niveau `puissance`, habitude ressources / objectif, parts d'objectif à poids égal par match, outils de destruction nommés par le film via une variante propre à l'Escouade, jetons à valeur unique validés au contrôle de palette en clair et en sombre — rôles #6366F1 / #0891B2 / #A924BD —, Halo 5 dégradé par capability, code mort supprimé) ; seule D1 (nom « Emprise », route `squad/emprise` + redirection) reste à confirmer. Spécification de rendu S1-S13 reprise des maquettes. Lots séquentiels L0 jetons → L1 Dynamique → L2 frags → L3 objectif → L4 données Emprise (dont le correctif de la panne des niveaux de socle : `DerivationsDeps` sans `WithRead`, marque posée malgré l'échec) → L5 onglet → L6 clôture, dans le worktree `wt/emprise`. Découvertes consignées dans le plan (route `/pages/squad/v2` morte hors `/engagement`, `teammates_waiting` sous-estimé, `formes/` solo sous `features/squad`).
 
-**Complément 13 (go)** : « Emprise » confirmé, go du 2026-09-26. Véhicules : lot L7 ajouté au plan, APRÈS L6 (nouvelle projection du rejeu + table append-only + rattrapage : le plus risqué, ne doit pas retarder l'onglet ; les cartes L4/L5 prévoient la ressource « véhicules » sans refonte). Worktree `C:\Users\Guillaume\Projects\LevelUp-wt-emprise`, branche `wt/emprise` depuis `origin/feat/v75` d61443ef5 ; commit eeb8698d6 = plan + handoff + maquettes (copie du worktree = référence). Lot L0 (jetons) lancé sur un exécuteur Opus. Les copies non suivies du plan, du handoff et des maquettes dans le principal devront être retirées avant la fusion (sinon « untracked working tree files would be overwritten »).
+**Complément 13 (go)** : « Emprise » confirmé, go du 2026-09-26. Véhicules : lot L7 ajouté au plan, APRÈS L6 (nouvelle projection du rejeu + table append-only + rattrapage : le plus risqué, ne doit pas retarder l'onglet ; les cartes L4/L5 prévoient la ressource « véhicules » sans refonte). Worktree `<poste>\Projects\LevelUp-wt-emprise`, branche `wt/emprise` depuis `origin/feat/v75` d61443ef5 ; commit eeb8698d6 = plan + handoff + maquettes (copie du worktree = référence). Lot L0 (jetons) lancé sur un exécuteur Opus. Les copies non suivies du plan, du handoff et des maquettes dans le principal devront être retirées avant la fusion (sinon « untracked working tree files would be overwritten »).
 
 **Complément 14 (L0 clos)** : lot L0 commité `1ae6f2848` sur `wt/emprise` ; vérifié par le superviseur (typecheck, 58 fichiers vitest accessibilité / usage / sessions verts, diff de `default.ts` relu). 7 jetons ajoutés dans les 4 palettes, véhicule / tourelle échangés, bonus → `resource-powerup`, rôles → `objective-role-*`. Palettes daltoniennes : teintes prises dans chaque palette ; Okabe-Ito ressources hors bande de clarté sombre de 0,009 (aucun jeu de la palette ne passe en entier) — écart ACCEPTÉ par le superviseur (pastille + nom = codage secondaire), commit `55f88ec00`. Commentaires périmés de `fragClass.ts:76-77` versés au lot L2 (L2.5). L1 lancé.
 
 **Complément 15 (L1 clos)** : L1 commité `eed0280e7` + retouche `284bf6267` (point final grossi comme la maquette) sur `wt/emprise` ; vérifié par le superviseur (suite vitest `features/squad` : 74 fichiers verts). Carte « Écart cumulé au FDA attendu » sur Dynamique à côté de la balance des dégâts (même abscisse, même hauteur, pleine largeur si l'autre manque), valeurs de fin au bout des courbes, pastilles « écart moyen » retirées, légende en bas centrée, montage Usages et slot `leftOfBreakdown` supprimés. Découverte : l'infobulle reste le texte partagé `common.charts.fda_gap_tooltip` (3 pages). L2 lancé (exécuteur Opus effort élevé).
 
-**Complément 16 (L2 clos)** : L2 commité `c76e8a620` + `a71df9401` sur `wt/emprise` ; vérifié par le superviseur (`go test` teammates + platform/duckdb verts). Répartition des frags en DOM (comptes dans les segments, repli S3 mesuré au pixel, `components/charts/segmentLabelFit.ts` réutilisable), Outils de destruction sans plafond ni « Autres », chaque frag nommé (builder Escouade, lecture par catégorie de source via un port optionnel `KillSourceCategorizer` — extension de périmètre ACCEPTÉE), champ `weapon_tools` remplace `weapon_kills`. Oubli du plan réparé : L2.6 monte les deux cartes sur Contributions (section « Frags et armes » entre Stats par minute / Radar et Performance). Halo 5 : ligne « Grenade » depuis la feuille quand le film n'a pas de détail typé. Acceptés : libellé registre « Grenade frag », mêlée depuis la feuille (écart d'un frag chez Chocoboflor tracé), bidon couleur « Non attribué », Précision par rôle (H5) laissée à côté de la Répartition. L3 lancé (Opus effort élevé).
+**Complément 16 (L2 clos)** : L2 commité `c76e8a620` + `a71df9401` sur `wt/emprise` ; vérifié par le superviseur (`go test` teammates + platform/duckdb verts). Répartition des frags en DOM (comptes dans les segments, repli S3 mesuré au pixel, `components/charts/segmentLabelFit.ts` réutilisable), Outils de destruction sans plafond ni « Autres », chaque frag nommé (builder Escouade, lecture par catégorie de source via un port optionnel `KillSourceCategorizer` — extension de périmètre ACCEPTÉE), champ `weapon_tools` remplace `weapon_kills`. Oubli du plan réparé : L2.6 monte les deux cartes sur Contributions (section « Frags et armes » entre Stats par minute / Radar et Performance). Halo 5 : ligne « Grenade » depuis la feuille quand le film n'a pas de détail typé. Acceptés : libellé registre « Grenade frag », mêlée depuis la feuille (écart d'un frag chez joueur_165 tracé), bidon couleur « Non attribué », Précision par rôle (H5) laissée à côté de la Répartition. L3 lancé (Opus effort élevé).
 
 **Complément 17 (L3 clos)** : L3 commité `08ddcdf7b` + `7a5421725` sur `wt/emprise` ; vérifié par le superviseur (Go teammates / squadformes / archlint verts, vitest `features/squad` 740 verts). Section « Objectif » sur Contributions : Rapport de force par famille de mode (familles encadrées), Rapport de force au fil de la session, Répartition de l'objectif dans l'escouade (coquille `SquadPlayerSheet` extraite de MedalDigest), Rapport de force soirée après soirée (champ `squad_objective_history`). Périmètre D2 posé (composition ∩ filtres). Panneau et champ `objective_stats_by_xuid` supprimés. Corrections demandées par le superviseur : drapeau neutre écarté aussi du fil (même prédicat, fin du fil = point « ce soir »), `teammates_service.go` ramené de 527 à 501 lignes. Acceptés : légende en pied de carte séparée par un filet, ECharts, encoche de dominance, rôle 0 sur 0 hors moyenne, abréviations de familles. Découverte : fond de pastille invalide dans MedalDigest (`${color}22` sur une variable CSS). L4 lancé (Opus effort élevé ; revue adversariale prévue à sa clôture).
 
@@ -119171,7 +119177,7 @@ sur LR.2 au regard du critère « corrections générales lues dans le jeu ».
 
 **Décision technique principale** : mesurer avant de coder. Instrument `film/replay/rejeu_equipes_research_test.go` (tag `research`) : relit les faits persistés et l'artefact, REJOUE la liaison de production (`lierLesOccupants`) et vérifie qu'elle rend les équipes publiées (0 écart sur 126 films), puis diagnostique chaque entrée `seatSource: index`. Deux instruments hors de `film/replay` (corrélation aux octets BOT_METADATA dans `killsource`, canal des records `ti=9` des trames delta dans `grammar`) ont servi à la mesure et ne sont PAS versionnés (périmètre du lot ; la CI compile tous les `research`).
 
-**Résultats observés** : (G1) les 18 bots sans équipe n'ont aucune entité `ti=9` lue parce qu'aucune image-clé porteuse ne tombe pendant leur déclaration (1 à 126 frames, pas de 200) ; leur absence de place en découle (équipe inconnue -> `index`). Les 3 entrées avec équipe sont bloquées par des présences contradictoires : humain lu avant le retrait du bot (`43e96765`), vie nommée opresko par création après l'absence prouvée de son entité (`859da825`), vie de bot nommée par l'index 8 d'un humain (`bf2a9f05`). Chaque chaîne partant -> bot -> arrivant est de même équipe des deux côtés. (G2) Pas d'équipe lisible aujourd'hui dans les trames delta (mesuré sur 2 films), ni dans le bipède (bloc MPP sauté). L'équipe est ÉCRITE dans BOT_METADATA : octets 0x783 et 0x784 après le terminateur du nom (queue fixe de 1930 octets), 0x00 = équipe 0, 0x04 = équipe 1, 56/56 bots dont l'entité donne l'équipe (28 + 28, HI_1_13_0), stables sur tous les paquets, et 20/20 accords avec la place libre des bots sans entité (contrôle indépendant). Revue adversariale (un relecteur frais) : 0 P0, 1 P1 et 5 P2, tous des imprécisions du plan, corrigées ; le champ reproduit à l'identique.
+**Résultats observés** : (G1) les 18 bots sans équipe n'ont aucune entité `ti=9` lue parce qu'aucune image-clé porteuse ne tombe pendant leur déclaration (1 à 126 frames, pas de 200) ; leur absence de place en découle (équipe inconnue -> `index`). Les 3 entrées avec équipe sont bloquées par des présences contradictoires : humain lu avant le retrait du bot (`43e96765`), vie nommée joueur_1029 par création après l'absence prouvée de son entité (`859da825`), vie de bot nommée par l'index 8 d'un humain (`bf2a9f05`). Chaque chaîne partant -> bot -> arrivant est de même équipe des deux côtés. (G2) Pas d'équipe lisible aujourd'hui dans les trames delta (mesuré sur 2 films), ni dans le bipède (bloc MPP sauté). L'équipe est ÉCRITE dans BOT_METADATA : octets 0x783 et 0x784 après le terminateur du nom (queue fixe de 1930 octets), 0x00 = équipe 0, 0x04 = équipe 1, 56/56 bots dont l'entité donne l'équipe (28 + 28, HI_1_13_0), stables sur tous les paquets, et 20/20 accords avec la place libre des bots sans entité (contrôle indépendant). Revue adversariale (un relecteur frais) : 0 P0, 1 P1 et 5 P2, tous des imprécisions du plan, corrigées ; le champ reproduit à l'identique.
 
 **Conclusion / prochaine étape** : lire ce champ exige un champ neuf de BOT_METADATA dans `film/internal/facts/killsource` (montée de `killsource.Rev`, faits du parc à ré-extraire, croise la session RI et la campagne de grammaire) : décision au superviseur et à l'utilisateur. Ensuite seulement G3 dans `film/replay` (équipe du bot = champ lu ; relais d'une frame, humain lu avant le retrait du bot, vies mal nommées à traiter), puis G4 et G5. Découvertes D1 à D8 consignées au plan, non traitées.
 
@@ -119242,17 +119248,17 @@ E6.4 (onglet Arsenal) — grille, barres et contrôle des socles encrés par l'a
 
 E6.5 (garde-rails) — allowlist `team_side` réduite au helper de libellé ; règle (c) « aucune allégeance hors du film » ; `ReplayKill` sans `ally`, identité du modèle réduite aux noms ; régime à trois arguments de `resolveXuidMeta` retiré ; commentaires périmés (ligne « moi », côté de feuille qui encre) remis au vrai ; mutations rattrapées.
 
-E6.6 (parc, 126 documents, lecture seule, référence = profil suivi présent : JGtm 84, Nuzzles 38, Chocoboflor 4, aucune sans équipe) — vies de bots : 179, toutes adverses avant ; après 60 alliées (20 bots, 16 documents), 115 adverses, 4 neutres (bots sans équipe du film), 0 alliée → adverse ; en-têtes : 1 sur 252 cesse d'être neutre (248972b2, camp 1 vu de Nuzzles, 74 images sans humain), 0 devient neutre. Témoins : c7f94693 Donos n'en est pas un (le film tait son équipe → neutre) ; b1ad85eb Brew Dog, 5dfdc63b Kubly.
+E6.6 (parc, 126 documents, lecture seule, référence = profil suivi présent : JGtm 84, joueur_074 38, joueur_165 4, aucune sans équipe) — vies de bots : 179, toutes adverses avant ; après 60 alliées (20 bots, 16 documents), 115 adverses, 4 neutres (bots sans équipe du film), 0 alliée → adverse ; en-têtes : 1 sur 252 cesse d'être neutre (248972b2, camp 1 vu de joueur_074, 74 images sans humain), 0 devient neutre. Témoins : c7f94693 Donos n'en est pas un (le film tait son équipe → neutre) ; b1ad85eb Brew Dog, 5dfdc63b Kubly.
 E6.7 (livraison) — aucune fonction allongée au-delà de sa dette (`MatchEquipmentUsageSection` et `useReplayTimeline` resserrées : `filmAllegianceOf` accepte un document absent, `teammatesOf` extrait). Revue adversariale en deux rondes (relecteurs Opus neufs, lecture seule dans le worktree du lot). Ronde 1 (`f8a14b3b9..5c931a66b`, deux relecteurs aveugles) : 0 P0 / 0 P1 annoncés, 6 constats recevables proposés P2 dont 1 commun (5 distincts), 0 jeté ; tri : 3 P1 (une règle écrite violée ou une garantie perdue par le diff n'est pas « hors périmètre ») — champs morts `MedalEvent.teamID` et `KillEvent.victimTeamID` supprimés (dans `match-view/_momentum.ts`, fichier de la Vue match : un champ, son écriture, la doc de `teamID` ; `_momentum.test.ts` inchangé et vert, `features/match-view` 46 fichiers / 458 tests verts) ; `endMatchSoundSpec(film, scoreboard, code, locale)` relit lui-même le joueur de la page ; commentaires rendus faux remis au vrai dans 9 fichiers ; 1 P2 préexistant consigné (E6-D4 : bots jamais défenseurs d'une zone de retour) et E6-D5 relevée (`KillEvent.assistTeamID` mort avant le lot). Ronde 2 (`5c931a66b..78824c8ad` seulement, un relecteur) : 0 P0 / 0 P1 annoncés, 3 constats recevables proposés P2, 1 écarté (inerte) ; tri : 2 P1 (décroissance stricte depuis 3), traités sans ronde 3 — cas de test discriminants pour la fin sonore (mutations « page = première ligne » et « sujet = première ligne » rattrapées) et 3 commentaires remis au vrai (en-tête de `filmAllegiance`, garde-rail `noIsMeOutsideViewpoint`, doc d'`actor_team_id`). Gates après la ronde 2 : `tsc -b` à froid 0 erreur, vitest complet `--pool=forks` hors sandbox 854 fichiers / 9 102 tests verts (5 fichiers `*.mesure` / `*.perf` sautés, hors lot), eslint 0 erreur (26 avertissements préexistants), lint couleurs et champs propres, knip-ratchet 0 / 0 / 0. Commits `78824c8ad` (ronde 1) et `42d0eac7d` (ronde 2), push : CI `37516295615` verte (E2E Playwright sauté hors PR vers `main`), gitleaks et Deploy Pre-Check verts ; dernier commit de code `b1b379300` (compte des entrées sorties de l'allowlist, commentaire seulement) : CI `37522110852` verte.
 
-**Conclusion / prochaine étape** : CR au superviseur, qui fusionne dans `feat/v75` (Playwright local à passer avant cette fusion web, non lancé ici). Témoins visuels : b1ad85eb « 343 Brew Dog » (bot allié, camp 1 de JGtm, 323,6–493,5 s de film), 5dfdc63b « 343 Kubly » (bot allié, camp 0 de JGtm, 247,7–440,6 s), c7f94693 « 343 Donos » (le film tait son équipe : encre neutre, défaut de source du lot Go), 248972b2 vu de Nuzzles (en-tête du camp 1 désormais adverse, images 4968–5041). Ouverts : E6-D3 (attribution d'un frag à un camp par `actor_team_id`, à statuer), E6-D4, E6-D5.
+**Conclusion / prochaine étape** : CR au superviseur, qui fusionne dans `feat/v75` (Playwright local à passer avant cette fusion web, non lancé ici). Témoins visuels : b1ad85eb « 343 Brew Dog » (bot allié, camp 1 de JGtm, 323,6–493,5 s de film), 5dfdc63b « 343 Kubly » (bot allié, camp 0 de JGtm, 247,7–440,6 s), c7f94693 « 343 Donos » (le film tait son équipe : encre neutre, défaut de source du lot Go), 248972b2 vu de joueur_074 (en-tête du camp 1 désormais adverse, images 4968–5041). Ouverts : E6-D3 (attribution d'un frag à un camp par `actor_team_id`, à statuer), E6-D4, E6-D5.
 ## [2026-10-06] Rejeu — toute entrée du roster a l'équipe que le film écrit (source Go) : champ BOT_METADATA lu, G3 — Complété (`feat/rejeu-equipes-source`, NON fusionné)
 
 **Statut** : Complété — CHECKPOINT (i) levé par le superviseur (lecture à la source, grammaire d'abord, pas de republication) ; G3 implémenté, relu (deux relecteurs frais), mesuré en processus, poussé ; CR au superviseur. Non fusionné dans `feat/v75` ; la ré-extraction du parc local se joue après la fusion, sur go de l'utilisateur (séquence au plan, G5.2). Plan : `.ai/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md` (F.1, F.2, G3, G5).
 
 **Décision technique principale** : (1) Ghidra, lecture seule (ADR 0034 D-3 r. 2) : l'écrivain du paquet de type 12 (`FUN_14299bda0`) écrit `W(32)` nombre d'entrées puis, par bot, index absolu, slot, `bid` et le CORPS de fiche de joueur (`FUN_1407edea8`) ; l'équipe est l'octet 0x25 du bloc de 44 octets de queue (`configuration + 0xCE5`, posé sur le joueur par `FUN_140ad37f8` -> `FUN_140ad389c`), le jumeau l'octet 0x26 (lu seulement par des charges d'événement) : bit 15 382 après le nom, 8 bits signés, exactement la mesure de G2. (2) `killsource/botmeta_equipe.go` lit le paquet EN ENTIER par cette grammaire (curseur méfiant `curseurEv` du paquet) et ne retient une équipe que d'un paquet qui FERME, pour l'entrée au même slot, `bid` et nom ; comptes, diagnostics (erreur pour un bot sans équipe, avertissement pour un paquet non fermé), aucun repli. `killsource.Rev` ne monte PAS (aucune ligne de kill ne change, précédent M2.1) ; `SchemaDesFaits` 4 -> 5 périme les faits. (3) `film/replay` : équipe = entités, sinon déclaration BOT_METADATA, plus d'emprunt à l'index pour un bot ; relais à la frame ; l'humain arrivé pendant la déclaration du bot, sans vie avant son retrait et encore là après, lui succède (place du bot en priorité, présence ouverte au lendemain du retrait) ; `SchemaVersion` 79 -> 80 sans champ neuf (des compteurs en couverture auraient changé le contrat servi, donc le `generated.ts` du web).
 
-**Résultats observés** : parc (48 films, 1 683 paquets) : 78 équipes lues, oracle 56/56, 0 paquet non fermé, 1 bot fantôme du lecteur historique (`8076f97f`, D9). 19 témoins, en processus : `sansEquipe` 18 -> 0, `sansPlace` 21 -> 3, `placesEnTrop` 3 -> 3, `depassements` 229 -> 60 ; restes D2 (`859da825`), D3 (`bf2a9f05`), D6 (`d1dfbc02`), étrangers à l'équipe ; témoin `43716616` : place 5 = Slowpoke6743 -> `343 Sandwolf` -> KernelPanic10, plus de place 8 ; D1, D4, D5 corrigés. Kill-feed identique (goldens réels, artefacts des 19 témoins). Revue adversariale : relecteur A (lecture) 0 P0 / 0 P1 / 4 P2 corrigés ; relecteur B (places) 0 P0 / 0 P1 / 6 P2 traités (deux défauts réels de la succession corrigés, un comportement de la lecture `tirs` gardé et écrit, texte du verdict du parc corrigé, tests ajoutés) ; onze mutations rejouées, toutes rouges ; pas de ronde 2 (aucun P0/P1). Découverte D10 : le récapitulatif de `backfill-replay` comptera « republiés » des films qui redécodent.
+**Résultats observés** : parc (48 films, 1 683 paquets) : 78 équipes lues, oracle 56/56, 0 paquet non fermé, 1 bot fantôme du lecteur historique (`8076f97f`, D9). 19 témoins, en processus : `sansEquipe` 18 -> 0, `sansPlace` 21 -> 3, `placesEnTrop` 3 -> 3, `depassements` 229 -> 60 ; restes D2 (`859da825`), D3 (`bf2a9f05`), D6 (`d1dfbc02`), étrangers à l'équipe ; témoin `43716616` : place 5 = joueur_721 -> `343 Sandwolf` -> joueur_608, plus de place 8 ; D1, D4, D5 corrigés. Kill-feed identique (goldens réels, artefacts des 19 témoins). Revue adversariale : relecteur A (lecture) 0 P0 / 0 P1 / 4 P2 corrigés ; relecteur B (places) 0 P0 / 0 P1 / 6 P2 traités (deux défauts réels de la succession corrigés, un comportement de la lecture `tirs` gardé et écrit, texte du verdict du parc corrigé, tests ajoutés) ; onze mutations rejouées, toutes rouges ; pas de ronde 2 (aucun P0/P1). Découverte D10 : le récapitulatif de `backfill-replay` comptera « republiés » des films qui redécodent.
 
 **Conclusion / prochaine étape** : fusion dans `feat/v75` par le superviseur ; puis, sur go de l'utilisateur, ré-extraction du parc local (G5.2 : `backfill-replay --only-existing`, passes aval, vérification des 19 témoins) avec la durée réelle relevée ; la session RI (lot 2.7.c) reprendra la lecture BOT_METADATA quand `killsource` deviendra un canal de la marche unique. Avant la livraison, `feat/v75` fusionné trois fois (2707fdb31 vue A, 9321554d6 lint, e4dbc147e clôture de la campagne) : `SchemaDesFaits` porté à 6 (le 5 est celui de la vue A), chroniques réconciliées, goldens et fixtures régénérés ; témoins inchangés (0 / 3 / 3 / 60). Ensuite, sur relance du superviseur : D2, D3 et D6 (aucune fiche en trop, consigne de l'utilisateur), sur la même branche, avant la re-cuisson.
 ## [2026-10-05] Sessions, Séries temporelles, Vue match : relevé des rendus v1 des statistiques du film et proposition d'alignement sur l'Escouade (Emprise) — En cours (étude, aucun code, rien commité)
@@ -119669,7 +119675,7 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 **Décision technique principale** : diagnostiquer chaque reste par la grammaire avant toute règle. Deux instruments : sur les faits et les artefacts (`film/replay/rejeu_fiches_en_trop_research_test.go`), et la marche des trames rejouée sous le contexte de la cuisson (profil calibré des faits, carte), gardée hors dépôt parce qu'elle importe `grammar/lecture` (ADR 0037 IR-9). Aucune correction proposée ne touche les faits : D2 et D3 se republient depuis les faits au schéma des faits 6 ; seules les voies « source » monteraient `SchemaDesFaits`.
 
-**Résultats observés** : D2 (`859da825`) : la vie [3167..3170] nommée opresko n'est celle de personne — 5 échantillons du balayage par ancrage sur un slot que la marche ne lit plus depuis 1534 ; tous les paquets des frames 3164 à 3172 ferment (verdict « fermé ») sans record du slot 548 ; la prémisse « la nommer correctement » ne tient pas ; 1 vie de ce genre sur les 19 témoins. D3 (`bf2a9f05`) : cause confirmée (lecture par déclaration limitée aux index sans humain et exigeant une déclaration qui couvre la création, 1004 < 1008 ; l'entité d'AllGodsLove naît à 1640) ; correction de publication prête à écrire. D6 (`d1dfbc02`) : aucune suppression d'entité de participant des 8 humains avant la fin ; NerdGaiden joue jusqu'à 5932 (dead-state de bipède, mort absente du fil des morts) ; seul le délai de réapparition (97 écarts de 80 à 90 frames) désigne `stitch vs all`, mort à 5845 et non réapparu en 141 frames : une déduction. Découvertes D11 (fil des morts sans les deux dernières morts de `d1dfbc02`) et D12 (créations et suppressions d'entités de participant lisibles à la frame près dans la marche, absentes des faits).
+**Résultats observés** : D2 (`859da825`) : la vie [3167..3170] nommée joueur_1029 n'est celle de personne — 5 échantillons du balayage par ancrage sur un slot que la marche ne lit plus depuis 1534 ; tous les paquets des frames 3164 à 3172 ferment (verdict « fermé ») sans record du slot 548 ; la prémisse « la nommer correctement » ne tient pas ; 1 vie de ce genre sur les 19 témoins. D3 (`bf2a9f05`) : cause confirmée (lecture par déclaration limitée aux index sans humain et exigeant une déclaration qui couvre la création, 1004 < 1008 ; l'entité d'joueur_1021 naît à 1640) ; correction de publication prête à écrire. D6 (`d1dfbc02`) : aucune suppression d'entité de participant des 8 humains avant la fin ; NerdGaiden joue jusqu'à 5932 (dead-state de bipède, mort absente du fil des morts) ; seul le délai de réapparition (97 écarts de 80 à 90 frames) désigne `stitch vs all`, mort à 5845 et non réapparu en 141 frames : une déduction. Découvertes D11 (fil des morts sans les deux dernières morts de `d1dfbc02`) et D12 (créations et suppressions d'entités de participant lisibles à la frame près dans la marche, absentes des faits).
 
 **Conclusion / prochaine étape** : décisions demandées au superviseur : D2 (P2 recommandée : vie non publiée et comptée ; P1 : sans présence), D3 (go), D6 (a laisser compté, b déduction par le délai de réapparition, c source). Puis implémentation, tests par cas, relecture adversariale au premier plan, push, CI, CR. Mesure au parc : redécodage de 126 films en processus, pas fait sans go.
 
@@ -119806,7 +119812,7 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Conclusion / prochaine étape** : arrêt définitif de l'exécuteur ; fusion dans `feat/v75` par le superviseur.
 **Complément 5 (2026-10-07, intégration de RI 2.7.b avant la re-cuisson)** : fusion de `feat/v75` `4f112add5` (grammar .5, `PlacementRev` placement-2026-10-06-v1) : commit `3f92429b6`, conflits sur les fixtures du web seulement (régénérées au schéma 81, identiques aux fixtures 80 de 2.7.b hors version). Paquets touchés, archlint, golangci-lint (0) et vitest du rejeu verts. 19 témoins redécodés un par un en processus : schéma 81, 0 / 0 / 0 / 0, cas de la phase D inchangés. Recette de la re-cuisson unique consignée au plan (I.5) avec le rattrapage du placement des vies (`backfill-killsource`, sélection `matchsAJour`, sans `--force`).
 
-**Complément 6 (2026-10-07, re-cuisson unique exécutée par le superviseur)** : sur accord de l'utilisateur, après la fusion de RI 2.7.b et du lot (`feat/v75` = `efa0a7363`), binaire de cette tête, serveur arrêté. `backfill-replay --only-existing` : 126 / 126 redécodés en 17 min 33 s (schéma 81, pic 1,01 Gio, 0 erreur, 0 mort mémoire). Rattrapage du placement des vies (`backfill-killsource`, `PlacementRev` de RI) : 1 686 films en 1 h 18 min 38 s, 0 erreur, crédit 4 min 51 s. Passes aval (usage-summary, pad-tiers, vehicle-takes, tactical-rasters) : 21 s. Total 1 h 40 min 30 s. Les 126 artefacts sont à 0 sur `sansEquipe`, `sansPlace`, `placesEnTrop`, `depassements` ; témoin `43716616` place 5 = Slowpoke6743 -> 343 Sandwolf -> KernelPanic10. Serveur et front relancés à 05:35. Découvertes D14 (sélection du `--dry-run` de killsource divergente : 105 annoncés, 6 pris), D15 (10 bots dont l'entité et la déclaration disent deux équipes), D16 (82 matchs « sans équipe » dans le chemin du placement des vies, artefacts complets) consignées au plan. Lot clos.
+**Complément 6 (2026-10-07, re-cuisson unique exécutée par le superviseur)** : sur accord de l'utilisateur, après la fusion de RI 2.7.b et du lot (`feat/v75` = `efa0a7363`), binaire de cette tête, serveur arrêté. `backfill-replay --only-existing` : 126 / 126 redécodés en 17 min 33 s (schéma 81, pic 1,01 Gio, 0 erreur, 0 mort mémoire). Rattrapage du placement des vies (`backfill-killsource`, `PlacementRev` de RI) : 1 686 films en 1 h 18 min 38 s, 0 erreur, crédit 4 min 51 s. Passes aval (usage-summary, pad-tiers, vehicle-takes, tactical-rasters) : 21 s. Total 1 h 40 min 30 s. Les 126 artefacts sont à 0 sur `sansEquipe`, `sansPlace`, `placesEnTrop`, `depassements` ; témoin `43716616` place 5 = joueur_721 -> 343 Sandwolf -> joueur_608. Serveur et front relancés à 05:35. Découvertes D14 (sélection du `--dry-run` de killsource divergente : 105 annoncés, 6 pris), D15 (10 bots dont l'entité et la déclaration disent deux équipes), D16 (82 matchs « sans équipe » dans le chemin du placement des vies, artefacts complets) consignées au plan. Lot clos.
 
 ## [2026-10-07] Rejeu — le journal des places ne concerne que le document publié (D16) — Complété (`feat/rejeu-journal-places`, NON fusionné ; CI verte)
 
@@ -120148,7 +120154,7 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Décision technique principale** : un worktree et une branche `feat/ui-ajust-<lot>` par page, brief commun (normes UI : légende dans le bloc centrée en bas sans filet, placeholder = `EmptyStateNotice` tiretée, aucune mention « N mesurés sur M »), fusion `--no-ff` dans `feat/v75` lot par lot. Décisions superviseur : « Contrôle des ressources, par soirée » publie toutes les soirées filmées (dix au plus, champs `comparable` / `families`), non comparables en gris, médiane sur les comparables ; « Portée par arme » exclut côté serveur les armes sans portée (`weapons.IsWithoutRange` : épée, marteau, mains nues, chute, environnement ; H5 épée, marteau, club, balle), rôle « power » inchangé ; Tactique : la réponse porte les questions `voisines` issues de la même lecture (ADR 0036, une lecture par requête), rangées en cache par le web + préchargement au survol du menu ; chaleur lissée = moyenne pondérée des cellules servies (unité de légende gardée, flou 0,15 pas), la grille reste le modèle de sélection. Tendances déplacée sous Solo (`/stats/tendances`, accord du user), ancienne URL redirigée.
 
 **Résultats observés** :
-- Causes : Madina97294 « absente » du nuage des vies = point recouvert par Chocoboflor (médianes entières, 1,5 px d'écart), écartement vertical des gros points ; « Coach proactif » = la page Paramètres initialisait sa valeur précédente avec le cache déjà rempli par la barre de navigation, affichait le défaut (`app_settings.json` : `coach_proactive_mode: false`, à activer par le user) ; échelle tassée des haltères Tendances = série sans `encode` ; défilement horizontal du rejeu = filigrane du porteur d'objectif à `right-[-6px]` ; barre de filtres Tactique = double gouttière ; chevauchements de Sessions en comparaison = carte `h-full` sous un titre dans une rangée `only-child:h-full`.
+- Causes : joueur_117 « absente » du nuage des vies = point recouvert par joueur_165 (médianes entières, 1,5 px d'écart), écartement vertical des gros points ; « Coach proactif » = la page Paramètres initialisait sa valeur précédente avec le cache déjà rempli par la barre de navigation, affichait le défaut (`app_settings.json` : `coach_proactive_mode: false`, à activer par le user) ; échelle tassée des haltères Tendances = série sans `encode` ; défilement horizontal du rejeu = filigrane du porteur d'objectif à `right-[-6px]` ; barre de filtres Tactique = double gouttière ; chevauchements de Sessions en comparaison = carte `h-full` sous un titre dans une rangée `only-child:h-full`.
 - Match f3061ab7 (Detachment, 22/09) : film téléchargé (32 morceaux), non cuit : Detachment absent de `map_quant_bounds.json` (module absent de l'installation locale, report du 16/08) ; 62 matchs Detachment, 0 rejeu ; erreur « carte hors catalogue » journalisée en debug seulement.
 - Onglet Tendances « manquant » dans Ascension : non reproduit (présent sur feat/v75 ; prod sans Tendances, ou barre d'onglets non défilante en fenêtre étroite) — sans objet après le déplacement.
 - Gates sur feat/v75 fusionnée : Go service, domain, weapons, squademprise, squadagg, teammates, api/..., archlint ok ; `openapi-gen -check` à jour, types régénérés sans écart ; tsc --force 0 ; vitest complet 9 176 verts, 1 dépassement de délai sous charge (garde presse-papier) vert seul.
@@ -120173,9 +120179,9 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 **Statut** : opérations locales Complétées ; code en attente de décision user (branche `feat/integ-sync-noms` = `feat/registre-noms-cartes` + `feat/sync-connu-registre` + 11 correctifs de ronde 1).
 
-**Décision technique principale** : la sync jugeait un match « connu » par l'union enrichissements joueur ∪ participants partagés ; après restauration d'une base partagée plus ancienne, 54 matchs (8 du 07/10 du trio, 46 de Nuzzles) étaient sautés pour toujours. Nouveau paquet `internal/sync/knownset` (connu ssi ligne au registre ; orphelins récupérés par match_id, 50 par cycle ; base partagée illisible = arrêt) ; registre porteur de noms justes (`persist/registry_names_persister.go`, `levelup backfill-registry-names`, convergence après balayage, Tactique groupe sur `map_id`, pool CLI avec résolution des noms). Revue adversariale 2 rondes : ronde 1 = 4 P1 + 7 P2 corrigés ; ronde 2 = 1 P1 restant (emprunt V2 via `prov.Get` : un écrivain > 30 s arrête tout le cycle V2, régression de la correction R1) + P2 (famine des orphelins à ordre fixe, `engine.go:497` non couvert, course pré-existante sur `result.AddWarning`) — escaladé au user (règle : pas de ronde 3), correctif préparé.
+**Décision technique principale** : la sync jugeait un match « connu » par l'union enrichissements joueur ∪ participants partagés ; après restauration d'une base partagée plus ancienne, 54 matchs (8 du 07/10 du trio, 46 de joueur_074) étaient sautés pour toujours. Nouveau paquet `internal/sync/knownset` (connu ssi ligne au registre ; orphelins récupérés par match_id, 50 par cycle ; base partagée illisible = arrêt) ; registre porteur de noms justes (`persist/registry_names_persister.go`, `levelup backfill-registry-names`, convergence après balayage, Tactique groupe sur `map_id`, pool CLI avec résolution des noms). Revue adversariale 2 rondes : ronde 1 = 4 P1 + 7 P2 corrigés ; ronde 2 = 1 P1 restant (emprunt V2 via `prov.Get` : un écrivain > 30 s arrête tout le cycle V2, régression de la correction R1) + P2 (famine des orphelins à ordre fixe, `engine.go:497` non couvert, course pré-existante sur `result.AddWarning`) — escaladé au user (règle : pas de ronde 3), correctif préparé.
 
-**Résultats observés** (serveur arrêté, sauvegarde `data/backups/avant_rattrapage_2026-10-08/`, binaire de `feat/integ-sync-noms` avec `LEVELUP_REPO_ROOT` sur le checkout principal) : `sync-delta --max-matches 200` Nuzzles +51, JGtm +8, Madina/Choco +0 ; registre 9 170 -> 9 229, dernier match 07/10 20:48Z ; 0 enrichissement orphelin sur les 5 profils. `backfill-registry-names` : 5 893 colonnes sur 3 293 matchs, 0 échec ; relance à vide = 713 variantes / 246 paires / 5 playlists sans source (balayage serveur) ; 298 cartes, un nom chacune. Cuisson unitaire des 38 films Detachment/Argyle : 38/38 en 4 min (dont f3061ab7). Serveur air relancé (02:14). Prod (copie lue) : 2 013 matchs, 34 `map_name` NULL, 87 `pair_name` NULL, 21 cartes à deux noms, aucun nom = id. Découvertes : `msr_seq` de la base joueur de Chocoboflor à 58 pour un max(id) 516 (17 192 ids NULL) -> écritures LUSR en clé dupliquée (pré-existant, base legacy) ; jetons de Madina97294 et Chocoboflor en AADSTS70000 (succès non synchronisés, pré-existant, pas de recapture) ; passes aval (usage-summary, pad-tiers, killsource) non lancées pour les 38 films (couvertes par la recuisson de levelup-57) ; remplacement de la base = perte des passes de film du 02/10 au 07/10 (recuisson à venir) et des traductions postérieures au 23/09.
+**Résultats observés** (serveur arrêté, sauvegarde `data/backups/avant_rattrapage_2026-10-08/`, binaire de `feat/integ-sync-noms` avec `LEVELUP_REPO_ROOT` sur le checkout principal) : `sync-delta --max-matches 200` joueur_074 +51, JGtm +8, joueur_075/joueur_901 +0 ; registre 9 170 -> 9 229, dernier match 07/10 20:48Z ; 0 enrichissement orphelin sur les 5 profils. `backfill-registry-names` : 5 893 colonnes sur 3 293 matchs, 0 échec ; relance à vide = 713 variantes / 246 paires / 5 playlists sans source (balayage serveur) ; 298 cartes, un nom chacune. Cuisson unitaire des 38 films Detachment/Argyle : 38/38 en 4 min (dont f3061ab7). Serveur air relancé (02:14). Prod (copie lue) : 2 013 matchs, 34 `map_name` NULL, 87 `pair_name` NULL, 21 cartes à deux noms, aucun nom = id. Découvertes : `msr_seq` de la base joueur de joueur_165 à 58 pour un max(id) 516 (17 192 ids NULL) -> écritures LUSR en clé dupliquée (pré-existant, base legacy) ; jetons de joueur_117 et joueur_165 en AADSTS70000 (succès non synchronisés, pré-existant, pas de recapture) ; passes aval (usage-summary, pad-tiers, killsource) non lancées pour les 38 films (couvertes par la recuisson de levelup-57) ; remplacement de la base = perte des passes de film du 02/10 au 07/10 (recuisson à venir) et des traductions postérieures au 23/09.
 
 **Conclusion / prochaine étape** : décision user sur la fusion des deux lots (correctif P1 sans ronde 3, ou ronde 3) ; puis réparation prod (deploy + `backfill-registry-names`, coupure à annoncer) ; lot `msr_seq` (garantie au boot séquence >= max(id)).
 ## [2026-10-08] Intégration du lot arrêts vue B (cinq composants + correctif mains nues) dans feat/v75 — Complété (avance rapide de feat/v75 après CI verte)
@@ -120211,7 +120217,7 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : records bipèdes d'image-clé fermés 410 → 5 399 / 10 710 sur 28 films ; ratchet de cuisson 53 → 666 / 1 368 (une baisse adjugée) ; élection des ancres, équipes et carte des trames delta identiques ; critère 369/599 avec et sans bouchons. L'écart avec le crochet de mesure est entièrement attribué aux deux arrêts (rejoué sans eux : identique à l'octet) : 75 records de `50247b26`, film sans section d'identification, aucun ne fermait. Résidu : 135 arrêts (55 i59 ; 28 i58 et 52 au début d'i0, tous sur `50247b26`) ; `60ae07c4` +33 bits nommé, premier composant divergent i53 (36 bits contre 30). Tests du paquet `grammar` (mutations rouges puis retirées), `archlint`, vet avec et sans `research`, golangci-lint sur les paquets touchés : verts. Commits `f0af9591f`, `fe5832e5b`, `dd5697bc1`, `383faf5a2`, `dd914c062`, `33143faff`, `88d506c5a`.
 
 **Conclusion / prochaine étape** : LK.5 (fidélité sous la portée, une correction à la fois, retenue seulement sans baisse : i20, port fidèle de la queue d'i0, exceptions d'objets, garde low-frequency), puis LK.6 (montées de révision, gates de cuisson et de corpus, push, CI). Découvertes D-12 à D-16 consignées au plan. `feat/v75` a avancé (commits documentaires `fe6308b71`, `e3384ec3b`, `6375eaf3c` — ce dernier repointe des chemins dans des commentaires et une chaîne du registre des replis de fichiers de cette zone — et des lots hors film), non fusionné.
-**Complément (2026-10-08, fusion sur décision du user — option A)** : correctif de la ronde 2 sans ronde 3 (décision user) : `08edad9f7` (emprunt V2 selon l'état du provider : RW -> poignée de l'écrivain en cache, bascule -> attente plafonnée 15 s, RO -> `Get`, une relecture si la connexion se ferme sous la lecture ; câblage `knownSetSharedBorrower`), `1c4c90ed7` (test `RunDelta` d'un orphelin plus ancien que le connu), `8bb71c973` (rotation horaire des orphelins par SHA-256 « période:match_id », borne 50 inchangée). `feat/integ-sync-noms` fusionnée dans feat/v75 sur a4515e66c, sans conflit. Gates sur l'arbre fusionné : go vet ; go test sync, sync/v2, sync/knownset, persist, api/wire, service, platform/duckdb, cmd/server, cmd/levelup, archlint, assetnames ok ; `-tags=integration -p 1` sync, sync/v2, knownset, persist, api/wire ok ; openapi à jour. Revue : ronde 1 = 11 constats recevables (4 P1) corrigés ; ronde 2 = 5 constats (1 P1, 4 P2) dont 3 corrigés, 2 consignés (course pré-existante `result.AddWarning` dans `engine_fetch.go:222` ; `buildSyncV2Orchestrator` toujours > 80 L). Restent : réparation prod (deploy + `backfill-registry-names`, coupure à annoncer), lot `msr_seq` de Chocoboflor, suppression des chantiers 1/3/4 de `repair_data_consistency`.
+**Complément (2026-10-08, fusion sur décision du user — option A)** : correctif de la ronde 2 sans ronde 3 (décision user) : `08edad9f7` (emprunt V2 selon l'état du provider : RW -> poignée de l'écrivain en cache, bascule -> attente plafonnée 15 s, RO -> `Get`, une relecture si la connexion se ferme sous la lecture ; câblage `knownSetSharedBorrower`), `1c4c90ed7` (test `RunDelta` d'un orphelin plus ancien que le connu), `8bb71c973` (rotation horaire des orphelins par SHA-256 « période:match_id », borne 50 inchangée). `feat/integ-sync-noms` fusionnée dans feat/v75 sur a4515e66c, sans conflit. Gates sur l'arbre fusionné : go vet ; go test sync, sync/v2, sync/knownset, persist, api/wire, service, platform/duckdb, cmd/server, cmd/levelup, archlint, assetnames ok ; `-tags=integration -p 1` sync, sync/v2, knownset, persist, api/wire ok ; openapi à jour. Revue : ronde 1 = 11 constats recevables (4 P1) corrigés ; ronde 2 = 5 constats (1 P1, 4 P2) dont 3 corrigés, 2 consignés (course pré-existante `result.AddWarning` dans `engine_fetch.go:222` ; `buildSyncV2Orchestrator` toujours > 80 L). Restent : réparation prod (deploy + `backfill-registry-names`, coupure à annoncer), lot `msr_seq` de joueur_165, suppression des chantiers 1/3/4 de `repair_data_consistency`.
 
 ## [2026-10-08] Ajustements supplémentaires (liste du user `Ajustements-supp.txt`, 18 points) : diagnostic en lecture seule — En cours (levelup-2c)
 
@@ -120224,14 +120230,14 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 - Tuile « N / M frags assistés » : M = `publishable AND assist_known` (`home_repo_assisted_frags.go:40-51`), exclut les frags sur bots ; la tuile 10/14 = `0a08d2f2` (20 frags officiels, pas 24).
 - Pion bleu du rejeu = `drawGrenadesLayer` (point de départ du lancer, d'avant le dessin du vol) ; 77 % des lancers ont un vol dessiné. Fil des frags et fiches calés sur l'origine du rejeu à ~0,1 s (mesuré `396cfc92`, `4f77afc1`) ; découverte : 63 morts de `4f77afc1` tombent entre deux vies de la victime. Pas de plein écran du rejeu.
 - « Décisif » seulement dans `features/squad/i18n.ts:592` (purge d'anglicismes du 03/05). Axe Y du nuage des vies : graduations ECharts sur demi-valeurs (bornes -0,5/5,5, `interval: 1`) filtrées par un formateur entier → aucune étiquette. Outils de destruction de la Vue match sans `soloByClass` (régression du 07/10, corrigée sur Sessions seulement). Angle Escouade de la Tactique grisé sans coéquipier dans la barre (voulu, explication au survol seulement).
-- Emblème de Chocoboflor : `LoadEmblemURLs` = dernier `career_progression` non vide (16/07) ; cron d'apparence « porteur == sujet », jetons morts.
+- Emblème de joueur_165 : `LoadEmblemURLs` = dernier `career_progression` non vide (16/07) ; cron d'apparence « porteur == sujet », jetons morts.
 - Composition stricte : les deux matchs perdus du 07/10 (Aquarius 21:50, Houseki 22:03) ont un 4e inconnu entré dans le top 50 de Q29 (`buildExtraPoolXUIDs`) par ces deux matchs mêmes (départage arbitraire des ex aequo à 2 matchs).
-- Chocoboflor : 0 LUSR depuis le 07/09 (séquence, correctif `72ad88fe7` non fusionné) ; « Répartition de l'objectif » joint par gamertag et `match_participants.gamertag` est vide pour les deux amis sur les 8 matchs du 07/10.
+- joueur_165 : 0 LUSR depuis le 07/09 (séquence, correctif `72ad88fe7` non fusionné) ; « Répartition de l'objectif » joint par gamertag et `match_participants.gamertag` est vide pour les deux amis sur les 8 matchs du 07/10.
 - Zones nommées : 127 cartes jouées (17 % des matchs) sans zones, toutes absentes de l'inventaire Forge du 27/08 ; noms Forge lisibles dans le `.mvar` (`himap/zones_forge.go`).
 - Needler de Prism : socle relevé 261 m sous la carte (point d'apparition), non rapproché du socle de puissance du milieu → `non_classe` sur les 38 matchs Prism.
 - Killsource : frag manquant de JGtm sur `0a08d2f2` = deux bots sous le même numéro du film (`killsource/roster.go:377-382`, un nom par numéro) ; parc : ~1,08 % de frags sans arme, résidu stable depuis `killsource-2026-09-27`.
 
-**Conclusion / prochaine étape** : go du user sur les lots (démarrage, rejeu, retouches d'interface, Escouade données, maquette Impact des coéquipiers, zones Forge, film) ; mesures de performances avec le user connecté dans la fenêtre de mesure. Découverte hors périmètre : `sync_meta.oauth_refresh_token` résiduel dans la base de Chocoboflor (non lu depuis l'ADR 0023, secret qui traîne).
+**Conclusion / prochaine étape** : go du user sur les lots (démarrage, rejeu, retouches d'interface, Escouade données, maquette Impact des coéquipiers, zones Forge, film) ; mesures de performances avec le user connecté dans la fenêtre de mesure. Découverte hors périmètre : `sync_meta.oauth_refresh_token` résiduel dans la base de joueur_165 (non lu depuis l'ADR 0023, secret qui traîne).
 
 ## [2026-10-08] Disque C: — nettoyage validé par l'utilisateur et `scripts/disk-hygiene.ps1` + tâche planifiée — Complété (`feat/disk-hygiene`, fusion dans feat/v75 par le pilote)
 
@@ -120244,9 +120250,9 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 - Tests du script : simulation sur l'état réel (1,5 Go libérables, rapport des worktrees) ; arbre jetable avec jonctions : dossier de gate et session inactive REFUSÉS, cible intacte ; garde de processus active (rapport seul pendant les compilations des autres sessions) ; `-Lot` : refus d'un cache écrit depuis moins de 10 min, suppression d'un cache inactif, refus d'un cache contenant une jonction, nom de lot invalide rejeté.
 
 **Conclusion / prochaine étape** : fusion de `feat/disk-hygiene` dans feat/v75 par le pilote ; la tâche planifiée pointe sur `scripts/disk-hygiene.ps1` du checkout principal et devient effective dès que la fusion y est. Convention à suivre par les lots : `GOCACHE=%LOCALAPPDATA%\go-build-<lot>`, clôture par `-Lot <lot> -Apply` (skill `plan-execution` §5).
-**Complément (2026-10-08, levelup-5c, séquences et outil de mai)** : `feat/sequences-et-outil-mai` fusionnée dans feat/v75. `migration/sequence_alignment.go` appelé par `EnsurePlayerSchema` : toute séquence servant de DEFAULT à une colonne entière est avancée à max(colonne)+1 par `SELECT max(nextval(?)) FROM range(k)` (compteur réel lu dans le `START n` de `duckdb_sequences().sql`, `last_value` non fiable après rejeu du WAL), refus au-delà de 10 M / MAXVALUE / pas ≤ 0 / CYCLE, échec non bloquant (ERROR + `duckdb_sequence_align_failed_total`), passe continuée après une erreur (`errors.Join`). Seule séquence en retard du parc : `msr_seq` de Chocoboflor (prochaine 56, max 516) — LUSR bloqué depuis le 13/09 (CTAS de `purge_foreign_lusr_chain` qui a recréé la séquence à 1 ; 511 échecs « watermark tenu » au journal). `cmd/repair_data_consistency` supprimé (renvois vers `/admin/actions/lying-bits/reset` et `/admin/actions/registry-names/backfill`). Revue adversariale 1 relecteur (L1+L6) : 0 défaut fonctionnel, 1 P2 de couverture (refus et non-blocage sans test) corrigé par 5 tests vus rouges sous mutation. Découvertes non traitées : doublons d'ids dans des PK déclarées (`player_match_enrichment` Chocoboflor 5 / Madina 5, `player_csr_snapshots` Madina 147 / XxDaemon 147, 13-23/09, famille #23645) ; 17 192 ids NULL de `match_skill_rank` chez Chocoboflor ; `player_csr_snapshots` de Chocoboflor jamais convertie ; `cmd/recompute_perfnote` et `cmd/h5-lusr-backfill` écrivent sans passer par `OpenPlayerDB`. Archivage du user (`e3384ec3b`, 34 documents vers `.ai/archive/V7.5/`) : références de code et de docs repointées (garde `TestCheminsAiCitesDansLeCodeExistent`).
+**Complément (2026-10-08, levelup-5c, séquences et outil de mai)** : `feat/sequences-et-outil-mai` fusionnée dans feat/v75. `migration/sequence_alignment.go` appelé par `EnsurePlayerSchema` : toute séquence servant de DEFAULT à une colonne entière est avancée à max(colonne)+1 par `SELECT max(nextval(?)) FROM range(k)` (compteur réel lu dans le `START n` de `duckdb_sequences().sql`, `last_value` non fiable après rejeu du WAL), refus au-delà de 10 M / MAXVALUE / pas ≤ 0 / CYCLE, échec non bloquant (ERROR + `duckdb_sequence_align_failed_total`), passe continuée après une erreur (`errors.Join`). Seule séquence en retard du parc : `msr_seq` de joueur_165 (prochaine 56, max 516) — LUSR bloqué depuis le 13/09 (CTAS de `purge_foreign_lusr_chain` qui a recréé la séquence à 1 ; 511 échecs « watermark tenu » au journal). `cmd/repair_data_consistency` supprimé (renvois vers `/admin/actions/lying-bits/reset` et `/admin/actions/registry-names/backfill`). Revue adversariale 1 relecteur (L1+L6) : 0 défaut fonctionnel, 1 P2 de couverture (refus et non-blocage sans test) corrigé par 5 tests vus rouges sous mutation. Découvertes non traitées : doublons d'ids dans des PK déclarées (`player_match_enrichment` joueur_165 5 / joueur_075 5, `player_csr_snapshots` joueur_075 147 / joueur_639 147, 13-23/09, famille #23645) ; 17 192 ids NULL de `match_skill_rank` chez joueur_165 ; `player_csr_snapshots` de joueur_165 jamais convertie ; `cmd/recompute_perfnote` et `cmd/h5-lusr-backfill` écrivent sans passer par `OpenPlayerDB`. Archivage du user (`e3384ec3b`, 34 documents vers `.ai/archive/V7.5/`) : références de code et de docs repointées (garde `TestCheminsAiCitesDansLeCodeExistent`).
 
-**Complément (2026-10-08, levelup-5c, séquences sur le chemin serveur)** : après redémarrage, le cycle auto_sync a de nouveau écrit le LUSR de Chocoboflor en « Duplicate key id: 66 » sans aucune ligne d'alignement : le post-sync V2 (`cmd/server/sync_v2_wiring.go` `playerDBOpenerRW`), le pool HTTP et les persisteurs ouvrent la base joueur par `duckdb.OpenReadWrite` sans `EnsurePlayerSchema`. Réparation immédiate : coupure de :8000 (20:06-20:10), `levelup sync-delta --gamertag Chocoboflor` (alignement `msr_seq` 68 -> 517, 15 LUSR écrits), serveur relancé. Correctif durable `feat/sequences-chemin-v2` fusionné : porte unique d'ouverture physique `platform/duckdb/physical_open.go` (première ouverture, remplacement après ping, `Reopen`) qui aligne les séquences des bases joueur (`title.IsPlayerDBPath`) ouvertes en écriture, une fois par ouverture physique, jamais bloquante ; `EnsurePlayerSchema` ne réaligne plus qu'après avoir créé une séquence (`schemadrift.SequenceCreated`) ; ratchet `archlint/no_bare_duckdb_rw_open_test.go` (100 ouvertures RW directes hors `platform/duckdb`, allowlist datée décroissante) ; préfixes de clés de cache `rw:`/`ro:` en constantes. Revue : 1 relecteur (L1+L3+L6), 0 P0/P1, 2 P2 corrigés (branche `players/players` qui excluait un gamertag « players » ; littéraux `rw:` non migrés), 12 conditions tenues, 10 mutations (7 rouges, 3 replis de prudence). Gates : title, platform/duckdb, sync, sync/skill, migration, archlint, cmd/server ok sur l'arbre fusionné. Découvertes : écrivains LUSR CLI directs (`recompute_perfnote`, `h5-lusr-backfill`, `lusr_v2_canonical_backfill`) non alignés ; `purge_foreign_lusr_chain` recrée `msr_seq` à 1.
+**Complément (2026-10-08, levelup-5c, séquences sur le chemin serveur)** : après redémarrage, le cycle auto_sync a de nouveau écrit le LUSR de joueur_165 en « Duplicate key id: 66 » sans aucune ligne d'alignement : le post-sync V2 (`cmd/server/sync_v2_wiring.go` `playerDBOpenerRW`), le pool HTTP et les persisteurs ouvrent la base joueur par `duckdb.OpenReadWrite` sans `EnsurePlayerSchema`. Réparation immédiate : coupure de :8000 (20:06-20:10), `levelup sync-delta --gamertag joueur_165` (alignement `msr_seq` 68 -> 517, 15 LUSR écrits), serveur relancé. Correctif durable `feat/sequences-chemin-v2` fusionné : porte unique d'ouverture physique `platform/duckdb/physical_open.go` (première ouverture, remplacement après ping, `Reopen`) qui aligne les séquences des bases joueur (`title.IsPlayerDBPath`) ouvertes en écriture, une fois par ouverture physique, jamais bloquante ; `EnsurePlayerSchema` ne réaligne plus qu'après avoir créé une séquence (`schemadrift.SequenceCreated`) ; ratchet `archlint/no_bare_duckdb_rw_open_test.go` (100 ouvertures RW directes hors `platform/duckdb`, allowlist datée décroissante) ; préfixes de clés de cache `rw:`/`ro:` en constantes. Revue : 1 relecteur (L1+L3+L6), 0 P0/P1, 2 P2 corrigés (branche `players/players` qui excluait un gamertag « players » ; littéraux `rw:` non migrés), 12 conditions tenues, 10 mutations (7 rouges, 3 replis de prudence). Gates : title, platform/duckdb, sync, sync/skill, migration, archlint, cmd/server ok sur l'arbre fusionné. Découvertes : écrivains LUSR CLI directs (`recompute_perfnote`, `h5-lusr-backfill`, `lusr_v2_canonical_backfill`) non alignés ; `purge_foreign_lusr_chain` recrée `msr_seq` à 1.
 
 ## [2026-10-08] Ajustements supplémentaires — six lots fusionnés dans feat/v75, lot film en attente de l'ordre de fusion — En cours (levelup-2c)
 
@@ -120377,7 +120383,7 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** :
 - Entrées du registre déjà soldées mais non marquées : fusion de `main` dans `feat/v75` (0 commit d'écart), issue servie par clé canonique (plus de map FR en Go), Total Control retiré du catalogue des rôles (décision user 27/08), frise « Appui reçu » en écart (`b62dfe318`), courbes de score par manche en multi-manche, `hinf_unarmed` toujours lu. Registre Halo 5 : palier Champion mappé, `weaponv3` supprimé, branches d'intégration fusionnées.
 - Confirmés ouverts : migrations player au boot sur le seul titre par défaut (`cmd/server/main.go`, `pr.PlayerDBPath(titleSlug, …)`) → player DB Halo 5 jamais migrées ; `Q20KVPairs` sans filtre `publishable` ; 401 `auth_required` de la sync initiale et aucun garde anti-boucle persistant dans la coquille ; `PATCH …/sync` et `POST /watcher/auth/start` ouverts en démo ; DELETE sur `match_skill_rank` dans `cmd_restore_csr` ; `FanoutService` sans appelant ; `last_delta_sync` écrit jamais lu ; `DepotVariantesCarte` pointe sur un dossier absent ; `MapKeysForMap` LIMIT 1 sans tri ; `prestige_lazy_service.go` 525 L ; index `idx_lch_*`, `idx_pme_match_lookup`, `idx_pcs_lookup` toujours créés.
-- Découvertes hors registres (journaux locaux 05-09/10) : trois cartes absentes du catalogue de bornes (Serenity - Ranked, Interference, Vacancy - Ranked, ~500 avertissements chacune) → leurs matchs n'ont pas de rejeu ; `AADSTS70000` touche TROIS joueurs (Chocoboflor, Madina97294, XxDaemonGamerxX), ~240 échecs de succès Xbox par jour ; avertissement « pont par morts contredit le lien direct » à ~3 400 lignes par jour.
+- Découvertes hors registres (journaux locaux 05-09/10) : trois cartes absentes du catalogue de bornes (Serenity - Ranked, Interference, Vacancy - Ranked, ~500 avertissements chacune) → leurs matchs n'ont pas de rejeu ; `AADSTS70000` touche TROIS joueurs (joueur_165, joueur_117, joueur_291), ~240 échecs de succès Xbox par jour ; avertissement « pont par morts contredit le lien direct » à ~3 400 lignes par jour.
 - `feat/v75` a 5 276 commits d'avance sur `origin/main` (prod au 05/09) ; garde du rejeu public à réexaminer au plus tard le 2026-11-08.
 
 **Conclusion / prochaine étape** : attendre les choix du user ; proposition d'un nettoyage du registre (clore les soldés, sortir les négatifs acquis et les attentes de planche vers une archive).
@@ -120457,7 +120463,7 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 **Décision technique principale** : deux relectures adversariales (écritures anti-ART : 16 conditions tenues, aucun constat ; couverture : 4 chemins non couverts, P2) ; les tests manquants ajoutés dans le lot (`6ab6a40e0`, 9 mutations rouges : base saine intacte par `table_oid`, clé primaire reposée sans PK d'origine, colonnes CSR restaurées, `--dry-run` sans écriture). Fusion de `feat/recos-c` sur accord du user, serveur arrêté et bases sauvegardées avant le premier boot.
 
-**Résultats observés** : sauvegarde `data/backups/avant_recos_c_2026-10-09/` (12 bases, 1,2 Go). Boot : `shared_purge_composite_vehicle_takes_v1` 4 lignes retirées (7 228 gardées) ; `repair_player_append_only_ids_v1` : Chocoboflor `match_skill_rank` 17 192 ids NULL, `player_csr_snapshots` 19 243 ids NULL sans PK, `player_match_enrichment` 5 doublons ; Madina97294 et XxDaemonGamerxX 147 doublons `player_csr_snapshots`, 5 doublons `player_match_enrichment` ; `purge_sync_meta_legacy_auth_keys_v1` une clé retirée sur 4 bases ; 0 ERROR au boot.
+**Résultats observés** : sauvegarde `data/backups/avant_recos_c_2026-10-09/` (12 bases, 1,2 Go). Boot : `shared_purge_composite_vehicle_takes_v1` 4 lignes retirées (7 228 gardées) ; `repair_player_append_only_ids_v1` : joueur_165 `match_skill_rank` 17 192 ids NULL, `player_csr_snapshots` 19 243 ids NULL sans PK, `player_match_enrichment` 5 doublons ; joueur_117 et joueur_291 147 doublons `player_csr_snapshots`, 5 doublons `player_match_enrichment` ; `purge_sync_meta_legacy_auth_keys_v1` une clé retirée sur 4 bases ; 0 ERROR au boot.
 
 **Conclusion / prochaine étape** : C6 (catégorie de mode) rouvert à la demande du user, confié à un agent Sonnet ; lot D en correctif d'anonymisation puis relecture ; lot E.
 ## [2026-10-09] Roi de la colline au rejeu : une seule colline à sa vraie place, sa capture, la barre de garde Doubles/Classé, l'étage — Complété (`feat/koth-colline`, 6 commits, CI verte au niveau job ; plan `.ai/PLAN_KOTH_REJEU_2026-10-09.md`)
@@ -120728,7 +120734,7 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Conclusion / prochaine étape** : CI de la branche, puis fusion dans `feat/v75` par le superviseur (en gardant la correction CSR de `feat/v75` si elle arrive avant).
 ## [2026-10-15] Ajustements du 14/10 : rattrapage CSR, recuisson au schéma 96, étiquettes de barres — Complété
 
-**Statut** : Complété. Rattrapage CSR (accord du user) : shared-csr +1 697, csr joueur +203 (Nuzzles), is_ranked 4 121 corrigés, LUSR 7 732, engagement 7 010 ; défaut préexistant trouvé en route et corrigé (`fix/csr-candidats-joueur` : le rattrapage par joueur interrogeait tout le registre, 4 274 appels inutiles pour Chocoboflor). Recuisson du parc au schéma 96 (accord du user) : 238 artefacts, riftPoses 123, knockbacks 132, fins suivies 745/758, VIP 00761d27 cuit, killsource 0 erreur de décodage. Lot G (étiquettes de barres) fusionné après gate visuel du user : centrage sur la barre directe, valeur à côté de la barre si elle ne tient pas (règle « jamais seulement en infobulle » maintenue), texte blanc à contour sombre (décision du user).
+**Statut** : Complété. Rattrapage CSR (accord du user) : shared-csr +1 697, csr joueur +203 (joueur_074), is_ranked 4 121 corrigés, LUSR 7 732, engagement 7 010 ; défaut préexistant trouvé en route et corrigé (`fix/csr-candidats-joueur` : le rattrapage par joueur interrogeait tout le registre, 4 274 appels inutiles pour joueur_165). Recuisson du parc au schéma 96 (accord du user) : 238 artefacts, riftPoses 123, knockbacks 132, fins suivies 745/758, VIP 00761d27 cuit, killsource 0 erreur de décodage. Lot G (étiquettes de barres) fusionné après gate visuel du user : centrage sur la barre directe, valeur à côté de la barre si elle ne tient pas (règle « jamais seulement en infobulle » maintenue), texte blanc à contour sombre (décision du user).
 
 **Décision technique principale** : chaque passe d'écriture lancée serveur arrêté, après accord des sessions pairs et sauvegarde (`data/backups/avant_rattrapage_csr_2026-10-15/`).
 
@@ -121013,9 +121019,9 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 ## [2026-10-21] Contrôles v8, lot rejeu (L3 son et grenades, L5 BTB, L6 lectures, morts neutres de 396cfc92) — Complété avec un item ouvert (branche `fix/controles-v8-rejeu`)
 
-**Décision technique principale** : (1) Contrôle n° 7 : la voix « manche terminée » est produite à la bonne image (2 événements sur `d9781168`, fichier servi) mais restait sous le plafond de 8 voix ; à la 1re fin de manche de `d9781168`, 7 voix sont déjà tenues sans compter les sons de frag. Règle : une voix d'annonceur échappe au plafond, à la page (`playAnnouncer`) comme à l'export (`planAudioMix` / `applyVoiceCap`) ; amende la seconde moitié de D-1 du plan backlog du 2026-09-26. (2) Contrôle n° 24 : compté dans le film (banc `grenade_vol_research_test.go`) : chaque lancer est suivi d'une vie ti=41 lue par la marche et d'un message `projectile_detonate` de la vue A, mais `pistesDerriereLaMarche` jetait les records de projectile hors de la bande des images-clés. Règle : le projectile que la table d'entités de la marche nomme se garde quel que soit son slot (`laMarcheDesigneSeule`) ; `grammar-2026-10-21`, killsource et objectives à révision constante, `SchemaVersion` 100 inchangé. (3) Contrôle n° 3 (interface) : le power-up prend l'encre `warning` des armes spéciales. (4) Contrôle n° 8 (BTB `4f77afc1`, 13 places Eagle) : instruit, NON corrigé — la capacité d'équipe n'est pas lue dans le film, et l'estimation (13) vient de deux faits mesurés : la table du début porte 13 sièges de l'équipe 0 (un partant d'avant le coup d'envoi, `ln AsyIum`, et `Truly Elusive`, absent puis revenu à la 1014e seconde sur l'index 1) et le film montre 13 entités de l'équipe 0 pendant 40 s (bot `343 Razzle` gardé jusqu'à sa mort après l'arrivée d'E3D sur l'index 14). Le correctif demande une règle « tuile = place d'équipe, successeur sur la place libérée » et une source de capacité : décision à prendre.
+**Décision technique principale** : (1) Contrôle n° 7 : la voix « manche terminée » est produite à la bonne image (2 événements sur `d9781168`, fichier servi) mais restait sous le plafond de 8 voix ; à la 1re fin de manche de `d9781168`, 7 voix sont déjà tenues sans compter les sons de frag. Règle : une voix d'annonceur échappe au plafond, à la page (`playAnnouncer`) comme à l'export (`planAudioMix` / `applyVoiceCap`) ; amende la seconde moitié de D-1 du plan backlog du 2026-09-26. (2) Contrôle n° 24 : compté dans le film (banc `grenade_vol_research_test.go`) : chaque lancer est suivi d'une vie ti=41 lue par la marche et d'un message `projectile_detonate` de la vue A, mais `pistesDerriereLaMarche` jetait les records de projectile hors de la bande des images-clés. Règle : le projectile que la table d'entités de la marche nomme se garde quel que soit son slot (`laMarcheDesigneSeule`) ; `grammar-2026-10-21`, killsource et objectives à révision constante, `SchemaVersion` 100 inchangé. (3) Contrôle n° 3 (interface) : le power-up prend l'encre `warning` des armes spéciales. (4) Contrôle n° 8 (BTB `4f77afc1`, 13 places Eagle) : instruit, NON corrigé — la capacité d'équipe n'est pas lue dans le film, et l'estimation (13) vient de deux faits mesurés : la table du début porte 13 sièges de l'équipe 0 (un partant d'avant le coup d'envoi, `ln AsyIum`, et `Truly Elusive`, absent puis revenu à la 1014e seconde sur l'index 1) et le film montre 13 entités de l'équipe 0 pendant 40 s (bot `343 Razzle` gardé jusqu'à sa mort après l'arrivée d'JOUEUR_456 sur l'index 14). Le correctif demande une règle « tuile = place d'équipe, successeur sur la place libérée » et une source de capacité : décision à prendre.
 
-**Résultats observés** : lancers liés à une piste de production avant -> après : d6918972 135 -> 174/174, d9781168 131 -> 172/172, bfecd02b 67 -> 95/95, 4f77afc1 190 -> 210/215, 72b0a25e 2 -> 81/81, 92c950ee 72 -> 76/76 ; recuisson du seul `d6918972` dans le worktree : 194 pistes, 173/173 grenades liées. Parc (lecture des artefacts) : 13 films dont une équipe tient une ou deux places de trop (4v4 à 5 places : 9, 4v4 à 6 : 1, BTB à 13 : 2, plus `4f77afc1`). Lectures sans correctif : surbouclier de Satoru JZ pris à 0,6 m et 0,5 m du centre du socle (rayon de ramassage, même horloge ; la 2e prise est le surbouclier lâché à sa mort), socle passé à « incertain » à la dernière image-clé avant la prise ; AfterHoney65177 prend le surbouclier 2,5 s après le coup d'envoi, né à 3,4 m du socle ; médias : l'ingestion range toujours l'instant extrait (nom de fichier, mtime) en DÉBUT de capture alors que les captures « Replay »/« record that » et les mtime datent la FIN (un clip posé une durée trop tard, cas 72b0a25e) ; 396cfc92 : le fil du film porte 67 morts, toutes avec tueur, aucune orpheline, donc rien à typer (artefact à jour) — les points médians viennent de fins de vie sans mort du film (vie d'un point de XxDaemonGamerxX à l'image 2541, dernière vie de Chocoboflor close 5,5 s avant l'horizon). Gates : `go test` film/..., archlint, replaybuild, sync/killcollector, service/replayview verts ; golangci-lint grammar + replay 0 issue ; web tsc (cache purgé), vitest match-replay + lib/replay 3649 verts, eslint des fichiers touchés sans erreur.
+**Résultats observés** : lancers liés à une piste de production avant -> après : d6918972 135 -> 174/174, d9781168 131 -> 172/172, bfecd02b 67 -> 95/95, 4f77afc1 190 -> 210/215, 72b0a25e 2 -> 81/81, 92c950ee 72 -> 76/76 ; recuisson du seul `d6918972` dans le worktree : 194 pistes, 173/173 grenades liées. Parc (lecture des artefacts) : 13 films dont une équipe tient une ou deux places de trop (4v4 à 5 places : 9, 4v4 à 6 : 1, BTB à 13 : 2, plus `4f77afc1`). Lectures sans correctif : surbouclier de joueur_459 pris à 0,6 m et 0,5 m du centre du socle (rayon de ramassage, même horloge ; la 2e prise est le surbouclier lâché à sa mort), socle passé à « incertain » à la dernière image-clé avant la prise ; joueur_646 prend le surbouclier 2,5 s après le coup d'envoi, né à 3,4 m du socle ; médias : l'ingestion range toujours l'instant extrait (nom de fichier, mtime) en DÉBUT de capture alors que les captures « Replay »/« record that » et les mtime datent la FIN (un clip posé une durée trop tard, cas 72b0a25e) ; 396cfc92 : le fil du film porte 67 morts, toutes avec tueur, aucune orpheline, donc rien à typer (artefact à jour) — les points médians viennent de fins de vie sans mort du film (vie d'un point de joueur_291 à l'image 2541, dernière vie de joueur_165 close 5,5 s avant l'horizon). Gates : `go test` film/..., archlint, replaybuild, sync/killcollector, service/replayview verts ; golangci-lint grammar + replay 0 issue ; web tsc (cache purgé), vitest match-replay + lib/replay 3649 verts, eslint des fichiers touchés sans erreur.
 
 **Conclusion / prochaine étape** : montée `grammar-2026-10-21` : verdict « redecoder » pour tout le parc (recuisson à organiser par le superviseur). Item BTB ouvert (décision sur la source de capacité). Rien poussé, CI non jouée.
 
@@ -121033,7 +121039,7 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 **Décision technique principale** : décisions utilisateur du 2026-10-21 (« impossible d'avoir 5 joueurs en même temps, même s'il y a un bot » ; la règle est symétrique). Une fiche est une place d'équipe ; `sieges_a_la_taille.go` réaffecte chaque intervalle de présence, dans l'ordre de son début, aux places gardées de son équipe (coloriage glouton) : sa place si libre, sinon la place gardée libérée le plus tard (le remplaçant, humain ou bot, prend la fiche du partant), sinon pour un humain la place des bots déjà là (il les relève s'il joue pendant leur présence, les attend sinon, n'est plus affiché s'il part avant eux), sinon pour un bot la fiche d'un humain qui a joué avant lui et n'a aucune vie pendant sa présence (absence tenue, présence de l'humain coupée autour). Les arrivants que le chaînage laissait sans place entrent dans la même affectation. Place publiée par intervalle (`roster[].presence[].seat`), lue par `seatLogic.buildSeats` (rangement par place d'intervalle). Compteurs neufs `coverage.seats.botsRelevesEnJeu`, `absencesTenuesParUnBot`. Schéma 101 complété (non fusionné : golden de forme reposé depuis le 100 puis régénéré, fixtures de contrat, openapi, generated.ts) ; deux tests de succession réécrits (l'humain qui jouait à côté du bot le relève désormais, celui lu au début du bot l'attend).
 
-**Résultats observés** : cause établie sur cinq films (`3d58eb37`, `6effe27b`, `ac313879`, `d35e9169`, `dc0d9e19`) : la cinquième présence est un bot nommé par le tableau de l'API ; le film ne lui écrit aucun tir indexé, et l'index de tireur de l'arrivant est la place du partant (Davis7911 tire sous l'index de KkungeN, Tachie sous celui de mr thirteen). En revanche, les événements de mort écrits par le jeu nomment encore le bot après l'arrivée des humains (`3d58eb37` : BERRYHILL passeur à 2:20, 4:32, 5:40, 6:13) : contradiction comptée (`botsRelevesEnJeu`, 11 bots sur le parc), la règle des places prime. Banc sur les 2 499 artefacts à roster : 13 places en trop avant, 0 après, 0 instant où une équipe dépasse sa taille, 25 intervalles ramenés. Les 13 films témoins tiennent leur taille. Recuits un par un dans le worktree : `4f77afc1`, `3d58eb37`, `f235e2f1`, `400bb628` (`placesEnTrop` 0, `depassements` 0 ; Mayoman8270 part vers 1:38 et revient à 2:49 sur une autre fiche ; `343 Brew Dog` tient la fiche d'Extinet Hunter pendant son absence). Gates : `go test` replay, fallback, mappings, replaybuild, replayview, api, archlint verts ; golangci-lint 0 ; web tsc, eslint, vitest match-replay (3 255) verts.
+**Résultats observés** : cause établie sur cinq films (`3d58eb37`, `6effe27b`, `ac313879`, `d35e9169`, `dc0d9e19`) : la cinquième présence est un bot nommé par le tableau de l'API ; le film ne lui écrit aucun tir indexé, et l'index de tireur de l'arrivant est la place du partant (joueur_258 tire sous l'index de KkungeN, Tachie sous celui de mr thirteen). En revanche, les événements de mort écrits par le jeu nomment encore le bot après l'arrivée des humains (`3d58eb37` : BERRYHILL passeur à 2:20, 4:32, 5:40, 6:13) : contradiction comptée (`botsRelevesEnJeu`, 11 bots sur le parc), la règle des places prime. Banc sur les 2 499 artefacts à roster : 13 places en trop avant, 0 après, 0 instant où une équipe dépasse sa taille, 25 intervalles ramenés. Les 13 films témoins tiennent leur taille. Recuits un par un dans le worktree : `4f77afc1`, `3d58eb37`, `f235e2f1`, `400bb628` (`placesEnTrop` 0, `depassements` 0 ; joueur_717 part vers 1:38 et revient à 2:49 sur une autre fiche ; `343 Brew Dog` tient la fiche d'Extinet Hunter pendant son absence). Gates : `go test` replay, fallback, mappings, replaybuild, replayview, api, archlint verts ; golangci-lint 0 ; web tsc, eslint, vitest match-replay (3 255) verts.
 
 **Conclusion / prochaine étape** : recuisson unique du parc par le superviseur (verdict `redecoder` : `grammar-2026-10-21`, schéma 101 ; killsource et objectives à révision constante). Rien poussé.
 
@@ -121089,7 +121095,7 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 **Décision technique principale** : une table unique des sources d'heure (`captureTimeSources`, `internal/ops/media_capture_source.go`) range chaque heure lue H avec son ancre : FIN pour un « Replay » d'OBS (`^Replay AAAA-MM-JJ HH-MM-SS`), un « record that » de la Game Bar (`<Jeu> AAAA-MM-JJ HH-MM-SS`) ou de la console Xbox (`…-AAAA-MM-JJ_HHhMM`, à la minute), un Instant Replay ShadowPlay (`….DVR`) et la date du fichier (lastModified du navigateur ou mtime du disque) ; DÉBUT pour un enregistrement OBS (nom = date seule) ou ShadowPlay sans `.DVR` (inchangé, non mesuré sur le parc). `captureWindow` en déduit la fenêtre : [H-D, H] pour une fin, [H, H+D] pour un début, H en début et fin pour une fin sans durée, une image reste un instant. `computeMediaEnd` et ses 5 tests sont retirés (remplacés), les trois regex de `media_filename.go` vivent dans la table. La source est écrite dans la colonne neuve `media_files.capture_time_source` (ajoutée par `ensureMediaTables`, aucun index). Conversion de format : la fenêtre n'est réécrite que si l'heure vient du nom (la date d'un fichier converti est celle de la conversion). Recalcul : `recalcCaptureTimes` reprend les lignes sans source (l'ancienne indexation rangeait toujours H en début, aucun autre écrivain ne touche ces colonnes), refait la fenêtre, écrit bornes et source en une transaction (UPDATE par id, colonnes sans index, garde `capture_time_source IS NULL`) ; un nom daté dont l'heure diffère de la valeur stockée est rangé en date du fichier. Il tourne DANS le serveur à chaque `IndexMedia` (envoi, balayage post-synchro, boutons « Scanner » / réindexation), avant l'association, sous le verrou et le handle de l'indexation, CHECKPOINT compris : la prod se corrige sans arrêt. `levelup media-capture-times [--dry-run] [--title] [--db]` simule (lecture seule, comptes par source, sur une COPIE si le serveur tourne) ou écrit serveur arrêté. Guides `COMMANDS` FR et EN.
 
-**Résultats observés** : parc local JGtm = 27 « Replay » OBS (nom = mtime + 0 à 1,5 s : nommés à la sauvegarde) et 84 clips Halo 5 de console. Témoin 72b0a25e : la dernière image du clip montre le triple frag (frags à 1:01.9 au rejeu) et le chrono 10:56, H tombe à 1:06 : l'ancienne pose faisait COMMENCER le clip à 1:06, la nouvelle le fait finir à 1:06 (écart résiduel 2-3 s). Témoin bfecd02b : le clip couvre au chrono du jeu 1:52 → 2:20 (première image 10:08, dernière 9:40 avec au fil la mort de Chocoboflor, 2:15.6 au rejeu) ; H tombe à 3:03 : avec la règle le clip est posé [2:34, 3:03], soit encore ~43 s trop tard. Mesuré sur 6 clips à chrono lisible : écart H − fin réelle = +30 s (07-07), +2 (07-23), +2,5 (07-31), +39,5 (08-27), +43 (09-01 21:46), +2 (09-01 22:54). Sans lien avec le mode ni avec l'origine du film (gap t0−origine 22,7 s et 0,3 s des deux côtés) ; le profil (croissance de ~1 s/jour puis retour à ~2 s) est celui d'une horloge du PC de capture qui dérive et que Windows recale par intervalles. Non corrigible par la règle par source, signalé. Tests : rouge d'abord (`media_capture_source_test.go` ne compilait pas sans la table ; `TestIndexMedia_RecalcsLegacyWindows` rouge sous mutation « recalcul en simulation » : fenêtre [H, H+D] restée), puis vert. Gates : `go vet` ops + cmd/levelup ; `go test ./internal/ops/` et `-tags=integration -p 1 ./internal/ops/` ; `./internal/archlint/` ; gardes `internal/sync` (TestNoMutation*, TestOpsMutation*, TestNoArt*, TestNoBulk*, TestNoLegacy*) ; `./cmd/levelup -run Aide` ; golangci-lint 0 issue sur le diff ; gofmt propre ; essai du binaire sur une base vide (écriture puis simulation). Baseline : les 5 TestComputeMediaEnd_* retirés (20 lignes JSONL, paragraphe RETRAIT de `scripts/check_test_baseline.sh`).
+**Résultats observés** : parc local JGtm = 27 « Replay » OBS (nom = mtime + 0 à 1,5 s : nommés à la sauvegarde) et 84 clips Halo 5 de console. Témoin 72b0a25e : la dernière image du clip montre le triple frag (frags à 1:01.9 au rejeu) et le chrono 10:56, H tombe à 1:06 : l'ancienne pose faisait COMMENCER le clip à 1:06, la nouvelle le fait finir à 1:06 (écart résiduel 2-3 s). Témoin bfecd02b : le clip couvre au chrono du jeu 1:52 → 2:20 (première image 10:08, dernière 9:40 avec au fil la mort de joueur_165, 2:15.6 au rejeu) ; H tombe à 3:03 : avec la règle le clip est posé [2:34, 3:03], soit encore ~43 s trop tard. Mesuré sur 6 clips à chrono lisible : écart H − fin réelle = +30 s (07-07), +2 (07-23), +2,5 (07-31), +39,5 (08-27), +43 (09-01 21:46), +2 (09-01 22:54). Sans lien avec le mode ni avec l'origine du film (gap t0−origine 22,7 s et 0,3 s des deux côtés) ; le profil (croissance de ~1 s/jour puis retour à ~2 s) est celui d'une horloge du PC de capture qui dérive et que Windows recale par intervalles. Non corrigible par la règle par source, signalé. Tests : rouge d'abord (`media_capture_source_test.go` ne compilait pas sans la table ; `TestIndexMedia_RecalcsLegacyWindows` rouge sous mutation « recalcul en simulation » : fenêtre [H, H+D] restée), puis vert. Gates : `go vet` ops + cmd/levelup ; `go test ./internal/ops/` et `-tags=integration -p 1 ./internal/ops/` ; `./internal/archlint/` ; gardes `internal/sync` (TestNoMutation*, TestOpsMutation*, TestNoArt*, TestNoBulk*, TestNoLegacy*) ; `./cmd/levelup -run Aide` ; golangci-lint 0 issue sur le diff ; gofmt propre ; essai du binaire sur une base vide (écriture puis simulation). Baseline : les 5 TestComputeMediaEnd_* retirés (20 lignes JSONL, paragraphe RETRAIT de `scripts/check_test_baseline.sh`).
 
 **Conclusion / prochaine étape** : commité sur la branche, rien poussé, recalcul NON lancé sur les vraies données. Superviseur : simulation `levelup media-capture-times --dry-run --db <copie de shared_social.duckdb>` (local puis prod, Halo Infinite puis `--title halo_5`), puis déploiement : le serveur recalcule seul au premier passage d'indexation (ou bouton « Scanner » des réglages, par titre). Découvertes non traitées : (1) dérive de l'horloge du PC de capture (jusqu'à ~43 s, cf. résultats) : une calibration demanderait une référence par clip ; (2) les associations média ↔ match déjà écrites ne sont pas recalculées (le début avance de la durée du clip, un clip sauvé juste après la fin d'un match peut désormais tomber DANS ce match ; les associations existantes restent) ; (3) `persist.MediaFileInsert` / `SharedSocialPersister.persistMediaFiles` n'a aucun appelant hors tests (écrirait des lignes sans source) ; (4) `seed_demo_media_h5.go` prend l'heure d'un clip Halo 5 pour un début (démo seulement) ; (5) Game Bar : un enregistrement MANUEL (Win+Alt+R) porte le même motif qu'un « record that » et serait rangé en fin, aucun fichier de ce genre au parc local.
 
@@ -121179,13 +121185,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 **Conclusion / prochaine étape** : aucun code applicatif touché (Go/TS), uniquement `README.md`, `docs/FR/README.md` et `docs/screenshots/*.png` — gates Go/TS du skill `delivery-checklist` non applicables. À committer avec les 4 commits déjà présents sur `release/v8.0.4` (détonations/power-up, Séries temporelles, Vue de match) et publier via CI + squash merge vers `main` sur accord utilisateur du 2026-10-23. Reste à faire côté utilisateur : captures Sessions (après déploiement) et décision sur les 2 captures Escouade en attente.
 
-## [2026-10-25] Ajout de Brooks SVP et calloussss (matchs 2026) en local puis en prod — Complété
+## [2026-10-25] Ajout de joueur_272 et joueur_386 (matchs 2026) en local puis en prod — Complété
 
 **Contexte** : demande utilisateur du 2026-10-25 : synchroniser deux joueurs en local (matchs depuis le 2026-01-01 seulement) puis les publier en prod en reprenant les bases locales.
 
 **Décision technique principale** : xuid résolus par l'API Xbox (jeton du pool, serveur arrêté), profils écrits à la main dans `db_profiles.json` (non versionné) faute de session admin pour `POST /setup/players` ; `sync-full --max-matches` borné par un décompte préalable de l'historique (pas d'option de date dans le sync) ; `backfill --citations` puis `backfill-replay --since 2026-01-01` ; publication par rsync vers `/opt/levelup-staging/vnew` puis `/root/swap_v804p.sh` (restic, arrêt, échange de `data/titles` et de `cache/replays/halo_infinite`, ajout des deux profils en prod). La variante « fusion sans écraser » n'existe pas (pas d'outil de fusion) : écartée.
 
-**Résultats observés** : Brooks SVP 425 matchs insérés (415 de 2026 + 10 antérieurs, débord de page), calloussss 325 (310 + 15), conservés sur décision utilisateur ; 22 des 24 rejeux cuits (2 films sans chunk) ; prod redémarrée en 25 s, 25 bases, 0 WAL, 3 039 rejeux ; anciennes bases en `data/titles.pre-v804p` et `data/cache/replays_halo_infinite.pre-v804p` ; perdus en prod : likes, favoris, notifications depuis le 22/10.
+**Résultats observés** : joueur_272 425 matchs insérés (415 de 2026 + 10 antérieurs, débord de page), joueur_386 325 (310 + 15), conservés sur décision utilisateur ; 22 des 24 rejeux cuits (2 films sans chunk) ; prod redémarrée en 25 s, 25 bases, 0 WAL, 3 039 rejeux ; anciennes bases en `data/titles.pre-v804p` et `data/cache/replays_halo_infinite.pre-v804p` ; perdus en prod : likes, favoris, notifications depuis le 22/10.
 
 **Conclusion / prochaine étape** : disque VPS à 6,9 Go libres (alerte critique) : supprimer `titles.pre-v804p`, `replays_halo_infinite.pre-v804p`, et `titles.pre-v801` sur accord après contrôle de l'utilisateur.
 ## [2026-10-25] Correctif urgent : la page d'invitation renvoyait l'invité vers /login — Complété (branche `fix/join-invite-anonymous`)
@@ -121442,7 +121448,7 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 **Décision technique principale** : exécution par un agent Sonnet (brief fermé), CR vérifié sur pièces et gates rejoués par le pilote. Le garde-fou `briques_internes_test` reçoit un champ `fichiers` (fichiers nommés jugés comme le périmètre, puisque les quatre clients vivent dans des paquets d'exploitation) avec les tolérances mesurées (`platform/netguard` 4, `domain` 2, `ctxkeys` 1, `games` 1, `platform/auth` 1, `golang.org/x/time/rate` 1). Témoins T2 « URL figées » = quatre tests internes à littéraux (19 tests, 29 sous-tests) sur un enregistreur `http.RoundTripper` ; l'agent en avait écrit quatre copies, renvoyé centraliser (règle 6) dans `internal/haloapi/haloapitest` (stdlib seule, accepté par les ratchets de la brique) avec garde-rail `enregistreur_http_unique_test.go` (allowlist datée des 9 copies préexistantes, ne descend que). T3 : quatre sous-commandes de `diag_api_lecture` sur les clients actuels.
 
-**Résultats observés** : captures « avant » prises (compte Chocoboflor, une rotation de RT par exécution via le magasin, deux pour `xbox-succes`) : 5 surfaces sur 6 nouvelles ou existantes servies, `calendrier` 403 comme depuis D3. Faits figés : redirection 302 Halo 5 → la seconde requête part sans `auth=st` mais avec le jeton Spartan, `Accept`, `User-Agent` et un `Referer` ; GameCMS ne pose ni `Accept` ni `User-Agent` ; Xbox encode `skipItems` avant `titleId`. Gates (pilote) : 9 paquets `ok`, vet 0, lint 0 issue nouvelle ; mutations rouges constatées (tolérance -1, `RoundTrip` hors allowlist). Découvertes PUB-1-a (GameCMS `Progression/file` 403 vs `Waypoint/file` 200), PUB-1-b, PUB-1-c notées.
+**Résultats observés** : captures « avant » prises (compte joueur_165, une rotation de RT par exécution via le magasin, deux pour `xbox-succes`) : 5 surfaces sur 6 nouvelles ou existantes servies, `calendrier` 403 comme depuis D3. Faits figés : redirection 302 Halo 5 → la seconde requête part sans `auth=st` mais avec le jeton Spartan, `Accept`, `User-Agent` et un `Referer` ; GameCMS ne pose ni `Accept` ni `User-Agent` ; Xbox encode `skipItems` avant `titleId`. Gates (pilote) : 9 paquets `ok`, vet 0, lint 0 issue nouvelle ; mutations rouges constatées (tolérance -1, `RoundTrip` hors allowlist). Découvertes PUB-1-a (GameCMS `Progression/file` 403 vs `Waypoint/file` 200), PUB-1-b, PUB-1-c notées.
 
 **Conclusion / prochaine étape** : lot 2.1 — coupe Halo 5 (`internal/haloapi/halo5` + adaptateur dans `games/halo_5`), Opus (parité de reprise), T2 vert sans modification des attendus ; décision pilote : `GetMatchDetail` sans appelant n'est pas porté (PUB-0-a), à confirmer par l'utilisateur au point d'étape.
 
@@ -121517,9 +121523,9 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : plan et relevé restent dans `.ai/V8/` (archive) ; checkout principal propre sur `origin/release/v8.1.0` avant ce commit.
 
 **Conclusion / prochaine étape** : aucune action sur ce chantier avant la fin du desktop ; les dettes sont au `.ai/REGISTRE_REPORTS.md` (section du 2026-11-01).
-## [2026-10-28] Rejeu Bazaar CTF : socle du surbouclier « invisible » et ramassage attribué à Madina97294 — diagnostic En cours (aucun code modifié)
+## [2026-10-28] Rejeu Bazaar CTF : socle du surbouclier « invisible » et ramassage attribué à joueur_117 — diagnostic En cours (aucun code modifié)
 
-**Décision technique principale** : diagnostic seul, sur l'artefact de prod copié en lecture (schéma 104). Le ramassage de Madina97294 est un FAIT lu, pas une erreur : trois signaux indépendants concordent — l'événement natif de ramassage (14,5 s), sa position (0,8 m du point où YaMaMasFlaps est mort avec le surbouclier non activé à 11,4 s) et la pose `dropped` du surbouclier tombée de son corps à sa mort (15,3 s), reprise 0,1 s plus tard par Kronos9737 sur ce corps. Jamais activé (énergie restée pleine sur les trois porteurs) ; Madina l'a tenu 0,8 s.
+**Décision technique principale** : diagnostic seul, sur l'artefact de prod copié en lecture (schéma 104). Le ramassage de joueur_117 est un FAIT lu, pas une erreur : trois signaux indépendants concordent — l'événement natif de ramassage (14,5 s), sa position (0,8 m du point où YaMaMasFlaps est mort avec le surbouclier non activé à 11,4 s) et la pose `dropped` du surbouclier tombée de son corps à sa mort (15,3 s), reprise 0,1 s plus tard par joueur_348 sur ce corps. Jamais activé (énergie restée pleine sur les trois porteurs) ; joueur_075 l'a tenu 0,8 s.
 
 **Résultats observés** : le socle est publié (`weaponPads[3]`, `powerup_overshield`, croisé à l'emplacement `powerup` du catalogue Bazaar à 4 mm) ; la chaîne web (normalisation, croisement, datation native, raffinement, état, compte à rebours) rejouée sur l'artefact de prod le rend plein / vide / compte à rebours selon l'instant. Cause de l'invisibilité NON trouvée dans le code : vérification visuelle nécessaire. Découverte annexe : chaque apparition « majeure » du socle (0, 90, 210, 330 s) est suivie 30 s plus tard d'une seconde (1,2, 120, 240, 360 s) ; seule la seconde est ramassée ou activée. Le calque montre donc le socle plein ~30 s trop tôt et un compte à rebours faux de 30 s. Hypothèse non vérifiée : le premier objet n'est pas le surbouclier ramassable.
 

@@ -130,7 +130,7 @@ spatiale n'a donc pas pu être évalué : **son entrée n'existe pas**.
 
 ### ~~Défaut d'affichage ouvert — l'âge de la lecture n'est pas montré~~ — RÉGLÉ le 2026-07-28
 
-Observé par l'utilisateur à 1:06 sur LORD PEINX13, reproduit à l'identique (slot 520, image-clé
+Observé par l'utilisateur à 1:06 sur JOUEUR_731, reproduit à l'identique (slot 520, image-clé
 563, image courante 660, **âge 9,7 s**) puis corrigé : une lecture récente est franche, une lecture
 ancienne s'estompe, l'infobulle donne l'âge exact et le numéro de l'image-clé.
 
@@ -178,8 +178,8 @@ soit instable — c'est presque certainement **notre propre artefact**.
 
 Le `pi` du roster est un **tri alphabétique ASCII**, majuscules avant minuscules :
 
-    0 Akatsuki fire17 · 1 IKE ILYA · 2 JAVIERLOLITO540 · 3 JGtm
-    4 LORD PEINX13 · 5 VitaminA1688 · 6 aldusbroncus · 7 whiteknight2519
+    0 joueur_700 fire17 · 1 JOUEUR_417 · 2 JOUEUR_156 · 3 JGtm
+    4 JOUEUR_731 · 5 joueur_362 · 6 joueur_389 · 7 joueur_283
 
 Ce n'est pas un index du jeu, c'est un ordre que **nous** avons imposé. Le film porte l'index
 interne du jeu. Les deux n'ont aucune raison de coïncider, et leur écart n'apprend rien sur le
@@ -223,8 +223,8 @@ L'index d'attaquant du record **n'est pas** l'index de joueur du roster. Deux nu
 différentes, et la bijection a été trouvée par deux chaînes sans pièce commune qui donnent le même
 résultat chiffre pour chiffre :
 
-    0 whiteknight2519 · 1 JAVIERLOLITO540 · 2 JGtm · 3 LORD PEINX13
-    4 IKE ILYA · 5 Akatsuki fire17 · 6 aldusbroncus · 7 VitaminA1688
+    0 joueur_283 · 1 JOUEUR_156 · 2 JGtm · 3 JOUEUR_731
+    4 JOUEUR_417 · 5 joueur_700 fire17 · 6 joueur_389 · 7 joueur_362
 
 Elle n'affecte pas le pipeline des tirs (le pont y est film-seul) mais **elle détruit toute
 confrontation film contre base**, et elle explique très probablement le témoin resté inexpliqué.

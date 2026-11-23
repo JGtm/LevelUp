@@ -16,30 +16,30 @@ Dans `data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb`, les requêt
 
 Le concat `|| ''` défait le filter pushdown du moteur DuckDB et force un table-scan complet. Les rows existent bien : c'est l'optimisation d'index ART (Adaptive Radix Tree) de la clé primaire `(match_id, xuid)` qui ment.
 
-**Conséquence métier** : le LUSR de MAdina97294 est calculé sur des données massivement tronquées (un seul participant vu par match au lieu de 10), ce qui produit un Argent IV en arena_slayer alors que c'est le meilleur joueur du squad. Les autres joueurs sont moins impactés visiblement parce que le bug se déclenche **selon la composition de la liste IN passée**, et la liste de Madina (1079 IDs) déclenche le mauvais plan d'exécution là où celles de Chocoboflor (389 IDs) et JGtm (766 IDs) ne le déclenchent pas.
+**Conséquence métier** : le LUSR de joueur_175 est calculé sur des données massivement tronquées (un seul participant vu par match au lieu de 10), ce qui produit un Argent IV en arena_slayer alors que c'est le meilleur joueur du squad. Les autres joueurs sont moins impactés visiblement parce que le bug se déclenche **selon la composition de la liste IN passée**, et la liste de joueur_075 (1079 IDs) déclenche le mauvais plan d'exécution là où celles de joueur_165 (389 IDs) et JGtm (766 IDs) ne le déclenchent pas.
 
 ---
 
 ## Symptômes observés en prod (côté user)
 
-- MAdina97294 → LUSR `Argent IV` (μ ≈ 1327) en `arena_slayer`
-- Chocoboflor → LUSR `Or III` (μ ≈ 1476)
+- joueur_175 → LUSR `Argent IV` (μ ≈ 1327) en `arena_slayer`
+- joueur_165 → LUSR `Or III` (μ ≈ 1476)
 - JGtm → LUSR `Or V` (μ ≈ 1538)
-- Selon le user (4 amis qui jouent toujours ensemble), Madina est le meilleur des 4. Le classement actuel est **inversé**.
+- Selon le user (4 amis qui jouent toujours ensemble), joueur_075 est le meilleur des 4. Le classement actuel est **inversé**.
 
 ## Diagnostic technique
 
 ### Étape 1 — Hypothèse formule (rétractée)
 
-Le composite score (`apps/go-api/internal/sync/skill_rating.go:142-255`) contient un bloc *carry-adj* sur la composante `kills_vs_expected` qui compresse le score vers 0.5 d'autant plus fort que le joueur est noté fort par Halo (KE élevé). On a supposé que cette pénalité asymétrique expliquait le LUSR bas de Madina.
+Le composite score (`apps/go-api/internal/sync/skill_rating.go:142-255`) contient un bloc *carry-adj* sur la composante `kills_vs_expected` qui compresse le score vers 0.5 d'autant plus fort que le joueur est noté fort par Halo (KE élevé). On a supposé que cette pénalité asymétrique expliquait le LUSR bas de joueur_075.
 
 **Test** : replay TrueSkill avec et sans carry-adj sur tout l'historique des 3 joueurs.
 
-**Résultat** : carry-adj retiré → Madina passe de 1327.3 à 1331.8 (toujours Argent IV). Hypothèse démentie. Le carry-adj ne se déclenche jamais pour Madina parce que sa condition (`teammateAvgKE > 0`) n'est jamais remplie : `loadLUSRParticipants` ne ramène aucun de ses teammates.
+**Résultat** : carry-adj retiré → joueur_075 passe de 1327.3 à 1331.8 (toujours Argent IV). Hypothèse démentie. Le carry-adj ne se déclenche jamais pour joueur_075 parce que sa condition (`teammateAvgKE > 0`) n'est jamais remplie : `loadLUSRParticipants` ne ramène aucun de ses teammates.
 
 ### Étape 2 — Investigation côté données
 
-`dumpParticipants(match_id='50cd2d8c-...')` retourne **1 seul row** : `bid(45.0)` (un bot). Mais `SELECT WHERE xuid='2533274858283686' AND match_id='50cd2d8c-...'` retourne bien la row de Madina avec kills=12, KE=10.5. Donc la row **existe**.
+`dumpParticipants(match_id='50cd2d8c-...')` retourne **1 seul row** : `bid(45.0)` (un bot). Mais `SELECT WHERE xuid='2623439693412443' AND match_id='50cd2d8c-...'` retourne bien la row de joueur_075 avec kills=12, KE=10.5. Donc la row **existe**.
 
 ### Étape 3 — Identification du bug d'index
 
@@ -65,21 +65,21 @@ Tests successifs avec différentes formulations SQL — toutes lues sur la même
 
 **Verdict** : toute requête qui peut être optimisée via filter pushdown sur `match_id` ne retourne qu'une row. Toute requête qui force un table-scan retourne les rows correctes.
 
-### Étape 4 — Pourquoi MAdina97294 spécifiquement
+### Étape 4 — Pourquoi joueur_175 spécifiquement
 
 Test de probe : pour chaque joueur du squad, ré-exécuter `loadLUSRParticipants` (mêmes chunks de 500, même SQL `IN (?,?,...)`) et compter les rows visibles pour le match `50cd2d8c-...`.
 
 | Joueur | xuid | match_ids dans IN | total rows ramenés | visibles pour 50cd2d8c |
 |---|---|---:|---:|---:|
-| Chocoboflor | 2535469190789936 | 389 | 3526 | **10 ✓** |
+| joueur_165 | 2547408409520575 | 389 | 3526 | **10 ✓** |
 | JGtm | 2533274823110022 | 766 | 7134 | **10 ✓** |
-| **MAdina97294** | **2533274858283686** | **1079** | **19764** | **1 ✗** |
+| **joueur_175** | **2623439693412443** | **1079** | **19764** | **1 ✗** |
 
-Test additionnel : modifier la taille de chunk pour Madina (50, 100, 200, 500, 1000) — **le résultat reste 1 row dans tous les cas**. Donc ce n'est pas simplement « liste trop grosse ». C'est **le contenu de la liste de Madina** qui déclenche le mauvais plan.
+Test additionnel : modifier la taille de chunk pour joueur_075 (50, 100, 200, 500, 1000) — **le résultat reste 1 row dans tous les cas**. Donc ce n'est pas simplement « liste trop grosse ». C'est **le contenu de la liste de joueur_075** qui déclenche le mauvais plan.
 
 Test ultime : la même boucle avec chunk=500 mais SQL `WHERE match_id || '' IN (?,?,...)` → **10 rows visibles ✓**.
 
-→ Le bug est **plan-dependent** : pour certaines combinaisons d'IDs, le moteur DuckDB choisit un plan d'index lookup qui rate des rows. Pour d'autres combinaisons, il utilise un plan correct. Madina a 3× plus de matchs LUSR-éligibles que Chocoboflor et 1.4× plus que JGtm — la composition de sa liste IN tombe dans un cas où le planner se trompe.
+→ Le bug est **plan-dependent** : pour certaines combinaisons d'IDs, le moteur DuckDB choisit un plan d'index lookup qui rate des rows. Pour d'autres combinaisons, il utilise un plan correct. joueur_075 a 3× plus de matchs LUSR-éligibles que joueur_165 et 1.4× plus que JGtm — la composition de sa liste IN tombe dans un cas où le planner se trompe.
 
 La cause exacte (collision de hash dans l'ART, pruning incorrect, bug du driver duckdb-go v2.10502, etc.) demande une investigation côté moteur qui dépasse le scope de ce diagnostic. Mais le **symptôme est reproductible** et le **contournement est connu**.
 
@@ -89,7 +89,7 @@ La cause exacte (collision de hash dans l'ART, pruning incorrect, bug du driver 
 
 ### Calcul LUSR (confirmé)
 
-`loadLUSRParticipants` ([apps/go-api/internal/sync/skill_rating_loaders.go:114-150](../apps/go-api/internal/sync/skill_rating_loaders.go#L114-L150)) charge en moyenne 1-2 participants au lieu de 8-16 pour les matchs concernés. Pour Madina spécifiquement, presque tous ses matchs sont impactés.
+`loadLUSRParticipants` ([apps/go-api/internal/sync/skill_rating_loaders.go:114-150](../apps/go-api/internal/sync/skill_rating_loaders.go#L114-L150)) charge en moyenne 1-2 participants au lieu de 8-16 pour les matchs concernés. Pour joueur_075 spécifiquement, presque tous ses matchs sont impactés.
 
 Effet en cascade dans `computeSkillRatingsBatch` :
 
@@ -100,7 +100,7 @@ Effet en cascade dans `computeSkillRatingsBatch` :
 5. Le composite est calculé uniquement sur les composantes intrinsèques du joueur (kills/KE, deaths/DE, win_factor, etc.) sans contexte lobby
 6. Pour un joueur Halo-noté fort, KE est élevé → kills/KE ≈ 1 même quand il écrase le lobby → score ≈ 0.5 → μ stagne ou descend
 
-**Cohérence avec les symptômes** : Madina à 1327 (Argent IV) est très exactement ce qu'on obtient quand le composite oscille autour de 0.5 sur ~1000 matchs en partant de InitialMU=1500, avec une légère pente négative due aux pertes et morts excessives en sous-perf vs MMR personnel élevé.
+**Cohérence avec les symptômes** : joueur_075 à 1327 (Argent IV) est très exactement ce qu'on obtient quand le composite oscille autour de 0.5 sur ~1000 matchs en partant de InitialMU=1500, avec une légère pente négative due aux pertes et morts excessives en sous-perf vs MMR personnel élevé.
 
 ### Autres pipelines potentiellement impactés
 
@@ -133,10 +133,10 @@ Le lendemain du diagnostic, un second agent a découvert la **même classe de bu
 | Joueur | Visible via index | Réel (full scan) |
 |---|---:|---:|
 | JGtm | 86 | 106 |
-| Chocoboflor | 67 | 78 |
-| Madina97294 | 65 | 74 |
+| joueur_165 | 67 | 78 |
+| joueur_117 | 65 | 74 |
 
-Pour Madina, les 9 rows manquantes étaient les snapshots récents portant la bannière — `ARG_MAX(banner_image_url)` piquait un snapshot du 2026-05-08 sans banner → identité Spartan vide.
+Pour joueur_075, les 9 rows manquantes étaient les snapshots récents portant la bannière — `ARG_MAX(banner_image_url)` piquait un snapshot du 2026-05-08 sans banner → identité Spartan vide.
 
 **Fix appliqué** (commits `2e0f0247` + `651b9de6`) :
 - Workaround permanent : `WHERE xuid || '' = ?` dans `qLoadLastCareerRank`
@@ -224,7 +224,7 @@ Les tests doivent maintenant montrer :
 
 - `[= literal]` → **10 rows** (au lieu de 1)
 - `[IN (?)]` → **10 rows**
-- `Madina chunk=500 (sans concat trick)` → **10** visibles pour 50cd2d8c
+- `joueur_075 chunk=500 (sans concat trick)` → **10** visibles pour 50cd2d8c
 
 ### Étape 4 — Backfill force LUSR
 
@@ -286,8 +286,8 @@ Output attendu (extraits clés) :
     total=10
 
 ══ Diagnostic loadParticipants : rows réellement chargées pour le match 50cd2d8c-... ══
-  Chocoboflor (xuid=2535469190789936) : 389 ids → visibles=10 ✓
-  Madina97294 (xuid=2533274858283686) : 1079 ids → visibles=1 ✗
+  joueur_165 (xuid=2547408409520575) : 389 ids → visibles=10 ✓
+  joueur_117 (xuid=2623439693412443) : 1079 ids → visibles=1 ✗
   JGtm (xuid=2533274823110022) : 766 ids → visibles=10 ✓
 ```
 
@@ -309,19 +309,19 @@ Tirés du concat trick (ordre physique d'insertion) :
 
 ```
 bid(45.0)                  ← bot ramené par l'index buggé
-2535409561713955
-2533274850178760
-2535469190789936           ← Chocoboflor
+2762301109875265
+2737590768537959
+2547408409520575           ← joueur_165
 2533274823110022           ← JGtm
-2533274858283686           ← MAdina97294
-2533274852144672
-2535455227223597
-2533274840182174
-2533274910731403
+2623439693412443           ← joueur_175
+2581289763829805
+2692967645810163
+2544346468965374
+2693408982775995
 ```
 
-### D — Pourquoi le tableau de replay montre quand même TM=6.2 pour Chocoboflor
+### D — Pourquoi le tableau de replay montre quand même TM=6.2 pour joueur_165
 
-C'est l'observation initiale qui a déclenché ce diagnostic. Le replay TrueSkill calcule pour chaque joueur dans le tableau, et pour Chocoboflor `splitParticipantKEs` reçoit bien JGtm (et un autre humain) car la liste IN de Chocoboflor (389 IDs) ne déclenche **pas** le mauvais plan. Pour Madina, sa liste IN (1079 IDs) le déclenche → `parts` quasi vide → TM=0.
+C'est l'observation initiale qui a déclenché ce diagnostic. Le replay TrueSkill calcule pour chaque joueur dans le tableau, et pour joueur_165 `splitParticipantKEs` reçoit bien JGtm (et un autre humain) car la liste IN de joueur_165 (389 IDs) ne déclenche **pas** le mauvais plan. Pour joueur_075, sa liste IN (1079 IDs) le déclenche → `parts` quasi vide → TM=0.
 
 C'est cette **asymétrie sur le même match** qui prouve que le bug dépend du contexte de la query, pas du contenu de la table.

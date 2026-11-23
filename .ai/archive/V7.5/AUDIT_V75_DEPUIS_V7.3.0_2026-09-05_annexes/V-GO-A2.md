@@ -2,7 +2,7 @@
 
 Dépôt lu à `081871f09` (descendant de `736ccf3c3`, aucun des fichiers cités n'a bougé entre les
 deux). Lecture seule, chemins absolus sous
-`C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/apps/go-api/`.
+`<poste>/Downloads/Scripts/LevelUp-go-migration/apps/go-api/`.
 
 ## Constat 1 — pipeline `source_tag` écrit cinq fois, populations divergentes : RÉFUTÉ
 

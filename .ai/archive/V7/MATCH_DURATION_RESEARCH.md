@@ -12,7 +12,7 @@ des données disponibles en DB (`match_participants`, `killer_victim_pairs`, `ma
 
 Match de référence pour toutes les validations :
 - `41b61fb9-3d71-40b7-bde7-45682fba6d57` — Fortress, 2026-03-31, T=447s
-- Joueurs full-match : TheTatice, JGtm, Chocoboflor, Madina97294
+- Joueurs full-match : joueur_572, JGtm, joueur_165, joueur_117
 - XUID JGtm : `2533274823110022`
 
 ---
@@ -59,10 +59,10 @@ $$\boxed{T = (\text{avg\_life} + R) \times (D+1)}$$
 
 | Joueur | D | avg_api | T_est | T_réel | err |
 |---|---|---|---|---|---|
-| TheTatice | 14 | 21.9s | 448.5s | 447s | +1.5s |
+| joueur_572 | 14 | 21.9s | 448.5s | 447s | +1.5s |
 | JGtm | 13 | 23.9s | 446.6s | 447s | −0.4s |
-| Chocoboflor | 13 | 24.0s | 448.0s | 447s | +1.0s |
-| Madina97294 | 10 | 33.2s | 453.2s | 447s | +6.2s |
+| joueur_165 | 13 | 24.0s | 448.0s | 447s | +1.0s |
+| joueur_117 | 10 | 33.2s | 453.2s | 447s | +6.2s |
 
 **Médiane** sur joueurs full-match : err = **+1.2s** (±2s). Acceptable.
 

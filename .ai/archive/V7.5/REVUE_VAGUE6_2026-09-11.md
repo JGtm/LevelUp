@@ -445,7 +445,7 @@ CGO_ENABLED=0 go run . -parc <parc cuit> \
 dérivations du même compteur :
 
 ```
-SÉRIE PUBLIÉE ≠ CLÉ D'APPARIEMENT pour 2535458702376288 : la série finit à 5 frags / 0 morts /
+SÉRIE PUBLIÉE ≠ CLÉ D'APPARIEMENT pour 2643148600905879 : la série finit à 5 frags / 0 morts /
 60 assistances, alors que le pont l'a apparié sur 5 / 0 / 0 incréments
 ```
 
@@ -584,8 +584,8 @@ Les deux joueurs, avec leur ligne de feuille (relevé complet :
 
 | film | xuid | AVANT (k/d/a) | APRÈS (k/d/a) | feuille (k/d/a) |
 |---|---|---|---|---|
-| `1b2d9e08` (Dynasty) | 2533274806449978 | 16 / 7 / **15 616** | 16 / 7 / **2** | 16 / 7 / 2 |
-| `bf2a9f05` (Bazaar) | 2533274903615304 | 19 / 7 / **56** | 19 / 7 / **1** | 19 / 7 / 1 |
+| `1b2d9e08` (Dynasty) | 2542679132084921 | 16 / 7 / **15 616** | 16 / 7 / **2** | 16 / 7 / 2 |
+| `bf2a9f05` (Bazaar) | 2709615471229653 | 19 / 7 / **56** | 19 / 7 / **1** | 19 / 7 / 1 |
 
 **Le calque `objectives` ne bouge sur AUCUN film**, et c'est attendu : il passe par
 `incrementTimes`, donc il était déjà borné. Les 9 513 / 15 648 / 15 645 assistances fantômes citées

@@ -1910,7 +1910,7 @@ Le POC gagne deux colonnes d'équipe (bouclier, vie, dernière arme, K/D) alimen
   Aucun travail de RE à refaire.
 - **Les assistances par tué sont DÉJÀ décodées sur cette branche** : grammaire
   `killer(E5) victim(E5) R32 R1 assist(E5) R32`, validée **31 décodées contre 30 en API**, avec
-  recoupement nominatif (JGtm 1=1, RaiiZeNBack 3=3). En base, seuls les AGRÉGATS existent (équipe 0 :
+  recoupement nominatif (JGtm 1=1, joueur_1033 3=3). En base, seuls les AGRÉGATS existent (équipe 0 :
   6 assistances, équipe 1 : 11) — pas de datation par tué. Le fil de tués attendra donc la fusion
   de cette branche plutôt qu'une réimplémentation.
 - 4 620 points portent bouclier et vie dans l'artefact.
@@ -2671,9 +2671,9 @@ la migration ADR 0023 les a vidées. Le chemin canonique
 `auth.RefreshHaloTokensViaStoreFirst` sur le store est le seul vivant. Sur les 9 jetons du
 store, **4 rendent AADSTS70000** (« token issued for a different client id » — vieille app,
 exactement le cas que l'ADR interdit de « réparer » par re-capture) et **5 sont sains**. Les
-jetons sains portent les xuid 2535405528935279, 2535409018618248, 2535413181053876,
-2535430985184703, 2535460062932944. Ceux des joueurs principaux (JGtm 2533274823110022,
-Madina 2533274858283686, Chocoboflor 2535469190789936) sont morts et devront être renouvelés
+jetons sains portent les xuid 2534182457688434, 2738372503639927, 2734274180837334,
+2752304660818731, 2596456879540048. Ceux des joueurs principaux (JGtm 2533274823110022,
+joueur_075 2623439693412443, joueur_165 2547408409520575) sont morts et devront être renouvelés
 par SSO — PAS par re-capture de token.
 
 PIÈGE consigné : `loadEnvLocal` (cmd/refresh_golden_fixture) rend la main après le PREMIER
@@ -4325,7 +4325,7 @@ rectangle sombre dans la carte), et primaire/secondaire retire de l'affichage (n
 format, pas du jeu). Sur 4, ce qui ne se fera pas est ecrit : diriger l'eclair sur les TIRS est
 impossible, les 147 evenements de tir ne portent aucune victime.
 
-**Defaut d'affichage releve par l'utilisateur, consigne comme ouvert** : a 1:06, LORD PEINX13 est
+**Defaut d'affichage releve par l'utilisateur, consigne comme ouvert** : a 1:06, JOUEUR_731 est
 sur le slot 520 et son dernier etat lu date de l'image 563 — dix secondes plus tot. L'etat dit
 2 Fragmentation et 2 Plasma avec i47 non localise, donc selection indeterminee. Les deux « ? »
 sont honnetes mais l'ecran ne dit pas que la lecture a dix secondes d'age, d'ou l'impression d'un
@@ -4352,7 +4352,7 @@ mesure sur UN match : ce n est pas une constante du jeu.
 **Deux reserves portees a l ecran et dans le code** : (a) le nombre est une BORNE HAUTE — le film
 est code en delta, un joueur qui reapparait sans bouger n emet rien, et les 4 episodes au-dela de
 9 s (9,6 / 17,8 / 24,0 / 35,7 s) sont exactement ce cas ; (b) l unique episode de 5,6 s tombe la ou
-deux vies de LORD PEINX13 se chevauchent (slots 594 et 595 se recouvrent sur 4251-4408), une
+deux vies de JOUEUR_731 se chevauchent (slots 594 et 595 se recouvrent sur 4251-4408), une
 attribution vraisemblablement fautive, signalee et non corrigee.
 
 **La lacune se declare** : 8 episodes n ont aucun retour lisible et affichent « retour ? », jamais
@@ -4361,7 +4361,7 @@ qu un retour tienne dans le film, et pour les sept autres cinq pistes commencent
 fenetre SANS etre attribuees a un joueur.
 
 **2. L age d une lecture d inventaire** — le defaut releve par l utilisateur a 1:06 est reproduit
-puis repare. Le cas exact se rejoue : LORD PEINX13, slot 520, image-cle 563, image courante 660,
+puis repare. Le cas exact se rejoue : JOUEUR_731, slot 520, image-cle 563, image courante 660,
 age 9,7 s. Une lecture recente est franche, une lecture ancienne s estompe (variable CSS `--fr`,
 1,00 a 0,50 sur 200 images), et l infobulle donne l age exact avec le numero de l image-cle.
 
@@ -4412,11 +4412,11 @@ tranche.
 du roster. Deux numerotations differentes. Permutation mesuree par DEUX chaines sans piece commune
 (reappariement des 147 tirs publies ; recherche exhaustive sur 40 320 permutations contre le fil
 des morts), qui donnent la meme bijection chiffre pour chiffre :
-  0 whiteknight2519 · 1 JAVIERLOLITO540 · 2 JGtm · 3 LORD PEINX13
-  4 IKE ILYA · 5 Akatsuki fire17 · 6 aldusbroncus · 7 VitaminA1688
+  0 joueur_283 · 1 JOUEUR_156 · 2 JGtm · 3 JOUEUR_731
+  4 JOUEUR_417 · 5 joueur_700 fire17 · 6 joueur_389 · 7 joueur_362
 Repere retabli, l'oracle des morts donne 49/95 contre un temoin a 7/95. Cas d'ecole : la premiere
-mort (31,6 s, LORD PEINX13 au Disruptor par IKE ILYA) est precedee de SIX records Disruptor de
-IKE ILYA entre 30,2 et 31,3 s. Ce sont litteralement les tirs manquants.
+mort (31,6 s, JOUEUR_731 au Disruptor par JOUEUR_417) est precedee de SIX records Disruptor de
+JOUEUR_417 entre 30,2 et 31,3 s. Ce sont litteralement les tirs manquants.
 Cette permutation explique tres probablement le « TEMOIN 3 : Cliffhanger 0,24 » laisse NON RESOLU
 au journal. Correction au passage : ce 0,24 etait calcule contre shots_fired, mauvais
 denominateur ; contre shots_hit le rapport est 0,87 record par touche.
@@ -4486,7 +4486,7 @@ invAt rendait le dernier etat et rien d'autre. Un joueur dont les grenades avaie
 l'image 563 et dont le record de 764 ne portait que la capacite les voyait disparaitre.
 
 **Correction** : report champ par champ. Il est SUR parce qu'un slot EST une vie — il change a
-chaque reapparition (LORD PEINX13 en occupe 13 sur ce film), donc le report ne peut jamais
+chaque reapparition (JOUEUR_731 en occupe 13 sur ce film), donc le report ne peut jamais
 franchir une mort.
 
 **Mesure avant/apres** (balayage d'une image sur cinquante) : fiches vivantes sans ligne
@@ -4510,8 +4510,8 @@ roster, ce sont deux numerotations differentes », presente comme une decouverte
 entrant), qu'il change en cours de partie ou selon les composants serait bizarre. Verifie aussi
 que tu regardes bien le bon film. »
 
-**Verification** : le pi du roster est un TRI ALPHABETIQUE ASCII (0 Akatsuki, 1 IKE, 2 JAVIER,
-3 JGtm, 4 LORD, 5 VitaminA, 6 aldusbroncus, 7 whiteknight — majuscules avant minuscules). Ce n'est
+**Verification** : le pi du roster est un TRI ALPHABETIQUE ASCII (0 joueur_700, 1 JOUEUR_502, 2 JOUEUR_1043,
+3 JGtm, 4 LORD, 5 joueur_602, 6 joueur_389, 7 joueur_026 — majuscules avant minuscules). Ce n'est
 pas un index du jeu, c'est un ordre que NOUS avons impose. Le film porte l'index interne du jeu.
 Les deux n'ont aucune raison de coincider ; leur ecart n'apprend rien sur le format.
 

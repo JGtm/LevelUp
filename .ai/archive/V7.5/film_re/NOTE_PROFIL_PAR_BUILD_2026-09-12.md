@@ -322,8 +322,8 @@ de la base est cherche dans le flux SANS aucune contrainte d'en-tete, puis les 8
 precedent sont releves) :
 
 ```
-1c4c63c2  xuid 2535450607961405  bit 11137668 : REJETE — b=1/0/0 u32=0 deux=1 token=ad00c8b3a1a3
-111fa685  xuid 2535454874175468  bit 10812405 : REJETE — b=1/0/0 u32=0 deux=1 token=f160bab591ef
+1c4c63c2  xuid 2604240265332618  bit 11137668 : REJETE — b=1/0/0 u32=0 deux=1 token=ad00c8b3a1a3
+111fa685  xuid 2713822861981385  bit 10812405 : REJETE — b=1/0/0 u32=0 deux=1 token=f160bab591ef
 ```
 
 **Deux enregistrements parfaitement conformes sur tous les autres champs, rejetes par le seul
@@ -508,7 +508,7 @@ reste verte. Les chemins sont **en style Windows** (`C:/...`) : un chemin de sty
 
 ```bash
 cd apps/go-api
-C="C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks"
+C="<poste>/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks"
 
 # A : la derivation de 186 — le modele du depot et pourquoi il ne ferme pas
 F="000d5950 0014603f 02b172ab 03af54c3 213a87dc 1950c59b"
