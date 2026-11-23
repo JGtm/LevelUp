@@ -1017,7 +1017,7 @@ ABANDONNÉE le 2026-11-23 sur analyse : le monde est unique pour tout le film, l
 - [ ] D.1 (2026-11-23 : intégré dans `feat/v1.6.0`, tête `cd8f560`, empreintes des 13 films identiques ; genre 75 = réplique d'un Spartan, genre 76 = annonce ; lus seulement quand un canal le demande, rien de publié ; essai sur un film : 365 répliques, 951 annonces, aucune trame arrêtée ; non coché : contrôle des comptes contre le témoin sur 3 films, à la file des mesures) Lecture par la grammaire des genres 75 et 76 de la vue A (locuteur, identifiant du son, priorité,
       indice de réplique ; annonceur : identifiant du son, destinataires), aujourd'hui traversés sans valeur.
       Contrôle : mêmes comptes que le témoin sur 3 films.
-- [ ] D.2 (2026-11-23 : EN COURS, agent lancé le 2026-11-23, branche `piste/d2`) Nom court de la réplique, DANS le décodeur (cadrage du user) : recherche bornée de la
+- [x] D.2 (2026-11-24 : nom court prouvé par hachage, 291 noms, pour les builds HI_1_12_0 et HI_1_13_0 seulement, paquet public `chattername`, intégré en `8fe280c` ; le reste, les anciens builds, est au backlog de LevelUp ; agent lancé le 2026-11-23, branche `piste/d2`) Nom court de la réplique, DANS le décodeur (cadrage du user) : recherche bornée de la
       correspondance entre l'indice du film et l'entrée des tables de vocalisation (5 noms résolus à ce
       jour). Un nom est publié quand il est prouvé ; une réplique dont le nom n'est pas prouvé est publiée
       sans nom, et comptée. La recherche suit R-3. Aucun nom inventé.
@@ -1025,9 +1025,9 @@ ABANDONNÉE le 2026-11-23 sur analyse : le monde est unique pour tout le film, l
       couverture (lus, publiés, sans joueur, hors du match) ; les annonces de l'annonceur dans un calque à
       part si D.1 les lit. Le film ne dit pas quelle variante audio a joué : le document ne le dit pas non
       plus.
-- [ ] D.4 (2026-11-23 : `FORMAT.md`, `GLOSSARY.md` et `NOTICE.md` posés pour les répliques, les annonces et les gestes, `3faf1b4` ; reste le nom court de D.2) Fragments de documentation (R-15) : `FORMAT.md`, `GLOSSARY.md` ; crédit à Den (méthode et table de
+- [x] D.4 (2026-11-23 : `FORMAT.md`, `GLOSSARY.md` et `NOTICE.md` posés pour les répliques, les annonces et les gestes, `3faf1b4` ; 2026-11-24 : le nom court y figure aussi, relu à la tête `4d0e9b7` : `FORMAT.md` (publié pour HI_1_12_0 et HI_1_13_0, compté en `unnamed` sinon), `GLOSSARY.md` (ligne `chatter[].name`), `NOTICE.md` (les 291 lignes de `chattername/data/names.tsv`)) Fragments de documentation (R-15) : `FORMAT.md`, `GLOSSARY.md` ; crédit à Den (méthode et table de
       textes, libfilmshell, MIT) pour `NOTICE.md`.
-- [ ] D.5 (décision du user du 2026-11-23 : textes ET voix, en français et en anglais, versés au dépôt comme les sons d'armes ; estimation donnée au user : textes environ 40 Ko, voix 12 à 30 Mo pour les deux langues, à MESURER avant de verser ; deux inconnues à lever : nombre de voix de Spartan enregistrées par réplique, et la voix anglaise n'est pas installée sur le poste) HORS DÉCODEUR (DD-4) : côté LevelUp, à la montée, commande qui bâtit
+- [ ] D.5 (2026-11-23 au soir : le user a demandé la voix anglaise au contributeur ; le français se fait d'abord, l'anglais se branche à réception ; décision du user du 2026-11-23 : textes ET voix, en français et en anglais, versés au dépôt comme les sons d'armes ; estimation donnée au user : textes environ 40 Ko, voix 12 à 30 Mo pour les deux langues, à MESURER avant de verser ; deux inconnues à lever : nombre de voix de Spartan enregistrées par réplique, et la voix anglaise n'est pas installée sur le poste) HORS DÉCODEUR (DD-4) : côté LevelUp, à la montée, commande qui bâtit
       la table des répliques depuis le jeu installé (identifiant du son vers textes français et anglais et
       fichiers de voix), faite comme celle des sons d'armes (`cmd/weapon-sounds`), derrière le tag
       `gamefiles` ; aucun fichier du jeu au dépôt.
@@ -1051,7 +1051,7 @@ ABANDONNÉE le 2026-11-23 sur analyse : le monde est unique pour tout le film, l
 - [!] E.3 (2026-11-23 : source des noms d'options non établie, motif ci-dessous ; instruit sans code, `dec-v160-recup/pistes/e3/instruction.md` hors dépôt ; le film ne porte que le hachage, vérifié sur deux films à tous les décalages de bit ; les archives lisibles du jeu ne rendent aucun des 30 hachages testés ; les noms sont très probablement dans l'exécutable, non lu ; aucun code tant que la source n'est pas établie) Nom des options de variante : le document publie le nom à côté du hachage quand le FILM ou les
       fichiers du JEU le donnent (chaîne lue, contrôlée par son hachage). La table du parseur voisin n'est
       ni copiée ni consultée comme source. Une option sans nom lu reste un hachage, comptée.
-- [ ] E.4 Apparence enregistrée des Spartans (armure, revêtement) : recherche bornée (une session), sur 3
+- [x] E.4 (2026-11-24 : l'apparence est dans le film, dans les paquets de roster ; publiée en codes BRUTS par joueur, `roster[].appearance` et `coverage.appearance`, sans table de noms ; décision du user du 2026-11-23 : publier dès cette version, la table de noms est construite par le contributeur de son côté ; intégré en `4d0e9b7`) Apparence enregistrée des Spartans (armure, revêtement) : recherche bornée (une session), sur 3
       films ; publication si la lecture est prouvée contre la personnalisation publique de l'API ; sinon
       `[!]`. À remettre à la session du rejeu 3D dans les deux cas.
 - [x] E.5 (2026-11-23 : zoom déjà publié chez nous, sorties de lunette sous-comptées ; coup de mêlée sans mort couvert par le contributeur seulement ; même annexe que C.4) Zoom et coup de mêlée sans mort : contrôle sur pièces de ce qui est déjà publié (visée) et de ce
@@ -1207,7 +1207,7 @@ Non porté, et pourquoi :
 
 Décisions du user du 2026-11-23 qui s'y rattachent : aucune option dans le décodeur (tout est publié, pleine cadence comprise) ; dégâts à zéro point publiés ; série de santé et de bouclier par vie publiée ; purge de l'historique git abandonnée.
 
-- [ ] P.9 Note de migration remise au contributeur (en anglais), à la clôture.
+- [ ] P.9 Note de migration remise au contributeur (en anglais), à la clôture. À dire dans la note : `roster[].appearance` (codes bruts, apparence portée pendant le match), `chatter[].name`.
 - [ ] P.10 Crédit au contributeur sous son pseudo GitHub llampwall : remerciements du décodeur à la clôture, crédits de LevelUp à la montée (page des crédits, fichier de crédits), pour le décodeur et surtout le rejeu 3D.
 
 ## Étape R — relecture, AVANT les gates finals
@@ -1266,6 +1266,12 @@ Ordre imposé : R.1, R.2, puis L.1, L.2, L.3. Toute correction après L.1 fait r
   LevelUp verte sur `release/v8.3.0`.
 
 ## Journal d'exécution
+
+- 2026-11-24 — MÉNAGE DES BRANCHES : 61 branches distantes du décodeur supprimées, toutes déjà fusionnées ; `piste/g7` et `piste/bl-zones` gardées. Côté LevelUp, la branche jumelle des miroirs est supprimée. Les mises à jour de dépendances de Dependabot sont à prendre juste avant le tag (décision du user).
+
+- 2026-11-24 — INTÉGRATION 8, tête `4d0e9b7` : l'apparence brute de chaque joueur est lue dans les paquets de roster, conservée dans les faits et publiée (`roster[].appearance`, `coverage.appearance`), sans table de noms (E.4). 4 559 tests passés, 301 sautés. Sorties identiques à 1 et 4 fils. Compatibilité publique : seules les deux constantes de schéma changent. Fixtures de contrat inchangées. Poids ajouté par l'apparence : 3 à 8 Ko par rejeu après compression. Défaut trouvé à l'intégration : plantage sur un film réel, corrigé avec un test qui passe par le vrai assemblage. Les révisions de `source`, `killsource` et `objectives` sont refigées à numéro constant (voir Découvertes).
+
+- 2026-11-24 — INTÉGRATION 7, tête `8fe280c` : chaque réplique des Spartans porte son nom court quand il est prouvé (D.2, paquet public `chattername`, 291 noms, builds HI_1_12_0 et HI_1_13_0). 4 544 tests passés, 301 sautés. Sorties identiques à 1 et 4 fils. Compatibilité publique : seules les deux constantes de schéma changent. Fixtures de contrat inchangées. La documentation (D.4) porte le nom court.
 
 - 2026-11-23 (soir) — FAITS CHIFFRÉS ÉTABLIS SUR PIÈCES : document au schéma 127 (126 en v1.5.0), faits au schéma 31 (30 en v1.5.0). Poids d'un rejeu compressé : +45 à +46 % depuis la v1.5.0 (trois films : 329 993 -> 482 325, 840 362 -> 1 225 879, 7 833 786 -> 11 368 190 octets ; pleine cadence et santé et bouclier par vie en sont la cause). Vitesse d'un film récent (Slayer, machine seule, total) : 1,12 s en v1.5.0, 0,80 s à un fil, 0,53 s à deux, 0,48 s à quatre, 0,46 s à huit (`releve_voies_fils1.tsv` à `releve_voies_fils8.tsv`). Pic de mémoire du plus gros film, un fil : 1 624 Mio à la cinquième intégration (2 198 Mio en v1.5.0). Tests de la suite complète : 4 538 passés, 301 sautés, seuls 4 tests de fixtures de contrat rouges (fixtures de l'hôte à recopier). Annexes versées : `journal_des_integrations.md` et les rapports de portage, de score, de drapeau et de verdicts E et F.
 
@@ -1354,6 +1360,7 @@ Ordre imposé : R.1, R.2, puis L.1, L.2, L.3. Toute correction après L.1 fait r
 
 ## Découvertes (consignées, non traitées)
 
+- 2026-11-24 (intégration 8) — Les révisions de `source`, `killsource` et `objectives` ont été refigées à numéro constant à la huitième intégration, parce que leur périmètre inclut le paquet des types : un type neuf sans effet sur leur lecture fait rougir leur empreinte. À revoir (périmètre trop large).
 - 2026-11-23 (intégrations) — 33 collages de projectile se posent sur une entité de l'archétype des véhicules que `vehicles[]` ne publie pas sous ce slot : ils restent sans cible (`unresolved`), aucune résolution forcée (déduit). Entrée du backlog.
 - 2026-11-23 (intégrations) — Deux joueurs (API 483 et 514 tirs) masquaient un manque réel d'environ 200 tirs non écrits, que la lecture à tout rang fait apparaître ; renvoyé au chantier précision du backlog (DD-2).
 - 2026-11-23 (B.3) — Le compteur `carrierTeamUnknown` porte un nom trompeur : il mesure l'abstention de la règle qui nomme le DRAPEAU pris (32 sur 32 portages d'un film à 6 socles), pas une équipe inconnue (l'équipe est lue pour 25 joueurs sur 25). Entrée du backlog.

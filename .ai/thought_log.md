@@ -1,3 +1,9 @@
+## [2026-11-24] Décodeur 1.6.0 : intégrations 7 et 8, nom des répliques, apparence brute — En cours
+
+- **Décision** : le nom court des répliques est publié quand il est prouvé par hachage (builds HI_1_12_0 et HI_1_13_0 seulement) ; l'apparence des joueurs est publiée en codes bruts, sans table de noms (décision du user du 2026-11-23, la table est construite par le contributeur de son côté).
+- **Résultats** : tête `4d0e9b7`, 4 559 tests passés, 301 sautés, sorties identiques à 1 et 4 fils, seules les deux constantes de schéma changent côté public, 3 à 8 Ko ajoutés par rejeu. Un plantage sur film réel trouvé à l'intégration, corrigé avec un test. 61 branches distantes du décodeur supprimées (fusionnées). D.2, D.4 et E.4 cochés.
+- **Suite** : relecture finale du diff du décodeur ; D.5 (voix anglaise attendue du contributeur), D.6, note de migration, mises à jour Dependabot juste avant le tag.
+
 ## [2026-11-22] Issue 213, dernier commentaire : rattrapage Halo Infinite « bloqué » — En cours
 
 - **Décision** : diagnostic seul, pas de code. Les trois autres demandes de l'issue (aide, rattrapage Halo 5, carte de synchronisation) sont livrées dans la 8.3.0 (`221c50dcbb`).
