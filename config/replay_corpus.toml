@@ -287,55 +287,10 @@ raison  = "remplace f75e7053, hors d'atteinte du poste (2026-11-17) : meme carte
 # decision que le gate signale « sans effet » (la reference porte deja le changement) se retire.
 
 [[decision]]
-mesure   = "coverage.hits.noShooter"
-decodeur = "v1.4.1"
-date     = "2026-11-16"
-raison   = "feuille de couverture neuve du schema 125 (decodeur v1.4.0, touches et degats) : un bloc qui n existait pas, son compteur d echec passe de absent a N ; rien de lu avant n est perdu. Accord du user du 2026-11-16 (« oui », a la question d inscrire comme acceptes les compteurs neufs du schema 125 et les deux points de jauge en moins)."
-
-[[decision]]
 mesure   = "coverage.hits.noVictim"
 decodeur = "v1.4.1"
 date     = "2026-11-16"
 raison   = "feuille de couverture neuve du schema 125 (decodeur v1.4.0, touches et degats) : un bloc qui n existait pas, son compteur d echec passe de absent a N ; rien de lu avant n est perdu. Accord du user du 2026-11-16 (« oui », a la question d inscrire comme acceptes les compteurs neufs du schema 125 et les deux points de jauge en moins)."
-
-[[decision]]
-mesure   = "coverage.hits.stoppedFrames"
-decodeur = "v1.4.1"
-date     = "2026-11-16"
-raison   = "feuille de couverture neuve du schema 125 (decodeur v1.4.0, touches et degats) : un bloc qui n existait pas, son compteur d echec passe de absent a N ; rien de lu avant n est perdu. Accord du user du 2026-11-16 (« oui », a la question d inscrire comme acceptes les compteurs neufs du schema 125 et les deux points de jauge en moins)."
-
-[[decision]]
-mesure   = "coverage.hits.vitalsUnread"
-decodeur = "v1.4.1"
-date     = "2026-11-16"
-raison   = "feuille de couverture neuve du schema 125 (decodeur v1.4.0, touches et degats) : un bloc qui n existait pas, son compteur d echec passe de absent a N ; rien de lu avant n est perdu. Accord du user du 2026-11-16 (« oui », a la question d inscrire comme acceptes les compteurs neufs du schema 125 et les deux points de jauge en moins)."
-
-[[decision]]
-mesure   = "coverage.flagCarries.seatsBeyondBand"
-decodeur = "v1.4.1"
-date     = "2026-11-16"
-raison   = "compteur neuf du schema 125 (sieges lus aux listes de la session, au-dela de la bande du drapeau) : absent avant, il passe a N ; aucun portage perdu. Accord du user du 2026-11-16 (« oui », a la question d inscrire comme acceptes les compteurs neufs du schema 125 et les deux points de jauge en moins)."
-
-[[decision]]
-mesure   = "coverage.flagCarries.gaugePoints"
-temoins  = ["084a804d"]
-decodeur = "v1.4.1"
-date     = "2026-11-16"
-raison   = "jauge de retour lue trame par trame (decodeur v1.4.0) : 185 -> 183 points ; les deux points retires (20 559 et 20 596 ms) tombent au milieu de leurs voisins sur une montee lineaire (0,666 / 0,686 / 0,706), le trace ne change pas. Accord du user du 2026-11-16 (« oui », a la question d inscrire comme acceptes les compteurs neufs du schema 125 et les deux points de jauge en moins)."
-
-[[decision]]
-mesure   = "flagCarries.spans.returnProgress/n"
-temoins  = ["084a804d"]
-decodeur = "v1.4.1"
-date     = "2026-11-16"
-raison   = "jauge de retour lue trame par trame (decodeur v1.4.0) : 185 -> 183 points ; les deux points retires (20 559 et 20 596 ms) tombent au milieu de leurs voisins sur une montee lineaire (0,666 / 0,686 / 0,706), le trace ne change pas. Accord du user du 2026-11-16 (« oui », a la question d inscrire comme acceptes les compteurs neufs du schema 125 et les deux points de jauge en moins)."
-
-[[decision]]
-mesure   = "flagCarries.spans.returnProgress/total"
-temoins  = ["084a804d"]
-decodeur = "v1.4.1"
-date     = "2026-11-16"
-raison   = "jauge de retour lue trame par trame (decodeur v1.4.0) : 185 -> 183 points ; les deux points retires (20 559 et 20 596 ms) tombent au milieu de leurs voisins sur une montee lineaire (0,666 / 0,686 / 0,706), le trace ne change pas. Accord du user du 2026-11-16 (« oui », a la question d inscrire comme acceptes les compteurs neufs du schema 125 et les deux points de jauge en moins)."
 
 [[decision]]
 mesure   = "t0FilmMs"

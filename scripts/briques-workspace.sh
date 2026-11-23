@@ -32,10 +32,19 @@ if [[ -z "$version" ]]; then
   exit 1
 fi
 
+# Sous Windows (Git Bash), Go n'accepte pas les barres obliques dans la directive `use` : cygpath -w
+# écrit la forme native. Ailleurs (pas de cygpath), le chemin est rendu tel quel.
+chemin_go() {
+  if command -v cygpath >/dev/null 2>&1; then
+    cygpath -w "$1"
+  else
+    printf '%s\n' "$1"
+  fi
+}
+
 uses=("./apps/go-api")
 for clone in "$@"; do
-  # pwd -W (Git Bash) rend un chemin que le Go de Windows comprend ; ailleurs, pwd.
-  dir="$(cd "$clone" && { pwd -W 2>/dev/null || pwd; })"
+  dir="$(cd "$clone" && pwd)"
   if [[ ! -f "$dir/go.mod" ]]; then
     echo "briques-workspace: $clone ne porte pas de go.mod" >&2
     exit 1
@@ -52,7 +61,7 @@ for clone in "$@"; do
     echo "briques-workspace: $module n'est pas requis par apps/go-api/go.mod" >&2
     exit 1
   fi
-  uses+=("$dir")
+  uses+=("$(chemin_go "$dir")")
 done
 
 {
