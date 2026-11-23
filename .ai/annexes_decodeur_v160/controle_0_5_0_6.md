@@ -223,7 +223,7 @@ par nom. La liste ci-dessus est celle que la marche émet.
 
 ## 4. Outil de compatibilité publique (G-compat)
 
-- `gorelease` : non installé. Absent du PATH (`which`) et de `C:\Users\Guillaume\go\bin`.
+- `gorelease` : non installé. Absent du PATH (`which`) et de `le dossier des binaires Go du poste`.
 - `apidiff` : non installé. Même constat.
 - `GOBIN` : vide. `GOPATH` : `C:\Users\Guillaume\go`. `go version` : go1.26.11 windows/amd64.
 - Présents dans `go\bin` : air, benchstat, gitleaks, goimports, golangci-lint, govulncheck, lefthook, oapi-codegen.
