@@ -555,7 +555,7 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 
 - [x] I.1 (fait : trois livraisons fusionnées dans `release/v8.3.0` au lieu d'une seule, amendement écrit au journal du 2026-11-18 ; la troisième le 2026-11-22) Recalage sur `origin/release/v8.3.0` ; fusion des sous-branches dans `chore/830-backlog-1118` ;
       `openapi.yaml` et `make generate-types` une seule fois.
-- [ ] I.2 Témoins APRÈS comparés à 0.2 : écarts listés, chacun rattaché à un item ou déclaré défaut.
+- [x] I.2 (fait le 2026-11-23 : 17 témoins comparés dans `.ai/annexes_backlog_1118/temoins_apres.md` ; 8 identiques, 5 changés comme le plan le prévoit, 1 changé par un autre chantier, 2 non rejouables sans le rejeu du match témoin, aucun écart non expliqué) Témoins APRÈS comparés à 0.2 : écarts listés, chacun rattaché à un item ou déclaré défaut.
 - [x] I.3 (fait le 2026-11-23 pour le changelog et les notes de version, en français et en anglais ; le dossier `C:/t` des caches dédiés a été vidé le 2026-11-22, voir journal) `docs/CHANGELOG.md` et notes de version de la 8.3.0, en français et en anglais (départs, ramassages,
       « Seul » et « Suivre », Escouade, Échap) ; `.ai/thought_log.md` ; caches dédiés rendus.
 - **Gate I** : `make gate-push` ; `cd apps/go-api && go test -tags=integration -p 1 ./internal/sync/... ./internal/platform/duckdb/...` ;
@@ -574,10 +574,18 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
       Artefact des vérifications du user : départ du joueur A à 5:00 sur le match `38900a5e` ; ligne de
       ramassage ; « Seul » puis « Suivre » ; sortie du Plein cadre ; orientation Auto dans la Tactique ; barre
       d'une ligne au Cinéma, fenêtre d'environ 1 440 px, disposition en colonne.
-- [ ] R.4 Tous les items statués ; outillage de mesure retiré ou documenté ; fusion dans `release/v8.3.0` ;
+- [x] R.4 (fait le 2026-11-23 : aucun item sans statut ; caches de compilation du lot rendus ; CI de la branche de version lue ; les deux worktrees du lot et ses branches locales, tous contenus dans la branche de version, restent à retirer dans un tour à part, après recherche de jonction) Tous les items statués ; outillage de mesure retiré ou documenté ; fusion dans `release/v8.3.0` ;
       CI lue après la poussée.
 
 ## Journal d'exécution
+
+- 2026-11-23 — CLÔTURE DU PLAN. Code livré et fusionné dans la branche de version en trois livraisons ; relecture
+  adversariale finale sans P0 ni P1 de code ; notes de version et changelog dans les deux langues ; grille de
+  conformité aux maquettes à jour ; 27 entrées du backlog closes, découvertes et reports inscrits ; 16 vérifications à
+  l'écran remises au user dans l'artefact habituel ; témoins « après » comparés, aucun écart non expliqué. Restent hors
+  plan, inscrits au registre des reports : le rattrapage du coup d'envoi et le rejeu des notes (après la régénération
+  du parc, elle-même après la version 1.6.0 du décodeur), les contrôles à l'écran du user avant `main`, la décision du
+  user sur les cinq écarts de forme des bases joueur et sur trois points de maquette sans dessin.
 
 - 2026-11-23 — relecture finale et vérifications à l'écran. La relecture adversariale du code livré ne relève aucun P0 ni P1 de code ; un P1 de confidentialité (pseudos de joueurs et chemin du poste dans des annexes versionnées) est corrigé (commit `9bb45958da`). Les vérifications à l'écran sont inscrites dans l'artefact de vérifications du user : 16 lignes pour ce plan, 14 faisables dès maintenant, 2 à venir. R.2 et R.3 passent en `[x]`. Restent ouverts : I.2 (témoins après), R.4 (clôture, fusion dans `main`, CI) ; la validation à l'écran reste due au user.
 

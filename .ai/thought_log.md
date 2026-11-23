@@ -1,3 +1,10 @@
+## [2026-11-23] Plan du backlog des 17 et 18 novembre — Complété (hors rattrapage du coup d'envoi, reporté)
+
+- **Décision** : le plan se clôt sur pièces : chaque item a son statut, ce qui dépend de la régénération du parc passe au registre des reports, les contrôles à l'écran sont remis au user en une seule liste.
+- **Résultats** : relecture finale sans défaut grave ; deux défauts secondaires du rattrapage du coup d'envoi proposés pour correction avant le premier démarrage de la version ; témoins après sans écart non expliqué ; des pseudos de joueurs retirés des annexes du plan, et l'étendue du même défaut dans le reste du dépôt public inscrite au backlog.
+- **Leçon** : un dépôt public se traite comme tel dans ses documents de pilotage aussi : libellés neutres pour les joueurs, aucun chemin du poste.
+- **Suite** : plan du décodeur 1.6.0.
+
 ## [2026-11-23] Décodeur v1.6.0 : relevé de vitesse, profil, deux optimisations sans changement de sortie — En cours
 
 - **Décision** : mesurer avant d'optimiser. Les quatre axes repris d'un parseur voisin ont été jugés sur le profil : un abandonné (décompression sur plusieurs fils, 0,1 à 0,8 % du total), un déjà en place (la mémoïsation), un reporté (lecture de plusieurs chunks à la fois), un gardé (lecture au choix des canaux). Une optimisation sans gain net est retirée : c'est le cas de la récupération d'équipement (G.7).
