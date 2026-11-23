@@ -28,6 +28,7 @@ import { PoolSharingCard } from './PoolSharingCard'
 import { ReplayRegenCard } from '@/components/replay-regen/ReplayRegenCard'
 import { ResourcePackCard } from './ResourcePackCard'
 import { SiteImportPanel } from './SiteImportPanel'
+import { SyncNowCard } from './SyncNowCard'
 import { TitlesTab } from './TitlesTab'
 import { InterfaceCard, DiscordCard, MediaCard } from './_settingsCards'
 import { resolveSettingsTab, type SettingsTab } from './tabs'
@@ -152,6 +153,7 @@ export function SettingsPage() {
         )}
         {activeTab === 'data' && (
           <>
+            <SyncNowCard />
             <MediaCard merged={merged} handleChange={handleChange} t={t} frozen={settingsFrozen} />
             <FilmArchivePanel />
           </>

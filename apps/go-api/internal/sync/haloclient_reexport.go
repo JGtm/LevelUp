@@ -34,6 +34,7 @@ var (
 	NewHaloAPIClient            = haloadapter.NewClient
 	NewLocalFilmCache           = filmfetch.NewLocalFilmCache
 	IsAuthError                 = haloadapter.IsAuthError
+	IsNotFound                  = haloadapter.IsNotFound
 	ParseMatchSkillResponseJSON = haloadapter.ParseMatchSkillResponseJSON
 	ResolveNameplateURL         = haloadapter.ResolveNameplateURL
 	ErrSkillStatsUnavailable    = haloadapter.ErrSkillStatsUnavailable

@@ -46,6 +46,18 @@ type persistedSnapshot struct {
 	LastCycleResult *RunOnceResult        `json:"last_cycle_result,omitempty"`
 	Players         []PlayerOutcomeDetail `json:"players"`
 	PostSyncHistory map[string][]int64    `json:"post_sync_history,omitempty"`
+	// LastPasses : la dernière passe de chaque joueur par titre (auto_sync_passes.go), pour que l'écran
+	// « état de l'historique » la montre après un redémarrage. Absent d'un instantané plus ancien : table vide.
+	LastPasses []persistedPass `json:"last_passes,omitempty"`
+}
+
+// persistedPass est la forme sérialisée d'une entrée de la table des dernières passes.
+type persistedPass struct {
+	TitleSlug       string    `json:"title_slug"`
+	Gamertag        string    `json:"gamertag"`
+	At              time.Time `json:"at"`
+	MatchesInserted int       `json:"matches_inserted"`
+	Status          string    `json:"status"`
 }
 
 // RehydrateFromDisk recharge le dernier snapshot post-sync persisté dans l'état
@@ -89,8 +101,9 @@ func (s *AutoSyncScheduler) RehydrateFromDisk(ctx context.Context) {
 		s.postSyncHistory = snap.PostSyncHistory
 	}
 	s.cycleRanSinceBoot = false
+	s.restorePasses(snap.LastPasses)
 	slog.InfoContext(ctx, "auto_sync: snapshot post-sync réhydraté (dashboard non amnésique au reboot)",
-		"players", len(snap.Players), "last_cycle_at", snap.LastCycleAt, "saved_at", snap.SavedAt)
+		"players", len(snap.Players), "passes", len(snap.LastPasses), "last_cycle_at", snap.LastCycleAt, "saved_at", snap.SavedAt)
 }
 
 // persistSnapshot écrit le snapshot post-sync courant sur disque (best-effort).
@@ -135,5 +148,6 @@ func (s *AutoSyncScheduler) buildPersistedSnapshot() persistedSnapshot {
 		LastCycleResult: res,
 		Players:         players,
 		PostSyncHistory: hist,
+		LastPasses:      s.passesForPersistence(),
 	}
 }

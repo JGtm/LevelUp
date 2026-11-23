@@ -18,7 +18,9 @@ import (
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/auth/pool"
 	"levelup/go-api/internal/platform/auth/tokencache"
+	"levelup/go-api/internal/platform/duckdb/historyrepo"
 	"levelup/go-api/internal/scheduler"
+	"levelup/go-api/internal/sync/filmbacklog"
 	"levelup/go-api/internal/watcher"
 )
 
@@ -78,9 +80,26 @@ func initAccountsPool(st *bootState) {
 func initScheduler(st *bootState) {
 	ctx, cfg, settingsStore, tokenProvider, autoSyncPool, friendStore := st.ctx, st.cfg, st.settingsStore, st.tokenProvider, st.autoSyncPool, st.friendStore
 
+	// L'état de l'historique se lit sur la base joueur (clé de fin d'historique) : l'ordonnanceur s'en
+	// sert pour un joueur dont la passe a échoué avant de pouvoir dire où il en est.
+	historyReader := historyrepo.New(func(titleSlug, gamertag string) string {
+		return config.PlayerDBPath(cfg, titleSlug, gamertag)
+	}, nil)
 	autoScheduler := scheduler.New(cfg, settingsStore, tokenProvider, autoSyncPool).
-		WithFriendStore(friendStore)
+		WithFriendStore(friendStore).
+		WithHistoryReader(historyReader).
+		// La garde de progrès de la cadence de rattrapage compare la position de l'historique (marque-page,
+		// fin) avant et après chaque cycle : sans progrès, la cadence courte ne tient pas.
+		WithHistoryMarkerReader(historyReader).
+		// L'arriéré de films publié par les étapes film du post-sync tient la cadence de rattrapage et
+		// l'écran d'état de l'historique sous la capacité FilmCatchUp : sans lui, l'historique se dirait
+		// complet avec des films en retard. Sans la capacité (serveur hébergé), aucun lecteur : la cadence ne suit
+		// que l'historique.
+		WithFilmBacklogReader(filmbacklog.ReaderFor(cfg.Capabilities.FilmCatchUp))
 	schedulerCtx, cancelScheduler := context.WithCancel(ctx)
+	// Les cycles demandés à la main (« Synchroniser maintenant ») suivent le cycle de vie du serveur :
+	// annulés avec schedulerCtx, attendus par l'arrêt avant la fermeture des bases.
+	autoScheduler.BindManualCycles(schedulerCtx, &st.schedulerWG)
 
 	// Lot C1/C2 — persistance JSON légère (HORS DuckDB) de l'état runtime admin,
 	// pour guérir l'amnésie du dashboard au reboot : snapshot post-sync (timeline +

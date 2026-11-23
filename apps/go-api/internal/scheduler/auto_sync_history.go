@@ -123,7 +123,7 @@ func (s *AutoSyncScheduler) storeCycleResult(ctx context.Context, res *RunOnceRe
 	observability.ReportCronRun("auto_sync", time.Now().Add(-res.Duration), cycleErr, res.Duration.Milliseconds())
 
 	s.snapshotMu.Lock()
-	s.lastCycleAt = time.Now()
+	s.lastCycleAt = s.clock()
 	copyRes := *res
 	s.lastCycleResult = &copyRes
 	s.cycleRanSinceBoot = true // un cycle a tourné : le snapshot n'est plus « réhydraté seul » (C1)

@@ -15,6 +15,7 @@ import (
 
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/sync/filmbacklog"
 )
 
 // cartesComptees : le resolveur de carte par match, qui COMPTE ses lectures. Un match absent de
@@ -148,9 +149,12 @@ func TestRegistreDuCycleSansCarteCablee(t *testing.T) {
 	if reg := registreDuCycle(context.Background(), "titre-de-test", DepsCapture{}); reg != nil {
 		t.Fatal("un registre est tenu sans catalogue de bornes")
 	}
-	publierSansCarte(nil, 42)
+	publierArriere("titre-de-test", 42, nbSansCarte(nil, 42))
 	if v := observability.LoadCounter(CompteurPostSyncSansCarte); v != 42 {
 		t.Errorf("%s = %d, attendu 42", CompteurPostSyncSansCarte, v)
+	}
+	if got := filmbacklog.Lire("titre-de-test").Frags; got != 0 {
+		t.Errorf("arriere des frags = %d, attendu 0 : sans catalogue, aucun film restant n est resorbable", got)
 	}
 }
 

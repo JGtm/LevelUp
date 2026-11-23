@@ -86,9 +86,15 @@ func (m *mockNarrowClient) GetHighlightEventsChunk(ctx context.Context, matchID 
 
 // ─── MatchListProvider tests ──────────────────────────────────────────
 
-func TestMatchListProviderV2_StopsAtFirstKnown(t *testing.T) {
+// listDeltaOf rend les inconnus de la découverte d'un joueur à l'historique complet (delta).
+func listDeltaOf(p MatchListProvider, ctx context.Context, prof PlayerProfile, known map[string]bool) ([]string, error) {
+	l, err := p.ListUnknownMatches(ctx, prof, known, HistoryState{})
+	return l.Unknown, err
+}
+
+func TestMatchListProviderV2_UnknownAfterKnownIsTaken(t *testing.T) {
 	// API returns [m1, m2, m3, m_known, m4]. Known = {m_known}.
-	// Expected unknown : [m1, m2, m3]. m4 jamais demandé.
+	// D-23 : un seul connu n'arrête plus le delta ; m4, inconnu juste en dessous, est pris.
 	client := &mockNarrowClient{
 		historyByArg: map[string][]syncpkg.MatchHistoryEntry{
 			"xuid(999)": {
@@ -101,14 +107,14 @@ func TestMatchListProviderV2_StopsAtFirstKnown(t *testing.T) {
 	provider := NewMatchListProvider(factory, "matchmaking", 25, 20)
 
 	known := map[string]bool{"m_known": true}
-	unknown, err := provider.ListUnknownMatches(context.Background(), PlayerProfile{
+	unknown, err := listDeltaOf(provider, context.Background(), PlayerProfile{
 		Gamertag: "alice", XUID: "999",
 	}, known)
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
-	if !equalSlice(unknown, []string{"m1", "m2", "m3"}) {
-		t.Errorf("unknown = %v, want [m1 m2 m3]", unknown)
+	if !equalSlice(unknown, []string{"m1", "m2", "m3", "m4"}) {
+		t.Errorf("unknown = %v, want [m1 m2 m3 m4]", unknown)
 	}
 }
 
@@ -123,7 +129,7 @@ func TestMatchListProviderV2_XUIDFormat(t *testing.T) {
 	factory := func(gt, xuid string) HaloClient { return client }
 	provider := NewMatchListProvider(factory, "matchmaking", 25, 20)
 
-	_, err := provider.ListUnknownMatches(context.Background(), PlayerProfile{
+	_, err := listDeltaOf(provider, context.Background(), PlayerProfile{
 		Gamertag: "Alice_GT", XUID: "12345",
 	}, map[string]bool{})
 	if err != nil {
@@ -144,8 +150,8 @@ func TestMatchListProviderV2_XUIDFormat(t *testing.T) {
 	}
 }
 
-func TestMatchListProviderV2_PaginatesUntilKnown(t *testing.T) {
-	// pageSize=2, 4 pages dispo, known dans page 3.
+func TestMatchListProviderV2_PaginatesPastASingleKnown(t *testing.T) {
+	// pageSize=2, known dans la page 3 : m5, juste après lui, est pris (D-23).
 	page1 := []syncpkg.MatchHistoryEntry{{MatchID: "m1"}, {MatchID: "m2"}}
 	page2 := []syncpkg.MatchHistoryEntry{{MatchID: "m3"}, {MatchID: "m4"}}
 	page3 := []syncpkg.MatchHistoryEntry{{MatchID: "m_known"}, {MatchID: "m5"}}
@@ -157,15 +163,15 @@ func TestMatchListProviderV2_PaginatesUntilKnown(t *testing.T) {
 	}
 	provider := NewMatchListProvider(func(gt, xuid string) HaloClient { return client }, "matchmaking", 2, 20)
 
-	unknown, err := provider.ListUnknownMatches(context.Background(),
+	unknown, err := listDeltaOf(provider, context.Background(),
 		PlayerProfile{XUID: "999"},
 		map[string]bool{"m_known": true},
 	)
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
-	if !equalSlice(unknown, []string{"m1", "m2", "m3", "m4"}) {
-		t.Errorf("unknown = %v, want [m1..m4]", unknown)
+	if !equalSlice(unknown, []string{"m1", "m2", "m3", "m4", "m5"}) {
+		t.Errorf("unknown = %v, want [m1..m5]", unknown)
 	}
 }
 
@@ -181,7 +187,7 @@ func TestMatchListProviderV2_MaxPagesSafetyStop(t *testing.T) {
 		},
 	}
 	provider := NewMatchListProvider(func(gt, xuid string) HaloClient { return client }, "matchmaking", 2, 3)
-	unknown, _ := provider.ListUnknownMatches(context.Background(),
+	unknown, _ := listDeltaOf(provider, context.Background(),
 		PlayerProfile{XUID: "999"}, map[string]bool{})
 	if len(unknown) != 6 {
 		t.Errorf("len(unknown) = %d, want 6 (maxPages=3 × pageSize=2)", len(unknown))
@@ -191,7 +197,7 @@ func TestMatchListProviderV2_MaxPagesSafetyStop(t *testing.T) {
 func TestMatchListProviderV2_APIError(t *testing.T) {
 	client := &mockNarrowClient{historyErr: errors.New("api 500")}
 	provider := NewMatchListProvider(func(gt, xuid string) HaloClient { return client }, "matchmaking", 25, 20)
-	_, err := provider.ListUnknownMatches(context.Background(), PlayerProfile{XUID: "999"}, nil)
+	_, err := listDeltaOf(provider, context.Background(), PlayerProfile{XUID: "999"}, nil)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -199,7 +205,7 @@ func TestMatchListProviderV2_APIError(t *testing.T) {
 
 func TestMatchListProviderV2_NilClientFromFactory(t *testing.T) {
 	provider := NewMatchListProvider(func(gt, xuid string) HaloClient { return nil }, "matchmaking", 25, 20)
-	_, err := provider.ListUnknownMatches(context.Background(), PlayerProfile{Gamertag: "alice", XUID: "999"}, nil)
+	_, err := listDeltaOf(provider, context.Background(), PlayerProfile{Gamertag: "alice", XUID: "999"}, nil)
 	if err == nil {
 		t.Fatal("expected error when factory returns nil")
 	}
@@ -213,7 +219,7 @@ func TestMatchListProviderV2_AllMatchesUnknownNoStop(t *testing.T) {
 		},
 	}
 	provider := NewMatchListProvider(func(gt, xuid string) HaloClient { return client }, "matchmaking", 2, 20)
-	unknown, _ := provider.ListUnknownMatches(context.Background(),
+	unknown, _ := listDeltaOf(provider, context.Background(),
 		PlayerProfile{XUID: "999"}, map[string]bool{})
 	if !equalSlice(unknown, []string{"m1", "m2", "m3"}) {
 		t.Errorf("unknown = %v, want all 3", unknown)

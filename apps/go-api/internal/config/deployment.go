@@ -200,6 +200,16 @@ type DeploymentCapabilities struct {
 	// ligne de commande : sans elle les passes s'y accumulent. Faux ailleurs, où la compaction reste un
 	// entretien serveur arrêté.
 	CompactPassesAtStartup bool
+	// FilmCatchUp : le serveur résorbe l'arriéré de films (source des frags, artefacts de rejeu) aussi vite
+	// que le temps de la passe le permet, et le dit : les deux étapes film du post-sync ne sont bornées que par
+	// leur budget de temps (garde-fou de 200 films par passe, lecture du retard sur 2000 matchs), la cadence
+	// de rattrapage de 10 minutes tient tant que cet arriéré n'est pas vide, et l'écran d'état de l'historique
+	// affiche « Analyse en cours » tant qu'il reste des films. Vraie sur le profil desktop, dont l'utilisateur
+	// attend que son historique soit complet, films compris, sur un poste dont la machine lui appartient. Fausse
+	// ailleurs : un serveur hébergé (2 vCPU, 2 Go) garde les bornes d'avant, 8 films de frags et 5 rejeux par
+	// cycle sur une lecture du retard de 64 matchs, et sa cadence ne suit que l'historique ; la démo ne
+	// synchronise rien ; le développement a la table du serveur hébergé, dont il est la répétition.
+	FilmCatchUp bool
 }
 
 // DeploymentProfile est embarqué dans AppConfig : le profil résolu et ses capacités.
@@ -315,6 +325,7 @@ func capabilitiesOf(cfg *AppConfig) DeploymentCapabilities {
 		TrashMediaSources:      desktop,
 		PickFolder:             desktop,
 		CompactPassesAtStartup: desktop,
+		FilmCatchUp:            desktop,
 	}
 }
 

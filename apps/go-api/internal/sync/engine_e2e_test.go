@@ -20,6 +20,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/sync/syncmeta"
 )
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -187,7 +188,7 @@ func TestSetSyncMeta_ReadBack(t *testing.T) {
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339)
-	if err := SetSyncMeta(t.Context(), playerDB, "cle_de_test", now); err != nil {
+	if err := syncmeta.Set(t.Context(), playerDB, "cle_de_test", now); err != nil {
 		t.Fatalf("SetSyncMeta: %v", err)
 	}
 
@@ -210,8 +211,8 @@ func TestSetSyncMeta_Overwrite(t *testing.T) {
 		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
 	}
 
-	_ = SetSyncMeta(t.Context(), playerDB, "test_key", "value1")
-	_ = SetSyncMeta(t.Context(), playerDB, "test_key", "value2")
+	_ = syncmeta.Set(t.Context(), playerDB, "test_key", "value1")
+	_ = syncmeta.Set(t.Context(), playerDB, "test_key", "value2")
 
 	var val string
 	err := playerDB.QueryRow("SELECT value FROM sync_meta WHERE key = 'test_key'").Scan(&val)

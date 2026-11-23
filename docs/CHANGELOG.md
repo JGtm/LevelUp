@@ -8,6 +8,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [8.2.2] - 2026-11-23
+
+> Fix to automatic sync: the older history of each player comes back, not only the new matches.
+
+### Fixed
+- **Older matches back on automatic sync** — in 8.2.1, automatic syncs only fetched new matches, so the older history of a player stayed out of reach (issue #213). Each automatic sync now catches up to 200 older matches per pass, one pass every 10 minutes until the whole history is stored, for Halo Infinite and Halo 5; then only new matches are fetched. Custom games are not synced. A single engine catches the history up (the scheduler cycle); each pass resumes where the previous one stopped; at most 200 matches per cycle, shared among the players catching up; the 10-minute cadence holds only while the cycle makes progress and survives a restart.
+- **Matches hidden behind a teammate's match** — fetching new matches stopped at the first known match; a match stored first by a teammate hid the matches played just before it. It now stops after 25 known matches in a row.
+- **Unavailable matches and lasting failures** — a match Halo no longer serves is not requested again nor counted as added; a match that fails three passes in a row is set aside and retried after 24 hours; an API outage no longer sets any match aside.
+- **Resuming after a shutdown** — a cycle started right after a restart no longer hangs; storing a large batch waits according to its size; a failed read of the history state is no longer taken for a complete history.
+- **Notifications** — the end-of-cycle notification announces new matches only, not caught-up ones.
+- **Halo 5** — the Xbox identity lookup waits and retries when rate-limited instead of dropping players from the match.
+
+### Added
+- **"Sync now" and history state** in Settings › Data & Media (every player): runs the same sync as the automatic one, with a 2-minute gap between two runs explained on screen; per game, the history complete or catching up, recorded matches, oldest match, last and next pass.
+- **Windows app: films during catch-up** — film processing is no longer capped at 8 films and 5 replays per cycle but by a time budget, and the 10-minute cadence holds while films remain to process. The hosted site keeps the previous pace.
+
+### Documentation
+- The help describes the catch-up, the "Sync now" button and the real automatic sync frequency (6 hours by default).
+- **Help on sync** — the help describes this behaviour and no longer mentions a full sync in Settings.
+
 ## [8.2.1] - 2026-11-16
 
 > The film decoder moves to v1.3.9 (`SchemaVersion` 124): medals, scoreboard, presence, clocks and ends of life are read; the web side types and normalises them; the only new thing on screen is the cross of deaths with no cause, in the replay.

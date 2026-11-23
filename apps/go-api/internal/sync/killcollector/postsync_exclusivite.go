@@ -9,7 +9,7 @@ package killcollector
 // [PostSyncHook]. Or l arriere de l etape 1.57 est GLOBAL (`backlogAJour` ne filtre aucun
 // joueur) : N joueurs synchronises ensemble lisaient le MEME arriere, en tiraient les MEMES
 // films et les decodaient N fois en parallele. La borne [DefaultPostSyncPerCycle] valait
-// N x 8 films par cycle, et la doctrine « le post-sync du serveur garde la boucle en serie »
+// N fois sa valeur par cycle, et la doctrine « le post-sync du serveur garde la boucle en serie »
 // (en-tete de collector.go) n etait vraie qu a l interieur d UN appel.
 //
 // # LA REGLE

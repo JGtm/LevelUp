@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"levelup/go-api/internal/domain"
 	syncpkg "levelup/go-api/internal/sync"
 )
 
@@ -78,53 +79,76 @@ func NewMatchListProvider(factory HaloClientFactory, matchType string, pageSize,
 	}
 }
 
-// ListUnknownMatches paginate /matches en delta mode : stop dès qu'un match
-// connu est rencontré. Format URL `xuid(NNN)` requis (anti-régression
-// incident mai 2026 — gamertag brut → réponse stale).
+// ListUnknownMatches liste les matchs inconnus d'un joueur, en ordre de l'API. Format URL
+// `xuid(NNN)` requis (anti-régression incident mai 2026 — gamertag brut → réponse stale).
 //
-// Différences avec V1 :
-//   - Pas de "cache fetch intermédiaire" (logique V1 spécifique à son flow).
-//   - Pas de stopAfterFlush imbriqué : on collecte les unknowns proprement
-//     et stop dès le 1er connu (ordre API préservé).
-//   - Garde-rail maxPages explicite (V1 n'en a pas, peut paginer 1000 pages
-//     en cas de bug known set vide).
-func (p *matchListProviderV2) ListUnknownMatches(ctx context.Context, prof PlayerProfile, known map[string]bool) ([]string, error) {
+// Deux modes, selon l'état de l'historique du joueur (hist) :
+//   - complet : delta. Pagination en ordre reverse-chronologique, arrêt après
+//     domain.DeltaKnownRun matchs connus d'affilée (ordre API préservé), au plus maxPages pages
+//     (garde-rail : V1 n'en a pas, peut paginer 1000 pages en cas de known set vide) ;
+//   - incomplet : rattrapage (fetchers_history.go), qui saute les connus au lieu de s'arrêter
+//     dessus et reprend au marque-page.
+func (p *matchListProviderV2) ListUnknownMatches(ctx context.Context, prof PlayerProfile, known map[string]bool, hist HistoryState) (Listing, error) {
 	client := p.clientFactory(prof.Gamertag, prof.XUID)
 	if client == nil {
-		return nil, fmt.Errorf("HaloClient nil pour %s", prof.Gamertag)
+		return Listing{}, fmt.Errorf("HaloClient nil pour %s", prof.Gamertag)
 	}
 
-	// V1 anti-régression : xuid(NNN) requis, pas le gamertag brut.
-	histArg := fmt.Sprintf("xuid(%s)", prof.XUID)
+	if hist.Incomplete {
+		return p.listCatchUp(ctx, client, prof, known, hist)
+	}
+	unknown, err := p.listDelta(ctx, client, prof, known, hist.skipped())
+	if err != nil {
+		return Listing{}, err
+	}
+	if hist.Deferred && len(unknown) > catchUpMinBudget {
+		unknown = unknown[:catchUpMinBudget] // rattrapage reporté : un delta, pas un joueur neuf à 500 matchs en mémoire
+	}
+	return Listing{Unknown: unknown}, nil
+}
+
+// listDelta pagine /matches et s'arrête après domain.DeltaKnownRun matchs connus d'affilée (les
+// inconnus rencontrés avant, y compris entre deux connus, sont pris : un match rangé par un
+// coéquipier ne cache pas les inconnus qui le suivent), à la fin de la liste ou après maxPages pages.
+// Un match de `skip` (introuvable, abandonné : historystate.SkipSetKey) est neutre, comme une entrée
+// écartée de Halo 5 : il n'est pas demandé, n'allonge pas la suite de connus et ne la remet pas à zéro.
+// Format `xuid(NNN)` requis (anti-régression incident mai 2026 : gamertag brut, réponse périmée).
+func (p *matchListProviderV2) listDelta(ctx context.Context, client HaloClient, prof PlayerProfile, known, skip map[string]bool) ([]string, error) {
+	gamertag, histArg := prof.Gamertag, fmt.Sprintf("xuid(%s)", prof.XUID)
 	unknown := make([]string, 0, p.pageSize)
+	run := 0 // matchs connus d'affilée, jusqu'à l'entrée courante
 	for page := 0; page < p.maxPages; page++ {
 		start := page * p.pageSize
 		entries, err := client.GetMatchHistory(ctx, histArg, p.matchType, start, p.pageSize)
 		if err != nil {
-			return nil, fmt.Errorf("GetMatchHistory page %d for %s: %w", page, prof.Gamertag, err)
+			return nil, fmt.Errorf("GetMatchHistory page %d for %s: %w", page, gamertag, err)
 		}
 		if len(entries) == 0 {
 			break // fin de l'historique
 		}
-		foundKnown := false
 		for _, e := range entries {
 			if known[e.MatchID] {
-				foundKnown = true
-				break
+				if run++; run >= domain.DeltaKnownRun {
+					break
+				}
+				continue
 			}
+			if skip[e.MatchID] {
+				continue
+			}
+			run = 0
 			unknown = append(unknown, e.MatchID)
 		}
-		if foundKnown {
+		if run >= domain.DeltaKnownRun {
 			break
 		}
-		// Si on a consommé toute la page sans trouver de match connu et
-		// que la page est pleine, on continue à la suivante.
+		// Page partielle = fin de l'historique ; page pleine : on continue à la suivante.
 		if len(entries) < p.pageSize {
-			break // page partielle = fin de l'historique
+			break
 		}
 	}
 	slog.DebugContext(ctx, "v2 ListUnknownMatches",
-		"gamertag", prof.Gamertag, "unknown_count", len(unknown))
+		"gamertag", gamertag, "unknown_count", len(unknown))
 	return unknown, nil
 }
 
