@@ -473,6 +473,12 @@ Relevé le 2026-11-23. La 8.2.2 (rattrapage de l'historique, issue #213) est dan
 
 ---
 
+### [décodeur/répliques] Nom court des répliques sur les versions du jeu d'avant HI_1_12_0
+
+**Relevé le 2026-11-23** (plan du décodeur v1.6.0, item D.2 ; décision du user du 2026-11-23 : pas dans la 1.6.0). Le nom court d'une réplique est publié pour les films des builds `HI_1_12_0` et `HI_1_13_0`, où il est prouvé par hachage (291 noms, 98 % des répliques nommées sur trois films récents). Sur `HI_1_10_0` et `HI_1_11_0`, la table est décalée par un bloc de 205 entrées inséré plus tôt : le décalage se mesure par la priorité (781 répliques sur 808, 400 sur 426, 489 sur 496) mais n'est pas prouvé par hachage, donc ces films sont publiés sans nom et comptés. Les autres builds ne sont pas mesurés. Restent aussi sans nom : les indices hors de 0-914 et 2732-2956 (ordre des deuxième et troisième tables non établi) et six répliques de ramassage d'arme. Pour reprendre : prouver le décalage par build (table de dialogue d'une ancienne installation, ou accord de priorité à 100 % sur un échantillon large), puis ouvrir la garde de build. **Effort : S à M. Priorité : basse.**
+
+---
+
 ## 🎮 Backlog — Coach proactif × Prestige (post-V2)
 
 Référence : ADR 0020 — Coach proactif : pont vers Prestige. ADR 0021 — Synthèse dynamique de Template et Arc ad-hoc.
