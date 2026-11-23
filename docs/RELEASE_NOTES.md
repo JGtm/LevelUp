@@ -2,7 +2,11 @@
 
 **v8.2.2 — Older matches come back on automatic sync**
 
-- **The older history is caught up** — the automatic sync fetches older matches too, up to 200 per pass and one pass every 10 minutes, until the whole history is in LevelUp. After that only new matches are fetched. Custom games are not synced.
+- **The older history is caught up** — the automatic sync fetches older matches too, up to 200 per pass and one pass every 10 minutes, back to the first match, for Halo Infinite and Halo 5. After that only new matches are fetched. Custom games are not synced.
+- **Sync now, and see where it stands** — Settings › Data & Media has a "Sync now" button and, per game, the history state: complete or catching up, recorded matches, oldest match, last and next pass.
+- **No more skipped matches** — a match played just before one a teammate already synced is no longer skipped.
+- **Windows app: films follow** — the films of caught-up matches are processed pass after pass ("Analysis in progress"); the history shows as complete only once they are up to date.
+- **Closing the app mid-sync no longer blocks anything** — sync resumes on the next launch, with nothing lost or duplicated.
 
 **v8.2.1 — The film read more completely: medals, scoreboard, presence and bots**
 

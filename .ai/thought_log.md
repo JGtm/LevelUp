@@ -1,3 +1,10 @@
+## [2026-11-23] Hotfix 8.2.2 (issue #213) : clôture du pilote, rattrapage de l'historique par la synchronisation automatique — En cours (gate final, PR)
+
+- **Statut** : En cours. Toutes les pistes (D-1 à D-27) fusionnées dans `release/v8.2.2` ; reste la passe de contrôle sur le périmètre modifié, la poussée, la CI et la PR (squash, tag et publication : gestes du user).
+- **Décision technique** : le cycle V2 de l'ordonnanceur est le seul moteur de rattrapage (V1 redevient un delta pur, D-18) ; état par joueur dans `sync_meta` via `internal/sync/historystate` (fin, marque-page ancré, échecs, matchs à ne plus demander), sans changement de schéma ; budget 200 par cycle partagé ; cadence 10 min sous garde de progrès ; films bornés par le temps sur le bureau seulement (capacité `FilmCatchUp`) ; delta arrêté après 25 connus ; bouton « Synchroniser maintenant » et état de l'historique dans Paramètres › Données & Médias. Cause d'origine : le rattrapage 8.1.2 n'existait que dans V1, que l'ordonnanceur n'appelait plus, et les tests ne passaient que par V1.
+- **Résultats observés** : mesure réelle sur copie (JGtm, dev) : 400 matchs Infinite rattrapés en 3 cycles et 23 min (42, 10 puis 1 page lue), 51 Halo 5 en une passe, arrêt brutal en pleine persistance repris en 21 s sans doublon ni trou, pic 901 Mo, aucune erreur ART. Revue Fable : 0 P0, 4 P1 corrigés (D-26, D-27). Tests de convergence et cas difficiles par la fabrique de production (1 000 matchs, arrêts brutaux, deux joueurs, introuvables, Warzone).
+- **Conclusion / prochaine étape** : gate final, PR, réponse sur #213 à la publication. Refonte 8.3.0 décrite dans `.ai/CONCEPTION_RATTRAPAGE_HISTORIQUE_8_3_0.md` (13 décisions à trancher). Après le squash : fusionner `main` dans `release/v8.3.0`.
+
 ## [2026-11-22] Hotfix 8.2.2 : une panne de l'API n'abandonne plus de matchs sains, budget global du cycle, fin sur page vide (D-26) — Complété (branche `fix/822-q`)
 
 - **Statut** : Complété, non poussé.

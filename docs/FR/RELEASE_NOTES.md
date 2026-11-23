@@ -2,7 +2,11 @@
 
 **v8.2.2 — Les anciennes parties reviennent avec la synchronisation automatique**
 
-- **L'historique ancien est rattrapé** — la synchronisation automatique récupère aussi les parties plus anciennes, jusqu'à 200 par passe et une passe toutes les 10 minutes, jusqu'à ce que tout l'historique soit dans LevelUp. Ensuite, seules les nouvelles parties sont récupérées. Les parties personnalisées ne sont pas synchronisées.
+- **L'historique ancien est rattrapé** — la synchronisation automatique récupère aussi les parties plus anciennes, jusqu'à 200 par passe et une passe toutes les 10 minutes, jusqu'au premier match, pour Halo Infinite et Halo 5. Ensuite, seules les nouvelles parties sont récupérées. Les parties personnalisées ne sont pas synchronisées.
+- **Synchroniser maintenant et voir où on en est** — Paramètres › Données & Médias porte un bouton « Synchroniser maintenant » et, par jeu, l'état de l'historique : complet ou en rattrapage, matchs enregistrés, plus ancien match, dernière et prochaine passe.
+- **Plus de parties oubliées** — une partie jouée juste avant une partie déjà synchronisée par un coéquipier n'est plus sautée.
+- **Application Windows : les films suivent** — les films des parties rattrapées sont traités au fil des passes (« Analyse en cours ») ; l'historique ne s'affiche complet qu'une fois leur traitement à jour.
+- **Fermer l'application en pleine synchronisation ne bloque plus rien** — la reprise se fait au lancement suivant, sans perte ni doublon.
 
 **v8.2.1 — Le film lu plus complètement : médailles, tableau des scores, présence et bots**
 

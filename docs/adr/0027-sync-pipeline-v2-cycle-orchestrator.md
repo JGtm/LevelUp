@@ -182,6 +182,27 @@ Le sync a été cassé 14 jours en mai 2026 (incident `xuid(NNN)` URL format). O
 
 ---
 
+## Amendment 2026-11-22 — history catch-up belongs to the cycle (8.2.2)
+
+The V2 cycle is the only engine that catches a player's history up; the V1 engine (live watcher,
+single-player manual sync, initial sync, boot fallback) is a pure delta and never reads or writes the
+history state. Rules, all in `internal/sync/historystate` (single source, archlint guard on its keys):
+
+- Until `history_complete_at` is set, discovery skips known matches and lists unknown ones up to a
+  budget of 200 per cycle shared among the players catching up; the end is set only on an empty page,
+  with every listed match proved stored (re-read of the known set) or unavailable (404/410).
+- A bookmark (`history_catchup_cursor`: offset, last match id, head-of-list anchor) resumes each pass;
+  a lost anchor or a failed position check restarts from the top of the list.
+- A match failing three passes is set aside and retried after 24 h; systemic failures (429, timeouts,
+  network, mass failure) never count. Unavailable and set-aside matches live in `history_skip_set` and
+  are neutral for the delta.
+- The delta stops after 25 known matches in a row, not at the first known one.
+- The scheduler cadence drops to 10 minutes while a history (or, on desktop, the film backlog) is
+  pending and the cycle makes progress; it is restored at boot.
+- The persist drain waits according to the batch size and returns when the queue stops progressing.
+
+Planned replacement: `.ai/CONCEPTION_RATTRAPAGE_HISTORIQUE_8_3_0.md` (id list, separate catch-up loop).
+
 ## Références
 
 - ADR 0019 — Architecture Collect → Persist (Persisters, BatchQueue, WAL)

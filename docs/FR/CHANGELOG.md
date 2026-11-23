@@ -13,7 +13,19 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 > Correctif de la synchronisation automatique : l'historique ancien revient, pas seulement les nouveaux matchs.
 
 ### Corrigé
-- **Anciens matchs rapatriés par la synchronisation automatique** — en 8.2.1, la synchronisation automatique ne récupérait que les nouveaux matchs, et l'historique ancien d'un joueur restait hors d'atteinte (issue #213). Chaque synchronisation automatique rattrape désormais jusqu'à 200 matchs plus anciens par passe, une passe toutes les 10 minutes tant que l'historique n'est pas complet, pour Halo Infinite et Halo 5 ; ensuite, seuls les nouveaux matchs sont récupérés. Les parties personnalisées ne sont pas synchronisées.
+- **Anciens matchs rapatriés par la synchronisation automatique** — en 8.2.1, la synchronisation automatique ne récupérait que les nouveaux matchs, et l'historique ancien d'un joueur restait hors d'atteinte (issue #213). Chaque synchronisation automatique rattrape désormais jusqu'à 200 matchs plus anciens par passe, une passe toutes les 10 minutes tant que l'historique n'est pas complet, pour Halo Infinite et Halo 5 ; ensuite, seuls les nouveaux matchs sont récupérés. Les parties personnalisées ne sont pas synchronisées. Un seul moteur rattrape l'historique (le cycle de l'ordonnanceur) ; chaque passe reprend là où la précédente s'est arrêtée ; 200 matchs au plus par cycle, partagés entre les joueurs qui rattrapent ; la cadence de 10 minutes ne tient que si le cycle progresse et reprend après un redémarrage.
+- **Matchs oubliés derrière une partie d'un coéquipier** — la récupération des nouveaux matchs s'arrêtait au premier match déjà connu ; une partie rangée d'abord par un coéquipier cachait les parties jouées juste avant. Elle s'arrête désormais après 25 matchs connus d'affilée.
+- **Matchs introuvables et échecs durables** — un match introuvable chez Halo n'est plus redemandé ni compté comme ajouté ; un match qui échoue trois passes de suite est mis de côté puis retenté après 24 heures ; une panne de l'API ne met plus aucun match de côté.
+- **Reprise après fermeture** — un cycle lancé juste après un redémarrage ne reste plus bloqué ; l'enregistrement d'un gros lot attend selon sa taille ; une lecture en échec de l'état de l'historique n'est plus prise pour un historique complet.
+- **Notifications** — la notification de fin de cycle n'annonce que les nouveaux matchs, pas ceux rattrapés.
+- **Halo 5** — la recherche des identités Xbox attend et réessaie quand elle est limitée, au lieu d'écarter des joueurs du match.
+
+### Ajouté
+- **« Synchroniser maintenant » et état de l'historique** dans Paramètres › Données & Médias (tous les joueurs) : lance la même synchronisation que l'automatique, avec un délai de 2 minutes entre deux lancements expliqué à l'écran ; par jeu, l'historique complet ou en rattrapage, les matchs enregistrés, le plus ancien, la dernière et la prochaine passe.
+- **Application Windows : films au fil du rattrapage** — le traitement des films n'est plus borné à 8 films et 5 rejeux par cycle mais par un budget de temps, et la cadence de 10 minutes tient tant qu'il reste des films à traiter. Le site hébergé garde l'ancien rythme.
+
+### Documentation
+- L'aide décrit le rattrapage, le bouton « Synchroniser maintenant » et la fréquence réelle de la synchronisation automatique (6 heures par défaut).
 - **Aide sur la synchronisation** — l'aide décrit ce comportement et ne parle plus d'une synchronisation complète dans les Paramètres.
 
 ## [8.2.1] - 2026-11-16
