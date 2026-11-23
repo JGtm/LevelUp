@@ -2,7 +2,7 @@
 
 **Status** — Proposed (2026-04-29). Triggered by code review axe 2 (BLOQUANT 4 « canonical non propagé »).
 
-**Deciders** — Guillaume (GS).
+**Deciders** — JGtm.
 
 ## Context
 

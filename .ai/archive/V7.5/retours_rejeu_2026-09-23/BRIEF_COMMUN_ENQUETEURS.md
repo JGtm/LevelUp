@@ -2,7 +2,7 @@
 
 Tu es un enquêteur Opus piloté par un superviseur. Projet LevelUp : dashboard Halo Infinite (Go `apps/go-api/`, React/TS `apps/web/`, DuckDB). Dépôt principal : `<poste>\Downloads\Scripts\LevelUp-go-migration` (bash : `<poste>/Downloads/Scripts/LevelUp-go-migration`), branche `feat/v75`, commit de référence `43a01721e`. CE CHECKOUT EST PARTAGÉ avec d'autres sessions : tu n'y écris RIEN (aucune modification de fichier, aucun `git add/commit/stash/checkout/merge/reset`, aucune écriture dans `.ai/`, `data/`, `apps/`). Lecture seule : Read / Grep / Glob, `git log / show / blame / diff`.
 
-L'utilisateur (Guillaume, francophone ; il a fait lui-même la rétro-ingénierie du film Theater et a AUTORITÉ sur la mécanique de jeu) a remonté des défauts du REJEU 2D et de l'UI. Ta mission : établir SUR PIÈCES la cause racine de TON point et proposer une solution planifiable. AUCUNE implémentation.
+L'utilisateur (JGtm, francophone ; il a fait lui-même la rétro-ingénierie du film Theater et a AUTORITÉ sur la mécanique de jeu) a remonté des défauts du REJEU 2D et de l'UI. Ta mission : établir SUR PIÈCES la cause racine de TON point et proposer une solution planifiable. AUCUNE implémentation.
 
 ## Espace de travail
 Scratchpad du superviseur (tu peux y écrire) :

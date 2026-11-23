@@ -2,7 +2,7 @@
 
 **Statut** : DESIGN — à valider avant implémentation.
 **Date** : 2026-05-23.
-**Auteur** : claude + Guillaume.
+**Auteur** : claude + JGtm.
 **Branche cible** : `refactor/collect-persist` (à créer depuis `chore/post-stabilisation-debt`).
 
 ---

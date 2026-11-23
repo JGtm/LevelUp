@@ -2,7 +2,7 @@
 
 **Status** — Accepted (2026-04-27). Implemented in `internal/analysis/narrative/` during Phase 1 of `PLAN_META_FOUNDATIONS_GO.md` (chunks MV1→MV5 + S5+S6 + S8).
 
-**Deciders** — Guillaume (GS).
+**Deciders** — JGtm.
 
 ## Context
 

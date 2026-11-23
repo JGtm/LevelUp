@@ -2,7 +2,7 @@
 
 **Status** — Accepted (2026-04-27 → 2026-04-28). Implemented across Phase 2 + Phase 3 of `PLAN_META_FOUNDATIONS_GO.md`.
 
-**Deciders** — Guillaume (GS), validated by 489+ migrated keys across 12 page-level manifests.
+**Deciders** — JGtm, validated by 489+ migrated keys across 12 page-level manifests.
 
 ## Context
 

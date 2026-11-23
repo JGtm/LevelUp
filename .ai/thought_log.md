@@ -1,3 +1,10 @@
+## [2026-11-23] Anonymisation des documents, troisième passe : prénom du propriétaire — Complété (documents)
+
+- **Décision** : dans les documents sous `.ai/` et `docs/`, le prénom du propriétaire devient son pseudo public ; un propriétaire de fichier dans une sortie de commande devient « utilisateur ». La ligne de crédit citée d'un dépôt tiers, qui porte son nom complet public, reste, comme les fichiers d'attribution.
+- **Résultats** : 68 lignes dans 31 fichiers, autant d'ajouts que de retraits, nombre de lignes inchangé par fichier ; aucun fichier binaire versionné ne porte le prénom.
+- **Limites** : la référence ancienne des tests, lue par la CI, garde 37 lignes de chemin du poste ; elle part avec la passe du code et des tests, tests relancés. Les initiales à deux lettres des anciens carnets de passation restent.
+- **Suite** : passe du code, des tests et des configurations ; purge de l'historique sur accord du user seulement.
+
 ## [2026-11-23] Anonymisation des documents du dépôt public, première passe — Complété (documents ; code, tests et historique à part)
 
 - **Décision** : les documents sous `.ai/` et `docs/` désignent les joueurs par des libellés stables, le poste par un repère neutre et les identifiants de joueur par leur fictif dérivé ; un outil rejouable tient la règle, sa table reste hors dépôt ; dans le doute sur un mot courant, rien n'est remplacé. Le pseudo du propriétaire, les auteurs de projets crédités, les bots du jeu et les noms inventés par les tests restent.
@@ -79688,7 +79695,7 @@ User formule le problème : "1 média doit être lié uniquement à une carte". 
 
 **Statut** : Complété — non commité (working tree)
 
-**Contexte** : Guillaume signale que les WARN/ERROR `metadata verrouillée, nouvelle tentative...` réapparaissent au hot-reload Air, alors que le plan en 4 commits (`e3542688`, `de9f8de5`, `35565a79`) avait été appliqué et était censé clore le sujet. Audit du commit récent `8e43ee44` (feat career-ranks) : `internal/api/server.go` ouvre `metadata.duckdb` via `platform_duckdb.OpenReadWriteShared(hiMetaPath)` au boot du router pour appeler `halo_infinite.LoadRankCatalog`, mais **ne referme jamais ce handle**.
+**Contexte** : JGtm signale que les WARN/ERROR `metadata verrouillée, nouvelle tentative...` réapparaissent au hot-reload Air, alors que le plan en 4 commits (`e3542688`, `de9f8de5`, `35565a79`) avait été appliqué et était censé clore le sujet. Audit du commit récent `8e43ee44` (feat career-ranks) : `internal/api/server.go` ouvre `metadata.duckdb` via `platform_duckdb.OpenReadWriteShared(hiMetaPath)` au boot du router pour appeler `halo_infinite.LoadRankCatalog`, mais **ne referme jamais ce handle**.
 
 **Cause** : `OpenReadWriteShared` est cached par path. cmd/server l'a déjà ouvert avec refCount=1 (cmd/server/main.go:192). Mon nouvel ouvreur incrémente refCount à 2. Au shutdown, `metaDB.Close()` de cmd/server (ligne 343) ne décrémente que d'un cran (refCount: 2→1) et le `*sql.DB` sous-jacent n'est jamais fermé → HANDLE Windows retenu → fichier locked au prochain démarrage. Exactement le pattern que `de9f8de5` avait fermé pour le watcher / scheduler — réintroduit ailleurs.
 
@@ -79961,7 +79968,7 @@ Deux fichiers séparés plutôt qu'un seul : responsabilités UI distinctes.
 
 **Statut** : Complété — toutes les décisions ouvertes sont tranchées
 
-**Décision technique** : Validation par Guillaume des 8 recommandations par défaut du plan §16, sans dérive. Médailles hybride DB/TOML, weapon_labels restent en DB, TOML définitif, EN+FR seulement, pas de hot-reload prod, schema versioning au cas par cas, lint Node simple, cache ETag + Cache-Control combinés.
+**Décision technique** : Validation par JGtm des 8 recommandations par défaut du plan §16, sans dérive. Médailles hybride DB/TOML, weapon_labels restent en DB, TOML définitif, EN+FR seulement, pas de hot-reload prod, schema versioning au cas par cas, lint Node simple, cache ETag + Cache-Control combinés.
 
 Observation produit additionnelle sur les armes : les armes Halo reviennent largement d'un titre à l'autre avec variantes de noms (`MA37` vs `AR`, `BR55` vs `BR75`) + nouveautés à chaque jeu. Implication pour le design : les `weapon_id` filmshell restent par-titre dans la metadata DuckDB ; une éventuelle couche supérieure `weapon_family` (canonique cross-titres genre `battle_rifle`, `assault_rifle`) sera à introduire plus tard quand un vrai second titre arrivera. Hors scope de ce plan, mais noté pour mémoire.
 
@@ -79977,7 +79984,7 @@ Observation produit additionnelle sur les armes : les armes Halo reviennent larg
 
 Corrections appliquées : ajout TL;DR + §16 décisions ouvertes (8 questions à trancher) + §17 annexe FieldKey exhaustive (~38 keys) + §18 estimation effort (14–20j). Split `GameAdapter` en `TitleDataAdapter` + `TitleSemanticAdapter` (SRP). Déplacement TOML `data/` -> `config/` avec note explicite. Conversion d'unités `storage_unit`/`display_unit` intégrée dès §6.2 au lieu d'être en bonus. §6.7 médailles tranché (DB hybride), §6.8 i18n DB legacy tranché (modes -> TOML, weapons restent DB), §6.9 frontière TOML vs i18n React. §8.3 rate-limit borné précisé. §9.2 fuzz + property-based ajoutés. §10.1 fixtures synthétiques + budget perf < 30s + procédure régen. §11 Phase A pas no-op pur (feature flag), Phase C/D MVP cohérent (`/career/encounters` partout). §13 risque perf endpoint ajouté. Endpoint OpenAPI versionné explicitement. Tableau 18j détaillé phase par phase.
 
-**Résultat** : Plan passé de ~700L à ~870L, toutes les décisions tranchables sont tranchées ; les 8 ouvertes sont listées en §16 pour validation Guillaume avant implémentation.
+**Résultat** : Plan passé de ~700L à ~870L, toutes les décisions tranchables sont tranchées ; les 8 ouvertes sont listées en §16 pour validation JGtm avant implémentation.
 
 **Conclusion / prochaine étape** : Plan prêt pour validation. Si OK, attaque Phase A (3–4j) après audit i18n React (~0.5j) recommandé en pré-requis.
 
@@ -79991,7 +79998,7 @@ Corrections appliquées : ajout TL;DR + §16 décisions ouvertes (8 questions à
 
 **Résultat** : Plan exhaustif de 15 sections couvrant problème, périmètre, architecture, schémas TOML, loader, logging, tests unitaires, tests de non-régression, plan de bascule en 6 phases (A-F), idées complémentaires, risques, critères d'acceptation. Aligné sur les cadrages existants S44 sans les dupliquer.
 
-**Conclusion / prochaine étape** : Plan prêt à être discuté avec Guillaume avant implémentation. Si validé, attaquer Phase A (fondation `internal/games/canonical/` + loader + premier `fields.toml` HI) sans bascule, en parallèle du reste du sprint courant.
+**Conclusion / prochaine étape** : Plan prêt à être discuté avec JGtm avant implémentation. Si validé, attaquer Phase A (fondation `internal/games/canonical/` + loader + premier `fields.toml` HI) sans bascule, en parallèle du reste du sprint courant.
 
 ## [2026-04-25] feat(home): playlist favorite dans la barre KPIs
 

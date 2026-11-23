@@ -59,7 +59,7 @@ parallèle utilisateur (combat-yield-bar, session stats, suppression PLAN_WEAPON
 | Soak bruit prod B2.4 | re-mesure script §Mesure du plan triage | 2026-07-14 |
 | Soak 30 j B7.4 (cible ERROR ≈ 0/j) + décision endpoint `/admin/monitoring/errors` | plan triage | ~2026-08-11 |
 
-## 3. POUR GUILLAUME — actions rapides
+## 3. POUR JGtm — actions rapides
 
 - [ ] **Actions data-quality → SUR PROD** (`https://lvelup.info/admin/data`, session
       habituelle — ce sont des actions sur les données prod, le local n'est pas le bon
@@ -91,7 +91,7 @@ parallèle utilisateur (combat-yield-bar, session stats, suppression PLAN_WEAPON
       « calibration provisoire » disparue (H5) · match `bc918a5a` (courbe affichée) ·
       galerie médias H5.
 
-## 4. POUR GUILLAUME — décisions attendues (chacune débloque un chantier pilotable)
+## 4. POUR JGtm — décisions attendues (chacune débloque un chantier pilotable)
 
 | # | Décision | Détail |
 |---|---|---|
@@ -115,7 +115,7 @@ parallèle utilisateur (combat-yield-bar, session stats, suppression PLAN_WEAPON
    reste visible (détections admin). Script hôte journald = redondance, retrait
    optionnel.
 3. ~~Items Notion sans plan~~ **RETIRÉ (recadrage utilisateur 13/07)** : le backlog
-   Notion est le carnet personnel de Guillaume — aucun chantier n'en sera tiré sans
+   Notion est le carnet personnel de JGtm — aucun chantier n'en sera tiré sans
    demande explicite de sa part.
 4. ~~Fixture E2E synthétique~~ **FAIT** (branche `test/e2e-fixture-synthetique`) :
    `levelup seed-demo --synthetic` génère `data/demo/` (DuckDB vierges migrées + INSERT

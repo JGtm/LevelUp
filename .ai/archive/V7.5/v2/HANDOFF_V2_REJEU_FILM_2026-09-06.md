@@ -2,7 +2,7 @@
 
 > À relire APRÈS compaction de contexte, avant toute action. Source de vérité de l'avancement :
 > `.ai/PLAN_V2_REJEU_FILM_2026-09-05.md` (journal du plan, fin de fichier) ; mémoire :
-> `memory/project_v2_rejeu_film_chantier.md`. Le user (Guillaume) est présent, quota surveillé,
+> `memory/project_v2_rejeu_film_chantier.md`. Le user (JGtm) est présent, quota surveillé,
 > contexte de l'assistant presque plein : messages courts, appels d'outils au strict nécessaire.
 
 ## 1. Où en est la branche

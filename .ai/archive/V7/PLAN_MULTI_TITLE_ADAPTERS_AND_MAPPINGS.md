@@ -867,7 +867,7 @@ Le chantier n'est livré que si :
 
 ## 16. Décisions tranchées (validées 2026-04-25)
 
-Validation complète par Guillaume des 8 recommandations par défaut. Aucune dérive.
+Validation complète par JGtm des 8 recommandations par défaut. Aucune dérive.
 
 | # | Question | Décision | Référence |
 |---|---|---|---|

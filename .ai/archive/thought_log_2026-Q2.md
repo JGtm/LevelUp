@@ -10246,7 +10246,7 @@ evwide2,frbig}. Câblage scanner différé v2 (cf. RESEARCH_THEATER_RE.md §M-te
 
 ## [2026-06-02] Intégration plans title-agnostic + web-api-types → tracker fenêtre minimale — Complété
 
-- **Statut** : Complété (artefact de suivi livré) — exécution non démarrée (planif d'abord, voulu par Guillaume).
+- **Statut** : Complété (artefact de suivi livré) — exécution non démarrée (planif d'abord, voulu par JGtm).
 - **Contexte** : 2 plans préexistants à incorporer — `PLAN_TITLE_AGNOSTIC_REFACTORING.md` (v2.5,
   62-82 j) et `PLAN_WEB_API_TYPES_MIGRATION.md`. Décisions cadrantes : voie A (2e titre réel),
   fenêtre **minimale viable 0→3a**, OpenAPI **absorbé dans Phase 3b (Huma)** (pas de réconciliation
@@ -10276,7 +10276,7 @@ evwide2,frbig}. Câblage scanner différé v2 (cf. RESEARCH_THEATER_RE.md §M-te
 ## [2026-06-02] Title-agnostic — démarrage exécution Phase 0 + Phase 1 (périmètre propre) — Complété
 
 - **Décisions user** : (1) superséder le FieldKey-map (canonical-typé = cible Phase 2) ; (2) démarrer Phase 0 + finir Phase 1.
-- **Branche** : PAS créée — recherche parallèle de Guillaume en cours sur la branche active
+- **Branche** : PAS créée — recherche parallèle de JGtm en cours sur la branche active
   (untracked `tmp_*`, PLAN_WEAPON_ATTRIBUTION_V3) → **CLAUDE.md règle 4** (ne pas changer de
   branche si autre travail en cours). Resté sur `feat/skill-progression-magnitude-scale`, commits
   sur chemins spécifiques uniquement (jamais les fichiers user).
@@ -17726,7 +17726,7 @@ Le REST poller était spawn uniquement dans `AddUserClient` (PR 2.5c, multi-user
 
 **Branche** : `fix/art-eradication-and-home-resilience`
 
-**Décision technique** : Utiliser le Device Code Flow Microsoft (login.microsoftonline.com, même Azure app `e1cb35ab-...` que le serveur) en HTTP pur stdlib — pas de MSAL, pas de dépendance externe. Flow : Guillaume lance le CLI sur sa machine, obtient un URL+code, les envoie à joueur_075 par message, elle s'authentifie dans son navigateur normal, le CLI poll et écrit le refresh_token dans `token_Madina97294.txt` prêt à coller dans `.env.local`.
+**Décision technique** : Utiliser le Device Code Flow Microsoft (login.microsoftonline.com, même Azure app `e1cb35ab-...` que le serveur) en HTTP pur stdlib — pas de MSAL, pas de dépendance externe. Flow : JGtm lance le CLI sur sa machine, obtient un URL+code, les envoie à joueur_075 par message, elle s'authentifie dans son navigateur normal, le CLI poll et écrit le refresh_token dans `token_Madina97294.txt` prêt à coller dans `.env.local`.
 
 **Résultat** : Premier test réel → Microsoft a retourné un code valide (`DQR8XWN8`, `https://www.microsoft.com/link`). Build et polling fonctionnels.
 
@@ -28579,7 +28579,7 @@ Conséquence : tout le mapping doit passer par parsing JSON Halo API officielle,
 Écraser la v2.4 (changelog §14 garde lhistorique, git log permet le retour si besoin). Pas de doc parallèle.
 
 **Prochaine étape** :
-Quand Guillaume relance le sprint title-agnostic, démarrer par Phase 0 (4 ADRs : 0014/0015/0016/0017) + branche `refactor/title-agnostic-services` + lints CI §6.1 (7 lints, D13 placeholder désactivé jusquau tag `phase-3b-start`).
+Quand JGtm relance le sprint title-agnostic, démarrer par Phase 0 (4 ADRs : 0014/0015/0016/0017) + branche `refactor/title-agnostic-services` + lints CI §6.1 (7 lints, D13 placeholder désactivé jusquau tag `phase-3b-start`).
 
 ---
 

@@ -2,7 +2,7 @@
 
 **Status** — Proposed (2026-04-29). Triggered by code review axe 1 (BLOQUANT 1, 2) + axe 6 (BLOQUANT seuils PerfTier). Amended 2026-11-09, 2026-11-14 and 2026-11-15 (Spartan life at 229): **the KDA quotient written in the body below is superseded** (KDA is the net, never the quotient); the body is kept as the record of the original decision and the amendments at the end are the current rule.
 
-**Deciders** — Guillaume (GS).
+**Deciders** — JGtm.
 
 ## Context
 
