@@ -37,7 +37,7 @@ function asPlayer(slug: string, gamertag: string): PlayerSummary {
 }
 
 const JGTM = asPlayer('jgtm', 'JGtm')
-const MADINA = asPlayer('madina', 'Madina')
+const JOUEUR_075 = asPlayer('joueur_075', 'joueur_075')
 
 function renderSwitcher(players: PlayerSummary[], onPlayerChange = vi.fn()) {
   renderWithProviders(
@@ -57,35 +57,35 @@ describe('PlayerSwitcher', () => {
   })
 
   it('ouvre un menu listant tous les joueurs disponibles', () => {
-    renderSwitcher([JGTM, MADINA])
+    renderSwitcher([JGTM, JOUEUR_075])
 
     fireEvent.click(screen.getByRole('button', { name: 'Sélectionner un joueur' }))
 
     const items = screen.getAllByRole('menuitem')
     expect(items).toHaveLength(2)
     expect(items[0]).toHaveTextContent('JGtm')
-    expect(items[1]).toHaveTextContent('Madina')
+    expect(items[1]).toHaveTextContent('joueur_075')
   })
 
   it('calibre le déclencheur sur TOUS les gamertags (largeur stable comme le select natif)', () => {
-    renderSwitcher([JGTM, MADINA])
+    renderSwitcher([JGTM, JOUEUR_075])
 
     // Le calibre invisible rend chaque gamertag : le plus long fixe la largeur
     // du bouton, la bascule de joueur ne la fait plus varier (gate visuel 25/08).
     const sizer = screen.getByTestId('player-switcher-sizer')
     expect(sizer).toHaveTextContent('JGtm')
-    expect(sizer).toHaveTextContent('Madina')
+    expect(sizer).toHaveTextContent('joueur_075')
     expect(sizer).toHaveAttribute('aria-hidden', 'true')
   })
 
   it('bascule de joueur via le callback de la NavL1 et referme le menu', () => {
     const onPlayerChange = vi.fn()
-    renderSwitcher([JGTM, MADINA], onPlayerChange)
+    renderSwitcher([JGTM, JOUEUR_075], onPlayerChange)
 
     fireEvent.click(screen.getByRole('button', { name: 'Sélectionner un joueur' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: /Madina/ }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /joueur_075/ }))
 
-    expect(onPlayerChange).toHaveBeenCalledWith('madina')
+    expect(onPlayerChange).toHaveBeenCalledWith('joueur_075')
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
@@ -93,20 +93,20 @@ describe('PlayerSwitcher', () => {
     mockPresence({
       players: [
         { player_slug: 'jgtm', gamertag: 'JGtm', in_game: false },
-        { player_slug: 'madina', gamertag: 'Madina', in_game: true, title_slug: 'halo_5', title_name: 'Halo 5' },
+        { player_slug: 'joueur_075', gamertag: 'joueur_075', in_game: true, title_slug: 'halo_5', title_name: 'Halo 5' },
       ],
       friends_in_game: 0,
     })
-    renderSwitcher([JGTM, MADINA])
+    renderSwitcher([JGTM, JOUEUR_075])
 
     fireEvent.click(screen.getByRole('button', { name: 'Sélectionner un joueur' }))
 
     await waitFor(() => {
-      expect(screen.getByTestId('in-game-madina')).toBeInTheDocument()
+      expect(screen.getByTestId('in-game-joueur_075')).toBeInTheDocument()
     })
     expect(screen.queryByTestId('in-game-jgtm')).not.toBeInTheDocument()
     // Le titre RÉEL est nommé : un joueur peut jouer à un autre titre que celui affiché.
-    expect(screen.getByTestId('in-game-madina')).toHaveAttribute('aria-label', 'En jeu sur Halo 5')
+    expect(screen.getByTestId('in-game-joueur_075')).toHaveAttribute('aria-label', 'En jeu sur Halo 5')
   })
 
   it("nomme « En jeu » sans titre quand le titre n'est pas connu", async () => {
@@ -114,7 +114,7 @@ describe('PlayerSwitcher', () => {
       players: [{ player_slug: 'jgtm', gamertag: 'JGtm', in_game: true }],
       friends_in_game: 0,
     })
-    renderSwitcher([JGTM, MADINA])
+    renderSwitcher([JGTM, JOUEUR_075])
 
     await waitFor(() => {
       expect(screen.getByTestId('in-game-jgtm')).toHaveAttribute('aria-label', 'En jeu')
@@ -123,7 +123,7 @@ describe('PlayerSwitcher', () => {
 
   it('affiche le compteur d\'amis en jeu avec son libellé accessible pluralisé', async () => {
     mockPresence({ players: [], friends_in_game: 3 })
-    renderSwitcher([JGTM, MADINA])
+    renderSwitcher([JGTM, JOUEUR_075])
 
     await waitFor(() => {
       expect(screen.getByTestId('friends-in-game-badge')).toHaveAttribute('aria-label', '3 amis en jeu')
@@ -133,7 +133,7 @@ describe('PlayerSwitcher', () => {
 
   it('accorde le libellé au singulier pour un seul ami', async () => {
     mockPresence({ players: [], friends_in_game: 1 })
-    renderSwitcher([JGTM, MADINA])
+    renderSwitcher([JGTM, JOUEUR_075])
 
     await waitFor(() => {
       expect(screen.getByTestId('friends-in-game-badge')).toHaveAttribute('aria-label', '1 ami en jeu')
@@ -141,7 +141,7 @@ describe('PlayerSwitcher', () => {
   })
 
   it('ne rend AUCUN compteur quand personne n\'est en jeu', async () => {
-    renderSwitcher([JGTM, MADINA])
+    renderSwitcher([JGTM, JOUEUR_075])
 
     // Laisse la requête se résoudre avant de conclure à l'absence.
     await waitFor(() => {
@@ -152,7 +152,7 @@ describe('PlayerSwitcher', () => {
 
   it('reste muet si la présence est indisponible (endpoint en erreur)', async () => {
     server.use(http.get('/api/v1/presence', () => new HttpResponse(null, { status: 503 })))
-    renderSwitcher([JGTM, MADINA])
+    renderSwitcher([JGTM, JOUEUR_075])
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Sélectionner un joueur' })).toBeInTheDocument()
@@ -162,7 +162,7 @@ describe('PlayerSwitcher', () => {
   })
 
   it('expose un déclencheur de menu ARIA (haspopup + expanded)', () => {
-    renderSwitcher([JGTM, MADINA])
+    renderSwitcher([JGTM, JOUEUR_075])
 
     const trigger = screen.getByRole('button', { name: 'Sélectionner un joueur' })
     expect(trigger).toHaveAttribute('aria-haspopup', 'menu')
@@ -173,7 +173,7 @@ describe('PlayerSwitcher', () => {
   })
 
   it('ouvre au clavier (flèche bas) et donne le focus au premier joueur', () => {
-    renderSwitcher([JGTM, MADINA])
+    renderSwitcher([JGTM, JOUEUR_075])
 
     const trigger = screen.getByRole('button', { name: 'Sélectionner un joueur' })
     fireEvent.keyDown(trigger, { key: 'ArrowDown' })
@@ -183,7 +183,7 @@ describe('PlayerSwitcher', () => {
   })
 
   it('navigue entre les joueurs aux flèches et boucle', () => {
-    renderSwitcher([JGTM, MADINA])
+    renderSwitcher([JGTM, JOUEUR_075])
 
     fireEvent.click(screen.getByRole('button', { name: 'Sélectionner un joueur' }))
     const menu = screen.getByRole('menu')
@@ -198,7 +198,7 @@ describe('PlayerSwitcher', () => {
   })
 
   it('ferme sur Échap et rend le focus au déclencheur', () => {
-    renderSwitcher([JGTM, MADINA])
+    renderSwitcher([JGTM, JOUEUR_075])
 
     const trigger = screen.getByRole('button', { name: 'Sélectionner un joueur' })
     fireEvent.click(trigger)
@@ -209,7 +209,7 @@ describe('PlayerSwitcher', () => {
   })
 
   it('ferme au clic en dehors', () => {
-    renderSwitcher([JGTM, MADINA])
+    renderSwitcher([JGTM, JOUEUR_075])
 
     fireEvent.click(screen.getByRole('button', { name: 'Sélectionner un joueur' }))
     expect(screen.getByRole('menu')).toBeInTheDocument()
@@ -240,7 +240,7 @@ describe('PlayerSwitcher', () => {
       friends_in_game: 2,
     })
     renderWithProviders(
-      <PlayerSwitcher players={[JGTM, MADINA]} currentPlayer={JGTM} locale="en" onPlayerChange={vi.fn()} />,
+      <PlayerSwitcher players={[JGTM, JOUEUR_075]} currentPlayer={JGTM} locale="en" onPlayerChange={vi.fn()} />,
     )
 
     await waitFor(() => {
@@ -252,7 +252,7 @@ describe('PlayerSwitcher', () => {
 
   it('comble un `players: null` du contrat sans planter', async () => {
     mockPresence({ players: null, friends_in_game: 0 })
-    renderSwitcher([JGTM, MADINA])
+    renderSwitcher([JGTM, JOUEUR_075])
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Sélectionner un joueur' })).toBeInTheDocument()

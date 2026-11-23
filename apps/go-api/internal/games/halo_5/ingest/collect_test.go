@@ -95,7 +95,7 @@ func TestCollectMatchBatch_EndToEnd(t *testing.T) {
 	if len(batch.Shared.Participants) != 2 {
 		t.Errorf("participants: %d, attendu 2", len(batch.Shared.Participants))
 	}
-	// Médailles : 2 agrégats (Madina/100=2, JGtm/200=1) + 3 events horodatés.
+	// Médailles : 2 agrégats (joueur_075/100=2, JGtm/200=1) + 3 events horodatés.
 	if len(batch.Shared.Medals) != 2 {
 		t.Errorf("medals agrégat: %d, attendu 2 — %+v", len(batch.Shared.Medals), batch.Shared.Medals)
 	}

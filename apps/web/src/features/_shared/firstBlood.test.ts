@@ -12,7 +12,7 @@ describe('toFirstBloodSeries', () => {
   it('projette snake_case → props du chart, null conservé', () => {
     const got = toFirstBloodSeries([
       {
-        player: 'Madina',
+        player: 'joueur_075',
         matches: [
           { match_id: 'm1', first_kill_sec: 12.3, first_death_sec: 45, start_time: '2026-04-19T12:00:00Z' },
           { match_id: 'm2', first_kill_sec: null, first_death_sec: null, start_time: '2026-04-20T12:00:00Z' },
@@ -21,7 +21,7 @@ describe('toFirstBloodSeries', () => {
     ])
     expect(got).toEqual([
       {
-        player: 'Madina',
+        player: 'joueur_075',
         matches: [
           { matchId: 'm1', firstKillSec: 12.3, firstDeathSec: 45, startTime: '2026-04-19T12:00:00Z' },
           { matchId: 'm2', firstKillSec: null, firstDeathSec: null, startTime: '2026-04-20T12:00:00Z' },
@@ -42,7 +42,7 @@ describe('toFirstBloodSeries', () => {
   it('projette carte/mode/date (map_ui/mode_ui/start_time) en camelCase', () => {
     const got = toFirstBloodSeries([
       {
-        player: 'Madina',
+        player: 'joueur_075',
         matches: [
           {
             match_id: 'm1',
@@ -65,7 +65,7 @@ describe('toFirstBloodSeries', () => {
   it('dégrade proprement quand map_ui/mode_ui sont absents (jamais de crash)', () => {
     const got = toFirstBloodSeries([
       {
-        player: 'Madina',
+        player: 'joueur_075',
         matches: [{ match_id: 'm1', first_kill_sec: null, first_death_sec: null, start_time: '2026-04-19T12:00:00Z' }],
       },
     ])

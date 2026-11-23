@@ -122,12 +122,12 @@ describe('SessionBriefing — mode squad', () => {
       score: makeSquadScore(),
       players: [
         makePlayerCard('xuid-me', 'Spartan-117', 50, 'above'),
-        makePlayerCard('xuid-choco', 'Joueur90001', 40, 'below'),
+        makePlayerCard('xuid-joueur_901', 'Joueur90001', 40, 'below'),
         makePlayerCard('xuid-ghost', 'Ghost', 51, 'above'),
       ],
       kpisByXuid: {
         'xuid-me': kpis,
-        'xuid-choco': makeKPIs({ kills_per_game: 6.5 }),
+        'xuid-joueur_901': makeKPIs({ kills_per_game: 6.5 }),
         'xuid-ghost': makeKPIs({ kills_per_game: 11.0 }),
       },
       teamAvgKpis: teamAvg,
@@ -145,16 +145,16 @@ describe('SessionBriefing — mode squad', () => {
 
   it('drill-down : click sur Joueur90001 → KpiGrid affiche ses stats + reset bar visible', () => {
     const kpis = makeKPIs()
-    const chocoKpis = makeKPIs({ kills_per_game: 6.5 })
+    const joueur901Kpis = makeKPIs({ kills_per_game: 6.5 })
     const squad = {
       score: makeSquadScore(),
       players: [
         makePlayerCard('xuid-me', 'Spartan-117', 50, 'above'),
-        makePlayerCard('xuid-choco', 'Joueur90001', 40, 'below'),
+        makePlayerCard('xuid-joueur_901', 'Joueur90001', 40, 'below'),
       ],
       kpisByXuid: {
         'xuid-me': kpis,
-        'xuid-choco': chocoKpis,
+        'xuid-joueur_901': joueur901Kpis,
       },
       teamAvgKpis: makeKPIs({ kills_per_game: 8.0 }),
       activeXuid: 'xuid-me',
@@ -165,9 +165,9 @@ describe('SessionBriefing — mode squad', () => {
     expect(screen.getByText('8.70')).toBeInTheDocument()
 
     // Click sur Joueur90001
-    const chocoButton = screen.getByText('Joueur90001').closest('button')
-    expect(chocoButton).not.toBeNull()
-    fireEvent.click(chocoButton!)
+    const joueur901Button = screen.getByText('Joueur90001').closest('button')
+    expect(joueur901Button).not.toBeNull()
+    fireEvent.click(joueur901Button!)
 
     // Désormais 6.50 (kpis de Joueur90001)
     expect(screen.getByText('6.50')).toBeInTheDocument()
@@ -178,16 +178,16 @@ describe('SessionBriefing — mode squad', () => {
 
   it('reset drill-down : click sur ✕ → retour à activeXuid', () => {
     const kpis = makeKPIs()
-    const chocoKpis = makeKPIs({ kills_per_game: 6.5 })
+    const joueur901Kpis = makeKPIs({ kills_per_game: 6.5 })
     const squad = {
       score: makeSquadScore(),
       players: [
         makePlayerCard('xuid-me', 'Spartan-117', 50, 'above'),
-        makePlayerCard('xuid-choco', 'Joueur90001', 40, 'below'),
+        makePlayerCard('xuid-joueur_901', 'Joueur90001', 40, 'below'),
       ],
       kpisByXuid: {
         'xuid-me': kpis,
-        'xuid-choco': chocoKpis,
+        'xuid-joueur_901': joueur901Kpis,
       },
       teamAvgKpis: makeKPIs({ kills_per_game: 8.0 }),
       activeXuid: 'xuid-me',

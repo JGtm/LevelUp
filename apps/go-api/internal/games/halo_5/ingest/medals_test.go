@@ -33,12 +33,12 @@ func TestMapMedalEvents_AggregateAndTimeline(t *testing.T) {
 
 	agg, tl := MapMedalEvents("match-1", events, resolve)
 
-	// Agrégat : 3 lignes distinctes (Madina/100=2, Madina/200=1, JGtm/100=1).
+	// Agrégat : 3 lignes distinctes (joueur_075/100=2, joueur_075/200=1, JGtm/100=1).
 	if len(agg) != 3 {
 		t.Fatalf("agrégat: %d lignes, attendu 3 — %+v", len(agg), agg)
 	}
 	if agg[0].XUID != "2623439693412443" || agg[0].MedalNameID != 100 || agg[0].Count != 2 {
-		t.Errorf("1re ligne médaille: %+v, attendu Madina/100/count=2", agg[0])
+		t.Errorf("1re ligne médaille: %+v, attendu joueur_075/100/count=2", agg[0])
 	}
 	if agg[1].MedalNameID != 200 || agg[1].Count != 1 {
 		t.Errorf("2e ligne: %+v, attendu medal 200 count 1", agg[1])

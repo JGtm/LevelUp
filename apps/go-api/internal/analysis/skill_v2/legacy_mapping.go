@@ -50,7 +50,7 @@ func LegacyTierRange(tierName string) (min, max float64) {
 // Pour Onyx (sub=0), retourne min ; le caller pourrait ajouter un bonus
 // proportionnel à (μ - boundary_onyx) si on veut différencier les Onyx.
 //
-// Exemple Madina Diamant II (μ=26.17) :
+// Exemple joueur_075 Diamant II (μ=26.17) :
 //
 //	v2 tier = Diamond, sub = 2
 //	v1 range = [1800, 2000]

@@ -43,11 +43,11 @@ func TestPresenceSnapshot_MarksInGamePlayers(t *testing.T) {
 	svc := NewPresenceService(
 		ownedPlayers(
 			domain.PlayerSummary{PlayerSlug: "jgtm", Gamertag: "JGtm"},
-			domain.PlayerSummary{PlayerSlug: "madina", Gamertag: "Madina"},
+			domain.PlayerSummary{PlayerSlug: "joueur_075", Gamertag: "joueur_075"},
 		),
 		trackedSource(
 			inGame("JGtm", "halo_infinite", "Halo Infinite"),
-			offline("Madina"),
+			offline("joueur_075"),
 		),
 	)
 
@@ -59,7 +59,7 @@ func TestPresenceSnapshot_MarksInGamePlayers(t *testing.T) {
 		t.Errorf("JGtm devrait être en jeu sur Halo Infinite: %+v", snap.Players[0])
 	}
 	if snap.Players[1].InGame || snap.Players[1].TitleSlug != "" {
-		t.Errorf("Madina ne devrait pas être en jeu: %+v", snap.Players[1])
+		t.Errorf("joueur_075 ne devrait pas être en jeu: %+v", snap.Players[1])
 	}
 	if snap.Players[0].PlayerSlug != "jgtm" {
 		t.Errorf("player_slug = %q, attendu jgtm", snap.Players[0].PlayerSlug)

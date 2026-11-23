@@ -50,7 +50,7 @@ type TierBoundary struct {
 func DefaultTierBoundaries() []TierBoundary {
 	// SubTiers calibrés (étude de volatilité du 2026-05-31) pour
 	// UNIFORMISER la largeur d'un sous-palier (~0.33–0.5 μ) SANS toucher les
-	// bornes (la calibration tier↔CSR validée — Madina Diamant, etc. — est
+	// bornes (la calibration tier↔CSR validée — joueur_075 Diamant, etc. — est
 	// préservée). Les tiers étroits (Argent 1.0 μ, Platine 0.8 μ, Diamant 1.2 μ)
 	// avaient des sous-paliers ridiculement fins (0.13–0.2 μ) qu'un seul match
 	// traversait en rafale ; on réduit leur nombre de sous-paliers pour élargir

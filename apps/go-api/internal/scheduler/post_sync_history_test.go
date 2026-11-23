@@ -22,7 +22,7 @@ func TestPostSyncHistory_RingBounded(t *testing.T) {
 		})
 	}
 	// Un joueur skipped (PostSync nil) → aucun point d'historique.
-	s.recordOutcome(PlayerOutcomeDetail{Gamertag: "Madina", Outcome: "skipped"})
+	s.recordOutcome(PlayerOutcomeDetail{Gamertag: "joueur_075", Outcome: "skipped"})
 
 	hist := s.postSyncHistory["JGtm"]
 	if len(hist) != postSyncHistorySize {
@@ -35,7 +35,7 @@ func TestPostSyncHistory_RingBounded(t *testing.T) {
 	if last := hist[len(hist)-1]; last != 200 {
 		t.Errorf("dernier point = %d (attendu 200)", last)
 	}
-	if len(s.postSyncHistory["Madina"]) != 0 {
-		t.Errorf("Madina (skipped) ne devrait pas avoir d'historique : %v", s.postSyncHistory["Madina"])
+	if len(s.postSyncHistory["joueur_075"]) != 0 {
+		t.Errorf("joueur_075 (skipped) ne devrait pas avoir d'historique : %v", s.postSyncHistory["joueur_075"])
 	}
 }

@@ -16,7 +16,7 @@ const pair = (assistant: string, finisher: string, count: number, stolen = 0): F
   stolen,
 })
 
-const PAIRS = [pair('Madina', 'JGtm', 14, 3), pair('JGtm', 'Madina', 9), pair('JGtm', 'Kaya', 6), pair('Kaya', 'JGtm', 6)]
+const PAIRS = [pair('joueur_075', 'JGtm', 14, 3), pair('JGtm', 'joueur_075', 9), pair('JGtm', 'Kaya', 6), pair('Kaya', 'JGtm', 6)]
 
 describe('buildAssistFlow', () => {
   it('aucune paire : aucun nœud ni ruban, total nul', () => {
@@ -38,14 +38,14 @@ describe('buildAssistFlow', () => {
     const total = (side: string, key: string) => nodes.find((n) => n.side === side && n.key === key)?.total
     expect(total('assistant', 'JGtm')).toBe(15) // 9 + 6
     expect(total('finisher', 'JGtm')).toBe(20) // 14 + 6
-    expect(total('assistant', 'Madina')).toBe(14)
-    expect(total('finisher', 'Madina')).toBe(9)
+    expect(total('assistant', 'joueur_075')).toBe(14)
+    expect(total('finisher', 'joueur_075')).toBe(9)
   })
 
   it('un ruban par couple : largeur = assistances, éliminations volées conservées', () => {
     const { links } = buildAssistFlow(PAIRS)
-    const l = links.find((x) => x.assistantKey === 'Madina' && x.finisherKey === 'JGtm')!
-    expect(l).toMatchObject({ count: 14, stolen: 3, source: 'assistant:Madina', target: 'finisher:JGtm' })
+    const l = links.find((x) => x.assistantKey === 'joueur_075' && x.finisherKey === 'JGtm')!
+    expect(l).toMatchObject({ count: 14, stolen: 3, source: 'assistant:joueur_075', target: 'finisher:JGtm' })
     expect(links).toHaveLength(4)
   })
 
@@ -59,7 +59,7 @@ describe('buildAssistFlow', () => {
   it('parts sur le TOTAL DONNÉ (serveur), jamais sur la somme des rubans ; sans total, aucune part', () => {
     const withTotal = buildAssistFlow(PAIRS, { total: 100 })
     expect(withTotal.total).toBe(100)
-    expect(withTotal.links.find((l) => l.assistantKey === 'Madina')!.share).toBe(0.14)
+    expect(withTotal.links.find((l) => l.assistantKey === 'joueur_075')!.share).toBe(0.14)
     const without = buildAssistFlow(PAIRS)
     expect(without.total).toBe(35)
     expect(without.links.every((l) => l.share === null)).toBe(true)
@@ -68,12 +68,12 @@ describe('buildAssistFlow', () => {
 
   it('colonnes dans l’ordre donné, les inconnus à la suite par total décroissant', () => {
     const flow = buildAssistFlow([...PAIRS, pair('Dave', 'JGtm', 1), pair('Eve', 'JGtm', 4)], {
-      assistantOrder: ['JGtm', 'Madina'],
+      assistantOrder: ['JGtm', 'joueur_075'],
       finisherOrder: ['Kaya'],
     })
     const left = flow.nodes.filter((n) => n.side === 'assistant').map((n) => n.key)
-    expect(left).toEqual(['JGtm', 'Madina', 'Kaya', 'Eve', 'Dave'].filter((k) => left.includes(k)))
-    expect(left.slice(0, 2)).toEqual(['JGtm', 'Madina'])
+    expect(left).toEqual(['JGtm', 'joueur_075', 'Kaya', 'Eve', 'Dave'].filter((k) => left.includes(k)))
+    expect(left.slice(0, 2)).toEqual(['JGtm', 'joueur_075'])
     // Inconnus : Kaya (6) puis Eve (4) puis Dave (1).
     expect(left.slice(2)).toEqual(['Kaya', 'Eve', 'Dave'])
     const right = flow.nodes.filter((n) => n.side === 'finisher').map((n) => n.key)
@@ -81,8 +81,8 @@ describe('buildAssistFlow', () => {
   })
 
   it('les rubans suivent l’ordre des nœuds : tracé déterministe', () => {
-    const a = buildAssistFlow(PAIRS, { assistantOrder: ['Madina', 'JGtm', 'Kaya'] })
-    const b = buildAssistFlow([...PAIRS].reverse(), { assistantOrder: ['Madina', 'JGtm', 'Kaya'] })
+    const a = buildAssistFlow(PAIRS, { assistantOrder: ['joueur_075', 'JGtm', 'Kaya'] })
+    const b = buildAssistFlow([...PAIRS].reverse(), { assistantOrder: ['joueur_075', 'JGtm', 'Kaya'] })
     expect(a.links.map((l) => l.source + l.target)).toEqual(b.links.map((l) => l.source + l.target))
   })
 

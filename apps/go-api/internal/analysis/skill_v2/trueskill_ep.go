@@ -114,7 +114,7 @@ func UpdateTwoTeamEP(m TwoTeamMatch, p Priors) (teamA, teamB []Gaussian, err err
 // UpdateTwoTeamWithCountsEP : variante TS2 §8 — intègre les counts (kills,
 // deaths) par joueur comme observations Bayésiennes. C'est le signal qui
 // permet de DÉPARTAGER les coéquipiers d'un même squad (cf. verdict Phase 1d
-// où Madina/Choco/JGtm bougeaient ensemble parce que win/loss seul ne
+// où joueur_075/joueur_901/JGtm bougeaient ensemble parce que win/loss seul ne
 // discrimine pas dans un squad).
 //
 // counts.TeamA[i] = obs du joueur i de TeamA. Si counts.TeamA[i] est nul

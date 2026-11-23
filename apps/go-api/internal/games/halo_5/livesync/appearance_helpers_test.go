@@ -99,10 +99,10 @@ func TestAllResolverGamertags_ViewerHeadAndDedup(t *testing.T) {
 		"profiles": {
 			"halo_5": {
 				"JGtm": {"xuid": "1"},
-				"Madina": {"xuid": "2"}
+				"joueur_075": {"xuid": "2"}
 			},
 			"halo_infinite": {
-				"Choco": {"xuid": "3"},
+				"joueur_901": {"xuid": "3"},
 				"": {"xuid": "4"}
 			}
 		}
@@ -126,12 +126,12 @@ func TestAllResolverGamertags_ViewerHeadAndDedup(t *testing.T) {
 	if contains(got, "") {
 		t.Errorf("gamertag vide ne doit jamais figurer: %v", got)
 	}
-	for _, want := range []string{"Madina", "Choco"} {
+	for _, want := range []string{"joueur_075", "joueur_901"} {
 		if !contains(got, want) {
 			t.Errorf("%q attendu, got %v", want, got)
 		}
 	}
-	// viewer + Madina + Choco (le vide ignoré, JGtm non dupliqué).
+	// viewer + joueur_075 + joueur_901 (le vide ignoré, JGtm non dupliqué).
 	if len(got) != 3 {
 		t.Errorf("attendu 3 comptes, got %d: %v", len(got), got)
 	}

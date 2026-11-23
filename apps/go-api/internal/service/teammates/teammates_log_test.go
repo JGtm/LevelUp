@@ -133,7 +133,7 @@ func TestTeammatesService_AliasFallback_BuildsRowFromOutOfTopGamertag(t *testing
 		topRows: []domain.TopTeammateRow{},
 		// L'alias DB connaît bien le gamertag.
 		lookupAliases: map[string]string{
-			"joueur90002": "tm-madina-xuid",
+			"joueur90002": "tm-joueur_075-xuid",
 		},
 		// Les matchs communs avec ce coéquipier existent.
 		squadRows: []domain.SquadMatchRow{
@@ -158,8 +158,8 @@ func TestTeammatesService_AliasFallback_BuildsRowFromOutOfTopGamertag(t *testing
 		if row.Gamertag != "Joueur90002" {
 			t.Errorf("expected gamertag preserved as input casing, got %q", row.Gamertag)
 		}
-		if row.XUID == nil || *row.XUID != "tm-madina-xuid" {
-			t.Errorf("expected XUID resolved via alias = tm-madina-xuid, got %v", row.XUID)
+		if row.XUID == nil || *row.XUID != "tm-joueur_075-xuid" {
+			t.Errorf("expected XUID resolved via alias = tm-joueur_075-xuid, got %v", row.XUID)
 		}
 		if row.EncounterCount != 3 {
 			t.Errorf("expected encounterCount=3 (= len(squadMatches)) when fallback used, got %d",

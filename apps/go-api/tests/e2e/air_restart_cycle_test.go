@@ -1,6 +1,6 @@
 // Package e2e_test — air_restart_cycle_test.go : test PIVOT du refactor ADR 0023.
 //
-// Ce test simule le scénario complet qui a déclenché le refactor (bug Madina) :
+// Ce test simule le scénario complet qui a déclenché le refactor (bug joueur_075) :
 // Air hot-reload kill + restart le serveur en boucle, et avec l'ancien code,
 // le RT de l'env.local était consommé par le Pool au boot et l'env var devenait
 // stale, causant invalid_grant sur les requêtes HTTP suivantes.
@@ -10,7 +10,7 @@
 // Microsoft : chaque RT utilisé une fois est invalidé, retournant invalid_grant
 // s'il est ré-utilisé.
 //
-// Si ce test passe sur 10 cycles consécutifs sans invalid_grant, le bug Madina
+// Si ce test passe sur 10 cycles consécutifs sans invalid_grant, le bug joueur_075
 // est résolu architecturalement.
 //
 // Build tag cgo car le Pool dépend transitivement de DuckDB (via auth/pool →
@@ -203,7 +203,7 @@ func TestAirRestartCycle_FullScenario(t *testing.T) {
 	t.Log("Step 4 : vérification finale — aucune erreur invalid_grant")
 
 	if got := provider.invalidGrantCount.Load(); got != 0 {
-		t.Errorf("invalidGrantCount = %d, want 0 (le bug Madina serait revenu)", got)
+		t.Errorf("invalidGrantCount = %d, want 0 (le bug joueur_075 serait revenu)", got)
 	}
 	if got := provider.refreshCallCount.Load(); got != 11 {
 		t.Errorf("refreshCallCount = %d, want 11 (1 boot + 10 restarts)", got)
@@ -214,7 +214,7 @@ func TestAirRestartCycle_FullScenario(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Test régression spécifique Madina — env var stale n'interfère pas
+// Test régression spécifique joueur_075 — env var stale n'interfère pas
 // ─────────────────────────────────────────────────────────────────────────
 
 func TestAirRestartCycle_StaleEnvVarIgnoredAfterFirstRotation(t *testing.T) {

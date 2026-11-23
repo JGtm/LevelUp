@@ -59,14 +59,14 @@ func setupTwoDBs(t *testing.T) (player, shared *sql.DB) {
 	return playerDB, sharedDB
 }
 
-// TestEnsurePlayerEnrichmentRows_CreatesMissingRows : cas Madina/Choco —
+// TestEnsurePlayerEnrichmentRows_CreatesMissingRows : cas joueur_075/joueur_901 —
 // le joueur apparaît dans 8 matchs en shared mais 0 row dans
 // player_match_enrichment → 8 rows créées.
 func TestEnsurePlayerEnrichmentRows_CreatesMissingRows(t *testing.T) {
 	playerDB, sharedDB := setupTwoDBs(t)
 	ctx := context.Background()
 
-	const xuid = "2623439693412443" // Madina
+	const xuid = "2623439693412443" // joueur_075
 	matchIDs := []string{"m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"}
 	for _, id := range matchIDs {
 		if _, err := sharedDB.Exec(`INSERT INTO match_participants VALUES (?, ?, ?)`,
@@ -252,7 +252,7 @@ func TestEnsurePlayerEnrichmentRows_PlayerHistoryLargerThanShared(t *testing.T) 
 	playerDB, sharedDB := setupTwoDBs(t)
 	ctx := context.Background()
 
-	const xuid = "xuid_madina"
+	const xuid = "xuid_joueur_075"
 
 	// 1000 rows en player (gros historique).
 	for i := 0; i < 1000; i++ {
@@ -267,7 +267,7 @@ func TestEnsurePlayerEnrichmentRows_PlayerHistoryLargerThanShared(t *testing.T) 
 	allShared := []string{"ancient_0500", "ancient_0501", "ancient_0502", "new_1", "new_2"}
 	for _, id := range allShared {
 		if _, err := sharedDB.Exec(`INSERT INTO match_participants VALUES (?, ?, ?)`,
-			id, xuid, "Madina"); err != nil {
+			id, xuid, "joueur_075"); err != nil {
 			t.Fatalf("seed shared: %v", err)
 		}
 	}

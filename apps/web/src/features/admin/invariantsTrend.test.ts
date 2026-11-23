@@ -72,6 +72,6 @@ describe('invariantsTrend', () => {
     // Clé jamais vue → pas de référence.
     expect(invariantDelta(prev, 'jgtm', 'enrichment_missing', 3)).toBeUndefined()
     // Pas de collision entre scopes pour une même clé d'invariant.
-    expect(invariantDelta(prev, 'choco', 'psa_missing', 90)).toBeUndefined()
+    expect(invariantDelta(prev, 'joueur_901', 'psa_missing', 90)).toBeUndefined()
   })
 })

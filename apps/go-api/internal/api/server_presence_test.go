@@ -189,7 +189,7 @@ func presenceBootstrap(t *testing.T) *service.BootstrapService {
 	profilesPath := filepath.Join(t.TempDir(), "db_profiles.json")
 	profiles := `{"version":"3.0","profiles":{"halo_infinite":{
 	  "JGtm":{"db_path":"a.duckdb","xuid":"111"},
-	  "Madina":{"db_path":"b.duckdb","xuid":"222"}}}}`
+	  "joueur_075":{"db_path":"b.duckdb","xuid":"222"}}}}`
 	if err := os.WriteFile(profilesPath, []byte(profiles), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +204,7 @@ func statusWithTwoPlayersInGame() watcher.WatcherStatus {
 		Running: true,
 		Players: []watcher.PlayerPresenceStatus{
 			{Gamertag: "JGtm", XUID: "111", TitleSlug: "halo_infinite", TitleName: "Halo Infinite", LastEventAt: now},
-			{Gamertag: "Madina", XUID: "222", TitleSlug: "halo_infinite", TitleName: "Halo Infinite", LastEventAt: now},
+			{Gamertag: "joueur_075", XUID: "222", TitleSlug: "halo_infinite", TitleName: "Halo Infinite", LastEventAt: now},
 		},
 	}
 }

@@ -99,7 +99,7 @@ describe('squadPickupSheets — les fiches de l’escouade seule (Escouade › E
   const only = squadPickupSheets(all)
 
   it('pas de fiche du reste du camp ; totaux et dominantes alignés sur les fiches restantes', () => {
-    expect(only.owners.map((o) => o.xuid)).toEqual([XUID.jgtm, XUID.choco, XUID.madina])
+    expect(only.owners.map((o) => o.xuid)).toEqual([XUID.jgtm, XUID.joueur_901, XUID.joueur_075])
     expect(only.sections[0].totals).toEqual([3, 3, 5])
     expect(only.dominant).toEqual(['power_weapon', 'powerup', 'powerup'])
   })
@@ -119,7 +119,7 @@ describe('buildPickupSheets — Répartition des prises dans l’escouade', () =
   const sheets = buildPickupSheets(EMPRISE_2209, nameOf)
 
   it('une fiche par joueur puis le reste du camp ; bonus puis armes spéciales, pas les râteliers', () => {
-    expect(sheets.owners.map((o) => o.xuid)).toEqual([XUID.jgtm, XUID.choco, XUID.madina, null])
+    expect(sheets.owners.map((o) => o.xuid)).toEqual([XUID.jgtm, XUID.joueur_901, XUID.joueur_075, null])
     expect(sheets.sections.map((s) => s.resource)).toEqual(['powerup', 'power_weapon'])
   })
 
@@ -188,8 +188,8 @@ describe('buildMatchGrid — match par match', () => {
     expect(c.padsEmptied).toBe(10)
     expect(c.who).toEqual([
       { xuid: XUID.jgtm, taken: 2 },
-      { xuid: XUID.choco, taken: 2 },
-      { xuid: XUID.madina, taken: 1 },
+      { xuid: XUID.joueur_901, taken: 2 },
+      { xuid: XUID.joueur_075, taken: 1 },
     ])
   })
 

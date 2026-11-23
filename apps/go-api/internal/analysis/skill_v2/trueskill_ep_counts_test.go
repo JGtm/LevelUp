@@ -12,8 +12,8 @@ import (
 // 4 deaths, player A1 a 4 kills / 20 deaths. Sans le signal individuel
 // (UpdateTwoTeamEP plain), leurs μ bougent à l'identique (TS classique ne
 // peut pas les distinguer). AVEC counts, A0 doit voir un Δμ nettement plus
-// grand que A1 — c'est ce qui résoudra le verdict Phase 1d (Madina
-// sous-évaluée vs Choco/JGtm sur-évalués).
+// grand que A1 — c'est ce qui résoudra le verdict Phase 1d (joueur_075
+// sous-évaluée vs joueur_901/JGtm sur-évalués).
 
 // pf64 helper pour pointer-to-float64 littéral.
 func pf64(v float64) *float64 { return &v }

@@ -61,7 +61,7 @@ describe('useFollowLatestSession', () => {
         session({ session_id: 's1', label: '05/04 (3)', is_squad: false }),
       ]),
     )
-    renderHook(() => useFollowLatestSession('madina', store, 'solo'))
+    renderHook(() => useFollowLatestSession('joueur_075', store, 'solo'))
     const state = store.getState()
     expect(state.filterContext.filter_mode).toBe('sessions')
     expect(state.filterContext.sessions?.picked_sessions).toEqual(['06/04 (5)'])
@@ -79,7 +79,7 @@ describe('useFollowLatestSession', () => {
     const hashBefore = store.getState().filterContextHash
     const spy = vi.spyOn(store.getState(), 'autoSnapToLatestSession')
 
-    renderHook(() => useFollowLatestSession('madina', store, 'solo'))
+    renderHook(() => useFollowLatestSession('joueur_075', store, 'solo'))
 
     expect(spy).not.toHaveBeenCalled()
     expect(store.getState().filterContextHash).toBe(hashBefore)
@@ -97,7 +97,7 @@ describe('useFollowLatestSession', () => {
     // L'utilisateur épingle une session ancienne → setSessions repasse isAutoSnapping=false.
     store.getState().setSessions({ picked_sessions: ['05/04 (3)'], gap_minutes: 120 })
 
-    renderHook(() => useFollowLatestSession('madina', store, 'solo'))
+    renderHook(() => useFollowLatestSession('joueur_075', store, 'solo'))
 
     expect(store.getState().filterContext.sessions?.picked_sessions).toEqual(['05/04 (3)'])
     expect(store.getState().isAutoSnappingToLatest).toBe(false)
@@ -106,7 +106,7 @@ describe('useFollowLatestSession', () => {
   it('re-snappe quand une nouvelle session plus récente arrive', () => {
     const store = makeStore()
     store.getState().setResolvedContext(resolved([session({ session_id: 's1', label: '05/04 (3)', is_squad: false })]))
-    renderHook(() => useFollowLatestSession('madina', store, 'solo'))
+    renderHook(() => useFollowLatestSession('joueur_075', store, 'solo'))
     expect(store.getState().filterContext.sessions?.picked_sessions).toEqual(['05/04 (3)'])
 
     act(() => {
@@ -131,7 +131,7 @@ describe('useFollowLatestSession', () => {
         session({ session_id: 'sq1', label: 'SQUAD-old (2)', is_squad: true }),
       ]),
     )
-    renderHook(() => useFollowLatestSession('madina', store, 'squad'))
+    renderHook(() => useFollowLatestSession('joueur_075', store, 'squad'))
     expect(store.getState().filterContext.sessions?.picked_sessions).toEqual(['SQUAD (4)'])
     expect(store.getState().lastKnownLatestSessionId).toBe('sq2')
   })
@@ -140,7 +140,7 @@ describe('useFollowLatestSession', () => {
     const store = makeStore()
     store.getState().setResolvedContext(resolved([session({ session_id: 's2', label: '06/04 (5)', is_squad: false })]))
     const { rerender } = renderHook(
-      ({ enabled }: { enabled: boolean }) => useFollowLatestSession('madina', store, 'solo', { enabled }),
+      ({ enabled }: { enabled: boolean }) => useFollowLatestSession('joueur_075', store, 'solo', { enabled }),
       { initialProps: { enabled: false } },
     )
     expect(store.getState().filterContext.sessions?.picked_sessions ?? []).toEqual([])
@@ -153,7 +153,7 @@ describe('useFollowLatestSession', () => {
 
   it('no-op si pas de resolvedContext', () => {
     const store = makeStore()
-    renderHook(() => useFollowLatestSession('madina', store, 'solo'))
+    renderHook(() => useFollowLatestSession('joueur_075', store, 'solo'))
     expect(store.getState().filterContext.sessions?.picked_sessions ?? []).toEqual([])
     expect(store.getState().isAutoSnappingToLatest).toBe(false)
   })
@@ -161,7 +161,7 @@ describe('useFollowLatestSession', () => {
   it('no-op si aucune session du scope demandé', () => {
     const store = makeStore()
     store.getState().setResolvedContext(resolved([session({ session_id: 'sq', label: 'SQUAD (2)', is_squad: true })]))
-    renderHook(() => useFollowLatestSession('madina', store, 'solo')) // aucune session solo
+    renderHook(() => useFollowLatestSession('joueur_075', store, 'solo')) // aucune session solo
     expect(store.getState().filterContext.sessions?.picked_sessions ?? []).toEqual([])
   })
 
@@ -173,7 +173,7 @@ describe('useFollowLatestSession', () => {
     store.getState().setIsAutoSnappingToLatest(true)
     const spy = vi.spyOn(store.getState(), 'autoSnapToLatestSession')
 
-    renderHook(() => useFollowLatestSession('madina', store, 'solo'))
+    renderHook(() => useFollowLatestSession('joueur_075', store, 'solo'))
 
     expect(spy).not.toHaveBeenCalled()
     expect(store.getState().lastKnownLatestSessionId).toBe('s2')

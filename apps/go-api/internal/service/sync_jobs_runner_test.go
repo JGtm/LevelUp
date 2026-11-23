@@ -33,7 +33,7 @@ func TestSyncJobService_runnerFor(t *testing.T) {
 		t.Error("le contexte d'un titre en suivi live doit porter le SpartanToken (lu par l'adapter live)")
 	}
 
-	r2, ctx2 := s.runnerFor(context.Background(), "halo_infinite", "Madina", "x", &domain.HaloTokens{})
+	r2, ctx2 := s.runnerFor(context.Background(), "halo_infinite", "joueur_075", "x", &domain.HaloTokens{})
 	if _, ok := r2.(*go_sync.SyncEngine); !ok {
 		t.Errorf("halo_infinite → *go_sync.SyncEngine attendu, got %T", r2)
 	}

@@ -67,7 +67,7 @@ func TestPatchReplayBuildLocation_ValeursAcceptees(t *testing.T) {
 // TestPatchReplayBuildLocation_ValeurInconnue_400 : rien d'inventé n'entre en
 // configuration — sinon la valeur dormirait jusqu'au premier cycle.
 func TestPatchReplayBuildLocation_ValeurInconnue_400(t *testing.T) {
-	w := patchLocation(t, newSettingsRouterEnv(t, ""), "vps-de-guillaume")
+	w := patchLocation(t, newSettingsRouterEnv(t, ""), "vps-de-jgtm")
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d (attendu 400) body=%s", w.Code, w.Body.String())
 	}

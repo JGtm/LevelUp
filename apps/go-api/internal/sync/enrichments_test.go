@@ -454,7 +454,7 @@ func TestComputeAndPersistHadBotTeammate_MadinaRealCase_FALSE(t *testing.T) {
 	shared, player := setupEnrichmentsTestDBs(t)
 	const selfXUID = "2623439693412443"
 
-	// Reproduit exactement le cas Madina/615b3ebc : bot late-join, 6s sur
+	// Reproduit exactement le cas joueur_075/615b3ebc : bot late-join, 6s sur
 	// 390s (1.5%). Ce match a motivé l'amélioration ; il doit être FALSE
 	// après recompute.
 	insertMatchRegistry(t, shared, "615b3ebc", 390)
@@ -470,7 +470,7 @@ func TestComputeAndPersistHadBotTeammate_MadinaRealCase_FALSE(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if getHadBot(t, player, "615b3ebc") {
-		t.Error("Cas Madina : had_bot_teammate doit etre FALSE (bot late-join 6s/390s = 1.5%)")
+		t.Error("Cas joueur_075 : had_bot_teammate doit etre FALSE (bot late-join 6s/390s = 1.5%)")
 	}
 }
 

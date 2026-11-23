@@ -5,7 +5,7 @@
  * couleur du joueur, le ruban celle de l'assistant (la teinte de celui qui prépare le frag), et
  * le total du nœud est dans son étiquette.
  *
- * Phrases à la VOIX ACTIVE, sujet = l'assistant (« Madina a assisté JGtm sur 14 frags ») : les
+ * Phrases à la VOIX ACTIVE, sujet = l'assistant (« joueur_075 a assisté JGtm sur 14 frags ») : les
  * textes viennent de la page (FR et EN), ce module ne connaît aucun libellé.
  *
  * Aucune couleur ici : la page fournit la couleur de chaque joueur (palette de la page, ou rampe
@@ -17,7 +17,7 @@ import { CHART_BG, escapeHtml, getEChartsThemeColors, getTooltipBase } from '@/c
 import type { AssistFlow, FlowLink, FlowNode } from './assistFlow.logic'
 
 export interface AssistFlowTexts {
-  /** « Madina a assisté JGtm sur 14 frags ». */
+  /** « joueur_075 a assisté JGtm sur 14 frags ». */
   link: (assistant: string, finisher: string, count: number) => string
   /** La part du ruban, déjà formatée, dite entre parenthèses après la phrase : « 25 % des assistances de l'escouade ». Absente : aucune part à dire. */
   share?: (pct: string) => string

@@ -10,8 +10,8 @@ import { SquadImpactSessionsTable } from './SquadImpactSessionsTable'
 
 const INK: Record<string, string> = {
   JGtm: 'var(--ac-squad-player-1)',
-  Madina97294: 'var(--ac-squad-player-2)',
-  Chocoboflor: 'var(--ac-squad-player-3)',
+  joueur_117: 'var(--ac-squad-player-2)',
+  joueur_165: 'var(--ac-squad-player-3)',
 }
 const inkOf = (gt: string) => INK[gt] ?? 'var(--ac-muted)'
 
@@ -138,10 +138,10 @@ describe('SquadImpactSessionsTable', () => {
     const matrix = screen.getByRole('table', { name: /Rôles d’impact de la session 14\/11/ })
     const rows = within(matrix).getAllByRole('row')
     const scoreOf = (i: number) => rows[i].querySelector('td:last-child') as HTMLElement
-    expect(scoreOf(3).textContent).toBe('+3,5') // Chocoboflor
+    expect(scoreOf(3).textContent).toBe('+3,5') // joueur_165
     expect(scoreOf(3).getAttribute('style')).toContain('outcome-win')
     expect(within(scoreOf(3)).getByTitle('Champion (rang #1)')).toBeInTheDocument()
-    expect(scoreOf(2).textContent).toBe('−0,5') // Madina97294
+    expect(scoreOf(2).textContent).toBe('−0,5') // joueur_117
     expect(scoreOf(2).getAttribute('style')).toContain('outcome-loss')
     expect(within(scoreOf(2)).getByTitle(/Maillon faible/)).toBeInTheDocument()
     expect(scoreOf(1).getAttribute('style')).toBeNull() // JGtm, au milieu
@@ -170,7 +170,7 @@ describe('SquadImpactSessionsTable', () => {
     // pas de colonnes de matchs : joueur + 11 rôles + score
     expect(headers).toHaveLength(1 + 11 + 1)
     const rows = within(totals).getAllByRole('row')
-    // premier sang : JGtm 2, Madina97294 2, Chocoboflor 2 -> égalité, aucun surlignage ; top_killer : 2, 1, 2 -> pire Madina97294
+    // premier sang : JGtm 2, joueur_117 2, joueur_165 2 -> égalité, aucun surlignage ; top_killer : 2, 1, 2 -> pire joueur_117
     const topKillerCol = 1 + 10 // joueur puis rôles dans l'ordre : top_killer est le dernier rôle
     const cellsOf = (r: HTMLElement) => r.querySelectorAll('td')
     expect(cellsOf(rows[2])[topKillerCol - 1].getAttribute('style')).toContain('outcome-loss')

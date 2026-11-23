@@ -13,13 +13,13 @@ import (
 // variable d'env LEVELUP_TEST_FILM_DATA_DIR est definie, sinon "".
 //
 // Convention : la var pointe vers le dossier qui contient {match_short}/chunk_NN.bin
-// (cf. C:/Users/Guillaume/Downloads/film_chunks sur la machine dev).
+// (cf. C:/Users/utilisateur/Downloads/film_chunks sur la machine dev).
 func ExternalFilmDataDir() string {
 	return os.Getenv("LEVELUP_TEST_FILM_DATA_DIR")
 }
 
 // ExternalFilmManifestsDir retourne le chemin du dossier manifests externes
-// (cf. C:/Users/Guillaume/Downloads/film_manifests) si LEVELUP_TEST_FILM_MANIFESTS_DIR
+// (cf. C:/Users/utilisateur/Downloads/film_manifests) si LEVELUP_TEST_FILM_MANIFESTS_DIR
 // est definie, sinon "".
 func ExternalFilmManifestsDir() string {
 	return os.Getenv("LEVELUP_TEST_FILM_MANIFESTS_DIR")

@@ -61,17 +61,17 @@ func TestResolveScopeMembers_SansMembreDesigneAucunMembre(t *testing.T) {
 func TestResolveScopeMembers_GamertagsVidesDesParticipants(t *testing.T) {
 	participants := []ParticipantRow{
 		{MatchID: "m1", XUID: "jgtm", Gamertag: "JGtm", TeamID: intp(0)},
-		{MatchID: "m1", XUID: "choco", Gamertag: "", TeamID: intp(0)},
-		{MatchID: "m1", XUID: "madina", Gamertag: "", TeamID: intp(0)},
+		{MatchID: "m1", XUID: "joueur_901", Gamertag: "", TeamID: intp(0)},
+		{MatchID: "m1", XUID: "joueur_075", Gamertag: "", TeamID: intp(0)},
 		{MatchID: "m1", XUID: "inconnu", Gamertag: "", TeamID: intp(0)},
 		{MatchID: "m2", XUID: "jgtm", Gamertag: "JGtm", TeamID: intp(1)},
-		{MatchID: "m2", XUID: "choco", Gamertag: "", TeamID: intp(1)},
-		{MatchID: "m2", XUID: "madina", Gamertag: "Joueur90002", TeamID: intp(1)},
+		{MatchID: "m2", XUID: "joueur_901", Gamertag: "", TeamID: intp(1)},
+		{MatchID: "m2", XUID: "joueur_075", Gamertag: "Joueur90002", TeamID: intp(1)},
 	}
-	got := ResolveScopeMembers("jgtm", participants, membres("choco", "Joueur90001", "madina", ""))
+	got := ResolveScopeMembers("jgtm", participants, membres("joueur_901", "Joueur90001", "joueur_075", ""))
 	want := []domain.SessionUsageSquadPlayer{
-		{XUID: "choco", Gamertag: "Joueur90001"},
-		{XUID: "madina", Gamertag: "Joueur90002"},
+		{XUID: "joueur_901", Gamertag: "Joueur90001"},
+		{XUID: "joueur_075", Gamertag: "Joueur90002"},
 	}
 	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
 		t.Errorf("membres du scope = %+v, attendu %+v", got, want)

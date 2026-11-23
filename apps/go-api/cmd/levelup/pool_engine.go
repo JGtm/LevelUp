@@ -37,7 +37,7 @@ import (
 // C'est non négociable depuis que le CLI consomme le RT canonique du serveur :
 // Microsoft rotate le RT à chaque usage, et ne pas réécrire la rotation
 // brûlerait le token du store — invalid_grant au refresh suivant, côté serveur
-// comme côté CLI (classe d'incident Madina, ADR 0023).
+// comme côté CLI (classe d'incident joueur_075, ADR 0023).
 func buildCLITokenPool(
 	ctx context.Context,
 	cfg *config.AppConfig,

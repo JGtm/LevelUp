@@ -1294,7 +1294,7 @@ func TestRunLUSRV2Shadow_Canonical_HeldGroupSkipsLaterMatches(t *testing.T) {
 
 // TestLoadPreviousLUSRRating_ChronologicalOrder (fix delta figé 2026-06-11) : le
 // rating "précédent" est le match CHRONOLOGIQUEMENT antérieur (start_time), PAS le
-// dernier écrit (written_at — fragile : NULL/désordre → bug delta +75 sur Choco).
+// dernier écrit (written_at — fragile : NULL/désordre → bug delta +75 sur joueur_901).
 // Vérifie aussi l'exclusion du match courant (retry append-only).
 func TestLoadPreviousLUSRRating_ChronologicalOrder(t *testing.T) {
 	playerDB := openCanonicalPlayerTestDB(t)

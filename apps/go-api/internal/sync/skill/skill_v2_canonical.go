@@ -141,7 +141,7 @@ type previousQuery struct {
 //
 // Ordre par start_time (date réelle du match), PAS written_at (= ordre d'ÉCRITURE,
 // fragile : NULL si DEFAULT manquant, ou désordonné après ré-écriture/live re-sync
-// — cause du bug delta +75 sur Choco, 2026-06-11). Fallback written_at uniquement
+// — cause du bug delta +75 sur joueur_901, 2026-06-11). Fallback written_at uniquement
 // pour les rows pas encore re-backfillées (start_time NULL), dominées dès qu'une
 // row avec start_time existe (NULLS LAST).
 const previousLUSRSQL = `

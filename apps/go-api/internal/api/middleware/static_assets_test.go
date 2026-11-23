@@ -32,7 +32,7 @@ func TestIsStaticAssetPath(t *testing.T) {
 		"/":                             false, // racine → SPA
 		"/players/demo-player/home":     false, // route SPA sans extension
 		"/explorer":                     false,
-		"/api/v1/players/Guillaume":     false,
+		"/api/v1/players/JGtm":          false,
 		"/manifest.webmanifest":         false, // extension inconnue → SPA (statu quo)
 		"/players/gamer.tag/home":       false, // point dans un segment != extension connue
 		"/media/clip.mp4":               false, // hors périmètre front

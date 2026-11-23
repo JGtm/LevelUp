@@ -513,7 +513,7 @@ func (d *Daemon) makePresenceHandler(ctx context.Context, pw *PlayerWatcher) pre
 // broadcastPresenceActive propage l'état Active à tous les PlayerWatcher
 // sauf celui qui a déclenché l'event. Utilisé pour les sessions de groupe
 // où la présence Xbox ne signale pas tous les joueurs (cf. incident
-// 2026-05-27 : Madina/Choco/XxDaemon jouent avec JGtm mais seul JGtm est
+// 2026-05-27 : joueur_075/joueur_901/joueur_639 jouent avec JGtm mais seul JGtm est
 // vu in-game par le tracker → leurs MatchPoller ne tournent pas → leurs
 // nouveaux matchs jamais détectés).
 //

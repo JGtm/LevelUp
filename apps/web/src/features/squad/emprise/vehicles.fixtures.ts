@@ -12,7 +12,7 @@ import { EMPRISE_2209, XUID } from './emprise.fixtures'
 
 /** Une part : qui chez nous a pris (et passé du temps à bord), dans l'ordre des fiches puis le reste du camp. */
 function squad(taken: [number, number, number, number], aboard: [number, number, number, number]) {
-  const xuids = [XUID.jgtm, XUID.choco, XUID.madina, undefined]
+  const xuids = [XUID.jgtm, XUID.joueur_901, XUID.joueur_075, undefined]
   return xuids.map((xuid, i) => ({ ...(xuid ? { xuid } : {}), taken: taken[i], aboard_ms: aboard[i] }))
 }
 

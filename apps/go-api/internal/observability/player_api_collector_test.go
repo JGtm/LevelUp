@@ -54,7 +54,7 @@ func TestPlayerAPICollector_EvictsLeastActive(t *testing.T) {
 func TestRecordPlayerAPICall_Singleton(t *testing.T) {
 	ResetPlayerAPIStats()
 	t.Cleanup(ResetPlayerAPIStats)
-	RecordPlayerAPICall("playlist_csr", "Madina", 42, true)
+	RecordPlayerAPICall("playlist_csr", "joueur_075", 42, true)
 	snap := PlayerAPIStats()
 	if len(snap) != 1 || snap[0].Errors != 1 || snap[0].AvgMs != 42 {
 		t.Fatalf("singleton snapshot inattendu : %+v", snap)

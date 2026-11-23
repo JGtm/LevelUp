@@ -8,7 +8,7 @@ import "levelup/go-api/internal/platform/duckdb/sqlfrag"
 // ce paquet lisaient `killer_victim_pairs`, qui porte 46,5 % de doublons exacts — le flux
 // primaire INSERT pendant que la complétion fait DELETE-then-INSERT, sur une table sans PK.
 // Les agrégats carrière en étaient gonflés d'un facteur mesuré à 1,879 en moyenne : sur le
-// duel de contrôle `Luigi Numba 01 → JGtm`, l'écran affichait **101 frags là où il y en a 29**.
+// duel de contrôle `joueur_1187 → JGtm`, l'écran affichait **101 frags là où il y en a 29**.
 //
 // Ils lisent désormais la table canonique, dédoublonnée à l'identité et enrichie par le film.
 //

@@ -10,7 +10,7 @@
 // Usage :
 //
 //	echo "M.C544_SN1.0.U.-..." | go run ./cmd/token-import/ Joueur90002
-//	cat token_madina.txt | go run ./cmd/token-import/ Joueur90002
+//	cat token_joueur_075.txt | go run ./cmd/token-import/ Joueur90002
 //
 // Le joueur doit être déclaré dans db_profiles.json (avec xuid) avant l'import.
 //

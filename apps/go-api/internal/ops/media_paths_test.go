@@ -6,10 +6,10 @@ import (
 )
 
 func TestMediaPathStore_ToRel_MultiPlayerLayout(t *testing.T) {
-	base := filepath.FromSlash("C:/Users/Guillaume/Videos/Captures")
+	base := filepath.FromSlash("C:/Users/utilisateur/Videos/Captures")
 	store := MediaPathStore{CapturesBase: base}
 
-	abs := filepath.FromSlash("C:/Users/Guillaume/Videos/Captures/Joueur90002/Halo Infinite 2026-04-19 17-43-35.mp4")
+	abs := filepath.FromSlash("C:/Users/utilisateur/Videos/Captures/Joueur90002/Halo Infinite 2026-04-19 17-43-35.mp4")
 	got := store.ToRel(abs, "Joueur90002")
 	want := "Joueur90002/Halo Infinite 2026-04-19 17-43-35.mp4"
 	if got != want {

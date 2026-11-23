@@ -38,7 +38,7 @@ func mediaRouterWith(mock *mockMediaService, resolve handlers.MediaAudienceResol
 
 func TestMediaAudience_GalleryPassesAudienceToService(t *testing.T) {
 	mock := &mockMediaService{page: &domain.MediaPageResponse{}}
-	r := mediaRouterWith(mock, staticAudience(testPlayerSlug, "Madina"))
+	r := mediaRouterWith(mock, staticAudience(testPlayerSlug, "joueur_075"))
 	req := httptest.NewRequest(http.MethodPost, "/players/test-player/pages/media",
 		strings.NewReader(`{"author_slugs":["Etranger"]}`))
 	w := httptest.NewRecorder()
@@ -50,21 +50,21 @@ func TestMediaAudience_GalleryPassesAudienceToService(t *testing.T) {
 		t.Fatal("audience absente de la requête transmise au service")
 	}
 	a := mock.pageReq.Audience
-	if !a.Allows("madina") || !a.Allows(testPlayerSlug) || a.Allows("Etranger") {
+	if !a.Allows("JOUEUR_075") || !a.Allows(testPlayerSlug) || a.Allows("Etranger") {
 		t.Fatalf("audience = %v", a.Authors())
 	}
 }
 
 func TestMediaAudience_AuthorsFiltered(t *testing.T) {
 	authors := []domain.MediaAuthor{
-		{PlayerSlug: testPlayerSlug, IsSelf: true}, {PlayerSlug: "Madina"}, {PlayerSlug: "Etranger"},
+		{PlayerSlug: testPlayerSlug, IsSelf: true}, {PlayerSlug: "joueur_075"}, {PlayerSlug: "Etranger"},
 	}
 	cases := []struct {
 		name    string
 		resolve handlers.MediaAudienceResolver
 		want    []string
 	}{
-		{"groupe", staticAudience(testPlayerSlug, "Madina"), []string{testPlayerSlug, "Madina"}},
+		{"groupe", staticAudience(testPlayerSlug, "joueur_075"), []string{testPlayerSlug, "joueur_075"}},
 		{"sans résolveur : la page seule", nil, []string{testPlayerSlug}},
 		{"résolveur en échec : la page seule", func(context.Context, string) (domain.MediaAudience, error) {
 			return domain.MediaAudience{}, errors.New("groups.json illisible")
@@ -102,7 +102,7 @@ func TestMediaAudience_AuthorsFiltered(t *testing.T) {
 // se sert pas par la racine commune, celui d'un co-membre si.
 func TestMediaAudience_ServeFileRefusesOutsider(t *testing.T) {
 	base := t.TempDir()
-	for _, owner := range []string{"Madina", "Etranger"} {
+	for _, owner := range []string{"joueur_075", "Etranger"} {
 		if err := os.MkdirAll(filepath.Join(base, owner), 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -113,11 +113,11 @@ func TestMediaAudience_ServeFileRefusesOutsider(t *testing.T) {
 	factory := func(context.Context, string) (port.MediaService, error) { return nil, nil }
 	h := handlers.NewMediaHandler(factory, nil, "").
 		WithSettingsStore(writeSettingsJSON(t, base)).
-		WithMediaAudience(staticAudience(testPlayerSlug, "Madina"))
+		WithMediaAudience(staticAudience(testPlayerSlug, "joueur_075"))
 	r := chi.NewRouter()
 	r.Route("/players/{player_slug}", func(r chi.Router) { r.Get("/media/files/*", h.ServeMediaFile) })
 
-	for owner, want := range map[string]int{"Madina": http.StatusOK, "Etranger": http.StatusNotFound} {
+	for owner, want := range map[string]int{"joueur_075": http.StatusOK, "Etranger": http.StatusNotFound} {
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/players/test-player/media/files/"+owner+"/shot.png", nil))
 		if w.Code != want {
@@ -127,7 +127,7 @@ func TestMediaAudience_ServeFileRefusesOutsider(t *testing.T) {
 }
 
 func TestMediaAudience_MatchViewDropsOutsiders(t *testing.T) {
-	mine, friend, stranger := testPlayerSlug, "Madina", "Etranger"
+	mine, friend, stranger := testPlayerSlug, "joueur_075", "Etranger"
 	resp := domain.MatchViewResponse{
 		Header: domain.MatchViewHeader{MatchID: "m1"},
 		MediaTab: domain.MatchMediaTab{MediaItems: []domain.MatchAssociatedMedia{
@@ -140,7 +140,7 @@ func TestMediaAudience_MatchViewDropsOutsiders(t *testing.T) {
 	factory := func(context.Context, string) (port.MatchViewService, error) {
 		return &mockMatchViewService{resp: resp}, nil
 	}
-	h := handlers.NewMatchViewHandler(factory).WithMediaAudience(staticAudience(testPlayerSlug, "Madina"))
+	h := handlers.NewMatchViewHandler(factory).WithMediaAudience(staticAudience(testPlayerSlug, "joueur_075"))
 	r := chi.NewRouter()
 	r.Route("/players/{player_slug}", func(r chi.Router) { h.Mount(r) })
 	w := httptest.NewRecorder()

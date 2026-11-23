@@ -268,7 +268,7 @@ func TestBuild_ReauthRequired_ScopedToOwnAccount(t *testing.T) {
 		byXUID: map[string]*domain.User{ownXUID: admin},
 	}
 	// Checker "mort pour tout le monde SAUF le compte propre" : simule
-	// Joueur90001/Madina/XxDaemon morts, JGtm vivant.
+	// Joueur90001/joueur_075/joueur_639 morts, JGtm vivant.
 	svc := NewBootstrapService(&config.AppConfig{}, &mockBootRepo{}).
 		WithUserLookup(lookup).
 		WithReauthChecker(func(xuid string) bool { return xuid != ownXUID })
