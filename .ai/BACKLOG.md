@@ -636,4 +636,5 @@ Constat relevé à la relecture du plan du backlog ; non traité, hors de ce pla
 - Les pseudos de joueurs figurent dans 228 fichiers du dépôt (3 182 lignes) : archives de `.ai/`, journaux de décisions, maquettes, 8 décisions d'architecture, 5 fichiers de tests web.
 - Le chemin du poste de travail figure dans 240 fichiers de la branche principale.
 - Ces contenus sont antérieurs au plan et déjà publics ; le plan n'en ajoute pas.
-- **Décision du user attendue** : chantier d'anonymisation de tout le dépôt (documents, puis historique), ou laisser en l'état sans en ajouter.
+- **Décidé le 2026-11-23** : les fichiers actuels sont anonymisés « au maximum en étant prudent » (documents faits en trois passes ; code, tests et configurations en cours). **L'historique git n'est pas purgé** : message du user du 2026-11-23, trop lourd pour un projet amateur (tous les numéros de commit changeraient, 61 étiquettes et 37 releases à repousser, tous les dossiers de travail à recréer, et les forks garderaient l'ancien historique). Ne pas reproposer cette purge sans demande du user. Ce qui reste donc visible dans l'historique : anciens contenus des fichiers, messages de commit, identités d'auteur.
+- Règle pour la suite : ne rien ajouter de neuf (libellés neutres pour les joueurs, pas de prénom, pas de chemin du poste dans un fichier versionné ni dans un message de commit).
