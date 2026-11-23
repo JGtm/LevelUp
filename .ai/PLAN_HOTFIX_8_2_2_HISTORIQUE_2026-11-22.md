@@ -113,7 +113,7 @@ page.
     journalisée et comptée (`sync_v2_history_cursor_fallback_total`) ; marque-page sans ancre = comportement précédent.
     Tests : 30 introuvables en haut sur 3 passes (exact, zéro reprise depuis 0), N neufs, ancre perdue, contrôle raté, budget avant l'ancre, sans ancre.
   - [x] D-21.3 Test de convergence `cmd/server` mis à jour : appels `GetMatchHistory` par cycle [8 11 11 11 11 4] (56) -> [8 9 10 9 10 2] (48).
-  - [ ] D-21.4 Halo 5 : à brancher par la piste Halo 5 sur l'API D-21.1 (`catchup.go` range `Cursor{Offset, LastMatchID}` sans `HeadID`).
+  - [~] D-21.4 (fait par la piste Halo 5, commit 28a8b9489e, item 3.5) Halo 5 : à brancher par la piste Halo 5 sur l'API D-21.1 (`catchup.go` range `Cursor{Offset, LastMatchID}` sans `HeadID`).
 - **D-22** (utilisateur, 22/11) Site hébergé : ancien comportement des films (8 frags et 5 rejeux par
   cycle, cadence non liée à l'arriéré de films), pour ménager le serveur de prod (2 vCPU, 2 Go). Le
   comportement D-17/D-20 ne vaut que sur le bureau, décidé par une capacité du profil de déploiement
@@ -516,7 +516,7 @@ Caches : chaque agent pose `GOCACHE=%LOCALAPPDATA%\go-build-822<piste>` et
 
 ### Étape 5bis — mesure d'une passe (D-14)
 
-- [ ] 5b.1 Sur une COPIE de la base locale (règle : neutraliser les chemins des réglages avant de lancer
+- [x] 5b.1 (trois mesures sur copie, 22-23/11 ; résultats dans le journal du pilote du 2026-11-23) Sur une COPIE de la base locale (règle : neutraliser les chemins des réglages avant de lancer
   un serveur sur copie), clé `history_complete_at` retirée pour un joueur de plus de 1 000 matchs, une
   passe : durée, appels API par type, pic mémoire, octets écrits sous l'archive des films. Résultat
   écrit dans ce plan.
@@ -588,7 +588,7 @@ Réutilisés du banc de base : faux client Halo (`fakeHalo`), `fakeTokenPool`, `
 
 ### Étape 7 — revue adversariale (Fable)
 
-- [ ] 7.1 Skills `adversarial-review` + `levelup-revue` sur `git diff origin/main...release/v8.2.2`,
+- [x] 7.1 (Fable, 22/11 : 0 P0, 4 P1 corrigés par D-26 et D-27 ; P2-1, 3, 4, 5, 9 corrigés ; P2-2, 6, 7, 8, 10 au backlog 8.3.0 via la conception) Skills `adversarial-review` + `levelup-revue` sur `git diff origin/main...release/v8.2.2`,
   une ronde ; P0/P1 corrigés, P2 au backlog. Agent Fable (demande de l'utilisateur, 22/11), sur
   l'implémentation ET sur le concept : le rattrapage par cycle, le marque-page ancré, l'abandon,
   la cadence liée à l'arriéré de films, les alternatives (carte des identifiants, autre découpage).
@@ -596,13 +596,13 @@ Réutilisés du banc de base : faux client Halo (`fakeHalo`), `fakeTokenPool`, `
 
 ### Étape 8 — gates complets, journal, PR
 
-- [ ] 8.1 (révisé par l'utilisateur le 22/11 : contrôles sur le périmètre modifié seulement, la CI joue
+- [x] 8.1 (23/11 : build, vet, tests unitaires et intégration des 24 paquets touchés, archlint complet, lint 0, web 501 tests, tsc, eslint, couleurs, imports) (révisé par l'utilisateur le 22/11 : contrôles sur le périmètre modifié seulement, la CI joue
   la suite complète) Une seule passe locale sur la branche intégrée : `go build ./...` ; `go test` et
   `go test -tags=integration` sur les seuls paquets touchés par `git diff --name-only origin/main...` ;
   `./internal/archlint/...` (gardes globales, une fois) ; golangci-lint `--new-from-merge-base` ; web :
   `npx vitest run` sur les dossiers touchés, `tsc`, eslint des fichiers touchés. Puis CI verte.
-- [ ] 8.2 ADR 0027 : amendement court (EN) « history catch-up applies to every sync path ».
-- [ ] 8.3 Entrée `.ai/thought_log.md`.
+- [x] 8.2 ADR 0027 : amendement court (EN) « history catch-up applies to every sync path ».
+- [x] 8.3 Entrée `.ai/thought_log.md`.
 - [ ] 8.4 Poussée de `release/v8.2.2`, CI verte (`gh run list --branch release/v8.2.2 --workflow CI
   --limit 1`), PR vers `main` (squash par l'utilisateur).
 - [ ] 8.5 Texte de réponse à #213 prêt (validé par l'utilisateur le 22/11), publié après la PR.
