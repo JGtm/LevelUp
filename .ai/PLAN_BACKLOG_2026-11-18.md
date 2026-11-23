@@ -566,16 +566,20 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 - [x] R.1 (fait le 2026-11-23 : entrées traitées closes ou reformulées, découvertes du plan ajoutées, reports inscrits au registre) Backlog mis à jour par un agent Haiku : entrées traitées déplacées au tableau des entrées closes ;
       une entrée dont la porte du user n'est pas passée garde sa ligne, avec la date de la demande ; entrées
       du décodeur selon D-8 ; registre des reports.
-- [ ] R.2 Une ronde de relecture adversariale du diff complet (skill `adversarial-review`, Fable) et deux
+- [x] R.2 (les relectures ciblées des jetons, de la file et du coup d'envoi sont couvertes par les axes 1 et 2 de cette relecture, qui les a examinés en priorité et jugés sains) (fait le 2026-11-23 : relecture adversariale du code livré par Fable, aucun P0 ni P1 de code ; quatre P2 et six P3 consignés au backlog. Un P1 de confidentialité corrigé le jour même : des annexes versionnées nommaient des joueurs par leur pseudo et portaient un chemin du poste ; libellés neutres, commit `9bb45958da`.)
+      Une ronde de relecture adversariale du diff complet (skill `adversarial-review`, Fable) et deux
       relectures ciblées (Sonnet) : jetons et file (pistes E et F), écritures en base (piste T) ; P0 et P1
       corrigés en une ronde, P2 au backlog seulement s'ils valent le coup.
-- [ ] R.3 Artefact des vérifications du user : départ du joueur A à 5:00 sur le match `38900a5e` ; ligne de
+- [x] R.3 (fait le 2026-11-23 : 16 lignes inscrites dans l'artefact de vérifications du user (collection `verifs`), 14 faisables dès maintenant et 2 à venir ; la ligne sur les pictogrammes de ramassage est réécrite. Les 5 lignes « à venir » de la montée du décodeur relèvent de son plan, pas de celui-ci.)
+      Artefact des vérifications du user : départ du joueur A à 5:00 sur le match `38900a5e` ; ligne de
       ramassage ; « Seul » puis « Suivre » ; sortie du Plein cadre ; orientation Auto dans la Tactique ; barre
       d'une ligne au Cinéma, fenêtre d'environ 1 440 px, disposition en colonne.
 - [ ] R.4 Tous les items statués ; outillage de mesure retiré ou documenté ; fusion dans `release/v8.3.0` ;
       CI lue après la poussée.
 
 ## Journal d'exécution
+
+- 2026-11-23 — relecture finale et vérifications à l'écran. La relecture adversariale du code livré ne relève aucun P0 ni P1 de code ; un P1 de confidentialité (pseudos de joueurs et chemin du poste dans des annexes versionnées) est corrigé (commit `9bb45958da`). Les vérifications à l'écran sont inscrites dans l'artefact de vérifications du user : 16 lignes pour ce plan, 14 faisables dès maintenant, 2 à venir. R.2 et R.3 passent en `[x]`. Restent ouverts : I.2 (témoins après), R.4 (clôture, fusion dans `main`, CI) ; la validation à l'écran reste due au user.
 
 - 2026-11-23 — CLÔTURE DES DOCUMENTS. Code livré en trois fois dans `release/v8.3.0` (première : K.2, E, H, C, G, B, A, F ; seconde : D, K, S ; troisième : piste T, M.2, M.3 et Q.2) ; Q.2 statué (`[x]`), I.1 et I.3 faits (changelog et notes de version des deux langues), R.1 fait (backlog et registre).
   T.6 passe en `[!]` : le user a décidé le 2026-11-22 de ne régénérer le parc qu'une fois, après la version suivante du décodeur ; le rattrapage du coup d'envoi et le rejeu des notes partent au premier démarrage de la version.

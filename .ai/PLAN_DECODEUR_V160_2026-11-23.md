@@ -379,8 +379,8 @@ Les règles R-1 à R-10 du plan v1.5.0 s'appliquent, avec ces précisions.
   DECODEUR_FILM_RACINE_DONNEES="<HOTE>" go test -count=1 -v <paquets> [-run <motif>] -p 1`. Lecture du
   résultat : zéro `FAIL` ; zéro `SKIP` hors de la liste attendue (tests `...Regenerate`, `Fidelite`,
   `ReecrireIdentites`) ; quand la commande filtre par `-run`, le nombre de `--- PASS` est au moins celui que
-  l'item annonce (un `-run` sans correspondance répond `ok` : ce n'est pas un vert). Référence : 299 SKIP
-  attendus sur la suite complète à blanc au tag v1.5.0 ; tout nombre supérieur s'explique avant de conclure.
+  l'item annonce (un `-run` sans correspondance répond `ok` : ce n'est pas un vert). Référence : 301 SKIP
+  attendus sur la suite complète à blanc (référence du 2026-11-23, qui remplace 299 : même liste de noms qu'à l'étape 0, l'écart venait du comptage) ; tout nombre supérieur s'explique avant de conclure.
 - **G-rev** : marche de publication, geste 3, en mode vérification :
   `GOWORK=off go test -count=1 -v ./internal/profile/ ./internal/source/ ./internal/grammar/
   ./internal/facts/killsource/ ./internal/facts/objectives/ -run 'RevSuit|ChroniqueDe|ChroniqueCouvre|ChroniqueDObjectives'`
@@ -419,7 +419,7 @@ ils sont posés par V0.7, AVANT la première piste de vitesse.
 
 ### Preuve d'identité à l'octet (pistes V)
 
-Référence de V1, V3 et V4 : la v1.5.0 (références du clone, jamais refigées avant la fin de la phase).
+Référence de V3 et V4 (V1 abandonnée le 2026-11-23 ; la piste G passe en premier) : la v1.5.0 (références du clone, jamais refigées avant la fin de la phase).
 Référence de V2, qui s'intègre après les pistes du backlog : le MÊME commit au niveau 1.
 
 1. G-equiv-ref aux niveaux 1, 2, 4 et `N`, puis sous `GOMAXPROCS=1` et `GOMAXPROCS=2` au niveau `N`.
@@ -428,7 +428,7 @@ Référence de V2, qui s'intègre après les pistes du backlog : le MÊME commit
 2. G-equiv-2p au niveau `N`.
 3. Trois passes complètes des 20 films au niveau `N` (G-equiv-ref trois fois) : trois fois 20 identiques.
 4. Relevé A (V0) sur les 13 films au niveau 1 et au niveau `N` : empreintes du document et des faits égales
-   entre elles et égales à celles du relevé de référence (v1.5.0 pour V1, V3, V4 ; niveau 1 du même commit
+   entre elles et égales à celles du relevé de référence (v1.5.0 pour V3, V4 ; niveau 1 du même commit
    pour V2).
 5. Dix passes du relevé A au niveau `N` sur trois films, dont la Grande bataille à 33 joueurs : empreintes
    constantes.
@@ -545,7 +545,7 @@ sont conditionnels. Opus n'apparaît qu'avec son motif.
 | V1.2, V1.3 (abandonnés) | Sonnet, moyen | B | `internal/source/`, `filmcache/`, `decfilm/` | V1.1, Gate V0 |
 | V1.4 (abandonné) | pilote | M | relevés | V1.3 |
 | V4.1 | Sonnet, moyen | S | conception au plan | V0.5, 0.7 |
-| V4.2, V4.3 | Sonnet, élevé (plusieurs fichiers) | B | `replay/film_scan*.go`, `build_from_film.go`, `movement_states.go` | V4.1, V1 intégrable |
+| V4.2, V4.3 | Sonnet, élevé (plusieurs fichiers) | B | `replay/film_scan*.go`, `build_from_film.go`, `movement_states.go` | V4.1 (V1 abandonnée le 2026-11-23) |
 | V4.4 | pilote | M | relevés | V4.3 |
 | V4.5 | Haiku, bas | S | fragments de crédit | — |
 | V3.1 | Sonnet, moyen | S | candidats au plan | V0.5 |
@@ -565,7 +565,7 @@ sont conditionnels. Opus n'apparaît qu'avec son motif.
 | G.8 | à décider | B | `keyframe_loadout.go` | nouveau profil |
 | G.5 | à décider | B | `world.go`, `debut_de_liste.go` | nouveau profil |
 | G.3 | à décider | B | `replay/film_scan.go` | nouveau profil |
-| I.1 à I.3 | pilote ; Haiku, bas pour refiger les empreintes sous sa conduite | L, M | intégration | Gates V1, V4, V3 |
+| I.1 à I.3 | pilote ; Haiku, bas pour refiger les empreintes sous sa conduite | L, M | intégration | Gates V4, V3 (V1 abandonnée le 2026-11-23) |
 | A.1 | Sonnet, bas | L | mesure, cause par film | 0.8 |
 | A.2 | Sonnet, moyen | B | `document_score_actions*.go` | A.1 |
 | A.3 | Sonnet, moyen ; reprise Opus seulement si la mesure désigne une lecture de grammaire non décodée (motif au journal) | L | mesure | 0.8 |
@@ -650,7 +650,7 @@ Fichiers attendus par piste (à confirmer en 0.6 ; deux pistes sur un même fich
 
 Conflits avec le contributeur (après le gel, piste P) : `internal/grammar/movement_states.go` (V4) ; `replay/film_scan*.go` (V4) ; `replay/document_stances*.go` (C) ; `internal/grammar/vue_a_lecture.go` (D) ; `internal/grammar/keyframe_etat_complet_bipede.go` (V3, par le glob) ; `internal/grammar/distribuer_tetes.go` (V2, par le glob) et `distribuer_crochets.go` (V2) ; `replay/options.go` (V0.6). Ordre : les pistes d'abord (vagues 1 à 7), gel (P.4), puis ses PR (P.7).
 
-Dépendances entre pistes de vitesse, dites : V1, V2 et V4 lisent toutes la structure d'options de V0.6 et
+Dépendances entre pistes de vitesse, dites (V1 abandonnée le 2026-11-23 ; la piste G passe en premier) : V2 et V4 lisent la structure d'options de V0.6 et
 aucune ne l'écrit ; V2 et V4 touchent toutes deux la distribution aux canaux (V4 les inscriptions, V2 le
 distributeur) : V2 passe après V4 ; V3 passe après V4. Les pistes de vitesse passent donc une à une.
 Le travail du contributeur croise V0.6, V1, V3, V4, C, D et tous les fichiers à écrivain unique : c'est
@@ -746,7 +746,7 @@ Deux relevés, parce que la génération d'un rejeu dépend de la base de LevelU
       `.ai/annexes_decodeur_v160/profil.md`. C'est l'entrée des conceptions V1.1 à V4.1.
 - [x] V0.6 (2026-11-23 : fait et intégré dans `feat/v1.6.0` : porteur `OptionsVitesse`, un fil par défaut, borne `MaxFils` = 8 ; `gorelease` : ajouts compatibles, version suggérée v1.6.0) Socle des options (R-16), un seul écrivain : une structure d'options AJOUTÉE (nombre de fils,
       choix des canaux), valeur zéro = comportement actuel, sans aucun effet à ce stade ; plafond du nombre
-      de fils dans la brique (R-12). Intégrée dans `feat/v1.6.0` avant toute piste V.
+      de fils dans la brique (R-12). Intégrée dans `feat/v1.6.0` avant toute piste V. Réexport par la façade retiré le 2026-11-23 (cycle d'import sous l'étiquette de recherche) : le porteur vit dans `replay` seul.
 - [ ] V0.7 (décalé le 2026-11-23 : le niveau de fils dans les outils de LevelUp n'a de sens que lorsqu'une entrée du décodeur accepte les options ; il se fera avec la première piste qui en lit une) Côté LevelUp, sur la branche de montée (pseudo-version de V0.6) : niveau de fils réglable par
       `-fils` dans `replay-equiv` (transmis à ses enfants) et `replay-build`, par `--fils` dans le gate du
       corpus (cuisson de la tête seulement) ; défaut 1 ; tests des trois lignes de commande.
@@ -829,13 +829,13 @@ Ordre de lancement : G.2, G.6 et G.7 en parallèle (lancés le 2026-11-23 : agen
 
 Preuve commune à chaque item : empreintes de `film-bench` identiques au relevé de la v1.5.0 sur cinq films, puis preuve d'intégration (G-equiv-ref). Les chemins de fichiers viennent du profil : à rouvrir à l'exécution.
 
-- [ ] G.2 Localiser la liste une seule fois par trame non localisée, pour les deux canaux (morts, vitalités), au lieu d'une fois par canal. (lancé le 2026-11-23, branche `piste/g2`)
+- [x] G.2 (2026-11-23 : intégré dans `feat/v1.6.0`, empreintes du document et des faits identiques sur les 13 films) Localiser la liste une seule fois par trame non localisée, pour les deux canaux (morts, vitalités), au lieu d'une fois par canal. (lancé le 2026-11-23, branche `piste/g2`)
       Gain attendu : 9 à 12 % sur les films anciens (film06 2,4 s, film09 1,35 s, film04 2,4 s, film12 0,46 s). Risque : très faible (même résultat ; mémoire par paquet). Fichiers : `canal_des_morts.go` (`recupererLaListe`, appels lignes 85 et 160-177), `canal_des_vitalites.go` (ligne 84). Preuve : celle de la piste.
-- [ ] G.1 Ne décoder un delta d'essai que si son identifiant peut convenir (slot 123 ou génération du monde), lu dans l'en-tête avant le décodage. Après G.2 (même zone de code).
+- [ ] G.1 (lancé le 2026-11-23) Ne décoder un delta d'essai que si son identifiant peut convenir (slot 123 ou génération du monde), lu dans l'en-tête avant le décodage. Après G.2 (même zone de code).
       Gain attendu : 14 à 24 % (film06 -17 à -24 %, film09 -18 à -23 %, film04 -14 à -18 %, film12 -17 à -20 % ; film01 : 0). Risque : faible à moyen (même booléen ; à prouver par comparaison des positions rendues sur le corpus). Fichiers : `localisateur.go` (`marchSignature123`, `marchLocateFallback`), `frame_records.go` (`TryDeltaAt`). Preuve : celle de la piste, puis comparaison des positions rendues sur le corpus.
-- [ ] G.6 Ne pas tripler la suite des positions au plus haut : filtrage en place dans une variante interne ; les fonctions exportées gardent leur contrat. (lancé le 2026-11-23, branche `piste/g6`)
+- [x] G.6 (2026-11-23 : intégré dans `feat/v1.6.0`, empreintes du document et des faits identiques sur les 13 films) Ne pas tripler la suite des positions au plus haut : filtrage en place dans une variante interne ; les fonctions exportées gardent leur contrat. (lancé le 2026-11-23, branche `piste/g6`)
       Gain attendu : 0,4 à 0,6 Gio de pic en moins sur le plus gros film (film04) ; temps : environ 1 %. Risque : faible. Fichiers : `offline_filters.go` (`DropIsolated`), `offline_biped_band.go` (lignes 147-151), `positions_lues.go` (`lireLesPositions`, pré-dimensionnement). Preuve : celle de la piste.
-- [ ] G.7 Tester slot et génération avant de lire la poignée complète à chaque bit, dans la récupération d'équipement. (lancé le 2026-11-23, branche `piste/g7`)
+- [!] G.7 (2026-11-23 : retiré de l'intégration sur mesure, motif mesuré : −4 à −5 % sur le plus gros film seulement, +2 % reproductible sur un film ancien ; branche `piste/g7` gardée) Tester slot et génération avant de lire la poignée complète à chaque bit, dans la récupération d'équipement. (lancé le 2026-11-23, branche `piste/g7`)
       Gain attendu : 5 à 7 % sur film04 (`LireHandleDelta` : 1,15 s sur 2,57 s). Risque : faible. Fichiers : `equipment_recovery.go` (`scanEquipRecoveryPacket`, lignes 210-260). Preuve : celle de la piste.
 - [ ] G.4 Avance par mot (saut des bits nuls) dans les balayages bit à bit. **À décider sur un nouveau profil.**
       Gain attendu : -5 à -9 % sur film06 et film09. Risque : moyen (la grammaire avance d'un bit : l'équivalence se prouve par les mêmes sorties). Fichiers : `delta_biped_walk.go` (lignes 91-107), `offline_biped.go` (`matchBipedHeader`, ligne 318), `offline_aim_only.go` (ligne 110). Preuve : celle de la piste.
@@ -850,7 +850,7 @@ Gate de la piste G : G-clone sur les paquets touchés (`-race` pour G.3) ; G-rev
 
 ## Intégration « vitesse » (pilote)
 
-- [ ] I.1 V1, V4 puis V3 fusionnées dans `feat/v1.6.0`, une à une ; G-equiv-ref après chacune : aucun écart,
+- [ ] I.1 V4 puis V3 fusionnées dans `feat/v1.6.0`, une à une (V1 abandonnée le 2026-11-23 ; la piste G passe en premier) ; G-equiv-ref après chacune : aucun écart,
       références non refigées ; empreintes de révision refigées par leur porte, valeurs inchangées (R-13) ;
       G-façade.
 - [ ] I.2 Preuve d'identité complète, points 1 à 7 (gate du corpus au niveau `N`, pseudo-version désignée
@@ -1165,6 +1165,13 @@ Ordre imposé : R.1, R.2, puis L.1, L.2, L.3. Toute correction après L.1 fait r
   LevelUp verte sur `release/v8.3.0`.
 
 ## Journal d'exécution
+
+- 2026-11-23 — PISTE G : deux gains intégrés, un retiré
+  Intégrés dans `feat/v1.6.0` : G.2 (la liste d'une trame non localisée est récupérée une fois) et G.6 (filtres de positions en place). Retiré : G.7 (candidats d'équipement écartés sur leur tête), −4 à −5 % sur le plus gros film seulement, +2 % reproductible sur un film ancien ; sa branche `piste/g7` est gardée. Le réexport des options par la façade est retiré (cycle d'import sous l'étiquette de recherche) : le porteur vit dans `replay` seul.
+  Preuve sur l'état retenu : suite complète code 0, 34 paquets, 301 tests sautés (référence 301, et non 299 : même liste de noms, l'écart venait du comptage) ; lint 0 issue ; ajouts seulement, version suggérée v1.6.0 ; équivalence 20 identiques contre la v1.5.0 ; double passe : 20 artefacts identiques à l'octet, les seuls écarts à classer étant les 20 de l'étape `killsource`.
+  Relevé apparié des 13 films, avec G.7 avant son retrait : décodage cumulé 70,0 s → 57,8 s (−17,5 %), total 73,7 s → 61,5 s (−16,5 %) ; films anciens et très gros −20 à −22 %, films récents −1 à −4 % (bruit) ; pic du plus gros film 2 192 → 2 051 Mio.
+  Réserve : une autre session faisait tourner des tests sur la machine pendant les fenêtres de mesure ; le relevé de la version finale se refera machine au repos.
+  G.1 est lancé (agent Sonnet, worktree `Scripts/dec-v160-g1`).
 
 - 2026-11-23 — RELEVÉ DE RÉFÉRENCE ET PROFIL : les pistes de vitesse sont revues (aucun commit)
   Relevé de référence de la v1.5.0 rangé (`bench/releves/v1.5.0.tsv`, 13 films, 5 passes) : médianes de 0,5 s (13 morceaux) à 19,6 s (69 morceaux, pic 2 198 Mio pour un plafond de 3 Gio). D'autres processus tournaient pendant la fenêtre : ordres de grandeur sûrs, valeurs à quelques pour cent près non.

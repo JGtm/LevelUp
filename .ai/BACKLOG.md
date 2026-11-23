@@ -574,6 +574,15 @@ Source : journal du plan `.ai/PLAN_BACKLOG_2026-11-18.md`, section « Découvert
 - **Test qui écrit un nom de fichier avec un octet nul** : les tests unitaires de `sync/replayartifacts` écrivent sous `<racine>/data/cache/replays/halo_5/` un fichier dont le nom porte un octet nul ; le renommage échoue sous Windows. Préexistant.
 - **Sections « rencontres » et « némésis » de l'onglet d'équipe** : leur contenu diffère entre deux exécutions du même code (ordre non déterministe), préexistant.
 - **`ReplayPage.row.test.tsx`** : 508 lignes, au-dessus du plafond de 500.
+- **Rattrapage du coup d'envoi qui boucle sur un rejeu illisible** (P2, à corriger avant le premier démarrage de la version 8.3.0 ; proposé au user avec la montée du décodeur v1.6.0) : un rejeu durablement illisible relance le rattrapage à chaque démarrage, sans issue, la révision de ce rejeu n'étant jamais rangée (`apps/go-api/internal/sync/kickoff/backfill.go`).
+- **Rattrapage du coup d'envoi trop lent** (P2, à corriger avant le premier démarrage de la version 8.3.0 ; proposé au user avec la montée du décodeur v1.6.0) : il décompresse et décode chaque rejeu en entier pour un seul champ, soit 27 s à chaud et 85 s à froid pour 1 455 fichiers, contre 0,25 s par la lecture d'en-tête déjà en place.
+- **`rosterLogic.ts` au-delà du seuil** (P2) : `apps/web/src/lib/replay/rosterLogic.ts` passe de 769 à 781 lignes, au-dessus du plafond de 500.
+- **Fichier de test du rejeu au-dessus du seuil** (P2) : déjà consigné plus haut (`ReplayPage.row.test.tsx`, 508 lignes) ; à traiter avec le point précédent.
+- **Course étroite entre le rattrapage du coup d'envoi et une publication de rejeu** (P3).
+- **Coup d'envoi « film » gardé non contrôlé contre la fenêtre du match** (P3).
+- **Compteur des coups d'envoi écrits incrémenté avant l'insertion** (P3) : le commentaire qui l'accompagne est faux.
+- **Garde-rail des jetons à préfixe de date figé sur l'année 2026** (P3).
+- **Libellé d'un garde-rail qui décrit l'ancien comportement** (P3).
 
 ## 2026-11-22 — Découvertes du décodeur v1.5.0, vague 2 (notées, non traitées)
 
@@ -619,3 +628,12 @@ section : à la reprise, relire les décisions datées du 2026-11-22 de `config/
 - **Parts d'échec en hausse avec les tirs lus à tout rang** : visée absente (0,12 % → 0,23 % des tirs rattachés, un témoin en porte l'essentiel), projectile au tir ambigu (5,1 % → 6,0 %), tirs sans place sur 6 témoins, tirs embarqués sans trajet sur 2 témoins. À instruire avec le chantier « précision ».
 - **Baisse acceptée du BR75** (user, 2026-11-22 : « Oui on accepte, j'ai un autre chantier à prévoir avec des idées pour la précision ») : deux joueurs de moins à 10 % de l'API après la règle du numéro de tir en retard.
 - **Ancienne précision par film retirée de LevelUp** avec la montée du décodeur v1.5.0 : la table `match_weapon_hit_distance` reste au schéma sans écrivain ni lecteur ; la supprimer ou la réemployer se décide avec ce chantier.
+
+## Confidentialité du dépôt public (2026-11-23)
+
+Constat relevé à la relecture du plan du backlog ; non traité, hors de ce plan.
+
+- Les pseudos de joueurs figurent dans 228 fichiers du dépôt (3 182 lignes) : archives de `.ai/`, journaux de décisions, maquettes, 8 décisions d'architecture, 5 fichiers de tests web.
+- Le chemin du poste de travail figure dans 240 fichiers de la branche principale.
+- Ces contenus sont antérieurs au plan et déjà publics ; le plan n'en ajoute pas.
+- **Décision du user attendue** : chantier d'anonymisation de tout le dépôt (documents, puis historique), ou laisser en l'état sans en ajouter.

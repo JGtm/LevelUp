@@ -1,3 +1,12 @@
+## [2026-11-23] Décodeur v1.6.0 : relevé de vitesse, profil, deux optimisations sans changement de sortie — En cours
+
+- **Décision** : mesurer avant d'optimiser. Les quatre axes repris d'un parseur voisin ont été jugés sur le profil : un abandonné (décompression sur plusieurs fils, 0,1 à 0,8 % du total), un déjà en place (la mémoïsation), un reporté (lecture de plusieurs chunks à la fois), un gardé (lecture au choix des canaux). Une optimisation sans gain net est retirée : c'est le cas de la récupération d'équipement (G.7).
+- **Résultats** :
+  - G.2 et G.6 intégrés dans `feat/v1.6.0`, sortie identique : suite complète code 0, 34 paquets, 301 tests sautés, lint 0 issue, équivalence 20 identiques.
+  - G.7 retiré : −4 à −5 % sur le plus gros film seulement, +2 % reproductible sur un film ancien. Relevé apparié des 13 films, G.7 compris : décodage cumulé −17,5 %, total −16,5 %, pic du plus gros film 2 192 → 2 051 Mio.
+  - Relevé fait pendant qu'une autre session tournait sur la machine : à refaire machine au repos.
+- **Suite** : G.1 en cours (agent Sonnet) ; puis la lecture au choix des canaux ; puis les pistes du backlog du décodeur.
+
 ## [2026-11-23] Décodeur v1.5.0 : montée dans LevelUp prête sur sa branche, régénération reportée après la v1.6.0 — Complété (hors régénération)
 
 - **Décision** : la montée reste sur sa branche `chore/830-decodeur-v150` et n'entre pas dans `release/v8.3.0` ; la régénération du parc et le rattrapage du coup d'envoi se feront une fois, après la v1.6.0 (décision du user du 2026-11-22).
