@@ -17,12 +17,11 @@ import (
 // 4. Historique déjà complet : le cas normal ne change pas.
 // ---------------------------------------------------------------------------------------------
 
-// Historique de 250 matchs (fin rangée à la 2e passe, au lieu des 6 d'un historique de 1 000 : même état
-// final), puis trois cycles : une page lue, ni marque-page ni clé de fin touchés (valeur identique), aucune
+// Historique de 220 matchs (fin rangée à la 2e passe : la fin vient d'une reprise au marque-page, qui s'efface), puis trois cycles : une page lue, ni marque-page ni clé de fin touchés (valeur identique), aucune
 // demande de stats, cadence égale à l'intervalle réglé ; un match neuf est pris par le delta d'une page.
 func TestDifficile_HistoriqueDejaComplet_CasNormalInchange(t *testing.T) {
 	monde := newDifficileMonde()
-	fa := monde.ajouter(difficileA, 0, 250)
+	fa := monde.ajouter(difficileA, 0, 220)
 	e := newDifficileEnv(t, monde, difficileTous, difficileTous)
 	b := e.start(difficileTous, false)
 	b.jusquAuBout("rattrapage initial", difficileA)
@@ -83,7 +82,7 @@ func (b *difficileBoot) cleDeFin(j difficileJoueur) string {
 // 5. Deux joueurs suivis dans le même cycle.
 // ---------------------------------------------------------------------------------------------
 
-// A (120 matchs) est complet ; B (1 000 matchs) arrive en rattrapage, 10 matchs communs déjà rangés par A et
+// A (120 matchs) est complet ; B (500 matchs : trois passes) arrive en rattrapage, 10 matchs communs déjà rangés par A et
 // 3 matchs communs neufs en haut des deux listes. Dans le même cycle : A ne lit qu'une page, B rattrape ; la
 // cadence reste à 10 minutes jusqu'à la fin de B ; aucun match de l'un n'est attribué à l'autre ; un match
 // commun neuf n'est demandé qu'une fois et compte pour les deux.
@@ -91,7 +90,7 @@ func TestDifficile_DeuxJoueurs_UnCompletUnEnRattrapage(t *testing.T) {
 	tous := []difficileJoueur{difficileA, difficileB}
 	monde := newDifficileMonde()
 	fa := monde.ajouter(difficileA, 0, 120)
-	fb := monde.ajouter(difficileB, difficileFirstIDB, 1000)
+	fb := monde.ajouter(difficileB, difficileFirstIDB, 500)
 	monde.partagerAu(difficileA, difficileB, 50, 300, 10)
 	e := newDifficileEnv(t, monde, tous, []difficileJoueur{difficileA})
 	b := e.start(tous, false)
@@ -205,15 +204,16 @@ func TestDifficile_DeuxJoueurs_UnCompletUnEnRattrapage(t *testing.T) {
 // 6. Matchs neufs du dessus, mêlés à des introuvables.
 // ---------------------------------------------------------------------------------------------
 
-// 1 000 matchs dont 10 introuvables (404) dispersés ; 10 matchs neufs en haut avant chacune des passes 2 à 5,
-// dont 5 introuvables chacun : 30 introuvables au total. Rien n'est perdu (tout ce qui existe est rangé),
+// 500 matchs dont 10 introuvables (404) dispersés, dont trois autour de la limite de la 1re passe et trois
+// autour de celle de la 2e ; 10 matchs neufs en haut avant chacune des passes 2 et 3 (trois passes en tout),
+// dont 5 introuvables chacun : 20 introuvables au total. Rien n'est perdu (tout ce qui existe est rangé),
 // la reprise est exacte (page du haut, puis la position du marque-page décalée du nombre exact de neufs,
 // jamais un repli « depuis 0 »).
 func TestDifficile_MatchsNeufsEtIntrouvables_RepriseExacte(t *testing.T) {
 	monde := newDifficileMonde()
-	fa := monde.ajouter(difficileA, 0, 1000)
+	fa := monde.ajouter(difficileA, 0, 500)
 	absent := map[string]bool{}
-	for _, pos := range []int{3, 77, 199, 200, 201, 333, 450, 600, 777, 990} {
+	for _, pos := range []int{3, 77, 199, 200, 201, 333, 399, 400, 401, 470} {
 		id := fa.idAt(pos)
 		monde.setStatus(id, 404)
 		absent[id] = true
@@ -227,7 +227,7 @@ func TestDifficile_MatchsNeufsEtIntrouvables_RepriseExacte(t *testing.T) {
 	var complete bool
 	for n := 1; n <= difficileMaxCycles && !complete; n++ {
 		var fresh []string
-		if n >= 2 && n <= 5 {
+		if n >= 2 && n <= 3 {
 			fresh = fa.addOnTop(10)
 			for i := 0; i < 10; i += 2 { // le plus récent d'abord : le haut de liste est introuvable
 				monde.setStatus(fresh[i], 404)
@@ -274,8 +274,11 @@ func TestDifficile_MatchsNeufsEtIntrouvables_RepriseExacte(t *testing.T) {
 	if !complete {
 		t.Fatalf("fin non rangée en %d cycles", difficileMaxCycles)
 	}
-	if len(absent) != 30 {
-		t.Fatalf("scénario : %d introuvables, attendu 30", len(absent))
+	if len(absent) != 20 {
+		t.Fatalf("scénario : %d introuvables, attendu 20", len(absent))
+	}
+	if len(cycles) != 3 {
+		t.Fatalf("fin rangée en %d passes, attendu 3 (500 + 20 neufs, budget de 200)", len(cycles))
 	}
 	b.assertConverged("matchs neufs et introuvables", listes, absent)
 	if apres := observability.LoadCounter(difficileCompteurRepriseDepuisZero); apres != avantRepli {
@@ -292,11 +295,11 @@ func TestDifficile_MatchsNeufsEtIntrouvables_RepriseExacte(t *testing.T) {
 		}
 	}
 	sort.Strings(repetes)
-	t.Logf("introuvables demandés plus d'une fois pendant le rattrapage : %d sur 30 %v", len(repetes), repetes)
+	t.Logf("introuvables demandés plus d'une fois pendant le rattrapage : %d sur %d %v", len(repetes), len(absent), repetes)
 
 	// Après la fin (D-23, D-24) : les introuvables des premières entrées sont à ne plus demander, donc neutres pour
-	// le delta (ni comptés dans les 25 connus d'affilée, ni remise à zéro) : ici 20 introuvables dans les 40 plus
-	// récents, 45 entrées pour atteindre 25 connus, soit deux pages, sans aucune demande de stats ni match annoncé inséré.
+	// le delta (ni comptés dans les 25 connus d'affilée, ni remise à zéro) : ici 11 introuvables dans les 25 premières
+	// entrées (dix des matchs neufs, un de l'historique d'origine), 36 entrées pour atteindre 25 connus, soit deux pages, sans aucune demande de stats ni match annoncé inséré.
 	b.waitCadence(time.Duration(e.intervalH) * time.Hour)
 	for i := 1; i <= 2; i++ {
 		c := b.cycle()

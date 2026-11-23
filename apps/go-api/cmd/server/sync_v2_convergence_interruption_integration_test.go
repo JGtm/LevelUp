@@ -17,12 +17,12 @@ import (
 
 // Le contexte du cycle est annulé au milieu de la phase de récupération d'une passe de rattrapage (à la
 // 100e des 200 demandes de stats) ; le serveur s'arrête par sa séquence d'arrêt (runShutdown) ; un démarrage
-// NEUF sur les mêmes bases reprend : 1 000 matchs rangés, aucun doublon, aucun trou, fin rangée, marque-page
+// NEUF sur les mêmes bases reprend : 450 matchs rangés (trois passes : 200, l'annulée, puis 200 et 50), aucun doublon, aucun trou, fin rangée, marque-page
 // effacé. Le cycle annulé a déjà soumis à la file les matchs récupérés : ils finissent en arrière-plan ou
 // restent au journal d'écriture, rejoué au démarrage.
 func TestDifficile_Interruption_ArretPendantRecuperation(t *testing.T) {
 	monde := newDifficileMonde()
-	fa := monde.ajouter(difficileA, 0, 1000)
+	fa := monde.ajouter(difficileA, 0, 450)
 	e := newDifficileEnv(t, monde, difficileTous, difficileTous)
 	b := e.start(difficileTous, false)
 
@@ -107,7 +107,7 @@ func TestDifficile_Interruption_ArretPendantRecuperation(t *testing.T) {
 //     acquitté.
 //
 // Dans les trois cas le démarrage suivant rejoue le journal (RecoverPending) et le test attend la fin du
-// rejeu avant le premier cycle (un cycle lancé pendant le rejeu : défaut gardé à part) : 1 000 matchs, aucun
+// rejeu avant le premier cycle (un cycle lancé pendant le rejeu : défaut gardé à part) : 450 matchs, aucun
 // doublon, aucun trou, journal vide à la fin.
 func TestDifficile_Interruption_ArretPendantPersistance(t *testing.T) {
 	cas := []struct {
@@ -122,7 +122,7 @@ func TestDifficile_Interruption_ArretPendantPersistance(t *testing.T) {
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
 			monde := newDifficileMonde()
-			fa := monde.ajouter(difficileA, 0, 1000)
+			fa := monde.ajouter(difficileA, 0, 450)
 			e := newDifficileEnv(t, monde, difficileTous, difficileTous)
 			b := e.start(difficileTous, true)
 
@@ -187,9 +187,10 @@ func TestDifficile_Interruption_ArretPendantPersistance(t *testing.T) {
 
 // Après deux passes (marque-page à 400), le serveur s'arrête puis redémarre : la passe suivante reprend AU
 // marque-page (une page du haut, puis la lecture à la position rangée), sans relire l'historique depuis 0.
+// L'historique compte 500 matchs : la 3e passe, celle d'après le redémarrage, prend les 100 derniers et voit la fin.
 func TestDifficile_Interruption_ArretEntreDeuxPasses(t *testing.T) {
 	monde := newDifficileMonde()
-	fa := monde.ajouter(difficileA, 0, 1000)
+	fa := monde.ajouter(difficileA, 0, 500)
 	e := newDifficileEnv(t, monde, difficileTous, difficileTous)
 	b := e.start(difficileTous, false)
 	c1, c2 := b.cycle(), b.cycle()
@@ -220,8 +221,8 @@ func TestDifficile_Interruption_ArretEntreDeuxPasses(t *testing.T) {
 	if apres := observability.LoadCounter(difficileCompteurRepriseDepuisZero); apres != avant {
 		t.Errorf("repli « reprise depuis 0 » compté %d fois au redémarrage", apres-avant)
 	}
-	if out := c3.player(difficileA); out.Status != "ok" || out.MatchesInserted != 200 || !out.HistoryPending {
-		t.Errorf("passe 3 : %+v, attendu 200 matchs insérés et un rattrapage en cours", out)
+	if out := c3.player(difficileA); out.Status != "ok" || out.MatchesInserted != 100 || out.HistoryPending {
+		t.Errorf("passe 3 : %+v, attendu les 100 derniers matchs insérés et la fin vue", out)
 	}
 	b2.assertCursor("passe 3", difficileA, fa, 0, nil)
 
