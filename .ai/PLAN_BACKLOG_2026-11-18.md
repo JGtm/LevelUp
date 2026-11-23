@@ -467,8 +467,7 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
       « conforme à une décision datée », « écart à corriger » (avec la cote ou le dessin attendu) ou « sans
       dessin, au user ». Résultat dans `.ai/annexes_backlog_1118/ecarts_maquettes.md` ; les écarts à corriger
       sont inscrits ici en liste fermée avant tout code, et montrés au user.
-- [ ] Q.2 (porte : liste lue par le user ; LISTE FERMÉE du 2026-11-18, sous réserve de sa lecture : a) boutons de la barre d'une ligne en carrés de 30 px, lecture en rond plein de 36 px ; b) capture et export en boutons ordinaires, sans cartouche ; c) fenêtre de fiche à 8 px sous le haut du plan ; d) la fenêtre de fiche défile en entier ; e) un seul bloc arrondi pour la toile et la colonne du Standard ; f) infobulle de « Plan tourné » avec le gain en pour-cent ; g) « Tirs à la tête | 3 », sans « sur N mesurées » ; h) marges du Plein cadre à 16 px sur les côtés et 6 px en bas. Les points a et b, qui redessinent la barre d'une ligne, se décident avec la planche de la piste M. c et e touchent tous deux `ReplayCanvas.tsx` : l'un après l'autre) Corrections de la liste fermée de Q.1 et des retours de la
-      validation à l'écran du user, un commit par point.
+- [x] Q.2 (fait le 2026-11-22, `9277c6fa73`, un seul commit pour toute la liste ; portes passées : décisions du user du 2026-11-18 sur les écarts, puis sur le prototype des quatre choix) Corrections livrées : a) commandes de la barre d'une ligne en carrés de 30 px au rayon de 8 px, sans bordure ni fond au repos, lecture inchangée (rond plein de 36 px) ; b) capture, export et enregistrement en boutons ordinaires dans la barre d'une ligne, sans cartouche ; c) fenêtre de fiche à 8 px sous le haut du bloc du plan ; e) un seul bloc arrondi pour la toile et la colonne du Standard ; g) « Tirs à la tête » lu sur le compteur du jeu, valeur seule, ligne absente quand le film ne le donne pas ; h) marges du Plein cadre à 16 px sur les côtés et 6 px en bas ; i) lignes du fil qui concernent le joueur suivi sur fond légèrement teinté ; j) barre de lecture sous le bloc arrondi au Cinéma, et au Plein cadre quand la barre fine est éteinte ; k) Suivre / Seul / Masquer en un segment de trois colonnes égales. Écartés par le user : d) défilement entier de la fenêtre de fiche (l'actuel reste) et f) gain en pour-cent dans l'infobulle de « Plan tourné » (la maquette n'est pas suivie).
 - **Gate Q** : gate commun web sur `MR/` ; grille de conformité mise à jour ligne par ligne.
 
 ## Piste T — coup d'envoi du match : un seul système (pilote pour T.0 et T.1 ; Sonnet)
@@ -523,7 +522,7 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
       l'appellent tous deux.
 - [x] T.5 (fait le 2026-11-18 : `levelup backfill-kickoff`, simulation comprise ; rattrapage au démarrage par révision `KickoffRev`, liée aux révisions des notes ; `cmd/backfill_t0`, `backfill_t0_film`, `backfill_time_played` et `analysis/spawn_detection.go` supprimés avec leurs tests et leurs 38 paires de la baseline ; mesure sur copie : 2 045 matchs, 1 447 film, 587 estimation, 11 inconnus, second passage sans écriture, 50 rejeux retirés : 50 coups d'envoi gardés) Une commande `levelup` de rattrapage avec simulation ; les trois `cmd/backfill_*` sont supprimés
       avec leurs tests (aucun code mort).
-- [ ] T.6 (porte : accord du user, serveur arrêté, copie de la base faite) Rattrapage du poste, puis rejeu de
+- [!] T.6 (reporté par décision du user du 2026-11-22 : la régénération du parc se fait une seule fois, après la version suivante du décodeur ; le rattrapage du coup d'envoi et le rejeu des notes partent au premier démarrage de la version ; voir le registre des reports) (porte : accord du user, serveur arrêté, copie de la base faite) Rattrapage du poste, puis rejeu de
       la note LUSR si T.0 l'a jugé nécessaire. La prod reçoit le même geste à la publication.
 - Lien avec le plan du décodeur : si T.0 montre que l'horloge de manche date mieux le coup d'envoi que le
   premier mouvement, le décodeur publie le coup d'envoi lu sur l'horloge et retire le détecteur de mouvement
@@ -554,17 +553,17 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 
 ## Étape I — intégration (pilote)
 
-- [ ] I.1 Recalage sur `origin/release/v8.3.0` ; fusion des sous-branches dans `chore/830-backlog-1118` ;
+- [x] I.1 (fait : trois livraisons fusionnées dans `release/v8.3.0` au lieu d'une seule, amendement écrit au journal du 2026-11-18 ; la troisième le 2026-11-22) Recalage sur `origin/release/v8.3.0` ; fusion des sous-branches dans `chore/830-backlog-1118` ;
       `openapi.yaml` et `make generate-types` une seule fois.
 - [ ] I.2 Témoins APRÈS comparés à 0.2 : écarts listés, chacun rattaché à un item ou déclaré défaut.
-- [ ] I.3 `docs/CHANGELOG.md` et notes de version de la 8.3.0, en français et en anglais (départs, ramassages,
+- [x] I.3 (fait le 2026-11-23 pour le changelog et les notes de version, en français et en anglais ; le dossier `C:/t` des caches dédiés a été vidé le 2026-11-22, voir journal) `docs/CHANGELOG.md` et notes de version de la 8.3.0, en français et en anglais (départs, ramassages,
       « Seul » et « Suivre », Escouade, Échap) ; `.ai/thought_log.md` ; caches dédiés rendus.
 - **Gate I** : `make gate-push` ; `cd apps/go-api && go test -tags=integration -p 1 ./internal/sync/... ./internal/platform/duckdb/...` ;
   `make go-api-lint` ; `cd apps/web && npx vitest run` complet, cache de types purgé avant `make check-types`.
 
 ## Étape R — relecture et clôture
 
-- [ ] R.1 Backlog mis à jour par un agent Haiku : entrées traitées déplacées au tableau des entrées closes ;
+- [x] R.1 (fait le 2026-11-23 : entrées traitées closes ou reformulées, découvertes du plan ajoutées, reports inscrits au registre) Backlog mis à jour par un agent Haiku : entrées traitées déplacées au tableau des entrées closes ;
       une entrée dont la porte du user n'est pas passée garde sa ligne, avec la date de la demande ; entrées
       du décodeur selon D-8 ; registre des reports.
 - [ ] R.2 Une ronde de relecture adversariale du diff complet (skill `adversarial-review`, Fable) et deux
@@ -577,6 +576,11 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
       CI lue après la poussée.
 
 ## Journal d'exécution
+
+- 2026-11-23 — CLÔTURE DES DOCUMENTS. Code livré en trois fois dans `release/v8.3.0` (première : K.2, E, H, C, G, B, A, F ; seconde : D, K, S ; troisième : piste T, M.2, M.3 et Q.2) ; Q.2 statué (`[x]`), I.1 et I.3 faits (changelog et notes de version des deux langues), R.1 fait (backlog et registre).
+  T.6 passe en `[!]` : le user a décidé le 2026-11-22 de ne régénérer le parc qu'une fois, après la version suivante du décodeur ; le rattrapage du coup d'envoi et le rejeu des notes partent au premier démarrage de la version.
+  Restent ouverts : I.2 (témoins après), R.2 (relecture), R.3 (vérifications à l'écran du user), R.4 (clôture, fusion dans `main`, CI).
+  Grille de conformité aux maquettes mise à jour (`.ai/annexes_refonte_ui_rejeu/conformite_maquettes.md`).
 
 - 2026-11-18 — PREMIÈRE LIVRAISON dans `release/v8.3.0` (`f5c0b92cec`, poussée) : K.2, E, H, C, G, B, A, F. AMENDEMENT
   écrit : le plan prévoyait une seule fusion à la fin ; cette livraison partielle sert le plan du fond Relief, qui
