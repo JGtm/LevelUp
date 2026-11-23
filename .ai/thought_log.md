@@ -1,3 +1,10 @@
+## [2026-11-23] Hotfix 8.2.2 : CI verte, tests de rattrapage plus courts et paquet `cmd/server` en quatre lots (822-21) — Complété (branche `fix/822-t`)
+
+- **Statut** : Complété, non poussé.
+- **Décision technique** : le lot `reste` de la CI échouait au délai (`FAIL levelup/go-api/cmd/server 600.307s`, sans test en échec) : les tests d'intégration du rattrapage (`sync_v2_convergence*_integration_test.go`) coûtent ~0,15 s par match persisté. Historiques ramenés à 450-500 matchs (budget de passe inchangé, 200) : trois passes gardées là où le test prouve la reprise au marque-page, assertions et cas limites inchangés, comptes d'appels recalculés (500 + 5 neufs = 200, 200, 105 ; 500 + 20 neufs dont 10 introuvables = 200, 200, 120 ; arrêt entre deux passes : la 3e passe prend les 100 derniers). Le test des 1 000 matchs devient `..._500Matchs`. Puis `cmd/server` coupé en quatre lots (`server-rattrapage-1`, `-2`, `-3` en `run:`, `server` en `skip:` complémentaire), ajoutés à la matrice de `ci.yml`.
+- **Résultats observés** : 11 tests de rattrapage 1 488 s avant, 814 s après (sans couverture) ; lots rejoués avec les options de la CI : 207, 216, 202 et 235 s (couverture comprise), 177 tests de premier niveau exécutés une fois chacun, partition vérifiée par `scripts/ci_go_shard.sh --verifier`.
+- **Conclusion / prochaine étape** : relire le résumé de la CI après la poussée (durée de chaque lot sur le runner) ; rééquilibrer dans `.github/ci/go-shards.txt` si un lot approche 450 s.
+
 ## [2026-11-23] Hotfix 8.2.2 (issue #213) : clôture du pilote, rattrapage de l'historique par la synchronisation automatique — En cours (gate final, PR)
 
 - **Statut** : En cours. Toutes les pistes (D-1 à D-27) fusionnées dans `release/v8.2.2` ; reste la passe de contrôle sur le périmètre modifié, la poussée, la CI et la PR (squash, tag et publication : gestes du user).
