@@ -8,7 +8,7 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
 ## [Unreleased]
 
-## [8.2.2] - Non publié
+## [8.2.2] - 2026-11-23
 
 > Correctif de la synchronisation automatique : l'historique ancien revient, pas seulement les nouveaux matchs.
 

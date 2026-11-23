@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-## [8.2.2] - Unreleased
+## [8.2.2] - 2026-11-23
 
 > Fix to automatic sync: the older history of each player comes back, not only the new matches.
 
