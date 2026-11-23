@@ -65,7 +65,7 @@ func (p *catchUpPass) locateAnchor(ctx context.Context, cur historystate.Cursor,
 	n, found, err := p.searchAnchor(ctx, cur, stats.TopIDs, limit)
 	switch {
 	case err != nil:
-		p.r.logger.WarnContext(ctx, "h5 sync: lecture de la tête de liste impossible — marque-page décalé sans ancre",
+		p.r.logger.WarnContext(ctx, "h5 sync: lecture de la tete de liste impossible, marque-page decale sans ancre",
 			"gamertag", p.r.deps.Viewer.Gamertag, "err", err)
 		return anchorResult{kind: anchorAbsent}
 	case found:

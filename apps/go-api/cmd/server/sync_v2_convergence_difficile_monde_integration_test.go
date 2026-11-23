@@ -6,12 +6,17 @@
 package main
 
 import (
-	"levelup/go-api/internal/observability/logging"
+	"io"
 	"maps"
 	"net/http"
 	"sort"
 	"strings"
 	"sync"
+	"testing/iotest"
+
+	"github.com/JGtm/halo-api/haloapitest"
+
+	"levelup/go-api/internal/observability/logging"
 )
 
 const (
@@ -35,7 +40,8 @@ var (
 
 // difficileMonde est le faux service Halo des cas difficiles : un fakeHalo par joueur sert la liste de
 // l'historique de CE joueur (la requête porte son xuid), les stats d'un match sont servies avec pour
-// participants tous les joueurs suivis dont la liste contient le match. Il implémente http.RoundTripper.
+// participants tous les joueurs suivis dont la liste contient le match. [difficileMonde.transport] en fait
+// le transport HTTP du banc.
 type difficileMonde struct {
 	mu          sync.Mutex
 	listes      map[string]*fakeHalo // xuid -> liste
@@ -142,11 +148,17 @@ func (m *difficileMonde) unexpectedRequests() []string {
 	return append([]string(nil), m.unexpected...)
 }
 
-// RoundTrip répond en mémoire aux requêtes du client Halo de production.
-func (m *difficileMonde) RoundTrip(req *http.Request) (*http.Response, error) {
+// transport rend le http.RoundTripper du faux monde : l'enregistreur partagé des tests de la brique, qui
+// sert [difficileMonde.serve].
+func (m *difficileMonde) transport() http.RoundTripper {
+	return &haloapitest.Enregistreur{Repondre: func(_ int, req *http.Request) *http.Response { return m.serve(req) }}
+}
+
+// serve répond en mémoire aux requêtes du client Halo de production.
+func (m *difficileMonde) serve(req *http.Request) *http.Response {
 	// Comme un vrai transport : une requête au contexte annulé échoue (l'arrêt du cycle coupe la récupération).
 	if err := req.Context().Err(); err != nil {
-		return nil, err
+		return reponseContexteAnnule(req, err)
 	}
 	path := req.URL.Path
 	switch {
@@ -155,20 +167,34 @@ func (m *difficileMonde) RoundTrip(req *http.Request) (*http.Response, error) {
 		f := m.listes[between(path, "xuid(", ")")]
 		m.mu.Unlock()
 		if f == nil {
-			return replyJSON(req, map[string]any{"Results": []any{}}), nil
+			return replyJSON(req, map[string]any{"Results": []any{}})
 		}
-		return f.history(req), nil
+		return f.history(req)
 	case strings.Contains(path, "/matches/") && strings.HasSuffix(path, "/stats"):
-		return m.stats(req, between(path, "/matches/", "/stats")), nil
+		return m.stats(req, between(path, "/matches/", "/stats"))
 	case strings.Contains(path, "/matches/") && strings.HasSuffix(path, "/skill"):
-		return (&fakeHalo{}).skill(req, ""), nil
+		return (&fakeHalo{}).skill(req, "")
 	case strings.Contains(path, "/films/matches/"):
-		return reply(req, http.StatusNotFound, "film absent"), nil
+		return reply(req, http.StatusNotFound, "film absent")
 	}
 	m.mu.Lock()
 	m.unexpected = append(m.unexpected, req.Method+" "+req.URL.Host+req.URL.RequestURI())
 	m.mu.Unlock()
-	return reply(req, http.StatusNotFound, "non simulé"), nil
+	return reply(req, http.StatusNotFound, "non simulé")
+}
+
+// reponseContexteAnnule est l'issue d'une requête dont le contexte est annulé : l'enregistreur partagé
+// ne peut pas rendre d'erreur de transport, la réponse est donc un 200 dont la lecture du corps échoue
+// avec l'erreur du contexte. Le client de la brique classe les deux issues pareil (erreur de transport,
+// retentée dans la limite des essais ; l'attente finit sur le contexte).
+func reponseContexteAnnule(req *http.Request, err error) *http.Response {
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Status:     "200 OK",
+		Header:     http.Header{},
+		Body:       io.NopCloser(iotest.ErrReader(err)),
+		Request:    req,
+	}
 }
 
 func (m *difficileMonde) stats(req *http.Request, id string) *http.Response {

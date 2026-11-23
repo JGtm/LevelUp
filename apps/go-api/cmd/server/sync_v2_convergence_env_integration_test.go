@@ -11,8 +11,9 @@
 //
 // Ce qui est simulé : le réseau. Le client de production fait de vraies requêtes HTTP vers les hôtes
 // Halo ; le test remplace http.DefaultTransport (que le client de la brique utilise, faute de transport
-// propre) par un faux qui répond en mémoire, sans ouvrir une seule connexion. Le faux client Halo EST
-// donc ce transport : historique paginé de N matchs, stats, skill, film absent (404).
+// propre) par un faux qui répond en mémoire, sans ouvrir une seule connexion. Le faux client Halo est
+// servi par cet enregistreur partagé (haloapitest.Enregistreur) : historique paginé de N matchs, stats,
+// skill, film absent (404).
 package main
 
 import (
@@ -29,6 +30,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/JGtm/halo-api/haloapitest"
 	"golang.org/x/time/rate"
 
 	"levelup/go-api/internal/config"
@@ -57,7 +59,7 @@ func convergenceMatchID(n int) string {
 }
 
 // fakeHalo est le faux service Halo : l'historique du joueur (plus récent d'abord), les pannes par match,
-// et les compteurs de requêtes. Il implémente http.RoundTripper.
+// et les compteurs de requêtes. [fakeHalo.transport] en fait le transport HTTP du banc.
 type fakeHalo struct {
 	mu sync.Mutex
 
@@ -135,23 +137,29 @@ func (f *fakeHalo) unexpectedRequests() []string {
 	return append([]string(nil), f.unexpected...)
 }
 
-// RoundTrip répond en mémoire aux requêtes du client Halo de production.
-func (f *fakeHalo) RoundTrip(req *http.Request) (*http.Response, error) {
+// transport rend le http.RoundTripper du faux service : l'enregistreur partagé des tests de la brique,
+// qui sert [fakeHalo.serve].
+func (f *fakeHalo) transport() http.RoundTripper {
+	return &haloapitest.Enregistreur{Repondre: func(_ int, req *http.Request) *http.Response { return f.serve(req) }}
+}
+
+// serve répond en mémoire aux requêtes du client Halo de production.
+func (f *fakeHalo) serve(req *http.Request) *http.Response {
 	path := req.URL.Path
 	switch {
 	case strings.Contains(path, "/players/") && strings.HasSuffix(path, "/matches"):
-		return f.history(req), nil
+		return f.history(req)
 	case strings.Contains(path, "/matches/") && strings.HasSuffix(path, "/stats"):
-		return f.stats(req, between(path, "/matches/", "/stats")), nil
+		return f.stats(req, between(path, "/matches/", "/stats"))
 	case strings.Contains(path, "/matches/") && strings.HasSuffix(path, "/skill"):
-		return f.skill(req, between(path, "/matches/", "/skill")), nil
+		return f.skill(req, between(path, "/matches/", "/skill"))
 	case strings.Contains(path, "/films/matches/"):
-		return reply(req, http.StatusNotFound, "film absent"), nil // « film absent » : cas normal d'un vieux match
+		return reply(req, http.StatusNotFound, "film absent") // « film absent » : cas normal d'un vieux match
 	}
 	f.mu.Lock()
 	f.unexpected = append(f.unexpected, req.Method+" "+req.URL.Host+req.URL.RequestURI())
 	f.mu.Unlock()
-	return reply(req, http.StatusNotFound, "non simulé"), nil
+	return reply(req, http.StatusNotFound, "non simulé")
 }
 
 func between(s, a, b string) string {
@@ -407,7 +415,7 @@ func newConvergenceEnv(t *testing.T, total int) *convergenceEnv {
 	// Faux réseau : toutes les requêtes HTTP du client de production passent par fakeHalo.
 	fake := newFakeHalo(total)
 	previous := http.DefaultTransport
-	http.DefaultTransport = fake
+	http.DefaultTransport = fake.transport()
 	t.Cleanup(func() { http.DefaultTransport = previous })
 
 	ctx, cancel := context.WithCancel(context.Background())
