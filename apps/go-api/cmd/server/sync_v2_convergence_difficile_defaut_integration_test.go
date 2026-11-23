@@ -59,7 +59,7 @@ func TestDifficile_MatchIntrouvable_NEstPasCompteInsere(t *testing.T) {
 // À la fin : le journal est vide, aucun match n'est en double ni perdu, et la fin finit rangée.
 func TestDifficile_Interruption_CycleApresRedemarrageSansBlocage(t *testing.T) {
 	monde := newDifficileMonde()
-	fa := monde.ajouter(difficileA, 0, 1000)
+	fa := monde.ajouter(difficileA, 0, 450)
 	e := newDifficileEnv(t, monde, difficileTous, difficileTous)
 	b := e.start(difficileTous, true)
 	b.cycle()

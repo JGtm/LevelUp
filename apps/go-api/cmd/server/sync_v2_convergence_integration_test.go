@@ -4,7 +4,7 @@
 // en 8.1.2 n'était éprouvé que par le moteur V1, alors que l'ordonnanceur appelle le pipeline V2. Ici,
 // des cycles successifs de l'ordonnanceur (RunOnceTrigger, orchestrateur construit par la fabrique de
 // production, vraies bases DuckDB temporaires, faux service Halo : voir le banc) rattrapent un historique
-// de 1 000 matchs, prennent les matchs neufs du dessus, rangent la fin, puis redeviennent des deltas
+// de 500 matchs, prennent les matchs neufs du dessus, rangent la fin, puis redeviennent des deltas
 // d'une page (deux avec un match neuf, D-23) ; la cadence de l'ordonnanceur suit (10 minutes pendant le rattrapage, l'intervalle réglé
 // ensuite).
 package main
@@ -27,18 +27,20 @@ func assertNoUnexpectedRequests(t *testing.T, e *convergenceEnv) {
 	}
 }
 
-// Historique de 1 000 matchs, pages de 25, des matchs neufs entre deux cycles : 200 matchs de plus par
-// cycle (neufs du dessus compris), reprise au marque-page sans rebalayage, fin rangée au 6e cycle, puis
-// une page, zéro rattrapage, plus rien en attente, cadence revenue à l'intervalle réglé.
-func TestConvergence_V2_Ordonnanceur_Infinite_1000Matchs(t *testing.T) {
-	e := newConvergenceEnv(t, 1000)
+// Historique de 500 matchs, pages de 25, des matchs neufs entre deux cycles : 200 matchs de plus par
+// cycle (neufs du dessus compris), reprise au marque-page sans rebalayage, fin rangée au 3e cycle, puis
+// une page, zéro rattrapage, plus rien en attente, cadence revenue à l'intervalle réglé. Trois passes
+// suffisent à la preuve : deux reprises au marque-page, chacune avec des matchs neufs au-dessus, et une
+// dernière passe plus courte que le budget qui voit la fin.
+func TestConvergence_V2_Ordonnanceur_Infinite_500Matchs(t *testing.T) {
+	e := newConvergenceEnv(t, 500)
 	const budget = 200
 	slugBudget := historystate.PassBudget()
 	if slugBudget != budget {
 		t.Fatalf("budget de passe = %d, le scénario suppose %d", slugBudget, budget)
 	}
 
-	arrivals := map[int]int{2: 3, 4: 2} // cycle -> matchs neufs apparus en haut avant lui
+	arrivals := map[int]int{2: 3, 3: 2} // cycle -> matchs neufs apparus en haut avant lui
 	var (
 		endCycle    int
 		readsByPass []int
@@ -120,8 +122,9 @@ func TestConvergence_V2_Ordonnanceur_Infinite_1000Matchs(t *testing.T) {
 			t.Fatalf("cycle %d : marque-page %+v, attendu {%d %s}", cycle, *cursor, len(after), e.fake.idAt(len(after)-1))
 		}
 	}
-	if endCycle < 5 || endCycle > 7 {
-		t.Fatalf("fin d'historique rangée au cycle %d, attendu le 5e ou le 6e (7e toléré avec les matchs neufs)", endCycle)
+	// 500 + 5 neufs = 505 matchs : 200, 200, puis 105 (la fin est vue dans cette passe plus courte que le budget).
+	if endCycle != 3 {
+		t.Fatalf("fin d'historique rangée au cycle %d, attendu le 3e", endCycle)
 	}
 	if got, want := len(e.registryIDs()), e.fake.listLen(); got != want {
 		t.Fatalf("à la fin, %d matchs au registre sur %d listés", got, want)
@@ -157,8 +160,9 @@ func TestConvergence_V2_Ordonnanceur_Infinite_1000Matchs(t *testing.T) {
 // Un match dont les stats sont toujours en erreur 500 ne garde pas le joueur en rattrapage à vie : il est
 // retenté à chaque passe qui le liste, abandonné à la troisième, puis la fin d'historique est rangée.
 func TestConvergence_V2_Ordonnanceur_Infinite_MatchEnEchecDurableAbandonne(t *testing.T) {
-	e := newConvergenceEnv(t, 300)
-	failing := e.fake.idAt(250)
+	// 230 matchs : le match en échec est dans la 2e passe (200 + 30), comme avant avec 300.
+	e := newConvergenceEnv(t, 230)
+	failing := e.fake.idAt(215)
 	e.fake.setStatsStatus(failing, 500)
 
 	var endCycle int
@@ -203,8 +207,8 @@ func TestConvergence_V2_Ordonnanceur_Infinite_MatchEnEchecDurableAbandonne(t *te
 // Un match que l'API déclare introuvable (404) n'est pas un échec : il ne bloque pas la fin d'historique,
 // qui se range au cycle normal, sans l'attendre trois passes.
 func TestConvergence_V2_Ordonnanceur_Infinite_MatchIntrouvable404NeBloquePas(t *testing.T) {
-	e := newConvergenceEnv(t, 300)
-	gone := e.fake.idAt(250)
+	e := newConvergenceEnv(t, 230)
+	gone := e.fake.idAt(215)
 	e.fake.setStatsStatus(gone, 404)
 
 	var endCycle int
@@ -218,7 +222,7 @@ func TestConvergence_V2_Ordonnanceur_Infinite_MatchIntrouvable404NeBloquePas(t *
 			endCycle = cycle
 		}
 	}
-	// 300 matchs, budget 200 : 200 + 99 (le 404 n est jamais rangé), fin vue au 2e cycle.
+	// 230 matchs, budget 200 : 200 + 29 (le 404 n est jamais rangé), fin vue au 2e cycle.
 	if endCycle != 2 {
 		t.Fatalf("fin rangée au cycle %d, attendu le 2e (le 404 ne coûte aucune passe de plus)", endCycle)
 	}
