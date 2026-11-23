@@ -206,7 +206,7 @@ les goldens. C'est la liste des collisions de la piste P.
 | Idem : « 1 écart à classer : kill » en double passe | bruit de base à lever AVANT la phase vitesse | 0.4 |
 | Idem : 5 rejeux sans build sans compteur nommé | non instruit | F.7 |
 | Idem : équipe du porteur inconnue sur une carte à 6 socles | 25 portages sur 25 d'un film | B.3 |
-| Idem : huit décisions devenues sans effet du manifeste du gate | avertissements du gate depuis le 2026-11-18 | F.2 (DD-8 : retirées) |
+| Idem : sept décisions devenues sans effet du manifeste du gate | avertissements du gate depuis le 2026-11-18 | F.2 (DD-8 : retirées) |
 | Registre des reports : images-clés, trois lecteurs ; sonde de calibration | mesurés le 2026-11-13 | V3.2, V3.3 |
 | Registre des reports : une seule marche pour la source de dégât et la cuisson | déjà en production (section 1.1) | `[~]`, registre à mettre à jour à la clôture |
 
@@ -252,8 +252,10 @@ tout faire pour la 1.6 je veux dire. » ([le contributeur] = le contributeur du 
   sert à lire les trames : il ne peut pas attendre. L'axe est réduit à ce qui peut réellement attendre ou ne
   pas être refait (piste V3) ; la forme littérale du parseur voisin est abandonnée, motif écrit ; un
   candidat que la mesure ne montre pas en gain est abandonné par écrit.
-- **DD-8 — huit décisions devenues sans effet dans le manifeste du gate du corpus.** Tranchée le 2026-11-23
-  (même phrase) : retirées (F.2) ; leur liste est montrée dans le rapport d'exécution.
+- **DD-8 — sept décisions devenues sans effet dans le manifeste du gate du corpus.** Tranchée le 2026-11-23
+  (même phrase) : retirées (F.2) ; leur liste est montrée dans le rapport d'exécution. Précision du
+  2026-11-23 : le retrait ne porte que sur les 7 décisions du 2026-11-16 listées à F.2 ; les 21 décisions du
+  2026-11-22 restent nécessaires jusqu'à la fusion de la montée du décodeur dans la branche de version.
 - **Nom des options de variante.** Tranchée le 2026-11-23 (même phrase) : les noms viennent du jeu ; crédit
   à nuzzles pour la méthode seulement.
 - **Régénération du parc.** Go donné d'avance par le user le 2026-11-18 (« Pour les trucs plus tard je te
@@ -406,6 +408,11 @@ Les règles R-1 à R-10 du plan v1.5.0 s'appliquent, avec ces précisions.
   faits).
 - **G-corpus** : marche de publication, geste 9, avec `--fils <N>` : 19 témoins, ni gain, ni perte, aucune
   décision ajoutée au manifeste. La base se cuit comme elle se cuisait ; la tête au niveau `N`.
+  Commande de référence (passée à blanc le 2026-11-23, comme test d'infrastructure) : depuis
+  `Scripts/LevelUp-wt-dec160/apps/go-api`, `GOWORK=off`, compiler `./cmd/replay-corpus-gate` (`CGO_ENABLED=0`),
+  puis `replay-corpus-gate.exe --reference=base --base <sha> --strict --source-root <LevelUp-wt-dec160>
+  --parc-root <gate>/parc --lock-root <gate>/lock --work-root <gate>/workN --json <gate>/<nom>.json`,
+  montage sous `Scripts/dec-v160-recup/gate/`.
 
 Le drapeau `-fils` de `replay-equiv` et de `replay-build`, et `--fils` du gate, n'existent pas aujourd'hui :
 ils sont posés par V0.7, AVANT la première piste de vitesse.
@@ -651,11 +658,11 @@ Aucun agent ne monte le schéma ni ne régénère un golden : il rend la liste e
       branche `feat/v1.6.0`, poussée. Worktree `Scripts/LevelUp-wt-dec160` sur `chore/830-decodeur-v160`,
       créée de la tête de la montée v1.5.0 (DD-5), sans jonction ; `npm ci` et espace de travail engendré
       (R-11) ; racines de données par piste préparées à la demande (R-13).
-- [~] 0.2 (2026-11-23 : suite complète, tests de révision et équivalence à 20 identiques faits et verts ; reste le gate du corpus lancé comme test d'infrastructure) Marche de publication rejouée à blanc sur le clone SANS changement : G-clone sur `./...` (33
+- [x] 0.2 (2026-11-23 : suite complète, tests de révision et équivalence à 20 identiques faits et verts ; gate du corpus lancé comme test d'infrastructure : code 0, 19 témoins ok, zéro gain, zéro perte, 464 s ; schéma 126 des deux côtés ; registre des replis lu, 127 entrées ; montage sous `Scripts/dec-v160-recup/gate/`) Marche de publication rejouée à blanc sur le clone SANS changement : G-clone sur `./...` (33
       paquets), G-rev, G-equiv-ref à 20 identiques. Le gate du corpus est lancé une fois, comme TEST
       D'INFRASTRUCTURE seulement (parc de travail, verrou, manifeste lus) : sans changement de `go.mod` il
       compare la v1.5.0 à elle-même et ne prouve rien sur les sorties.
-- [ ] 0.3 Jeu de films fixe du relevé arrêté (V0.1) : présence de chaque film dans `HOTE` vérifiée ; le film
+- [x] 0.3 (fait le 2026-11-23 : le jeu se compose de films présents, 11 du corpus d'équivalence et les 2 témoins restants ; il couvre 7 familles de modes, 7 versions du film, de 13 à 69 morceaux, 5 films à plus de 24 joueurs ; aucun film à 33 joueurs ; table dans `.ai/annexes_decodeur_v160/films_du_releve.tsv`, note voisine `films_du_releve_note.md` ; le film de plus fort pic de mémoire reste à désigner par mesure, à la première fenêtre de mesure (candidat : le plus lourd, 69 morceaux)) Jeu de films fixe du relevé arrêté (V0.1) : présence de chaque film dans `HOTE` vérifiée ; le film
       de plus fort pic de mémoire du parc désigné par mesure ; correspondance écrite dans
       `.ai/annexes_decodeur_v160/films_du_releve.tsv`.
 - [x] 0.4 (fait le 2026-11-23 :
@@ -670,7 +677,7 @@ Aucun agent ne monte le schéma ni ne régénère un golden : il rend la liste e
       qui ordonne une sortie sont relevés, fichier et ligne. Sortie : zéro écart à classer en double passe
       sur la v1.5.0, ou un item de correction écrit ici (il changerait la sortie : il rejoint alors la
       vague 6, celle des intégrations du backlog, et la phase vitesse se prouve avec ce bruit nommé et borné à son étape).
-- [~] 0.5 (2026-11-23 : références de la section 1.1 contrôlées et corrigées ; le compteur des émissions jetées au tag reste à contrôler par décodage, avec 0.2) Contrôles sur pièces : le compteur des émissions jetées est juste hors Drapeau au tag
+- [x] 0.5 (2026-11-23 : références de la section 1.1 contrôlées et corrigées ; le compteur des émissions jetées au tag est contrôlé par le gate du corpus de la v1.5.0 (quatrième passage, 19 témoins ok) et par le passage à blanc du même jour) Contrôles sur pièces : le compteur des émissions jetées est juste hors Drapeau au tag
       (`e703301`) ; chaque référence `fichier:ligne` de la section 1.1 rouverte sur la tête du clone.
 - [~] 0.6 (2026-11-23 : table des fichiers confirmée et corrigée ; étapes observées des tirs `fire`, `continuousFire`, des dégâts `damages`, `damages.stats`, des touches `gameEvents`, `gameEvents.stats` (lien des touches à confirmer) ; `gorelease` et `apidiff` absents du poste, `benchstat` présent ; essais faits : D, `replay-equiv -repo-root` sur une racine distincte ne marche que si elle porte aussi les trois dossiers de LevelUp (voir R-13) ; E, `gorelease` épinglé à `v0.0.0-20261121134650-e1094eeca1b5`, sortie à blanc « Suggested version: v1.5.1 », aucune incompatibilité ; reste à vérifier qu'il couvre les 19 paquets publics) Table des fichiers par piste confirmée sur la tête du clone, conflits écrits au journal ; noms des
       étapes de tirs, de touches et de dégâts de `replay-equiv` relevés (R-14) ; outil de G-compat essayé et
@@ -679,17 +686,20 @@ Aucun agent ne monte le schéma ni ne régénère un golden : il rend la liste e
 - [x] 0.7 (fait le 2026-11-23 : 21 sites de production, 5 lisent tout, 16 une partie ; table dans `.ai/annexes_decodeur_v160/appelants_partiels_0_7.md` ; à tracer par V4.1 avant la conception : que la génération complète consomme bien tous les canaux) Liste fermée des appelants de LevelUp qui ne lisent qu'une partie du film (candidats : rattrapage
       de la source de dégât, coup d'envoi du film, rasters tactiques), avec fichier et ligne : elle fixe ce
       que V4 doit servir et ce que L.4 branche. Écrite ici avant la vague 1.
-- [ ] 0.8 Vérité de l'API et faits des matchs : export unique en lecture sur une COPIE de la base partagée,
+- [x] 0.8 (fait le 2026-11-23 : copie de la base du 2026-11-22 (2 045 matchs), faits des 13 films exportés hors dépôt, mesures avant par piste dans `.ai/annexes_decodeur_v160/avant.md` ; les valeurs « parc » y décrivent le décodeur v1.4.1, le parc n'étant pas régénéré, l'état v1.5.0 par joueur est à reprendre en début de piste ; aucune vérité d'apparence des Spartans dans la copie, pour E.4) Vérité de l'API et faits des matchs : export unique en lecture sur une COPIE de la base partagée,
       hors dépôt, pour les pistes A, B, E et pour le relevé B (`levelup replay-facts-export` sur les 13
       films). Mesures AVANT par piste dans `.ai/annexes_decodeur_v160/avant.md`.
 - **Gate 0** : 0.2 vert (G-clone, G-rev, 20 identiques) ; 0.4 statué ; 0.6 et 0.7 écrits ; `avant.md`
   complet. Aucun relevé de vitesse n'est exigé ici.
 
+Gate 0 PASSÉ le 2026-11-23, avec une réserve : la couverture de tous les paquets publics par l'outil de compatibilité (0.6) reste à vérifier, au premier gate de piste.
+
 ## Piste V0 — relevé de vitesse par version, socle des options (Sonnet)
 
 Deux relevés, parce que la génération d'un rejeu dépend de la base de LevelUp, absente du dépôt public.
 
-- [ ] V0.1 Jeu de films fixe, 13 films, critères écrits dans `bench/README.md` : les dix témoins de durée du
+- [ ] V0.1 Décision du 2026-11-23 : le jeu ne reprend que 2 des 10 témoins de durée, les autres étant absents de l'archive ; pas de film à 33 joueurs.
+      Jeu de films fixe, 13 films, critères écrits dans `bench/README.md` : les dix témoins de durée du
       2026-11-10 (builds `HI_1_12_0` et `HI_1_13_0` ; Slayer, Drapeau, Bases, Roi de la colline, Balle,
       Grande bataille à 33 joueurs ; 25 à 67 chunks) ; un film `HI_1_11_0` de Grande bataille et un film de
       version 39 ou 40, pris dans les 20 de l'équivalence ; le film de plus fort pic de mémoire du parc
@@ -950,8 +960,13 @@ Deux relevés, parce que la génération d'un rejeu dépend de la base de LevelU
 
 - [ ] F.1 `scripts/briques-workspace.sh` (LevelUp) : sous Windows, l'entrée `use` du clone s'écrit avec des
       barres inverses ; témoin : `go test` d'un sous-paquet du clone passe avec le `GOWORK` engendré.
-- [ ] F.2 Les huit décisions devenues sans effet de `config/replay_corpus.toml` (2026-11-16) retirées
-      (DD-8) ; leur liste est écrite au journal et montrée dans le rapport d'exécution.
+- [ ] F.2 Les sept décisions devenues sans effet de `config/replay_corpus.toml` (2026-11-16) retirées
+      (DD-8) ; leur liste est écrite au journal et montrée dans le rapport d'exécution. Précision du
+      2026-11-23 : le retrait ne porte que sur les 7 décisions du 2026-11-16 : `coverage.hits.{noShooter,
+      stoppedFrames, vitalsUnread}`, `coverage.flagCarries.{seatsBeyondBand, gaugePoints}`,
+      `flagCarries.spans.returnProgress/{n, total}`. Les 21 décisions du 2026-11-22 restent nécessaires tant
+      que la montée du décodeur n'est pas fusionnée dans la branche de version (la base du gate final sera
+      alors le décodeur v1.4.1).
 - [ ] F.3 Repli du voisinage des pièces montées : compté sur les films à véhicules par le harnais ; à zéro
       partout, l'entrée du registre est retirée et sa constante gardée, marquée dépréciée.
 - [ ] F.4 Temps forts « mode » sans action de score (3 410 en Drapeau, 691 en Total Control, 303 en
@@ -1110,6 +1125,13 @@ Ordre imposé : R.1, R.2, puis L.1, L.2, L.3. Toute correction après L.1 fait r
   LevelUp verte sur `release/v8.3.0`.
 
 ## Journal d'exécution
+
+- 2026-11-23 — GATE 0 PASSÉ, vague 1 lancée (aucun commit).
+  Gate du corpus lancé à blanc comme test d'infrastructure (base `93a4744e7b`) : code 0, 19 témoins ok, zéro gain, zéro perte, 464 s ; registre des replis lu (127 entrées).
+  Jeu fixe du relevé : 13 films (11 de l'équivalence, 2 témoins), pas de film à 33 joueurs ; table dans `films_du_releve.tsv`.
+  Export de vérité fait (copie de la base du 2026-11-22, 2 045 matchs) ; mesures avant dans `avant.md`. Compteur des émissions jetées contrôlé (gate v1.5.0 et passage à blanc).
+  Passage à blanc : 28 décisions « sans effet » signalées, attendu (il compare la v1.5.0 à elle-même) ; 7 retirées (F.2), 21 nécessaires jusqu'à la fusion de la montée.
+  Vague 1 lancée (coût moyen annoncé) : relevé de vitesse V0.1 à V0.3 (Sonnet, `dec-v160-v0`, branche `piste/v0`) ; socle des options V0.6 (Sonnet, effort bas, `dec-v160-opt`, branche `piste/v0-options`).
 
 - 2026-11-23 — Résumé du jour (aucun commit) :
   A et B : suite complète du clone à blanc (code 0, 33 paquets, 3 187 PASS, 299 SKIP, 0 échec ; 299 = référence) et tests de révision (13 tests, 18 avec sous-tests, verts, aucun sauté).
