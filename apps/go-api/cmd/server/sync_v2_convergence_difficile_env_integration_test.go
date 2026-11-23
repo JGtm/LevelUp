@@ -93,7 +93,7 @@ func newDifficileEnv(t *testing.T, monde *difficileMonde, all, active []difficil
 
 	// Faux réseau : toutes les requêtes HTTP du client de production passent par le faux monde.
 	previous := http.DefaultTransport
-	http.DefaultTransport = monde
+	http.DefaultTransport = monde.transport()
 	t.Cleanup(func() { http.DefaultTransport = previous })
 	return e
 }
