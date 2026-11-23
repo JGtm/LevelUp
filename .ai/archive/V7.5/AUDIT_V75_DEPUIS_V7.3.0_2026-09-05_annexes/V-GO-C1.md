@@ -1,6 +1,6 @@
 # Vérification adverse V-GO-C1
 
-Dépôt `C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration`, branche `feat/v75`.
+Dépôt `<poste>/Downloads/Scripts/LevelUp-go-migration`, branche `feat/v75`.
 HEAD au moment de la vérification : `081871f09` (le code des constats, `736ccf3c3`, y est intact —
 aucun des fichiers cités n'a bougé depuis). Lecture seule, aucun `go test` / `go build` / lint exécuté.
 
@@ -181,7 +181,7 @@ aucun des fichiers cités n'a bougé depuis). Lecture seule, aucun `go test` / `
 
 - **Ce que j'ai vérifié**
   - Le fait de départ est exact : `registry_test.go:38` porte
-    `const chunk00Dir = "c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks/000d5950"`
+    `const chunk00Dir = "<poste>/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks/000d5950"`
     et `:43` `t.Skipf("chunk_00 absent (%v)", err)`. `TestParseRegistrySynthetic` fabrique bien ses
     blocs avec `archetypeBlockSize` / `registrySlotSize`, donc il est auto-validant sur ces
     constantes. Tout cela tient.

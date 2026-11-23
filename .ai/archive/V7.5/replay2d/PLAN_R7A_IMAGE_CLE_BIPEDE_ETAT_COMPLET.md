@@ -5,7 +5,7 @@
 > (« l'image-cle porterait un etat complet »). R5 a probe cette lecture sur `ti=37` et
 > `ti=38` ; R7-a la probe sur le SEUL archetype dont le portage est quasi complet : le
 > BIPEDE, `ti=35`.
-> Worktree `C:/Users/Guillaume/Projects/LevelUp-wt-kfbiped`, branche
+> Worktree `<poste>/Projects/LevelUp-wt-kfbiped`, branche
 > `wt/kf-biped-etat-complet`, base `wt/kf-file-entite` = `7faeb25e1` (= R3 + R5 + R6).
 > Execution sous le contrat du skill `plan-execution`.
 
@@ -74,7 +74,7 @@ L'archetype `ti=35` (`bipedDefaultStateTypeIndex`, `traverse.go:958`) porte **64
 
 ## 3. Corpus — FERME
 
-Racine LECTURE SEULE : `C:/Users/Guillaume/Projects/LevelUp/data/cache/film_chunks/`.
+Racine LECTURE SEULE : `<poste>/Projects/LevelUp/data/cache/film_chunks/`.
 Films : `000d5950`, `00502e52`, `07aa428d` (les 3 oracles de R3/R5/R6), **toutes** leurs
 tables d'image-cle (80 au total : 26 / 28 / 26 — une par chunk, cf. decouverte R6).
 
@@ -195,7 +195,7 @@ CGO_ENABLED=0 go test  ./internal/analysis/filmdec/ ./internal/analysis/replay/
    aucune string UI, aucune re-cuisson d'artefact, aucun run de masse.
 3. Lecture seule stricte hors du worktree ; `LevelUp` et les autres `LevelUp-wt-*` ne sont
    pas touches.
-4. `GOCACHE=C:/Users/Guillaume/Projects/LevelUp-wt-kfbiped/.gocache`, **une seule commande
+4. `GOCACHE=<poste>/Projects/LevelUp-wt-kfbiped/.gocache`, **une seule commande
    `go` a la fois**, `CGO_ENABLED=0`.
 5. Bascules globales restaurees en `defer` ; `LockProcessDecode` tenu pour tout le test.
 6. Pas de Python, pas d'emoji, seuils 500 L / 80 L / 5 parametres respectes.

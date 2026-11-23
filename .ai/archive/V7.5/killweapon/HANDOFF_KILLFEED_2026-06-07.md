@@ -17,7 +17,7 @@
 - Re-dire « slot→joueur non résolu » : RÉSOLU (chunk_27 `b36` duo + `b37` team = 8 combos bijection/match).
 
 ## Environnement
-- **Worktree** : `c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/.claude/worktrees/weapon-attribution-v3`
+- **Worktree** : `<poste>/Downloads/Scripts/LevelUp-go-migration/.claude/worktrees/weapon-attribution-v3`
   (branche `feat/weapon-attribution-v3`). Le code filmdec + cmd y vit.
 - **Build/run Go (CGO requis pour duckdb)** :
   ```
@@ -26,7 +26,7 @@
   go run ./cmd/<outil> [args]
   ```
 - **Données film 000d5950 (Fiesta, match RE de référence)** : cache RACINE
-  `c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks/000d5950/`
+  `<poste>/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks/000d5950/`
   = `chunk_00.bin` (registre) … `chunk_27.bin` (events) + **`world_dump.txt`** (250 entités, debugger — CRUTCH DEV
   uniquement, PAS prod). NB : le cache du worktree n'a que `chunk_header.bin` ; les outils pointent le cache RACINE en absolu.
 - **Fixture match complet jgtm** (pour tests film-seul, sans world_dump) : `apps/go-api/internal/sync/testdata/jgtm_full_match/`
@@ -73,11 +73,11 @@ croiser chunk_27 (slot tueur via b36/b37 + temps) → famille par kill ; étape 
 
 ## Vérité-terrain (validation)
 - CE-validé 12 kills (KILLFEED_RE_FINDINGS §4) : BR75/sniper/marteau/plasma.
-- Narration user 000d5950 (film time ≈ +1.5s) : IKE→JGtm marteau @292.5s ; whiteknight→IKE épée @296.3s ;
-  Akatsuki→JGtm sniper @308.2s ; JGtm→Akatsuki BR75 @329.8s ; aldus→JGtm marteau @337.7s ; LORD PEINX→aldus @343.2s ;
-  aldus→LORD PEINX plasma @344.6s ; IKE→JGtm marteau @355.7s. (Kill feed killer→victime déjà confirmé matcher cette séquence.)
+- Narration user 000d5950 (film time ≈ +1.5s) : JOUEUR_502→JGtm marteau @292.5s ; joueur_026→JOUEUR_502 épée @296.3s ;
+  joueur_700→JGtm sniper @308.2s ; JGtm→joueur_700 BR75 @329.8s ; joueur_193→JGtm marteau @337.7s ; JOUEUR_779→joueur_193 @343.2s ;
+  joueur_193→JOUEUR_779 plasma @344.6s ; JOUEUR_502→JGtm marteau @355.7s. (Kill feed killer→victime déjà confirmé matcher cette séquence.)
 - `shared.medals_earned` (000d5950) = médailles arme par joueur (proxy partiel).
-- pi→gamertag : pi0 whiteknight2519 · pi1 JAVIERLOLITO540 · pi2 JGtm · pi3 LORD PEINX13 · pi4 IKE ILYA · pi5 Akatsuki fire17 · pi6 aldusbroncus · pi7 VitaminA1688.
+- pi→gamertag : pi0 joueur_283 · pi1 JOUEUR_156 · pi2 JGtm · pi3 JOUEUR_731 · pi4 JOUEUR_417 · pi5 joueur_700 fire17 · pi6 joueur_389 · pi7 joueur_362.
 
 ## Productionisation (cap)
 `internal/analysis` (pur) → `internal/service` → `internal/api/handlers` ; table append-only ART-safe (cf. ADR 0019) ;

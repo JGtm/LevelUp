@@ -42,7 +42,7 @@ capture, qui tient le crâne.
 4. **Vérifier le contrôle imprimé** : l'archétype 35 doit rendre **64 composants**. Si ce
    compte ne tombe pas, la structure a bougé et toute la table est suspecte — dites-le-moi
    plutôt que de la garder.
-5. Copier la sortie `C:\Users\Guillaume\Downloads\deser_table.tsv` sur la clé, dans
+5. Copier la sortie `<poste>\Downloads\deser_table.tsv` sur la clé, dans
    `E:/LevelUp_rejeu2D/`.
 
 Le script ne fait que **lire de la mémoire** : aucun hook, aucune cave, aucune interception de

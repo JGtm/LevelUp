@@ -1,19 +1,31 @@
 ---
 name: levelup-livraison
-description: Complément LevelUp du skill delivery-checklist (commandes exactes de gate Go et web, tag integration, pièges -p 1 et tsbuildinfo, gate-push, CI, multi-titre, révision des notes, thought_log). À lire avec delivery-checklist avant tout commit de clôture, PR ou fusion dans LevelUp.
+description: Complément LevelUp du skill delivery-checklist (quel gate à quel moment : gate-push avant main seulement ; commandes exactes de gate Go et web, tag integration, pièges -p 1 et tsbuildinfo, gate-push, CI, multi-titre, révision des notes, thought_log). À lire avec delivery-checklist avant tout commit de clôture, PR ou fusion dans LevelUp.
 ---
 
 # LevelUp : gates de livraison
 
 Ce skill ne remplace pas `delivery-checklist`. Il donne les commandes exactes de LevelUp et ses pièges propres.
 
+## 0. Quel gate à quel moment (règle de l'utilisateur, 2026-11-22)
+
+Les contrôles ne doivent pas coûter autant que le développement. Trois niveaux, jamais plus :
+
+| Moment | Ce qui tourne | Ce qui NE tourne PAS |
+|---|---|---|
+| Fin d'un lot d'agent | tests des paquets et dossiers touchés (`go test ./internal/<touchés>/...`, `npx vitest run <dossiers> --maxWorkers=2`), typecheck, lint | aucune suite complète |
+| Fusion d'un chantier dans `release/vX.Y.Z` | `go test ./...` ; `-tags=integration -p 1` sur les paquets TOUCHÉS seulement, et seulement si le diff touche `persist/`, `sync/`, `migration/` ou `platform/duckdb/` ; `npx vitest run` complet UNE fois ; typecheck purgé ; lint ; puis poussée, et la CI fait foi | **pas de `make gate-push`**, pas de `-tags=integration ./...` complet |
+| Avant fusion vers `main` (geste de l'utilisateur) | `make gate-push` UNE fois, sur la release | |
+
+Une suite qui a tourné sur un état ne se relance pas sur le même état. Les contrôles d'un chantier tournent en parallèle (Go et web ensemble), jamais à la file.
+
 ## 1. Go
 
 Depuis `apps/go-api/` :
 
 ```bash
-go test ./...                          # suite complète
-go test -tags=integration -p 1 ./...   # OBLIGATOIRE si le diff touche persist/, sync/ ou migration/
+go test ./...                                        # suite complète (fusion dans la release)
+go test -tags=integration -p 1 ./internal/<touchés>/... # si le diff touche persist/, sync/, migration/ ou platform/duckdb/
 go vet ./...
 ```
 
@@ -39,9 +51,9 @@ node ../../tools/lint-cross-feature-imports.mjs   # script à la racine du dép�
 - Vitest ne vérifie pas les types.
 - Les cliquets `*.guard.test.ts` de `src/lib/` comptent sur tout le front : un test limité au dossier touché ne les voit pas.
 
-## 3. Gate local avant fusion
+## 3. Gate local avant `main` seulement
 
-`make gate-push` (environ 25 min) : cliquet du lint Go, typecheck et lint web, baseline de tests, voies briques et DuckDB en parallèle, avec `GOWORK=off`. La CI reste le gate d'autorité.
+`make gate-push` (environ 40 min) : cliquet du lint Go, harnais d'équivalence du rejeu (20 films du parc), typecheck et lint web, baseline de tests en voies briques et DuckDB (environ 300 paquets en `-p 1`), avec `GOWORK=off`. Il se lance UNE fois, avant la fusion de la release vers `main`, jamais avant une fusion dans la release (section 0). La CI reste le gate d'autorité. Depuis un worktree, il lit seul le parc et la liste des originaux du dépôt principal (cible `replay-equiv` du `Makefile`).
 
 Après chaque poussée : `gh run list --branch <branche> --workflow CI --limit 1`.
 

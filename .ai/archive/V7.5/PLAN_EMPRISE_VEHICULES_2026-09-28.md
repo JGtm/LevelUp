@@ -33,7 +33,7 @@
   tout schéma ≥ 67 (71 sur `feat/v75`, 76 sur l'audit). Quand l'audit fusionnera, la dérivation se
   rejoue par sa commande de rattrapage ; aucun conflit de fichier attendu.
 - **E2** Soirées témoins (relevé du superviseur du 2026-09-28 sur une copie de la base locale,
-  frags dont la source est de classe véhicule, JGtm avec Madina97294 ou Chocoboflor dans le même
+  frags dont la source est de classe véhicule, JGtm avec joueur_117 ou joueur_165 dans le même
   camp) :
   - **principale : 24/07/2026**, Big Team Battle, 4 matchs (`fccc61cd` Launch Site, `879a4dba`
     Fortitude, `5676a9ba` Insolence, `4f77afc1` Flood Gulch — ce dernier est le film de référence du
@@ -150,9 +150,9 @@ xuid (4f77afc1), 0 sans camp, 2 pièces montées orphelines (porteur absent du d
 13, 5676a9ba 35, 4f77afc1 51 dont 3 tourelle) ; 01/09 = 30 (f2966f08 4, 7b0d89c4 14, 4ecdf3e7 1,
 bfecd02b 11). Par match (camp 0 / 1) : 2/0, 2/11, 15/20, 26/25, 4/0, 12/2, 1/0, 5/6.
 
-**Seuil frags (escouade, tueur = JGtm, Madina97294 ou Chocoboflor)** : 11 frags, 11 pendant un de
+**Seuil frags (escouade, tueur = JGtm, joueur_117 ou joueur_165)** : 11 frags, 11 pendant un de
 leurs épisodes publiés, dès la lecture stricte (bornes incluses ; ±500 ms et ±1 s donnent le même
-compte) — JGtm 1 (5676a9ba), 5 (4f77afc1), 5 (bfecd02b) ; Madina97294 et Chocoboflor 0.
+compte) — JGtm 1 (5676a9ba), 5 (4f77afc1), 5 (bfecd02b) ; joueur_117 et joueur_165 0.
 
 **Réserves, à lire avant L7.1** :
 

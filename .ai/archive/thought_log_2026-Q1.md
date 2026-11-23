@@ -6,14 +6,14 @@
 
 **Statut** : Complété
 
-**Contexte** : Sur le dernier match de Chocoboflor (`20fd2c23`), les 2 corps à corps et 1 grenade (confirmés par `match_participants.melee_kills=2` / `grenade_kills=1`) étaient attribués au Sidekick et MA40 par le pipeline weapon. Cause : les médailles contextuelles (Pummel, Back Smack, Stick…) absentes de `highlight_events` → `is_melee=False` / `is_grenade=False` sur tous les kills → tous passaient dans la branche Formula A snapshot.
+**Contexte** : Sur le dernier match de joueur_165 (`20fd2c23`), les 2 corps à corps et 1 grenade (confirmés par `match_participants.melee_kills=2` / `grenade_kills=1`) étaient attribués au Sidekick et MA40 par le pipeline weapon. Cause : les médailles contextuelles (Pummel, Back Smack, Stick…) absentes de `highlight_events` → `is_melee=False` / `is_grenade=False` sur tous les kills → tous passaient dans la branche Formula A snapshot.
 
 **Décision technique** : Ajout d'un **Step 4b** dans `_reconcile_api_aggregates` (avant Step 4a), qui compare les sentinelles déjà détectées avec les agrégats API et reclassifie les kills weapon les moins certains (priorité : `low` → `none` → `medium` → `high+swap` → `high`, à égalité : delta_ms desc) en `MELEE_WEAPON_ID` / `GRENADE_WEAPON_ID` avec `confidence='high'`.
 
 **Résultats observés** :
 - Avant : `{'Sidekick': 7, 'MA40 AR': 5}` — 0 melee, 0 grenade
 - Après : `{'Corps à corps': 2, 'Sidekick': 5, 'MA40 AR': 4, 'Grenade': 1}` — conforme à l'API ✓
-- Backfill Chocoboflor : 288 matchs, 6200 lignes, 0 erreurs
+- Backfill joueur_165 : 288 matchs, 6200 lignes, 0 erreurs
 
 **Fichier modifié** : `src/data/services/weapon_extraction_service.py` — `_reconcile_api_aggregates()`
 
@@ -523,11 +523,11 @@ lancement après sync, ou gamertag incohérent), elle retourne `""`.
 
 **Fix (`src/app/state.py`):**
 - Ajout de `_read_xuid_from_sync_meta(db_path)` : lit directement `sync_meta WHERE key='xuid'`
-  → retourne `"2535469190789936"` (XUID numérique valide, pas de résolution nécessaire)
+  → retourne `"2547408409520575"` (XUID numérique valide, pas de résolution nécessaire)
 - `init_source_state` : appelle `_read_xuid_from_sync_meta` en priorité, fallback sur
   `_infer_gamertag_from_v5_path` (avant premier sync, sync_meta est vide)
 
-**Résultat :** `xuid_input = "2535469190789936"` → `str(xuid or "").strip()` ≠ `""` → dashboard
+**Résultat :** `xuid_input = "2547408409520575"` → `str(xuid or "").strip()` ≠ `""` → dashboard
 s'affiche correctement.
 
 **Commit :** `7ae483a` sur branche `fix/count-matches-use-syncresult`
@@ -695,9 +695,9 @@ désormais `map_id` pour la traduction FR et les thumbnails, comme les autres ca
 **Cause racine** : Lors du refactoring de `compute_participation_profile` (session précédente), la fonction a perdu ses kwargs directs (`name=`, `color=`, `pair_name=`, `thresholds=`) au profit de `ProfileOptions`. Mais `_compute_player_profile` dans `teammates_synergy.py` utilisait encore l'ancienne signature → `TypeError` catchée silencieusement par `_compute_profiles_from_squad` → `profiles` liste vide → `_render_radar_display(profiles)` → `st.info(t("insufficient_data_chart"))`.
 
 **Diagnostic** : 
-- Madina97294 : PSA = 0/12 pour les matchs du 24 mars (missing sync)
-- Chocoboflor : PSA = 12/12 ✓
-- Même si Chocoboflor avait un profil valide, la TypeError l'excluait aussi
+- joueur_117 : PSA = 0/12 pour les matchs du 24 mars (missing sync)
+- joueur_165 : PSA = 12/12 ✓
+- Même si joueur_165 avait un profil valide, la TypeError l'excluait aussi
 - `test_viz_participation.py::TestComputeParticipationProfile` échouaient tous (même bug)
 
 **Décision technique** : Utiliser `ProfileOptions(name=..., color=..., pair_name=..., thresholds=...)` partout, re-exporter `ProfileOptions` depuis `src/visualization/participation_radar.py` pour la compat des tests.
@@ -709,7 +709,7 @@ désormais `map_id` pour la traduction FR et les thumbnails, comme les autres ca
 
 **Résultats** : 109 tests passent (test_viz_participation + test_participation_radar + test_teammates_helpers)
 
-**Conclusion** : Le graphe radar "Complémentarité de l'escouade" s'affiche désormais correctement. Le bug PSA manquants pour Madina reste un sujet sync (backfill --personal-scores à relancer), mais l'affichage fonctionne quand au moins un joueur a ses PSA.lers.
+**Conclusion** : Le graphe radar "Complémentarité de l'escouade" s'affiche désormais correctement. Le bug PSA manquants pour joueur_075 reste un sujet sync (backfill --personal-scores à relancer), mais l'affichage fonctionne quand au moins un joueur a ses PSA.lers.
 ---
 
 ## [2026-03-31] Fix 3 régressions tests post-i18n graphiques

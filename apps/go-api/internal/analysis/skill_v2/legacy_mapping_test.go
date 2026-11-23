@@ -37,12 +37,12 @@ func TestMapMuToLegacyRating_ReferencePlayers(t *testing.T) {
 		// Diamant 3 sous-paliers (band 66.7), Platine 2 (band 100) — cf. grille
 		// uniformisée [2026-05-31]. Les tiers restent identiques (calibration
 		// préservée), seules les valeurs sous-palier changent.
-		{"Madina BTB Diamant I", 26.17, "Diamond", 1800},        // sub 1 → 1800
-		{"Madina Slayer Diamant I", 26.12, "Diamond", 1800},     // sub 1 → 1800
-		{"Madina Objectif Platine II", 25.75, "Platinum", 1700}, // 1600 + 1*100 = 1700
-		{"Joueur90001 Or IV", 23.81, "Gold", 1500},              // 1400 + 3/6*200 = 1500
-		{"JGtm Or IV", 23.52, "Gold", 1500},                     // idem
-		{"XxDaemon Bronze VI", 20.38, "Bronze", 1167},           // 1000 + 5/6*200 ≈ 1167
+		{"joueur_075 BTB Diamant I", 26.17, "Diamond", 1800},        // sub 1 → 1800
+		{"joueur_075 Slayer Diamant I", 26.12, "Diamond", 1800},     // sub 1 → 1800
+		{"joueur_075 Objectif Platine II", 25.75, "Platinum", 1700}, // 1600 + 1*100 = 1700
+		{"Joueur90001 Or IV", 23.81, "Gold", 1500},                  // 1400 + 3/6*200 = 1500
+		{"JGtm Or IV", 23.52, "Gold", 1500},                         // idem
+		{"joueur_639 Bronze VI", 20.38, "Bronze", 1167},             // 1000 + 5/6*200 ≈ 1167
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

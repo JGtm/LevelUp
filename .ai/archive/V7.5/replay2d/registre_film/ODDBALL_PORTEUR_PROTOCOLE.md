@@ -17,7 +17,7 @@ Acquis figes (ne pas re-mesurer) : `ODDBALL_VERITE_TERRAIN_d9781168.md` + `TERRA
 ## PARTIE A — IDENTITE PAR MANCHE (infra, code LIVRE : neutralite obligatoire)
 
 Constat mesure sur pieces : en multi-manche le SLOT d'entite est REATTRIBUE d'une manche a
-l'autre (d9781168 : slot 22 = scuderiasven en manche 0 puis LadyJezz en manches 1-2). Or
+l'autre (d9781168 : slot 22 = joueur_829 en manche 0 puis joueur_766 en manches 1-2). Or
 `objectiveevents.SlotIdentityByDeaths` rend UN SEUL `map[slot]->xuid` pour tout le match, et il
 est appele par `build_objectives_live.go:137` (drapeau) ET `vip_crown.go:221` (couronne). La
 couronne VIP livree est donc FAUSSE en VIP multi-manche.

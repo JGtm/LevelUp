@@ -17,15 +17,15 @@ param(
   [string]$Run = "^TestGameEntitiesPhase0$",
   [string]$Pkg = "./internal/analysis/filmdec/",
   [int]$CapMB = 3072,
-  [string]$Out = "C:\Users\Guillaume\Projects\LevelUp-wt-joueur-moteur\.ai\V7.5\replay2d\registre_film\lotBP"
+  [string]$Out = "C:\Users\utilisateur\Projects\LevelUp-wt-joueur-moteur\.ai\V7.5\replay2d\registre_film\lotBP"
 )
 
-$wt = "C:\Users\Guillaume\Projects\LevelUp-wt-joueur-moteur"
+$wt = "C:\Users\utilisateur\Projects\LevelUp-wt-joueur-moteur"
 $api = Join-Path $wt "apps\go-api"
 $env:GOCACHE = Join-Path $wt ".gocache"
 $env:CGO_ENABLED = "0"
 $env:GAME_OUT = $Out
-Set-Item -Path "env:$EnvVar" -Value "C:/Users/Guillaume/Projects/LevelUp/data/cache/film_chunks/$Film"
+Set-Item -Path "env:$EnvVar" -Value "C:/Users/utilisateur/Projects/LevelUp/data/cache/film_chunks/$Film"
 
 $log = Join-Path $Out "$Film.$EnvVar.log"
 $t0 = Get-Date

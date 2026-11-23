@@ -1,10 +1,10 @@
 #!/bin/bash
 # Chaque mutation remplace UN fichier de production par une copie mutee (go test -overlay) et joue
 # les tests qui doivent la voir. Attendu : ROUGE pour chacune ; base : VERTE.
-export GOCACHE=C:/Users/Guillaume/AppData/Local/go-build-vueb CGO_ENABLED=1 CC=gcc
-API=/c/Users/Guillaume/Downloads/Scripts/LevelUp-wt-grammaire-arrets-vue-b/apps/go-api
+export GOCACHE=C:/Users/utilisateur/AppData/Local/go-build-vueb CGO_ENABLED=1 CC=gcc
+API=/c/Users/utilisateur/Downloads/Scripts/LevelUp-wt-grammaire-arrets-vue-b/apps/go-api
 G=$API/internal/games/halo_infinite/film/internal/grammar
-M=/c/Users/GUILLA~1/AppData/Local/Temp/claude/c--Users-Guillaume-Downloads-Scripts-LevelUp/bfd187a4-ee4b-4656-9ab4-0654cbc1dfb8/scratchpad/mut
+M=/c/Users/utilisateur/AppData/Local/Temp/claude/c--Users-poste-Downloads-Scripts-LevelUp/bfd187a4-ee4b-4656-9ab4-0654cbc1dfb8/scratchpad/mut
 TESTS='TestLesDispositifsLisentCeQueLEcrivainEcrit|TestLesArretsDeLaVueBLisentCeQueLEcrivainEcrit|TestLeDecalageDuMarqueurLitSousLaGarde|TestChaqueSiteDePositionLitCeQueLeJeuEcrit|TestG[0-9]|TestLecteurDeMinuteur|TestCaptureConsumesSameBitsAsDispatch|Ratchet|Site'
 muter() {
   local id=$1 f=$2 s=$3 d=$4

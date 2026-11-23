@@ -1,6 +1,6 @@
 # Patch de la copie de libfilmshell (`filmshell-patch/`)
 
-Copie de `C:\Users\Guillaume\Downloads\Scripts\libfilmshell` (dossiers `src/`, `Cargo.toml`,
+Copie de `<poste>\Downloads\Scripts\libfilmshell` (dossiers `src/`, `Cargo.toml`,
 `Cargo.lock`, `LICENSE`). Le dossier d'origine n'est pas touche. Le patch n'expose que des
 positions de bit : aucune decision de lecture ne change (la marche `Walker` ne relit jamais
 `Fields.blocks` ni `ControlMessage.at`).

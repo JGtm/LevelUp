@@ -1,6 +1,6 @@
 import fs from 'fs';
 const [id, ...slots] = process.argv.slice(2);
-const d = JSON.parse(fs.readFileSync(`C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/${id}.json`, 'utf8'));
+const d = JSON.parse(fs.readFileSync(`C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/${id}.json`, 'utf8'));
 for (const v of d.vehicles.filter(v => slots.includes(String(v.slot)))) {
   const ts = (v.samples||[]).map(s => s.t);
   const dts = ts.slice(1).map((t,i)=>t-ts[i]);

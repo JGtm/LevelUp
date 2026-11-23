@@ -265,8 +265,8 @@ aujourd'hui : à re-mesurer si une vérité datée apparaît.**
 
 ```
 CGO_ENABLED=0 \
-  EQUIP_EVENTS_ROOT=C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks \
-  EQUIP_EVENTS_ARTS=C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite \
+  EQUIP_EVENTS_ROOT=<poste>/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks \
+  EQUIP_EVENTS_ARTS=<poste>/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite \
   EQUIP_EVENTS_IDS=000d5950,06dfe6d9,084a804d,4f77afc1,8a485699,bf2a9f05,d1dfbc02,1b2d9e08,a0c36016 \
   go test ./internal/analysis/filmdec/ -run '^TestEquipementsEvenements$' -count=1 -timeout 30m -v
 ```

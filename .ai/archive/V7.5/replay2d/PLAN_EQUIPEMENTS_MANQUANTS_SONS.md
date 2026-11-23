@@ -7,7 +7,7 @@
 > du meme tag, et la seconde peut nommer ce que la premiere ne casse pas (une banque
 > s'appelle `sb_007_abl_repairfield` en clair). Un seul lot.
 >
-> Worktree FRERE `C:\Users\Guillaume\Projects\LevelUp-wt-equip-sons`, branche `wt/equip-sons`,
+> Worktree FRERE `<poste>\Projects\LevelUp-wt-equip-sons`, branche `wt/equip-sons`,
 > base `feat/v75` HEAD (`3203bb7b8`). Films et jeu par chemins ABSOLUS ; aucune base DuckDB.
 > Contrat `plan-execution` + `CLAUDE.md`. Un commit par phase.
 
@@ -33,13 +33,13 @@
    son RATTACHEMENT est verrouille, son NOM ne l'est pas. L'utilisateur pense a l'« ecran de
    dissimulation » : **ce plan ne l'ecrit nulle part tant qu'une chaine ne le rend pas**.
 4. **Le corpus mesure aujourd'hui** = les artefacts de rejeu sur disque
-   (`C:\Users\Guillaume\Projects\LevelUp\data\cache\replays\halo_infinite\`, 33 JSON dont
+   (`<poste>\Projects\LevelUp\data\cache\replays\halo_infinite\`, 33 JSON dont
    **12 portent des poses**). Releve du jour, schema 10, sans re-decodage :
    **21 identifiants, 3 206 poses**, dont `0x4396db42` = **104 poses / 9 films /
    26 deployees** (la planche du 18/08 disait 94 / 7 / 24 — l'ecart est la croissance du
    jeu d'artefacts, pas une divergence de methode).
    Le cache de films brut compte **951 dossiers**
-   (`C:\Users\Guillaume\Projects\LevelUp\data\cache\film_chunks\<id>`), et une pose ne s'en
+   (`<poste>\Projects\LevelUp\data\cache\film_chunks\<id>`), et une pose ne s'en
    tire que par un DECODAGE COMPLET (`filmdec.ScanFilmEquipmentPlacements` : bande de slots,
    `ScanFilmWorldObjects`, calibration MPP, oracle de position). Cf. decision 1.
 5. **Les sons** : `RECETTE_SONS_ARMES.md` part du champ NOMME « Weapon Fire Sounds » du tag

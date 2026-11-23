@@ -10,9 +10,9 @@
 ## Découverte (smoke test 2026-05-24)
 
 Le path `submitMatchAsBatch` (Phase 2) marche **parfaitement** en prod :
-- 10 matchs persistés pour XxDaemonGamerxX sans aucun FATAL
+- 10 matchs persistés pour joueur_291 sans aucun FATAL
 - `persist_batch_committed_total=10`, `persist_shared_total_ok=10`, `persist_player_total_ok=10`
-- Cycle XxDaemonGamerxX : 107s (sous le seuil 8min)
+- Cycle joueur_291 : 107s (sous le seuil 8min)
 
 MAIS le **post-sync compute** déclenche encore le bug ART :
 
@@ -178,11 +178,11 @@ Recompute tous les enrichments en mémoire (Go), puis 1 seul INSERT batch atomiq
 
 **Itérations exécutées** :
 
-1. **Cycle 1 (pre-rebuild)** : 2/4 joueurs en FATAL ART (Chocoboflor `writeSessionAssignmentsBatch` 410 rows, Madina97294 `upsertLUSRRatingsBatch` 21 rows). Diagnostic : ART pré-corrompue.
+1. **Cycle 1 (pre-rebuild)** : 2/4 joueurs en FATAL ART (joueur_165 `writeSessionAssignmentsBatch` 410 rows, joueur_117 `upsertLUSRRatingsBatch` 21 rows). Diagnostic : ART pré-corrompue.
 2. **`force_rebuild_art --all`** : rebuild `shared.match_participants` + `player_match_enrichment` (4 player DBs). Sessions OK post-rebuild, mais...
 3. **Cycle 2 (post pme rebuild)** : sessions batch OK pour tous, **LUSR Upsert toujours FATAL** car `match_skill_rank` ART non rebuilt par force_rebuild_art (le CLI ne touchait que `player_match_enrichment`).
 4. **Fix livré** : `RebuildMatchSkillRankART` ajouté à `internal/migration/`, intégré dans `force_rebuild_art` (rebuild PME puis MSR par player DB).
-5. **Cycle 3 (post full rebuild pme+msr)** : 4/4 OK, **0 FATAL**, LUSR Upsert validé (Chocoboflor: 9 LUSR persistés).
+5. **Cycle 3 (post full rebuild pme+msr)** : 4/4 OK, **0 FATAL**, LUSR Upsert validé (joueur_165: 9 LUSR persistés).
 6. **Cycles 4-5** : 4/4 OK chacun, **0 FATAL**.
 
 **Résultat consolidé** : 3 cycles consécutifs × 4 joueurs = **12 syncs, 0 FATAL ART**.
@@ -190,10 +190,10 @@ Recompute tous les enrichments en mémoire (Go), puis 1 seul INSERT batch atomiq
 **Insight critique 2026-05-24** : la Phase 4 batch path **n'élimine pas une corruption pré-existante** — elle PRÉVIENT les futures. Pré-requis avant déploiement : `force_rebuild_art --all true` (qui rebuild les 3 tables critiques : `shared.match_participants`, `player_match_enrichment`, `match_skill_rank`).
 
 **Performance observée** (cycle 5, sequentiel 4 joueurs) :
-- Madina97294 : 94s (1115 rows enrichment, 1109 LUSR/CSR)
+- joueur_117 : 94s (1115 rows enrichment, 1109 LUSR/CSR)
 - JGtm : 76s (832 rows)
-- Chocoboflor : 20s (419 rows)
-- XxDaemonGamerxX : 6s (32 rows)
+- joueur_165 : 20s (419 rows)
+- joueur_291 : 6s (32 rows)
 - **Total cycle complet** : ~3 min 30 — sous le seuil 8 min visé
 
 ### Phase 4.6 — Cleanup post-validation (Phase 5 du plan initial) — 2h

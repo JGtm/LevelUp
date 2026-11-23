@@ -10,5 +10,5 @@ COPY (
   FROM match_objective_events
   WHERE substr(match_id,1,8) IN ('64e8adfa','530820e5','53ce4390')
   ORDER BY match_id, seq
-) TO 'C:/Users/Guillaume/Projects/LevelUp-wt-score-film/.ai/V7.5/replay2d/registre_film/oracle_lotA_objective_events.tsv'
+) TO 'C:/Users/utilisateur/Projects/LevelUp-wt-score-film/.ai/V7.5/replay2d/registre_film/oracle_lotA_objective_events.tsv'
   (HEADER, DELIMITER E'\t');

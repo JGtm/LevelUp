@@ -4,7 +4,7 @@
 > fichier est un REGISTRE DE CONSTATS, rien d'autre. Aucun `git add`, aucun commit, aucun
 > fichier du diff modifié.
 >
-> **État relu** : worktree `C:\Users\Guillaume\Projects\LevelUp-wt-vehicules`, branche
+> **État relu** : worktree `<poste>\Projects\LevelUp-wt-vehicules`, branche
 > `wt/vehicules-tourelles`, HEAD `230b615b1`, arbre de travail au **2026-09-02 19:06**.
 > ATTENTION : l'arbre a BOUGÉ pendant la revue — l'instantané fourni en entrée annonçait
 > HEAD `67584a13c` avec `cmd/vs-measure/{armes,plateau}.go` modifiés et `goose.go` non suivi ;

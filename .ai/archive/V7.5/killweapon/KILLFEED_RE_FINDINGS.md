@@ -11,8 +11,8 @@
 (perfect) ; rien d'autre n'est affiché (ni distance, ni outre-tombe/posthume).
 
 ## Map joueurs (film 000d5950)
-pi0 whiteknight2519 · pi1 JAVIERLOLITO540 · pi2 JGtm · pi3 LORD PEINX13 · pi4 IKE ILYA ·
-pi5 Akatsuki fire17 · pi6 aldusbroncus · pi7 VitaminA1688.
+pi0 joueur_283 · pi1 JOUEUR_156 · pi2 JGtm · pi3 JOUEUR_731 · pi4 JOUEUR_417 ·
+pi5 joueur_700 fire17 · pi6 joueur_389 · pi7 joueur_362.
 Encodage d'un player-index dans les structs : **`0xE1500000 + idx*0x10002`** (idx 0-7), résolu
 par `FUN_140e958c4` (tag de joueur). NB : l'**entity-id** (eid) d'un biped est en `0x4000xxxx`
 et **change à chaque respawn** ; le **player-index** (idx) est stable par joueur.
@@ -21,8 +21,8 @@ et **change à chaque respawn** ; le **player-index** (idx) est stable par joueu
 Le wrapper `FUN_140c1dce0` (i11) lit `mort=R(1)` puis appelle la heavy form `FUN_140c1dd44`
 (struct = composant `RDI+0x74`). Champs capturés en direct (hook après le CALL @140c1dd11) :
 - **`+0x04` = player-index VICTIME** ; **`+0x08` = player-index TUEUR**. **Confirmé** contre la
-  narration (JGtm←IKE 4:51 ; JGtm←aldus 5:36 ; LORD PEINX←aldus 5:44 plasma ; Akatsuki←JGtm 5:29
-  BR75 ; aldus←LORD PEINX 5:43). ⇒ **tueur↔victime sont dans le dead-state, directement** (plus
+  narration (JGtm←JOUEUR_502 4:51 ; JGtm←joueur_193 5:36 ; JOUEUR_779←joueur_193 5:44 plasma ; joueur_700←JGtm 5:29
+  BR75 ; joueur_193←JOUEUR_779 5:43). ⇒ **tueur↔victime sont dans le dead-state, directement** (plus
   besoin de la jointure temporelle chunk_27).
 - `+0x0c` = catégorie mêlée(0x40000)/distance-lancé(0x10001) ; `+0x14`/`+0x18`/`+0x38` =
   sous-type/modificateur (perfect=1 observé). **Données internes** : le kill feed n'affiche que
@@ -52,7 +52,7 @@ Capture CE (hook @14066b62b) : **`[report+0x538]` = presque toujours 0** (17/18)
 **type d'événement**, PAS l'arme. La fonction est appelée **chaque frame** pour re-render les
 entrées visibles (≈5 s à l'écran), d'où beaucoup de captures redondantes/vides.
 La **seule ligne utile** révèle la structure d'une entrée : `[handle][victimeIdx][1][killerIdx][1]`
-(ex. `[2231525701][idx5 Akatsuki][1][idx3 LORD PEINX][1]` puis `[1795313718][idx4 IKE][1][idx2 JGtm][1]`).
+(ex. `[2231525701][idx5 joueur_700][1][idx3 JOUEUR_779][1]` puis `[1795313718][idx4 JOUEUR_502][1][idx2 JGtm][1]`).
 ⇒ **le `handle` par entrée = candidat arme/icône** — NON validé (1 ligne ; paires hors narration).
 
 ## 3) Où est l'arme ? (pistes ouvertes — à approfondir EN PARALLÈLE)
@@ -90,10 +90,10 @@ l'événement porte l'arme (pas du held-weapon).
 | weaponHandle | tueur | arme (narration) |
 |---|---|---|
 | 3964796932 | JGtm | **BR75** (5:29) |
-| 3964993546 | Akatsuki | **sniper** (5:08) |
-| 3964928008 | IKE | **marteau** |
-| 3965059084 | aldus | **plasma** (5:44) |
-| 3964665856 / 3964731394 / 3965124622 | whiteknight / JAVIER / VitaminA | (à nommer) |
+| 3964993546 | joueur_700 | **sniper** (5:08) |
+| 3964928008 | JOUEUR_502 | **marteau** |
+| 3965059084 | joueur_193 | **plasma** (5:44) |
+| 3964665856 / 3964731394 / 3965124622 | joueur_026 / JOUEUR_1043 / joueur_602 | (à nommer) |
 
 ⇒ **tueur · arme · modificateur · victime reconstitué pour les 12 kills, depuis le film.**
 

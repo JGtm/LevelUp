@@ -19,7 +19,7 @@ Deux occurrences confirmées en production (2026-05-20 et 2026-05-21) :
 
 Workaround `WHERE col || '' = ?` force un table-scan physique (court-circuite l'ART) et retourne les rows correctes — preuve que la donnée existe mais que l'arbre ART ne pointe pas dessus.
 
-**Conséquence métier confirmée** : LUSR Madina97294 figé en Argent IV (μ ≈ 1327) au lieu de fin Platine / début Diamant attendu. Le `loadLUSRParticipants` chargeait 1-2 participants au lieu de 8-16 pour les matchs concernés → carry-adj et splitParticipantKEs dégénérés.
+**Conséquence métier confirmée** : LUSR joueur_117 figé en Argent IV (μ ≈ 1327) au lieu de fin Platine / début Diamant attendu. Le `loadLUSRParticipants` chargeait 1-2 participants au lieu de 8-16 pour les matchs concernés → carry-adj et splitParticipantKEs dégénérés.
 
 ## Decision
 

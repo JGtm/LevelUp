@@ -1,5 +1,5 @@
 const fs=require('fs'),zlib=require('zlib');
-const dir='c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
+const dir='<poste>/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
 const ids=['2b10340d','5fbecd0f','6b5de1d7','6b7c596c','6ee59440','97b34406','9dfd3c24','a808c389','b54b8326','d22a5577','e5adf7b2','f58b857e'];
 const X=[],Y=[];const names=new Set();
 const rows=[];

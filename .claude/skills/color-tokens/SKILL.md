@@ -50,12 +50,11 @@ apps/web/src/lib/accessibility/
   useColorPaletteVersion.ts — version de palette, pour les hex réactifs
   plotlyColorscale.ts    — getSeriesColors() (nom historique, sert ECharts)
   applyPalette.ts        — applyPalette()
-  paletteForTheme.ts     — pose les jetons dépendants du thème (rôles d'impact)
   tokenTone.ts           — tokenTone()
   hexComplement.ts       — hexComplement()
   colorDistance.ts       — oklab, deltaE, simulateCvd
   palettes/              — default, okabe-ito (daltonisme), cividis, tol-bright, spartan,
-                           _impactRoleColors, _encounterColors
+                           _encounterColors
   scales/                — makeCategoricalScale, makeOrdinalScale, makeDivergentScale,
                            instances (perfScale, outcomeScale…), fragClass
 ```
@@ -73,7 +72,7 @@ famille). Ne pas la recopier ici ni deviner un nom : `primary`, `secondary`, `da
 Familles à connaître : issues (`outcome-*`), paliers de performance (`perf-tier-*`),
 divergents (`divergent-*`), équipes (`team-ally` / `team-enemy`), joueurs d'escouade
 (`squad-player-1..4`), classes de frags (`frag-*`, `scales/fragClass.ts`), rôles (`range-role-*`,
-`objective-role-*`, `impact-*`), ressources de carte (`resource-*`), heatmaps (`heatmap-*`, rampes
+`objective-role-*`), ressources de carte (`resource-*`), heatmaps (`heatmap-*`, rampes
 composées par `heatmapRampTokens` dans `components/charts/heatmapColors.ts`), accents génériques
 (`legendary`, `extreme`, `bonus`), stats de combat (`stat-*`, `assist-*`, ci-dessous).
 
@@ -111,19 +110,14 @@ passe par ces cinq jetons, dans toutes les pages :
 - **Distance de couleur** dans un test : importer `deltaE` / `simulateCvd` depuis
   `lib/accessibility/colorDistance.ts` (copie de la matrice OKLab interdite par ratchet).
 
-## Rôles d'impact — seuls jetons qui dépendent du THÈME (2026-10-08)
+## Jetons dépendants du thème
 
-`impact-gain-1..4` et `impact-loss-1..3` : rampes ordinales des rôles d'impact (graphe « Points
-d'impact par soirée et par rôle », Escouade › Contributions). Pas 1 = plus fort barème, contre
-l'axe, le plus contrasté sur la carte. Valeurs dans `palettes/_impactRoleColors.ts`, une paire
-de rampes (claire + jumelle sombre) PAR PALETTE, dans les teintes de ses `divergent-pos` /
-`divergent-neg` : vert / rouge (défaut), bleu / vermillon (Okabe-Ito, Cividis), bleu / rouge Tol
-(Tol Bright). La palette porte la rampe claire ; `paletteForTheme` (ThemeProvider) pose la jumelle
-sombre, c'est le seul mécanisme de jeton thème-dépendant : un nouveau jeton qui en a besoin s'y
-ajoute, jamais par un `isDark` dans un graphe. Garde-fous : `lib/accessibility/impactRoleTokens.test.ts`
-(par palette et par thème : ordre des contrastes, pas pâle ≥ 2:1, voisins ΔE ≥ 15 en vision normale
-et sous daltonisme, teinte) et `app/providers/theme-provider-impact.test.tsx` (valeurs écrites sur
-`:root` au basculement).
+Aucun : tous les jetons `--ac-*` ont la même valeur dans les deux thèmes (celle de la palette choisie).
+Les rampes `impact-gain-*` / `impact-loss-*` et le mécanisme `paletteForTheme`, qui posait leurs jumelles
+sombres, ont été supprimés le 2026-11-22 avec le graphe « Points d'impact par soirée et par rôle » : le
+tableau « Impact des coéquipiers » par session colore avec `outcome-win` / `outcome-loss`. Un futur jeton
+qui devrait changer avec le fond se pose dans `ThemeProvider` (effet de palette), jamais par un `isDark`
+dans un graphe.
 
 ## Fond « Relief » et cerne des pions — trois jetons
 

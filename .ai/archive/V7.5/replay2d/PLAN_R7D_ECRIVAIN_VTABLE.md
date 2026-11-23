@@ -5,7 +5,7 @@
 > `PLAN_R6_FILE_PAR_ENTITE.md` (le jeu ne RELIT jamais le payload type-2 : il n'existe pas
 > de « lecteur d'image-cle » a copier ; la recherche de l'ecrivain par CHAINES
 > (`saved_games`, `FilmBlock*`) et par xrefs de `FUN_142f2e174` etait NEGATIVE).
-> Worktree `C:/Users/Guillaume/Projects/LevelUp-wt-kfwriter`, branche `wt/kf-ecrivain-vtable`,
+> Worktree `<poste>/Projects/LevelUp-wt-kfwriter`, branche `wt/kf-ecrivain-vtable`,
 > base `wt/kf-biped-bit-exact` = `9b269d7f7`. Execution sous le contrat `plan-execution`.
 
 ---
@@ -47,7 +47,7 @@ lecture statique passe par Ghidra, jamais par le fichier.
 | Primitives d'ecriture identifiees | `FUN_1407edaf4(w, "nom", v)` = **W(32)** (le nom du champ est un parametre MORT, garde en retail) ; `FUN_1406d49c4(w, ., b)` = **W(1)** ; etat d'ecrivain : `+0x2c` bits ecrits, `+0x30` accumulateur, `+0x38` bits tenus, `+0x40` sortie, `+0x10` fin |
 | L'archetype porte la MEME paire | vtable bipede `0x143737178` (confirmee 2x : `+0x60` = `FUN_140f44c38` deser d'etat par defaut, `+0xa0` = `FUN_14076ca20` masque par defaut). **`+0x58` = `FUN_142f14a68` = l'ECRIVAIN de l'etat par defaut**, avec des NOMS de champs (`"player-representation-name"`, `"customization-source-participant"`) |
 
-Corpus de mesure (lecture seule) : `C:/Users/Guillaume/Projects/LevelUp/data/cache/film_chunks`,
+Corpus de mesure (lecture seule) : `<poste>/Projects/LevelUp/data/cache/film_chunks`,
 films `000d5950` / `00502e52` / `07aa428d`, 591 records `ti=35` bornes (denominateurs R7-b).
 
 ## 4. Ordre d'attaque
@@ -97,13 +97,13 @@ Toute modification d'un fichier PARTAGE ajoute `CGO_ENABLED=0 go test ./internal
 
 1. Ghidra **LECTURE SEULE** : aucun rename, aucun script, aucune analyse relancee. Un lot
    JUMEAU (R7-c) lit la meme instance : lecture seule des deux cotes.
-2. Rien hors du worktree n'est ecrit. `C:/Users/Guillaume/Projects/LevelUp` et les autres
+2. Rien hors du worktree n'est ecrit. `<poste>/Projects/LevelUp` et les autres
    `LevelUp-wt-*` sont en LECTURE SEULE (le corpus de films y est lu, jamais ecrit).
 3. Fichiers PARTAGES du decodeur (`traverse.go`, `components_*.go`, `default_state*.go`)
    modifies **uniquement** sur preuve bit-exacte ET non-regression delta (suites vertes).
 4. Aucune bosse de `SchemaVersion`, aucune ecriture DuckDB, aucun rendu, aucune string UI,
    **aucune publication a l'artefact**, aucun balayage de masse (3 films, pas 951).
-5. `GOCACHE=C:/Users/Guillaume/Projects/LevelUp-wt-kfwriter/.gocache`, **une seule commande
+5. `GOCACHE=<poste>/Projects/LevelUp-wt-kfwriter/.gocache`, **une seule commande
    `go` a la fois**, `CGO_ENABLED=0`.
 6. Bascules globales restaurees en `defer` ; `LockProcessDecode` tenu pour tout le test.
 7. Pas de Python, pas d'emoji, seuils 500 L / 80 L / 5 parametres respectes.

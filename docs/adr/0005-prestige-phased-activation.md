@@ -2,7 +2,7 @@
 
 **Status** — Accepted (2026-07-03) — Prestige activé par défaut ; gate UNIQUE sourcé `app_settings.json` avec override `PRESTIGE_ENABLED`. (Initialement Proposed 2026-04-29, code review axe 11 + verification-finale-scaffolding.md cas 10.)
 
-**Deciders** — Guillaume (GS).
+**Deciders** — JGtm.
 
 ## Update — 2026-07-03 : activation confirmée + gate unifié (C7 / DEC-4)
 

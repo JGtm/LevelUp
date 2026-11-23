@@ -377,7 +377,7 @@ case non statuée du lot courant. Les décisions du §2 ne se re-décident pas.
     **avec un témoin dense SUBSTITUÉ** : sur les données de ce poste, `000d5950` ne joue AUCUNE
     conclusion, à 1× comme à 2× (vue match partielle `scoreboard_empty`, issue « défaite » :
     `endMatchSoundSpec` rend `null`, aucune prise `end_*` n'est même téléchargée). Témoin dense de
-    remplacement `ac03413d` (victoire de Chocoboflor) : voix ET fanfare démarrent à 2× et à 1×,
+    remplacement `ac03413d` (victoire de joueur_165) : voix ET fanfare démarrent à 2× et à 1×,
     7 à 8 sources actives à la borne. Chiffres au journal, écart en DA-5.
   - **Statut (2026-09-26)** : NON FAITE par l'exécutant — `/health` a rendu `000` (serveur
     arrêté). Reste au superviseur avant la fusion 1. ATTENTION (A1.0) : à 1× le témoin dense
@@ -543,7 +543,7 @@ toujours « 7 <= plafond » — PASSÉ (logs `A3-red.log` / `A3-green.log`). CI 
 ### A4 — Musique d'intro au lancement du rejeu (item 7) — S
 
 **Pièces** :
-- La piste `C:\Users\Guillaume\Desktop\Halo Infinite - Sons armes\_fin_partie\mus_mp_global_wav\402178411.wav`
+- La piste `<poste>\Desktop\Halo Infinite - Sons armes\_fin_partie\mus_mp_global_wav\402178411.wav`
   fait 16,00 s, en PCM 48 kHz 16 bits, **4 canaux** : le garde-rail « 2 canaux au plus » la
   refuserait, il faut la réduire en stéréo.
 - Même piège pour `_fin_partie/livraison/end_*_music_01.wav`, restés en 4 canaux (les copies du
@@ -1559,7 +1559,7 @@ est supprimé.
 - DB-17 (B3.9) : les quatre player DB de `halo_infinite` du checkout principal ont un
   `stats.duckdb.wal` à côté d'elles (dernières écritures du 23/09). Le dernier arrêt du
   serveur n'a pas fait de CHECKPOINT, et aucune copie cohérente n'est possible sans rejouer ce
-  WAL. Les player DB `halo_5` de JGtm, XxDaemonGamerxX et des joueurs de démo n'en ont pas.
+  WAL. Les player DB `halo_5` de JGtm, joueur_291 et des joueurs de démo n'en ont pas.
   Non traité.
 - DB-18 (B3.9) : aucune CLI ne migre une player DB désignée (`applyMigrationsOnDB` n'est
   exposée par aucune sous-commande prenant un chemin). Le véhicule de B3.9 est donc un test
@@ -1734,14 +1734,14 @@ est supprimé.
   deux camps et `endMatchSoundSpec` rend `null` (seule une victoire a une réplique sans camps).
   Aucun lien avec le correctif ; même constat sur les autres matchs du cache sondés (`28c9b538`,
   `4f77afc1`, `94a28b8b` : `scoreboard` vide). Voir DA-5.
-- Témoin dense substitué `ac03413d-2c03-4e3e-9e9c-c10165e40be0` (Chocoboflor, victoire 50-48,
+- Témoin dense substitué `ac03413d-2c03-4e3e-9e9c-c10165e40be0` (joueur_165, victoire 50-48,
   `outcome_code` 2 → réplique « Vainqueur » + fanfare de victoire) :
   - 2×, passe 1 : voix `end_winner_voice_fr_01.wav` (1,26 s) et fanfare `end_victory_music_01.wav`
     (10,59 s) démarrées, **7 sources actives à la borne** ;
   - 2×, passe 2 : les deux démarrées, **8 sources actives à la borne** (le plafond est plein : avant
     le correctif, ni la voix ni la fanfare ne seraient passées) ;
   - 1× : les deux démarrées, **7 sources actives à la borne**.
-- Témoin calme `4bd6de5a-98de-45cc-8c10-47f58280d2b9` (Chocoboflor, victoire 50-40, 0 tir dans les
+- Témoin calme `4bd6de5a-98de-45cc-8c10-47f58280d2b9` (joueur_165, victoire 50-40, 0 tir dans les
   5 dernières secondes du film) : 2× → les deux démarrées, 5 sources actives à la borne ; 1× → les
   deux démarrées, 0 source active. Inchangé.
 - Une passe isolée de `000d5950` à 1× a vu 8 sources lancées et aucune terminée (`ended` jamais
@@ -1756,7 +1756,7 @@ est supprimé.
   - Chromium et Firefox 153 (`npx playwright install firefox`) SANS TÊTE, **aucun drapeau
     d'autoplay** ;
   - préférences : `replay-sound-on`=true, `replay-speed`=1 ;
-  - rejeu A `ac03413d` (image 3 123), rejeu B `94a28b8b` (image 3 481), joueur Chocoboflor,
+  - rejeu A `ac03413d` (image 3 123), rejeu B `94a28b8b` (image 3 481), joueur joueur_165,
     passage dense (environ 95 tirs en 6 s).
 - **Piège de mesure écarté (DA-6)** : avant le geste, AUCUN `page.evaluate`. Tout passe par la
   console de la page ; les gestes sont de vraies entrées (`mouse.click`, `keyboard.press`).
@@ -1902,7 +1902,7 @@ plan.**
      = **−6,80 dB** (recette du lot C, gain linéaire pur) ;
   2. production :
      `ffmpeg -y -i "<source>" -af "aformat=sample_fmts=fltp,pan=stereo|c0=c0+0.707*c2|c1=c1+0.707*c3,atrim=start=2.19:end=5.19,asetpts=PTS-STARTPTS,afade=t=in:st=0:d=0.1,afade=t=out:st=2.7:d=0.3,volume=-6.80dB" -map_metadata -1 -fflags +bitexact -flags:a +bitexact -c:a pcm_s16le -ar 48000 -ac 2 static/sounds/halo_infinite/intro_music_01.wav`
-     `<source>` = `C:\Users\Guillaume\Desktop\Halo Infinite - Sons armes\_fin_partie\mus_mp_global_wav\402178411.wav`.
+     `<source>` = `<poste>\Desktop\Halo Infinite - Sons armes\_fin_partie\mus_mp_global_wav\402178411.wav`.
   - Contrôle `loudnorm` du fichier livré : **I = −18,00 LUFS, TP = −6,02 dBTP**, LRA 0,3.
     `ffprobe` : `pcm_s16le`, 48 000 Hz, 2 canaux, 16 bits, 3,000000 s. Taille 576 044 o,
     en-tête RIFF sans chunk `LIST`. SHA-256 `d1d7cf79…2924b62d`.
@@ -2430,7 +2430,7 @@ exécutant opus.**
     charge, rejoué seul : 3/3 verts.
 - **Témoin de l'écoute A1.6** : `000d5950` ne joue aucune conclusion sur ce poste (vue match sans
   tableau des scores, DA-5). L'écoute se fait sur `ac03413d-2c03-4e3e-9e9c-c10165e40be0`, joueur
-  Chocoboflor, victoire, fin dense, à 2× et à 1×. Le match où l'utilisateur a constaté le défaut
+  joueur_165, victoire, fin dense, à 2× et à 1×. Le match où l'utilisateur a constaté le défaut
   est aussi à écouter, s'il le nomme.
 - **Fusions** :
   - une seule branche, et B1-B4 ont été intercalés avant A2 (dérogation §1.2). La fusion 1

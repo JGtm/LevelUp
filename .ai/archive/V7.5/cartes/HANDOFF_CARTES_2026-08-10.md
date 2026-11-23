@@ -83,7 +83,7 @@ VISUEL sur au moins Cliffhanger ET Catalyst.
    mutation annoncee dans un commentaire doit etre JOUEE : casser, voir rouge, revert, voir vert.
 2. **Un oracle absent passe au vert.** `data/cache/replays/halo_infinite/000d5950.json` n'est
    PAS dans le worktree (`data/` ignore par git) : les sondes s'y declarent SKIP en silence. Le
-   copier depuis `C:\Users\Guillaume\Projects\LevelUp\data\...` avant toute mesure d'oracle.
+   copier depuis `<poste>\Projects\LevelUp\data\...` avant toute mesure d'oracle.
 3. **Un oracle faible ne voit pas ce qu'un oracle fort detecte.** La coquille semblait gratuite
    sur Catalyst (19 ancres) et coutait 10 points de positions sur Cliffhanger (29 221 positions).
 4. **Un NO-GO se mesure la ou l'hypothese a une chance.** L'hypothese « environnement ferme » a
@@ -134,7 +134,7 @@ LOT B — les 1 113 objets Forge sans modele, puis la toile du canevas
 
 ## Ou travailler
 
-Worktree `C:\Users\Guillaume\Projects\LevelUp-wt-replay2d`, branche `feat/v75`. JAMAIS sur
+Worktree `<poste>\Projects\LevelUp-wt-replay2d`, branche `feat/v75`. JAMAIS sur
 `main`. Ne pas merger.
 
 A lire avant d'agir, dans cet ordre : `CLAUDE.md` (Go uniquement, JAMAIS de Python, pas

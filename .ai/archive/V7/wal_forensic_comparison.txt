@@ -1,11 +1,11 @@
 ﻿=== WAL forensic comparison — ADR 0021 Gap 2 ===
-tempdir: C:\Users\GUILLA~1\AppData\Local\Temp\wal_forensic_3794048824
+tempdir: <poste>\AppData\Local\Temp\wal_forensic_3794048824
 
 [gen] ATTACH (sub-process)...
 [gen] CREATE_TABLE (sub-process)...
 [gen] ALTER_TABLE (sub-process)...
 [gen] INSERT_BULK (sub-process)...
-[real] C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\go-api\internal\platform\duckdb\testdata\wal_orphan_fixture\shared_social.duckdb.wal
+[real] <poste>\Downloads\Scripts\LevelUp-go-migration\apps\go-api\internal\platform\duckdb\testdata\wal_orphan_fixture\shared_social.duckdb.wal
 
 === Signatures comparison ===
 
@@ -75,4 +75,4 @@ CONCLUSION : le pattern avec le plus de common_strings + size_delta minimal
 est le candidat le plus probable pour le type d'opération coupable du
 WAL orphelin réel capturé en prod.
 
-(tempdir conservé pour inspection : C:\Users\GUILLA~1\AppData\Local\Temp\wal_forensic_3794048824)
+(tempdir conservé pour inspection : <poste>\AppData\Local\Temp\wal_forensic_3794048824)

@@ -9,17 +9,17 @@ Scripts : `extract_s.sh` (extraits bruts `ex/<clé>_*.tsv`), `qs.sh` (requête s
 ## 0. Les trois sessions
 
 Découpage de l'app : trou de 2 h ET changement de composition (`domain/sessions.go`, mode `group` par défaut).
-Joueur JGtm `2533274823110022`. Madina97294 = `2533274858283686` (`match_participants.gamertag`).
+Joueur JGtm `2533274823110022`. joueur_117 = `2623439693412443` (`match_participants.gamertag`).
 NB : `match_participants.gamertag` n'est rempli que sur une ligne par match ; l'identification passe par le xuid.
 
 | clé | matchs | composition | filmés |
 |---|---|---|---|
-| s2209 | 22/09 21:23 → 22:29 (Starboard CTF, Curfew, Origin CTF, Solution, Detachment, Shogun, Catalyst) | + Chocoboflor, Madina97294 (même camp sur les 7) | 6 (Detachment sans film) |
-| s0709 | 07/09 21:26 → 22:14 (4 Strongholds, 3 CTF) | + XxDaemonGamerxX, Madina97294, Chocoboflor | 7 |
+| s2209 | 22/09 21:23 → 22:29 (Starboard CTF, Curfew, Origin CTF, Solution, Detachment, Shogun, Catalyst) | + joueur_165, joueur_117 (même camp sur les 7) | 6 (Detachment sans film) |
+| s0709 | 07/09 21:26 → 22:14 (4 Strongholds, 3 CTF) | + joueur_291, joueur_117, joueur_165 | 7 |
 | solo | 22/09 19:27 → 20:19 (6 Super Fiesta Assassin) | aucun ami suivi | 6 |
 
 Le 22/09 au soir compte 15 matchs avec un trou de 64 min : la session d'escouade (7) est découpée par la composition ;
-les 6 premiers matchs forment la session solo. Le 07/09, le 8e match (22:24 Domicile, sans XxDaemonGamerxX) ouvre
+les 6 premiers matchs forment la session solo. Le 07/09, le 8e match (22:24 Domicile, sans joueur_291) ouvre
 une autre session.
 
 ## 1. Relevés SQL bruts
@@ -314,13 +314,13 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
   "title": "soirée du 22 septembre 2026",
   "squad": [
    {
-    "x": "2535469190789936",
-    "gt": "Chocoboflor",
+    "x": "2547408409520575",
+    "gt": "joueur_165",
     "tok": "squad-player-2"
    },
    {
-    "x": "2533274858283686",
-    "gt": "Madina97294",
+    "x": "2623439693412443",
+    "gt": "joueur_117",
     "tok": "squad-player-3"
    }
   ],
@@ -560,7 +560,7 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "heavy": 11,
     "environmental": 2
    },
-   "2535469190789936": {
+   "2547408409520575": {
     "sidearm": 19,
     "environmental": 2,
     "shoulder": 24,
@@ -568,7 +568,7 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "grenade": 2,
     "heavy": 4
    },
-   "2533274858283686": {
+   "2623439693412443": {
     "melee": 15,
     "sidearm": 37,
     "shoulder": 45,
@@ -580,13 +580,13 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
   },
   "sheet": {
    "2533274823110022": 65,
-   "2535469190789936": 63,
-   "2533274858283686": 121
+   "2547408409520575": 63,
+   "2623439693412443": 121
   },
   "filmKills": {
    "2533274823110022": 65,
-   "2535469190789936": 63,
-   "2533274858283686": 120
+   "2547408409520575": 63,
+   "2623439693412443": 120
   },
   "tools": [
    {
@@ -594,8 +594,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "label": "BR75",
     "cls": "shoulder",
     "by": {
-     "2535469190789936": 22,
-     "2533274858283686": 35,
+     "2547408409520575": 22,
+     "2623439693412443": 35,
      "2533274823110022": 22
     },
     "total": 79
@@ -605,8 +605,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "label": "MK50 Sidekick",
     "cls": "sidearm",
     "by": {
-     "2535469190789936": 17,
-     "2533274858283686": 34,
+     "2547408409520575": 17,
+     "2623439693412443": 34,
      "2533274823110022": 13
     },
     "total": 64
@@ -616,9 +616,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "label": "Mêlée",
     "cls": "melee",
     "by": {
-     "2533274858283686": 15,
+     "2623439693412443": 15,
      "2533274823110022": 6,
-     "2535469190789936": 12
+     "2547408409520575": 12
     },
     "total": 33
    },
@@ -628,8 +628,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "cls": "heavy",
     "by": {
      "2533274823110022": 11,
-     "2533274858283686": 5,
-     "2535469190789936": 4
+     "2623439693412443": 5,
+     "2547408409520575": 4
     },
     "total": 20
    },
@@ -638,7 +638,7 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "label": "S7 Sniper",
     "cls": "heavy",
     "by": {
-     "2533274858283686": 11
+     "2623439693412443": 11
     },
     "total": 11
    },
@@ -647,8 +647,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "label": "MA40 AR",
     "cls": "shoulder",
     "by": {
-     "2533274858283686": 6,
-     "2535469190789936": 2,
+     "2623439693412443": 6,
+     "2547408409520575": 2,
      "2533274823110022": 1
     },
     "total": 9
@@ -658,9 +658,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "label": "Grenade frag",
     "cls": "grenade",
     "by": {
-     "2533274858283686": 4,
+     "2623439693412443": 4,
      "2533274823110022": 2,
-     "2535469190789936": 1
+     "2547408409520575": 1
     },
     "total": 7
    },
@@ -670,7 +670,7 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "cls": "shoulder",
     "by": {
      "2533274823110022": 2,
-     "2533274858283686": 4
+     "2623439693412443": 4
     },
     "total": 6
    },
@@ -679,8 +679,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "label": "Déchiqueteur",
     "cls": "sidearm",
     "by": {
-     "2533274858283686": 3,
-     "2535469190789936": 2
+     "2623439693412443": 3,
+     "2547408409520575": 2
     },
     "total": 5
    },
@@ -689,8 +689,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "label": "Objet explosif (bidon)",
     "cls": "environmental",
     "by": {
-     "2535469190789936": 1,
-     "2533274858283686": 2,
+     "2547408409520575": 1,
+     "2623439693412443": 2,
      "2533274823110022": 2
     },
     "total": 5
@@ -700,7 +700,7 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "label": "Grenade plasma",
     "cls": "grenade",
     "by": {
-     "2535469190789936": 1,
+     "2547408409520575": 1,
      "2533274823110022": 2
     },
     "total": 3
@@ -710,8 +710,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "label": "Chute, environnement",
     "cls": "environmental",
     "by": {
-     "2535469190789936": 1,
-     "2533274858283686": 1
+     "2547408409520575": 1,
+     "2623439693412443": 1
     },
     "total": 2
    },
@@ -756,7 +756,7 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "label": "Non attribué",
     "cls": "unattributed",
     "by": {
-     "2533274858283686": 1
+     "2623439693412443": 1
     },
     "total": 1
    }
@@ -779,8 +779,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "cad": {
       "me": 0.17,
       "sq": {
-       "2533274858283686": 0.83,
-       "2535469190789936": 0.17
+       "2623439693412443": 0.83,
+       "2547408409520575": 0.17
       },
       "team": 1.17,
       "lobby": 5
@@ -817,8 +817,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "cad": {
       "me": 0.33,
       "sq": {
-       "2533274858283686": 0.17,
-       "2535469190789936": 0.33
+       "2623439693412443": 0.17,
+       "2547408409520575": 0.33
       },
       "team": 1,
       "lobby": 1.83
@@ -855,8 +855,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "cad": {
       "me": 0.83,
       "sq": {
-       "2533274858283686": 0.33,
-       "2535469190789936": 0.67
+       "2623439693412443": 0.33,
+       "2547408409520575": 0.67
       },
       "team": 2.33,
       "lobby": 5.33
@@ -893,8 +893,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "cad": {
       "me": 0.67,
       "sq": {
-       "2533274858283686": 1.33,
-       "2535469190789936": 0.17
+       "2623439693412443": 1.33,
+       "2547408409520575": 0.17
       },
       "team": 2.5,
       "lobby": 5.17
@@ -931,8 +931,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "cad": {
       "me": 0.33,
       "sq": {
-       "2533274858283686": 0.5,
-       "2535469190789936": 0
+       "2623439693412443": 0.5,
+       "2547408409520575": 0
       },
       "team": 1.33,
       "lobby": 2.83
@@ -953,8 +953,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "cad": {
      "me": 2.17,
      "sq": {
-      "2533274858283686": 1.33,
-      "2535469190789936": 1
+      "2623439693412443": 1.33,
+      "2547408409520575": 1
      },
      "team": 7.33,
      "lobby": 15.83
@@ -1109,8 +1109,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
    "track": {
     "me": 13,
     "sq": {
-     "2533274858283686": 8,
-     "2535469190789936": 6
+     "2623439693412443": 8,
+     "2547408409520575": 6
     },
     "rest": 17,
     "them": 51
@@ -1172,8 +1172,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "team": 22,
      "lobby": 43,
      "sq": {
-      "2535469190789936": 5,
-      "2533274858283686": 7
+      "2547408409520575": 5,
+      "2623439693412443": 7
      },
      "shareTeam": 31.82,
      "shareLobby": 16.28,
@@ -1186,8 +1186,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "team": 33,
      "lobby": 66,
      "sq": {
-      "2535469190789936": 6,
-      "2533274858283686": 11
+      "2547408409520575": 6,
+      "2623439693412443": 11
      },
      "shareTeam": 30.3,
      "shareLobby": 15.15,
@@ -1200,8 +1200,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "team": 137.5,
      "lobby": 248.8,
      "sq": {
-      "2535469190789936": 19.7,
-      "2533274858283686": 44.8
+      "2547408409520575": 19.7,
+      "2623439693412443": 44.8
      },
      "shareTeam": 47.2,
      "shareLobby": 26.09,
@@ -1245,8 +1245,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
         "me": 4,
         "rest": 0,
         "sq": {
-         "2535469190789936": 0,
-         "2533274858283686": 0
+         "2547408409520575": 0,
+         "2623439693412443": 0
         }
        },
        {
@@ -1258,8 +1258,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
         "me": 0,
         "rest": 2,
         "sq": {
-         "2535469190789936": 1,
-         "2533274858283686": 1
+         "2547408409520575": 1,
+         "2623439693412443": 1
         }
        },
        {
@@ -1271,8 +1271,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
         "me": 3,
         "rest": 11,
         "sq": {
-         "2535469190789936": 4,
-         "2533274858283686": 5
+         "2547408409520575": 4,
+         "2623439693412443": 5
         }
        },
        {
@@ -1284,8 +1284,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
         "me": 0,
         "rest": 2,
         "sq": {
-         "2535469190789936": 0,
-         "2533274858283686": 1
+         "2547408409520575": 0,
+         "2623439693412443": 1
         }
        }
       ]
@@ -1302,8 +1302,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
         "me": 3,
         "rest": 11,
         "sq": {
-         "2535469190789936": 4,
-         "2533274858283686": 3
+         "2547408409520575": 4,
+         "2623439693412443": 3
         }
        },
        {
@@ -1315,8 +1315,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
         "me": 5,
         "rest": 6,
         "sq": {
-         "2535469190789936": 2,
-         "2533274858283686": 4
+         "2547408409520575": 2,
+         "2623439693412443": 4
         }
        },
        {
@@ -1328,8 +1328,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
         "me": 2,
         "rest": 6,
         "sq": {
-         "2535469190789936": 0,
-         "2533274858283686": 4
+         "2547408409520575": 0,
+         "2623439693412443": 4
         }
        }
       ]
@@ -1346,8 +1346,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
         "me": 64.9,
         "rest": 72.6,
         "sq": {
-         "2535469190789936": 19.7,
-         "2533274858283686": 44.8
+         "2547408409520575": 19.7,
+         "2623439693412443": 44.8
         }
        }
       ]
@@ -1411,8 +1411,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "them": 5,
      "me": 2,
      "sq": {
-      "2533274858283686": 1,
-      "2535469190789936": 2
+      "2623439693412443": 1,
+      "2547408409520575": 2
      }
     },
     {
@@ -1422,8 +1422,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "them": 3,
      "me": 1,
      "sq": {
-      "2533274858283686": 4,
-      "2535469190789936": 1
+      "2623439693412443": 4,
+      "2547408409520575": 1
      }
     }
    ],
@@ -1435,7 +1435,7 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "them": 13,
      "me": 4,
      "sq": {
-      "2535469190789936": 1
+      "2547408409520575": 1
      }
     },
     {
@@ -1445,7 +1445,7 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "them": 3,
      "me": 2,
      "sq": {
-      "2533274858283686": 3
+      "2623439693412443": 3
      }
     },
     {
@@ -1465,8 +1465,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "them": 2,
      "me": 0,
      "sq": {
-      "2533274858283686": 4,
-      "2535469190789936": 3
+      "2623439693412443": 4,
+      "2547408409520575": 3
      }
     },
     {
@@ -1516,7 +1516,7 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "them": 2,
      "me": 0,
      "sq": {
-      "2535469190789936": 1
+      "2547408409520575": 1
      }
     },
     {
@@ -1590,7 +1590,7 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "them": 0,
      "me": 0,
      "sq": {
-      "2533274858283686": 1
+      "2623439693412443": 1
      }
     }
    ]
@@ -2046,18 +2046,18 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
   "title": "soirée du 7 septembre 2026",
   "squad": [
    {
-    "x": "2533274833178266",
-    "gt": "XxDaemonGamerxX",
+    "x": "2558964982616721",
+    "gt": "joueur_291",
     "tok": "squad-player-2"
    },
    {
-    "x": "2533274858283686",
-    "gt": "Madina97294",
+    "x": "2623439693412443",
+    "gt": "joueur_117",
     "tok": "squad-player-3"
    },
    {
-    "x": "2535469190789936",
-    "gt": "Chocoboflor",
+    "x": "2547408409520575",
+    "gt": "joueur_165",
     "tok": "squad-player-4"
    }
   ],
@@ -2293,13 +2293,13 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "grenade": 3,
     "environmental": 1
    },
-   "2533274833178266": {
+   "2558964982616721": {
     "grenade": 2,
     "heavy": 2,
     "sidearm": 4,
     "shoulder": 4
    },
-   "2533274858283686": {
+   "2623439693412443": {
     "sidearm": 39,
     "heavy": 13,
     "shoulder": 7,
@@ -2307,7 +2307,7 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "grenade": 3,
     "environmental": 3
    },
-   "2535469190789936": {
+   "2547408409520575": {
     "shoulder": 13,
     "melee": 8,
     "sidearm": 24,
@@ -2318,15 +2318,15 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
   },
   "sheet": {
    "2533274823110022": 50,
-   "2533274833178266": 12,
-   "2533274858283686": 74,
-   "2535469190789936": 49
+   "2558964982616721": 12,
+   "2623439693412443": 74,
+   "2547408409520575": 49
   },
   "filmKills": {
    "2533274823110022": 50,
-   "2533274833178266": 12,
-   "2533274858283686": 74,
-   "2535469190789936": 49
+   "2558964982616721": 12,
+   "2623439693412443": 74,
+   "2547408409520575": 49
   },
   "tools": [
    {
@@ -2334,10 +2334,10 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "label": "MK50 Sidekick",
     "cls": "sidearm",
     "by": {
-     "2533274858283686": 38,
-     "2535469190789936": 24,
+     "2623439693412443": 38,
+     "2547408409520575": 24,
      "2533274823110022": 28,
-     "2533274833178266": 4
+     "2558964982616721": 4
     },
     "total": 94
    },
@@ -2346,9 +2346,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "label": "Mêlée",
     "cls": "melee",
     "by": {
-     "2535469190789936": 8,
+     "2547408409520575": 8,
      "2533274823110022": 8,
-     "2533274858283686": 9
+     "2623439693412443": 9
     },
     "total": 25
    },
@@ -2357,10 +2357,10 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "label": "MA40 AR",
     "cls": "shoulder",
     "by": {
-     "2535469190789936": 12,
+     "2547408409520575": 12,
      "2533274823110022": 1,
-     "2533274858283686": 3,
-     "2533274833178266": 4
+     "2623439693412443": 3,
+     "2558964982616721": 4
     },
     "total": 20
    },
@@ -2369,9 +2369,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "label": "S7 Sniper",
     "cls": "heavy",
     "by": {
-     "2533274858283686": 9,
+     "2623439693412443": 9,
      "2533274823110022": 1,
-     "2533274833178266": 2
+     "2558964982616721": 2
     },
     "total": 12
    },
@@ -2380,9 +2380,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "label": "Grenade frag",
     "cls": "grenade",
     "by": {
-     "2535469190789936": 1,
-     "2533274833178266": 2,
-     "2533274858283686": 3,
+     "2547408409520575": 1,
+     "2558964982616721": 2,
+     "2623439693412443": 3,
      "2533274823110022": 1
     },
     "total": 7
@@ -2393,7 +2393,7 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "cls": "heavy",
     "by": {
      "2533274823110022": 3,
-     "2533274858283686": 4
+     "2623439693412443": 4
     },
     "total": 7
    },
@@ -2403,8 +2403,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "cls": "environmental",
     "by": {
      "2533274823110022": 1,
-     "2533274858283686": 3,
-     "2535469190789936": 1
+     "2623439693412443": 3,
+     "2547408409520575": 1
     },
     "total": 5
    },
@@ -2413,7 +2413,7 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "label": "Bandit EVO",
     "cls": "shoulder",
     "by": {
-     "2533274858283686": 3
+     "2623439693412443": 3
     },
     "total": 3
    },
@@ -2441,7 +2441,7 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "cls": "shoulder",
     "by": {
      "2533274823110022": 1,
-     "2535469190789936": 1
+     "2547408409520575": 1
     },
     "total": 2
    },
@@ -2450,7 +2450,7 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "label": "BR75",
     "cls": "shoulder",
     "by": {
-     "2533274858283686": 1
+     "2623439693412443": 1
     },
     "total": 1
    },
@@ -2459,7 +2459,7 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "label": "Déchiqueteur",
     "cls": "sidearm",
     "by": {
-     "2533274858283686": 1
+     "2623439693412443": 1
     },
     "total": 1
    },
@@ -2468,7 +2468,7 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "label": "Grenade splinter",
     "cls": "grenade",
     "by": {
-     "2535469190789936": 1
+     "2547408409520575": 1
     },
     "total": 1
    },
@@ -2486,7 +2486,7 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "label": "Marteau antigravité",
     "cls": "heavy",
     "by": {
-     "2535469190789936": 1
+     "2547408409520575": 1
     },
     "total": 1
    },
@@ -2518,9 +2518,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "cad": {
       "me": 1,
       "sq": {
-       "2533274833178266": 0.57,
-       "2533274858283686": 1.71,
-       "2535469190789936": 0.71
+       "2558964982616721": 0.57,
+       "2623439693412443": 1.71,
+       "2547408409520575": 0.71
       },
       "team": 4,
       "lobby": 7.14
@@ -2557,9 +2557,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "cad": {
       "me": 0.57,
       "sq": {
-       "2533274833178266": 0,
-       "2533274858283686": 0.14,
-       "2535469190789936": 0.14
+       "2558964982616721": 0,
+       "2623439693412443": 0.14,
+       "2547408409520575": 0.14
       },
       "team": 0.86,
       "lobby": 1.57
@@ -2596,9 +2596,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "cad": {
       "me": 0.14,
       "sq": {
-       "2533274833178266": 0.14,
-       "2533274858283686": 0,
-       "2535469190789936": 0.14
+       "2558964982616721": 0.14,
+       "2623439693412443": 0,
+       "2547408409520575": 0.14
       },
       "team": 0.43,
       "lobby": 1.86
@@ -2635,9 +2635,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "cad": {
       "me": 0,
       "sq": {
-       "2533274833178266": 0,
-       "2533274858283686": 0,
-       "2535469190789936": 0
+       "2558964982616721": 0,
+       "2623439693412443": 0,
+       "2547408409520575": 0
       },
       "team": 0,
       "lobby": 0.86
@@ -2657,9 +2657,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "cad": {
       "me": 0.43,
       "sq": {
-       "2533274833178266": 0.29,
-       "2533274858283686": 0,
-       "2535469190789936": 0
+       "2558964982616721": 0.29,
+       "2623439693412443": 0,
+       "2547408409520575": 0
       },
       "team": 0.71,
       "lobby": 0.71
@@ -2680,9 +2680,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
     "cad": {
      "me": 1.43,
      "sq": {
-      "2533274833178266": 0.71,
-      "2533274858283686": 2.14,
-      "2535469190789936": 1.43
+      "2558964982616721": 0.71,
+      "2623439693412443": 2.14,
+      "2547408409520575": 1.43
      },
      "team": 5.71,
      "lobby": 14
@@ -2847,9 +2847,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
    "track": {
     "me": 10,
     "sq": {
-     "2533274833178266": 5,
-     "2533274858283686": 15,
-     "2535469190789936": 10
+     "2558964982616721": 5,
+     "2623439693412443": 15,
+     "2547408409520575": 10
     },
     "rest": 0,
     "them": 58
@@ -2911,9 +2911,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "team": 110,
      "lobby": 257,
      "sq": {
-      "2533274858283686": 36,
-      "2533274833178266": 10,
-      "2535469190789936": 36
+      "2623439693412443": 36,
+      "2558964982616721": 10,
+      "2547408409520575": 36
      },
      "shareTeam": 25.45,
      "shareLobby": 10.89,
@@ -2926,9 +2926,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "team": 71,
      "lobby": 183,
      "sq": {
-      "2533274858283686": 27,
-      "2533274833178266": 6,
-      "2535469190789936": 6
+      "2623439693412443": 27,
+      "2558964982616721": 6,
+      "2547408409520575": 6
      },
      "shareTeam": 45.07,
      "shareLobby": 17.49,
@@ -2941,9 +2941,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "team": 1238.3,
      "lobby": 2509.3,
      "sq": {
-      "2533274858283686": 348.6,
-      "2533274833178266": 214.8,
-      "2535469190789936": 332.6
+      "2623439693412443": 348.6,
+      "2558964982616721": 214.8,
+      "2547408409520575": 332.6
      },
      "shareTeam": 27.64,
      "shareLobby": 13.64,
@@ -2997,9 +2997,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
         "me": 18,
         "rest": 53,
         "sq": {
-         "2533274833178266": 7,
-         "2533274858283686": 20,
-         "2535469190789936": 26
+         "2558964982616721": 7,
+         "2623439693412443": 20,
+         "2547408409520575": 26
         }
        },
        {
@@ -3011,9 +3011,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
         "me": 5,
         "rest": 17,
         "sq": {
-         "2533274833178266": 0,
-         "2533274858283686": 11,
-         "2535469190789936": 6
+         "2558964982616721": 0,
+         "2623439693412443": 11,
+         "2547408409520575": 6
         }
        }
       ]
@@ -3030,9 +3030,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
         "me": 7,
         "rest": 3,
         "sq": {
-         "2533274833178266": 0,
-         "2533274858283686": 2,
-         "2535469190789936": 1
+         "2558964982616721": 0,
+         "2623439693412443": 2,
+         "2547408409520575": 1
         }
        },
        {
@@ -3044,9 +3044,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
         "me": 7,
         "rest": 13,
         "sq": {
-         "2533274833178266": 2,
-         "2533274858283686": 10,
-         "2535469190789936": 1
+         "2558964982616721": 2,
+         "2623439693412443": 10,
+         "2547408409520575": 1
         }
        }
       ]
@@ -3063,9 +3063,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
         "me": 271.3,
         "rest": 796.5,
         "sq": {
-         "2533274833178266": 202,
-         "2533274858283686": 308.5,
-         "2535469190789936": 286
+         "2558964982616721": 202,
+         "2623439693412443": 308.5,
+         "2547408409520575": 286
         }
        }
       ]
@@ -3090,9 +3090,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
         "me": 0,
         "rest": 1,
         "sq": {
-         "2533274833178266": 0,
-         "2533274858283686": 0,
-         "2535469190789936": 1
+         "2558964982616721": 0,
+         "2623439693412443": 0,
+         "2547408409520575": 1
         }
        },
        {
@@ -3104,9 +3104,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
         "me": 0,
         "rest": 1,
         "sq": {
-         "2533274833178266": 1,
-         "2533274858283686": 0,
-         "2535469190789936": 0
+         "2558964982616721": 1,
+         "2623439693412443": 0,
+         "2547408409520575": 0
         }
        },
        {
@@ -3118,9 +3118,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
         "me": 5,
         "rest": 10,
         "sq": {
-         "2533274833178266": 2,
-         "2533274858283686": 5,
-         "2535469190789936": 3
+         "2558964982616721": 2,
+         "2623439693412443": 5,
+         "2547408409520575": 3
         }
        },
        {
@@ -3132,9 +3132,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
         "me": 0,
         "rest": 0,
         "sq": {
-         "2533274833178266": 0,
-         "2533274858283686": 0,
-         "2535469190789936": 0
+         "2558964982616721": 0,
+         "2623439693412443": 0,
+         "2547408409520575": 0
         }
        }
       ]
@@ -3151,9 +3151,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
         "me": 4,
         "rest": 3,
         "sq": {
-         "2533274833178266": 1,
-         "2533274858283686": 2,
-         "2535469190789936": 0
+         "2558964982616721": 1,
+         "2623439693412443": 2,
+         "2547408409520575": 0
         }
        },
        {
@@ -3165,9 +3165,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
         "me": 12,
         "rest": 12,
         "sq": {
-         "2533274833178266": 1,
-         "2533274858283686": 7,
-         "2535469190789936": 4
+         "2558964982616721": 1,
+         "2623439693412443": 7,
+         "2547408409520575": 4
         }
        },
        {
@@ -3179,9 +3179,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
         "me": 2,
         "rest": 8,
         "sq": {
-         "2533274833178266": 2,
-         "2533274858283686": 6,
-         "2535469190789936": 0
+         "2558964982616721": 2,
+         "2623439693412443": 6,
+         "2547408409520575": 0
         }
        }
       ]
@@ -3198,9 +3198,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
         "me": 71,
         "rest": 99.5,
         "sq": {
-         "2533274833178266": 12.8,
-         "2533274858283686": 40.1,
-         "2535469190789936": 46.6
+         "2558964982616721": 12.8,
+         "2623439693412443": 40.1,
+         "2547408409520575": 46.6
         }
        }
       ]
@@ -3264,9 +3264,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "them": 5,
      "me": 4,
      "sq": {
-      "2533274833178266": 0,
-      "2533274858283686": 1,
-      "2535469190789936": 1
+      "2558964982616721": 0,
+      "2623439693412443": 1,
+      "2547408409520575": 1
      }
     },
     {
@@ -3276,9 +3276,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "them": 4,
      "me": 1,
      "sq": {
-      "2533274833178266": 0,
-      "2533274858283686": 1,
-      "2535469190789936": 0
+      "2558964982616721": 0,
+      "2623439693412443": 1,
+      "2547408409520575": 0
      }
     }
    ],
@@ -3290,9 +3290,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "them": 10,
      "me": 4,
      "sq": {
-      "2533274858283686": 5,
-      "2535469190789936": 1,
-      "2533274833178266": 1
+      "2623439693412443": 5,
+      "2547408409520575": 1,
+      "2558964982616721": 1
      }
     },
     {
@@ -3302,7 +3302,7 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "them": 15,
      "me": 1,
      "sq": {
-      "2533274858283686": 2
+      "2623439693412443": 2
      }
     },
     {
@@ -3312,7 +3312,7 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "them": 3,
      "me": 1,
      "sq": {
-      "2533274858283686": 1
+      "2623439693412443": 1
      }
     },
     {
@@ -3322,7 +3322,7 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "them": 1,
      "me": 0,
      "sq": {
-      "2535469190789936": 1
+      "2547408409520575": 1
      }
     },
     {
@@ -3332,7 +3332,7 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "them": 0,
      "me": 0,
      "sq": {
-      "2533274858283686": 1
+      "2623439693412443": 1
      }
     }
    ],
@@ -3344,9 +3344,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "them": 12,
      "me": 0,
      "sq": {
-      "2533274833178266": 2,
-      "2535469190789936": 2,
-      "2533274858283686": 1
+      "2558964982616721": 2,
+      "2547408409520575": 2,
+      "2623439693412443": 1
      }
     },
     {
@@ -3356,9 +3356,9 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "them": 2,
      "me": 0,
      "sq": {
-      "2535469190789936": 2,
-      "2533274858283686": 2,
-      "2533274833178266": 1
+      "2547408409520575": 2,
+      "2623439693412443": 2,
+      "2558964982616721": 1
      }
     },
     {
@@ -3376,7 +3376,7 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "them": 2,
      "me": 0,
      "sq": {
-      "2533274858283686": 1
+      "2623439693412443": 1
      }
     },
     {
@@ -3386,8 +3386,8 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "them": 1,
      "me": 0,
      "sq": {
-      "2533274833178266": 1,
-      "2533274858283686": 1
+      "2558964982616721": 1,
+      "2623439693412443": 1
      }
     },
     {
@@ -3397,7 +3397,7 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "them": 1,
      "me": 0,
      "sq": {
-      "2535469190789936": 1
+      "2547408409520575": 1
      }
     },
     {
@@ -3407,7 +3407,7 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "them": 0,
      "me": 1,
      "sq": {
-      "2535469190789936": 1
+      "2547408409520575": 1
      }
     },
     {
@@ -3441,7 +3441,7 @@ Portée : série par match de la maquette précédente (`ex/illu_range.tsv`, 189
      "them": 0,
      "me": 0,
      "sq": {
-      "2535469190789936": 1
+      "2547408409520575": 1
      }
     },
     {

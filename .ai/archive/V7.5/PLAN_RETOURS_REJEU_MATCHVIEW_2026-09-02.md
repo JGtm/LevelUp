@@ -190,7 +190,7 @@ translocateur est consommé (témoins à désigner par le user).
 > personne) ; son `spent` à t=1851 porte donc `from=4` (grappin, dernier rang vu) →
 > `spentTranslocations` le rejette ET `portaitLeTranslocateur` rejette le saut de 22 m.
 > UNE émission manquée aveugle les deux canaux d'un coup.
-> (2) SpiffyDart86537, slot 560 — saut de 7,8 m à t=3420 (prise r=11 décodée à 3191), mort
+> (2) joueur_160, slot 560 — saut de 7,8 m à t=3420 (prise r=11 décodée à 3191), mort
 > 1,2 s après : sous le seuil spatial (12 m/3 frames) et aucune émission d'épuisement (mort).
 > DÉFAUTS STRUCTURELS parc : (a) R3-1 ne peut s'afficher sur AUCUN artefact — 16 poses
 > `translocator_beacon` = 15 dropped + 1 unknown, 0 deployed ; les téléportations réelles

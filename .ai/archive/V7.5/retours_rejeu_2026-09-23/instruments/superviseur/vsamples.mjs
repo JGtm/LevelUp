@@ -1,6 +1,6 @@
 import fs from 'fs';
 const [id, slotArg, fromArg, toArg] = process.argv.slice(2);
-const doc = JSON.parse(fs.readFileSync(`C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/${id}.json`, 'utf8'));
+const doc = JSON.parse(fs.readFileSync(`C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/${id}.json`, 'utf8'));
 const from = +fromArg || 0, to = +toArg || 1e9;
 for (const v of doc.vehicles.filter(v => String(v.slot) === slotArg)) {
   console.log(`veh ${v.slot} ${v.family} t0=${v.t0} t1=${v.t1} end=${v.end} samples=${v.samples.length}`);

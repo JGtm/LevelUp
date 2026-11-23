@@ -2022,11 +2022,15 @@ d'un codage avec perte fait baver une zone sur la suivante), supprime chaque PNG
 et affiche le poids avant et après. `teams/` et tout `halo_infinite/` restent en PNG. Un garde-rail vitest
 (`halo5Images.guard.test.ts`) échoue si un PNG revient.
 
-### Gate local avant merge (`gate-push`)
+### Gate local avant `main` (`gate-push`)
 
 ```bash
 make gate-push               # ratchet lint Go + harnais replay-equiv + typecheck/lint web + baseline de tests, voies film et DuckDB en parallèle (~25 min + ~12 min)
 ```
+
+Il se lance UNE fois, sur la branche de release, avant la fusion de la release dans `main`. Jamais avant la
+fusion d'une branche de travail dans `release/vX.Y.Z` : là, les paquets touchés, une suite `vitest` complète et la
+CI font le gate. Depuis un worktree, `replay-equiv` lit seul le parc de films et la liste des originaux du dépôt principal.
 
 `make gate-push` joue `make replay-equiv` (le harnais d'équivalence du rejeu) : les références de
 `replay/testdata/equivalence` du décodeur de film (lues à la version qu'exige `go.mod`) ont dérivé sans bruit de la
@@ -2097,7 +2101,12 @@ powershell -File scripts/disk-hygiene.ps1 -Lot <lot> -Apply  # clôture de lot :
 - Sécurité : aucune suppression tant qu'un processus `go`, `compile`, `link`, `*.test`,
   `golangci-lint`, `gate`, `replay-*` ou `levelup*` tourne (rapport seul). `-Lot` refuse un cache
   écrit dans les 10 dernières minutes. Un arbre qui contient une jonction ou un lien n'est jamais
-  supprimé, seulement signalé. Les worktrees sont signalés, jamais retirés.
+  supprimé, seulement signalé. Un dossier qui est, ou qui contient jusqu'à 3 niveaux plus bas, un
+  dépôt ou un worktree git (un `.git`, dossier ou fichier) n'est jamais supprimé, même sous `C:\t` :
+  il est listé « dépôt ou worktree git : conservé », en simulation comme avec `-Apply`. Les
+  worktrees enregistrés sont signalés, jamais retirés.
+- `-TmpRoot <dossier>` remplace `C:\t` comme racine balayée (défaut inchangé) ; sert aux essais sur
+  une arborescence jetable, avec `-Scope Tmp`.
 - Journal : `%LOCALAPPDATA%\levelup-disk-hygiene\disk-hygiene.log` (espace libre avant et après,
   chaque suppression et chaque refus ; `ALERTE` sous 60 Go libres).
 - Tâche planifiée `LevelUp-disk-hygiene` : chaque jour à 4 h, utilisateur courant, sans élévation,

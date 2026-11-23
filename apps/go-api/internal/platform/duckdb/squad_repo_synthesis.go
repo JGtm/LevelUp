@@ -39,7 +39,7 @@ func (r *SquadRepo) LoadMainTeamParticipants(ctx context.Context, mainXUID strin
 		return nil, fmt.Errorf("LoadMainTeamParticipants: %w", err)
 	}
 	// Noms : l'annuaire de la lecture (squad_repo_annuaire.go), sur les mêmes matchs. Ils
-	// servent l'Escouade (matrice d'impact) ET l'accueil (coéquipiers d'une session).
+	// servent l'Escouade (tableau d'impact par session) ET l'accueil (coéquipiers d'une session).
 	if err := nommerLignes(ctx, db, matchIDs, result, accesLigne[domain.AllyParticipant]{
 		xuid:   func(r domain.AllyParticipant) string { return r.XUID },
 		match:  func(r domain.AllyParticipant) string { return r.MatchID },

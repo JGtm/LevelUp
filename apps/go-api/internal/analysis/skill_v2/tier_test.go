@@ -27,9 +27,9 @@ func TestInferTier_ReferencePlayers(t *testing.T) {
 		mu       float64
 		wantTier string
 	}{
-		{"Madina BTB", 26.17, "Diamond"},                  // cible Diamant ✓ (CSR Diamant 4-5)
-		{"Madina arena_slayer", 26.12, "Diamond"},         // cible Diamant ✓
-		{"Madina arena_objectif", 25.75, "Platinum"},      // proche Diamant, dans Platine étroit
+		{"joueur_075 BTB", 26.17, "Diamond"},              // cible Diamant ✓ (CSR Diamant 4-5)
+		{"joueur_075 arena_slayer", 26.12, "Diamond"},     // cible Diamant ✓
+		{"joueur_075 arena_objectif", 25.75, "Platinum"},  // proche Diamant, dans Platine étroit
 		{"Joueur90001 arena_slayer", 23.81, "Gold"},       // cible Or ✓
 		{"JGtm arena_slayer", 23.52, "Gold"},              // cible Or ✓
 		{"Joueur90000000f arena_slayer", 20.38, "Bronze"}, // cible Bronze ✓
@@ -141,7 +141,7 @@ func TestFormatTierLabel(t *testing.T) {
 		{25.5, "Platine II"}, // (25.5-25)/0.4 = 1.25 → 2
 		{25.8, "Diamant I"},  // borne Diamant (3 sous-paliers, width 0.4)
 		{26.0, "Diamant I"},  // (26-25.8)/0.4 = 0.5 → 1
-		{26.17, "Diamant I"}, // Madina BTB → (26.17-25.8)/0.4 = 0.925 → 1
+		{26.17, "Diamant I"}, // joueur_075 BTB → (26.17-25.8)/0.4 = 0.925 → 1
 		{26.5, "Diamant II"}, // (26.5-25.8)/0.4 = 1.75 → 2
 		{27.0, "Onyx"},
 		{45.0, "Onyx"},

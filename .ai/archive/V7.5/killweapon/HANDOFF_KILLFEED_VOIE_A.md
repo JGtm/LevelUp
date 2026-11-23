@@ -14,8 +14,8 @@ position victime à T ⋈ record dont impact-pos ≈ victime-pos près de T → 
    l'exposer dans `EntityTrace` ; décoder par frame chaque biped (slot via id record) → position par slot/joueur.
 2. CÔTÉ IMPACT : porter le deser COMPLET `FUN_14080c1f8` (décompile entière dispo) jusqu'à la position d'impact
    (param_5=1 → `+0x27c` via FUN_140c9e4d8 ; param_5=0 → `+0x2a0` via FUN_1406cd5b8). Étendre `cmd/tmp_dmgscan`.
-3. MATCH : par kill, victime-pos(T) ⋈ impact-pos(record près de T) → arme. Valider narration (BR75 JGtm→Akatsuki ;
-   marteau IKE→JGtm). C'est l'effort substantiel à mener ; **commencer par le CÔTÉ VICTIME** (plus court, i0 déjà consommé).
+3. MATCH : par kill, victime-pos(T) ⋈ impact-pos(record près de T) → arme. Valider narration (BR75 JGtm→joueur_700 ;
+   marteau JOUEUR_502→JGtm). C'est l'effort substantiel à mener ; **commencer par le CÔTÉ VICTIME** (plus court, i0 déjà consommé).
 > NB : la Voie A "walk complet 8 bipeds" reste possible mais a une LIMITE DURE (i63 count2 = popcount RAM hors flux,
 > cf WALK_PORT_NOTES) ; le position-linking la contourne (n'a besoin que de i0, lu avant désync).
 
@@ -55,8 +55,8 @@ Lire l'**arme équipée du tueur** au moment du kill (le tueur étant connu), cr
    keyframe (`cmd/tmp_loadout`, 8 records biped #35) + swaps (records WST entre keyframes).
 3. **Croiser** : par kill (chunk_27 : tueur slot + temps, 93/93) → arme équipée à t → `tueur·arme·victime`.
    **Cross-check** par les 519 records (la famille équipée doit matcher un record proche en temps).
-4. **Valider narration** : marteau IKE ILYA→JGtm (mêlée) ; BR75 JGtm→Akatsuki fire17 (arme). pi→xuid :
-   pi2=2533274823110022 JGtm, pi4=2533274815845110 IKE ILYA, pi5=2535444178793711 Akatsuki fire17.
+4. **Valider narration** : marteau JOUEUR_417→JGtm (mêlée) ; BR75 JGtm→joueur_700 fire17 (arme). pi→xuid :
+   pi2=2533274823110022 JGtm, pi4=2742063072864889 JOUEUR_417, pi5=2812089420052706 joueur_700 fire17.
 5. **Mêlée/grenade/terrain** : PAS de voie offline fiable identifiée (record absent pour mêlée — Hammer 0/519 ;
    chunk_27 muet). Pour la mêlée : l'arme équipée au moment du frag marteau = le marteau (si dégainé) → le walk
    pourrait la capter ; sinon à re-statuer après le walk. Grenade/terrain = ouvert.

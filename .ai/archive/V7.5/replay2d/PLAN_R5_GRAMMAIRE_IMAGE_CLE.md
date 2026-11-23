@@ -5,7 +5,7 @@
 > (`PLAN_R4_OBJECTIFS_VIVANTS_TI11.md`, phase 4). Les deux nomment le MEME manque :
 > « le deserialiseur du corps d'un record d'image-cle (la fonction qui suit l'en-tete
 > 64 bits) » — resolu NULLE PART dans le depot.
-> Worktree `C:/Users/Guillaume/Projects/LevelUp-wt-kfgram`, branche `wt/kf-grammaire`,
+> Worktree `<poste>/Projects/LevelUp-wt-kfgram`, branche `wt/kf-grammaire`,
 > base `wt/ti37-identite` = `339d2956e` (= `feat/v75` `3058afbba` + le lot R3).
 > Execution sous le contrat du skill `plan-execution` (ordre strict, un item = un statut,
 > zero fix hors perimetre, zero report d'une etape executable).
@@ -140,7 +140,7 @@ vtable -> `*(vtable+0x60)`. C'est du travail de decompile, pas une hypothese.
 
 ## 4. Corpus — FERME
 
-Racine, LECTURE SEULE : `C:/Users/Guillaume/Projects/LevelUp/data/cache/film_chunks/`.
+Racine, LECTURE SEULE : `<poste>/Projects/LevelUp/data/cache/film_chunks/`.
 Presence des 6 films verifiee sur disque le 2026-08-17 (nombre de chunks entre parentheses).
 
 | film | (chunks) | role |
@@ -158,7 +158,7 @@ Presence des 6 films verifiee sur disque le 2026-08-17 (nombre de chunks entre p
 |---|---|---|
 | Les films vivent dans le depot PRINCIPAL, absent du worktree | chemin | lecture seule par chemin absolu ; aucune ecriture, aucun lien |
 | Un seul decodage `filmdec` par process (hooks + bascules GLOBALES) | technique | un seul test a la fois, bascules restaurees en `defer` (patron `ScanFilmEquipmentIdentity`) |
-| Cache Go partage corrompu par deux `go` concurrents (autres lots en parallele) | technique | `GOCACHE=C:/Users/Guillaume/Projects/LevelUp-wt-kfgram/.gocache` (ajoute a l'`info/exclude` du worktree, jamais au `.gitignore` versionne) + UNE commande `go` a la fois |
+| Cache Go partage corrompu par deux `go` concurrents (autres lots en parallele) | technique | `GOCACHE=<poste>/Projects/LevelUp-wt-kfgram/.gocache` (ajoute a l'`info/exclude` du worktree, jamais au `.gitignore` versionne) + UNE commande `go` a la fois |
 | Un paquet exigeant CGO (DuckDB, `himap`) sur le chemin de build | technique | `CGO_ENABLED=0` sur `filmdec`/`replay` ; si un instrument exige CGO il porte l'etiquette `gamefiles` (patron impose par R3, sans quoi trois jobs de CI cassent) |
 | Ghidra est le programme de l'utilisateur, ouvert et en cours d'usage | ressource partagee | LECTURE SEULE stricte : `decompile_function`, `get_xrefs_*`, `read_memory`, `disassemble_bytes`. Aucun rename, aucun script, aucune analyse relancee, aucune sauvegarde |
 | `ti=11` a **0/34 composants portes** | perimetre | la phase 4 en porte le MINIMUM (i5, i12, i13, i14) et statue les autres |
@@ -446,7 +446,7 @@ R1 est fusionne ; R3 bis tourne dans le worktree principal ; l'habillage est en 
 4. **Interdits** : aucun run de masse, aucune re-cuisson d'artefact publie sous `data/`,
    aucune ecriture DuckDB, aucune ecriture hors du worktree `LevelUp-wt-kfgram`. Les films et
    les autres worktrees sont lus en LECTURE SEULE.
-5. **Cache Go isole** : `GOCACHE=C:/Users/Guillaume/Projects/LevelUp-wt-kfgram/.gocache` sur
+5. **Cache Go isole** : `GOCACHE=<poste>/Projects/LevelUp-wt-kfgram/.gocache` sur
    TOUTE commande `go`, **une seule a la fois**.
 6. Commits par phase sur `wt/kf-grammaire` (`feat(v7.5-rejeu-kf):` / `mesure(...)` /
    `docs(...)`, terminaison `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`),
@@ -578,7 +578,7 @@ qu'environ 40 %. Rien n'est publie, SchemaVersion reste a 8.
 
 1. Relire le skill `plan-execution`, puis ce fichier de haut en bas : les cases disent ou en
    est le lot, le journal §10 dit ce qui a ete mesure.
-2. Verifier la branche : `git -C C:/Users/Guillaume/Projects/LevelUp-wt-kfgram branch
+2. Verifier la branche : `git -C <poste>/Projects/LevelUp-wt-kfgram branch
    --show-current` doit rendre `wt/kf-grammaire`.
 3. Relire §7 (contrat d'interface) AVANT de toucher un fichier partage du decodeur.
 4. **Verifier sur pieces** avant de coder ET avant de cocher : les references de §2 sont

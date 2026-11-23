@@ -44,7 +44,7 @@ Pas d'INFO/WARN nouvelle attendue au boot — le flag s'active seulement quand u
 Soit attendre le scheduler auto-sync (intervalle config), soit déclencher manuellement :
 
 ```bash
-curl -X POST http://localhost:8080/api/sync/Madina97294
+curl -X POST http://localhost:8080/api/sync/joueur_117
 ```
 
 ### Observation
@@ -52,7 +52,7 @@ curl -X POST http://localhost:8080/api/sync/Madina97294
 Logs attendus pendant le cycle :
 
 ```
-INFO submitMatchAsBatch: match persisté gamertag=Madina97294 match_id=... participants=N medals=N
+INFO submitMatchAsBatch: match persisté gamertag=joueur_117 match_id=... participants=N medals=N
 ```
 
 Au lieu de l'ancien :

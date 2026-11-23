@@ -39,7 +39,7 @@ travail a jonctions, `data/cache/replays` reel. Faits exportes par `levelup repl
 Slots des prises sans pont (journal ajoute par ce lot, cf. §4) — `c0a82e88` : `[12, 12]` apres
 correctif, donc les trois prises se repartissent en **2 sur le slot 12 agrege** (compteurs de film
 5/0/60 assistances : ils ne ressemblent a aucune ligne de match, il n'est nommable par aucun des
-deux ponts) et **1 sur le slot 22** (SweatyYeti75, 7 frags / 2 morts / 1 assistance). C'est
+deux ponts) et **1 sur le slot 22** (joueur_631, 7 frags / 2 morts / 1 assistance). C'est
 exactement le releve du §9.8 de l'instruction CTF, reproduit au HEAD.
 
 `51101d1d` est bien un CTF (Neutral Flag) ; son artefact au parc date d'AVANT l'existence de
@@ -97,24 +97,24 @@ seulement, completer sans jamais contredire, aucun xuid deux fois.
 
 (entre parentheses : la valeur AVANT)
 
-**L'ORACLE, ET IL EST INDEPENDANT.** Le porteur publie sur `c0a82e88` est `2535463878425995`, sur
+**L'ORACLE, ET IL EST INDEPENDANT.** Le porteur publie sur `c0a82e88` est `2569104772637498`, sur
 l'intervalle de frames **[640, 706]**. Le calque des ACTIONS — autre chaine, autre grammaire —
 date sur le MEME match un `flag_steals` a **641** et un `flag_captures` a **706**, au MEME xuid.
 Le portage s'ouvre au vol et se ferme a la capture. Le **marqueur de portage des images-cles**,
 troisieme chaine (une suite de bits du record de bipede), le confirme 1/1.
 
-Sur `e94163af`, le joueur nouvellement ponte (`2535461839170315`, **1 mort**) recoit **17
+Sur `e94163af`, le joueur nouvellement ponte (`2812627760411120`, **1 mort**) recoit **17
 portages** — et le calque des actions lui credite exactement **17 `flag_grabs`**. Deux chaines
 disjointes, meme compte.
 
 **Aucun portage deplace, aucun perdu.** Comptes par joueur, avant contre apres :
 
 ```
-c0a82e88   2535463878425995  0 -> 1
-e94163af   2533274820399233  3 -> 3   2533274823110022  2 -> 2   2533274858283686  8 -> 8
-           2533274894252091  1 -> 1   2535469190789936  2 -> 2   2535461839170315  0 -> 17
-51101d1d   2535429923417275  3 -> 3   2535450220111457  3 -> 3   2535462227353352  1 -> 1
-           2537966040008427  3 -> 3   2535415792596376  0 -> 1
+c0a82e88   2569104772637498  0 -> 1
+e94163af   2730153743048576  3 -> 3   2533274823110022  2 -> 2   2623439693412443  8 -> 8
+           2795112489393054  1 -> 1   2547408409520575  2 -> 2   2812627760411120  0 -> 17
+51101d1d   2534026679052315  3 -> 3   2780410181063951  3 -> 3   2804765054468648  1 -> 1
+           2537966040008427  3 -> 3   2768751951931730  0 -> 1
 ```
 
 **Une baisse, expliquee et voulue** : `coverage.flagCarries.homeByObject` tombe (4 -> 0 sur

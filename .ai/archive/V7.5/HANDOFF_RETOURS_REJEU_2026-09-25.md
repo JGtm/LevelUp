@@ -20,10 +20,10 @@
 
 ## 2. Ce que l'utilisateur doit regarder (serveur local : `make dev`)
 
-- **81c02726** : Ghost de G MONEY — éclair rouge et son à chaque rafale (6 frags sur 6 précédés d'une
+- **81c02726** : Ghost de JOUEUR_441 — éclair rouge et son à chaque rafale (6 frags sur 6 précédés d'une
   rafale).
-- Matchs signalés le 23/09 (points 2 à 4 et 6) : le Mongoose de 0:06 ne part plus seul, Madina97294 ne
-  « vole » plus à sa première réapparition, la fiche de XxDaemonGamerxX à 2:08 porte ses armes de
+- Matchs signalés le 23/09 (points 2 à 4 et 6) : le Mongoose de 0:06 ne part plus seul, joueur_117 ne
+  « vole » plus à sa première réapparition, la fiche de joueur_291 à 2:08 porte ses armes de
   naissance, « Sprint » n'apparaît plus sur les fiches.
 - **b1ad85eb** : 4 contre 4 à chaque instant, un partant libère sa place pour son remplaçant.
 - **ab526724** : drapeau visible, score et frise du score présents, véhicules de décor masqués.
@@ -51,7 +51,7 @@ C'est faux. À faire : une règle générale (pas un cas par carte) qui masque c
 Falcon réellement pilotés (Launch Site en Super Fiesta, BTB). Mesure et témoins au §4 « M7b » et §8 du
 plan.
 
-### 3.2 La troisième montée de G MONEY dans un Ghost (81c02726, vers 4:55-5:12) n'est pas affichée
+### 3.2 La troisième montée de JOUEUR_441 dans un Ghost (81c02726, vers 4:55-5:12) n'est pas affichée
 
 Ses rafales sont lues, mais on ne voit pas qu'il monte dans le Ghost, donc elles ne sont pas dessinées.
 Cause prouvée : juste avant, un objet de la famille « dispositifs » (type 43 dans le film) apparaît, et

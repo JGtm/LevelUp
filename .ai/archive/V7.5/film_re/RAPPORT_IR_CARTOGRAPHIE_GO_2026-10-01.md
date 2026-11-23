@@ -1,6 +1,6 @@
 # Rapport — Représentation intermédiaire du film : inventaire, germes, conception Go, migration
 
-> Analyse en LECTURE SEULE, 2026-10-01. Dépôt `C:\Users\Guillaume\Downloads\Scripts\LevelUp`,
+> Analyse en LECTURE SEULE, 2026-10-01. Dépôt `<poste>\Downloads\Scripts\LevelUp`,
 > branche `feat/v75`, tête `8b894a677`. Aucune compilation, aucun test, aucune base, aucune cuisson.
 > Les chemins sont relatifs à `apps/go-api/internal/games/halo_infinite/film/` sauf mention ; les
 > numéros de ligne sont ceux de la tête (re-mesurés), les symboles font foi.

@@ -9,7 +9,7 @@
 2026/08/18 23:36:13 INFO rejeu : palette de capacites palette="non classee" lectures=0 rangsNommes=0
 2026/08/18 23:36:13 INFO rejeu : couverture par calque tirsRattaches=0 tirsDisponibles=0 tirsSansSlot=0 tirsAmbigus=0 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=0 grenadesDisponibles=0 verdictTirs="aucune donnée" verdictGrenades="aucune donnée" verdictPont=nominal
     colline_propriete_test.go:81: FILM 01e1f945 (KOTH, catalyst) — 10239 lectures ti=13 sur 52 slots de bande comblee (20 en bande stricte) · 10575 records ancres, 6867 marches, 4193 chainees (61.1 %) · lectures chainees 5564 (54.3 %), en bande stricte 7368 dont 5481 chainees (74.4 %) · rejeu 5343 frames de 100 ms, origine 12588 ms · film 8 zones au catalogue
-    colline_propriete_test.go:82:   ecrit : C:\Users\Guillaume\Projects\LevelUp-wt-colline-propriete\.ai\V7.5\replay2d\registre_film\lotCter\01e1f945_ti13_series.tsv (10239 lignes)
+    colline_propriete_test.go:82:   ecrit : <poste>\Projects\LevelUp-wt-colline-propriete\.ai\V7.5\replay2d\registre_film\lotCter\01e1f945_ti13_series.tsv (10239 lignes)
     colline_propriete_test.go:84:   RESUME par (slot, mode, tag) — 842 series, dont 761 sans aucune lecture chainee (non listees) et 507 sur des slots hors bande stricte
     colline_propriete_test.go:84:     slot 1383   mode B tag 7  :    1 chainees (   1 avec valeur,    0 non chainees ecartees) ·   1 distinctes ·    0 changements ·  1 joueur(s) · t  543650 ->  543650 ms (frames  5310 ->  5310) · [0x001F7222 x1]
     colline_propriete_test.go:84:     slot 1383   mode B tag 8  :   21 chainees (  21 avec valeur,    6 non chainees ecartees) ·   4 distinctes ·   12 changements ·  9 joueur(s) · t  109988 ->  545218 ms (frames   974 ->  5326) · [0x00000001 x8 0x00000002 x8 0x00000003 x4 0x996ADE89 x1]
@@ -92,7 +92,7 @@
     colline_propriete_test.go:84:     slot 1474   mode A tag 3  : 3450 chainees (3450 avec valeur,    5 non chainees ecartees) · 400 distinctes · 3446 changements ·  1 joueur(s) · t   49443 ->  526933 ms (frames   368 ->  5143) · [0x007FFFFF x97 0x008126E9 x57 0x00812173 x55 0x00813CC2 x55 ...]
     colline_propriete_test.go:84:     slot 1474   mode B tag 7  :    2 chainees (   2 avec valeur,    2 non chainees ecartees) ·   2 distinctes ·    0 changements ·  2 joueur(s) · t  205239 ->  337224 ms (frames  1926 ->  3246) · [0x00E85386 x1 0x0032D43A x1]
     colline_propriete_test.go:84:     slot 1474   mode B tag 10 :    1 chainees (   1 avec valeur,    2 non chainees ecartees) ·   1 distinctes ·    0 changements ·  1 joueur(s) · t  337224 ->  337224 ms (frames  3246 ->  3246) · [0x00000000 x1]
-    colline_propriete_test.go:85:   ecrit : C:\Users\Guillaume\Projects\LevelUp-wt-colline-propriete\.ai\V7.5\replay2d\registre_film\lotCter\01e1f945_ti13_resume.tsv (842 series)
+    colline_propriete_test.go:85:   ecrit : <poste>\Projects\LevelUp-wt-colline-propriete\.ai\V7.5\replay2d\registre_film\lotCter\01e1f945_ti13_resume.tsv (842 series)
 --- PASS: TestCollineProprieteTemoin (187.83s)
 PASS
 ok  	levelup/go-api/internal/analysis/replay	189.447s

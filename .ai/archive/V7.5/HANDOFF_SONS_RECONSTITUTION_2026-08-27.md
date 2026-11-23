@@ -268,9 +268,9 @@ donnee (la banque de la balise ne pouvait pas porter un son long : 8 fichiers, t
 	eqip-arbre    la STRUCTURE des evenements d'une banque (`-banks all` = tout le module :
 	              1 645 banques et 6 819 evenements en quelques secondes)
 
-Decodage audio : `vgmstream-cli.exe` r2117 dans `C:\Users\Guillaume\Downloads\vgmstream\`
+Decodage audio : `vgmstream-cli.exe` r2117 dans `<poste>\Downloads\vgmstream\`
 (ffmpeg ne decode PAS le Wwise Vorbis). Rendus et fiches :
-`C:\Users\Guillaume\Downloads\Halo Infinite - Sons v75\`.
+`<poste>\Downloads\Halo Infinite - Sons v75\`.
 
 **MEMOIRE** : `pc/globals` fait 7,24 Go et `himodule.Open` lit tout en RAM. Jamais deux gros
 modules dans le meme processus ; les modes s'echangent leurs resultats par JSON.

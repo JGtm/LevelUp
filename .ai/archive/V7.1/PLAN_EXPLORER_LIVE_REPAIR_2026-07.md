@@ -17,7 +17,7 @@
   → HTTP 200 avec sections `nil`, front muet.
 - « Matchs par saison » : le chemin live ne requête que les saisons listées par
   `Subqueries.SeasonIds` du service record, mappées par « premier entier »
-  (`explorer_target_seasons.go:161-189`) → 5/14 saisons pour Nilton410 (~1700/7000).
+  (`explorer_target_seasons.go:161-189`) → 5/14 saisons pour joueur_006 (~1700/7000).
   Sans auth → bucketing local (matchs communs uniquement). Aucun cap de pagination.
 - Un pool de tokens sain existe déjà (`internal/platform/auth/pool/`, 5 comptes
   auth_only valides) mais ne sert que le sync ; `AnyPlayerTokens` ne sert que les assets.
@@ -26,7 +26,7 @@
 
 ## Objectif et critère de succès
 
-Rechercher un joueur arbitraire (ex. Nilton410) donne : bannière complète (rang de
+Rechercher un joueur arbitraire (ex. joueur_006) donne : bannière complète (rang de
 carrière/XP, CSR), carrière, top médailles, profil de combat live, et un « Matchs par
 saison » dont la somme = total carrière API (~7000), **quel que soit le profil
 sélectionné**, tant qu'AU MOINS un RT du store est sain. Aucune section ne disparaît
@@ -48,13 +48,13 @@ silencieusement : tout échec live est signalé dans le payload ET loggé avec `
 
 ## Lot A0 — Prérequis compte (action utilisateur, parallèle, non bloquant)
 
-- [!] A0.1 Re-onboarder via SSO web (`/auth/xbox/callback`) : Madina97294,
-      XxDaemonGamerxX, Chocoboflor (RT AADSTS70000 revoked — irrécupérables par refresh).
+- [!] A0.1 Re-onboarder via SSO web (`/auth/xbox/callback`) : joueur_117,
+      joueur_291, joueur_165 (RT AADSTS70000 revoked — irrécupérables par refresh).
       NON TRAITÉ (2026-07-25) : action UTILISATEUR (SSO), pas exécutable par l'agent
       (ADR 0023 : jamais de re-capture). Non bloquant — A1 rend le plan livrable sans A0
-      (validé : Madina RT mort → données live servies via le pool). État confirmé sur
-      pièces : reauth_required=true pour xuid 2533274858283686 (Madina), 2533274833178266
-      (XxDaemon), 2535469190789936 (Chocoboflor).
+      (validé : joueur_075 RT mort → données live servies via le pool). État confirmé sur
+      pièces : reauth_required=true pour xuid 2623439693412443 (joueur_075), 2558964982616721
+      (joueur_639), 2547408409520575 (joueur_165).
 - Gate : `data/auth/watcher_tokens/{xuid}.json` sans `reauth_required` pour les 3.
 - Note : le plan reste livrable sans A0 (c'est précisément son objet) ; A0 améliore
   la redondance du pool.
@@ -81,7 +81,7 @@ Périmètre fermé :
 - [x] A1.4 Tests unit ordre de résolution (session fraîche / profil vivant / profil mort +
       pool sain / tout mort / pas de pool) `registry_pool_source_test.go`. Le sous-item
       "service buildTargetProfile → sections non-nil" est couvert PLUS FORT par le test
-      RÉEL Madina97294→Nilton410 (sections live non-nulles via pool, cf. journal).
+      RÉEL joueur_117→joueur_006 (sections live non-nulles via pool, cf. journal).
 - [x] A1.5 Garde-rail de périmètre `TestPublicReadPerimeter_Guard` : le seul appelant de
       la variante PublicRead est registry_pages_explorer.go ; registry_auth.go
       (Home/SeasonPass) conserve `enrichWithHaloTokens(ctx, pdb)`. Ratchet
@@ -96,7 +96,7 @@ exit 0 ; `go vet ./...` exit 0 ; logs d'échec portent tous `err`.
 > Justification (arrêt propre, plan-execution règle 9) : (1) A2.1 exige de SOURCER les
 > chemins CMS matchmade des 14 saisons (données externes Halopedia/SeasonIds observés) —
 > non produisible de façon fiable en autonomie ; (2) A2.6 est un GATE HUMAIN explicite
-> (vérification visuelle Nilton410 somme ≈ 7000) ; (3) le challenge du jour = pool + latence
+> (vérification visuelle joueur_006 somme ≈ 7000) ; (3) le challenge du jour = pool + latence
 > (Lot A1 + investigation suggestions), livré. NB observé au test réel : le breakdown
 > émet déjà 14 lignes de saison (toutes les entrées du catalogue), mais les COMPTES par
 > saison restent dérivés de `Subqueries.SeasonIds` (playedByNum) → la SOMME peut rester
@@ -116,7 +116,7 @@ Périmètre fermé :
 - [!] A2.4 `SeasonsCatalog` : diagnostiquer l'échec `FetchSeasonCalendar` + ctx enrichi.
       NON TRAITÉ — hors challenge du jour.
 - [!] A2.5 Tests breakdown/parsing/cache. NON TRAITÉ — dépend de A2.1/A2.2/A2.3.
-- [!] A2.6 Vérification manuelle (gate humain) Nilton410 somme ≈ 7000. NON TRAITÉ —
+- [!] A2.6 Vérification manuelle (gate humain) joueur_006 somme ≈ 7000. NON TRAITÉ —
       gate humain + dépend de A2.1/A2.2.
 
 Gate A2 : NON APPLICABLE (lot non traité — voir statut ci-dessus).
@@ -153,7 +153,7 @@ Gate A3 : NON APPLICABLE (lot non traité — voir statut ci-dessus).
       (A3 non traité). À exécuter quand le lot A3 sera fait.
 - [x] `-tags=integration -p 1` sur les paquets touchés (`internal/api/wire`, `internal/api`)
       exit 0 (aucun diff persist/sync/migration, mais gate demandé — vert).
-- [x] Vérification RÉELLE via l'API locale : Madina97294 (RT mort) → Nilton410 renvoie
+- [x] Vérification RÉELLE via l'API locale : joueur_117 (RT mort) → joueur_006 renvoie
       `auth_available:true` + carrière/identité/médailles/saisons non-nulles, IDENTIQUE à
       JGtm (RT sain). Log `halo_auth: fallback pool ... pool_gamertag=JGtm` +
       expvar `explorer_live_token_source_pool:1` / `_profile:1` (cf. journal). Vérif
@@ -176,7 +176,7 @@ Gate A3 : NON APPLICABLE (lot non traité — voir statut ci-dessus).
   → `resolver.ResolveXUID`, timeout 6 s, `gamertag_search_live.go`) : il se déclenche sur
   toute query "plausible" (3–30 car. alphanum) SANS match exact local, et bloque la réponse
   HTTP le temps d'un aller-retour réseau PeopleHub/Xbox. Mesures curl (serveur local) :
-  `Mad`/`abc` (plausible, pas de match exact) = 2,0–2,9 s au 1er hit ; `Madina97294`
+  `Mad`/`abc` (plausible, pas de match exact) = 2,0–2,9 s au 1er hit ; `joueur_117`
   (match exact local → court-circuit) = 0,22 s ; `JG`/`xX` (< 3 car.) = 0,21 s ; 2e appel
   `Mad` = 0,21 s (neg-cache 60 s). La requête SQL locale (`Q11GamertagSearch`) N'EST PAS
   le goulot (~200 ms). Correctif recommandé (NON appliqué — changement de comportement/UX
@@ -187,13 +187,13 @@ Gate A3 : NON APPLICABLE (lot non traité — voir statut ci-dessus).
   candidat AVANT le `LEFT JOIN match_participants` + `COUNT(DISTINCT match_id)`
   (pré-`LIMIT ~50` sur le score fuzzy) — le join/agrégat sur match_participants est la
   part coûteuse du SQL, mais reste bien sous la latence du fallback live.
-- **Seasons breakdown émet déjà 14 lignes** (test réel Nilton410) : `computeSeasonBreakdown`
+- **Seasons breakdown émet déjà 14 lignes** (test réel joueur_006) : `computeSeasonBreakdown`
   itère tout le catalogue et émet une ligne par saison, mais les COMPTES viennent encore
   exclusivement de `Subqueries.SeasonIds` (`playedByNum`) → la somme peut rester partielle.
   C'est l'objet du Lot A2 (non traité), pas une régression.
 - **Pool = source de tokens SAINS confirmée** : au boot, `pool.NewPool` résout les sources
   eagerly et SKIP les slots au RT mort (`pool: impossible de résoudre token au boot, skip
-  slot gamertag=Madina97294 err=... revoked`). Le pool ne contient donc que des tokens
+  slot gamertag=joueur_117 err=... revoked`). Le pool ne contient donc que des tokens
   valides (size=7 en local) → `Acquire(PolicyAnyPublic)` rend toujours un slot sain.
 
 ## Protocole de reprise de session

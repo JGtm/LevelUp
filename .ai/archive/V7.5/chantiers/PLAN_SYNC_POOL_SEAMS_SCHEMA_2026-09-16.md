@@ -1,7 +1,7 @@
 # PLAN — Sync d'un profil sans token propre : pool partout, seams title-owned câblés par toutes les CLI, dérive de schéma `match_registry`
 
 > Créé le 2026-09-16. Branche : `wt/sync-pool`. Worktree dédié :
-> `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-sync-pool` (règle « worktree dédié »).
+> `<poste>/Downloads/Scripts/LevelUp-wt-sync-pool` (règle « worktree dédié »).
 > Base : `feat/v75` @ `e4a313311`. **Push sur `main` = déploiement prod : interdit.**
 >
 > **Contrat d'exécution : skill `plan-execution` fait foi.** Ordre strict, une étape à la
@@ -16,13 +16,13 @@
 
 ---
 
-## 1. Constat (vérifié sur pièces le 2026-09-16, premier profil suivi sans token : Nuzzles)
+## 1. Constat (vérifié sur pièces le 2026-09-16, premier profil suivi sans token : joueur_074)
 
 Le pool de tokens (`internal/platform/auth/pool`, README) est conçu pour servir **n'importe quel
 joueur** : `PolicyAnyPublic` (tokens à tour de rôle) pour l'historique, les stats, les films,
 les CSR ; `PolicyPinnedPlayer` (le token du joueur lui-même) seulement pour les endpoints
 soumis à la vie privée (rang de carrière, personnalisation Spartan). Trois défauts, tous
-observés sur le sync de Nuzzles (2 023 matchs insérés le 2026-09-16, 65 min) :
+observés sur le sync de joueur_074 (2 023 matchs insérés le 2026-09-16, 65 min) :
 
 **D-A — Trois appelants court-circuitent la doctrine du pool** avec `if !pool.HasPlayer(gt) {
 skip }` — un joueur sans *son propre* token est sauté en bloc, alors que seul le rang de
@@ -53,7 +53,7 @@ sync CLI a ce trou depuis MT-15 ; les `backfill` le masquaient.
 `team_1_score INTEGER` (`internal/games/halo_infinite/migrations/steps_shared_core.go:56-57`,
 `internal/sync/schema.go`), la base réelle porte **`SMALLINT`** (lu sur la sauvegarde
 `data/backups/pre-chaine-2026-09-09/shared_matches_v2.duckdb` — `information_schema.columns`).
-Deux matchs de Nuzzles rejetés à l'INSERT (`Type INT64 with value 120267 … INT16` ;
+Deux matchs de joueur_074 rejetés à l'INSERT (`Type INT64 with value 120267 … INT16` ;
 `26764b9c-4b98-43f1-8d32-73abb3e5a3c8`, `7a5af767-0b8e-4d81-9e75-071359e3736a`) : scores
 d'équipe > 32 767 (Baptême du feu). Tout match à gros score d'équipe est **perdu pour tous
 les joueurs**. La colonne `player_count SMALLINT` n'est pas en cause (jamais renseignée côté
@@ -81,7 +81,7 @@ Infinite, `grep "PlayerCount ="` → seulement `halo_5/ingest/collect.go`, `open
   les migrations, et affirme `INTEGER` ; plus la fixture de test (`sync/testutil/fixture.go`)
   alignée sur la DDL courante (mémoire « DDL de test recopiées = dérive indétectable »).
 - **D5** — Aucun rejeu de données dans ce plan (les deux matchs rejetés se resynchronisent à
-  la reprise du sync de Nuzzles, annexe A). Aucune ouverture de base réelle.
+  la reprise du sync de joueur_074, annexe A). Aucune ouverture de base réelle.
 
 ## 3. Étape 0 — Préparation (rapide)
 
@@ -238,7 +238,7 @@ sortie, écarts). Reprise : lire cette section puis `git log --oneline -10` dans
 
 - `sync full SKIP reason=no_player_db` : `--all` ne crée pas la base d'un profil neuf, seul le
   sync mono-joueur le fait (`OpenPlayerDB`). Décision inchangée dans ce plan (2.2).
-- Les trois refresh tokens `revoked` (`AADSTS70000` : Chocoboflor, Madina97294, XxDaemonGamerxX,
+- Les trois refresh tokens `revoked` (`AADSTS70000` : joueur_165, joueur_117, joueur_291,
   constaté au boot du 2026-09-16) — diagnostic ADR 0023 (rotation perdue / RT étranger), pas
   de re-capture. Hors plan.
 - `cmd/levelup` : `sync-full --gamertag` téléchargeait des morceaux de film (`downloadBlob …
@@ -269,7 +269,7 @@ sortie, écarts). Reprise : lire cette section puis `git log --oneline -10` dans
   `RegisterAll` ; le ratchet ne voit que l import direct. Aucun chemin vers un classifier n a été
   trouvé dans leur code.
 
-### Découvertes de la première passe réelle par le pool (2026-09-16 14:23, Nuzzles, 6 slots × 3 req/s)
+### Découvertes de la première passe réelle par le pool (2026-09-16 14:23, joueur_074, 6 slots × 3 req/s)
 
 - **Un seul `HTTP 429` sur `GetMatchHistory` (start=225) a mis fin à toute la passe** : le pool a
   bien appliqué son cooldown AIMD au token, mais `paginateAndPersistHistory` (`internal/sync/engine.go`)
@@ -282,34 +282,34 @@ sortie, écarts). Reprise : lire cette section puis `git log --oneline -10` dans
 - Post-sync CLI : `catalog seed désactivé (metadata inaccessible)` — « Can t open a connection to
   same database file with a different configuration than existing connections » : le même process
   ouvre `metadata.duckdb` en RO puis en RW. Préexistant à ce lot.
-- Post-sync CLI : `ERROR auth: échec lecture store canonique — aucun access_token xuid=Nuzzles`
+- Post-sync CLI : `ERROR auth: échec lecture store canonique — aucun access_token xuid=joueur_074`
   juste après le seed de catalogue : une étape résout encore le token PROPRE du joueur hors du
   pool (à identifier — `grep "store canonique"`), non fatale.
 - Le sync CLI n applique pas les migrations shared (`sync-full` ne passe pas par
   `applyMigrationsOnDB`) : l élargissement `team_{0,1}_score` joue au premier `backfill` ou au boot
   du serveur ; les deux matchs à gros score se réinsèrent par un re-parcours `sync-full` ensuite.
 - `--token-pool-size N` compte les SOURCES tentées, pas les slots résolus : avec `1`, le pool a pris
-  la première source du scan (Chocoboflor, révoquée) et a abandonné (« aucun slot créé »). Le
+  la première source du scan (joueur_165, révoquée) et a abandonné (« aucun slot créé »). Le
   plafond devrait porter sur les slots sains, en continuant le scan après un échec.
 - `backfill-killsource --online` : le texte d aide du drapeau `--gamertag` dit encore « joueur dont
   les tokens servent la passe » alors que la passe sélectionne désormais les films DU joueur nommé
-  (vérifié sur pièces : les 200 candidats sont des matchs de Nuzzles, du plus récent au plus vieux)
+  (vérifié sur pièces : les 200 candidats sont des matchs de joueur_074, du plus récent au plus vieux)
   et emprunte au pool. Aide à aligner sur `docs/COMMANDS.md`.
 - Post-sync réel du 16/09 15:52 : `snapshot: matchs marqués ready DE FORCE (grâce dépassée,
   dérivation bloquée) count=5140` — à instruire (quelle dérivation, pourquoi bloquée).
 
-## Annexe A — Reprise du sync de Nuzzles (utilisateur + pilote, APRÈS ce plan et quand la base est libre)
+## Annexe A — Reprise du sync de joueur_074 (utilisateur + pilote, APRÈS ce plan et quand la base est libre)
 
 1. `replay_build_location` est actuellement à **`off`** dans `app_settings.json` (posé le
    2026-09-16 pour le sync initial) : le remettre à `local` **après** la cuisson (étape 4).
-2. `levelup sync-full --gamertag Nuzzles --max-matches 6500 --rps 3` avec la CLI réparée : les
+2. `levelup sync-full --gamertag joueur_074 --max-matches 6500 --rps 3` avec la CLI réparée : les
    2 023 matchs connus sont filtrés page par page (~30 s), les ~4 000 restants insérés, le
    post-sync complet joue (LUSR, perf, citations, dominance) — les deux matchs rejetés
    (`26764b9c…`, `7a5af767…`) rentrent grâce à l'étape 3.
-3. Rattrapage des enrichissements des 2 023 premiers : `levelup backfill --gamertag Nuzzles --perf`,
+3. Rattrapage des enrichissements des 2 023 premiers : `levelup backfill --gamertag joueur_074 --perf`,
    `--citations`, `--csr`, `--lusr` (chaque commande passe désormais par `titleseams`).
 4. Films des 200 plus récents : `levelup backfill-killsource --online --limit 200 --gamertag JGtm --dry-run`
-   (contrôler que la liste est bien celle de Nuzzles — `--gamertag` = prêteur de token,
+   (contrôler que la liste est bien celle de joueur_074 — `--gamertag` = prêteur de token,
    sélection = tout le parc, plus récents d'abord), puis sans `--dry-run`.
 5. Cuisson : `levelup backfill-replay --dry-run` puis `--limit 200`, en fond, journal + Monitor.
 6. `replay_build_location` → `local` ; redémarrer le serveur (`air` depuis Git Bash ou avec
@@ -379,7 +379,7 @@ sortie, écarts). Reprise : lire cette section puis `git log --oneline -10` dans
   (`spartan_customization_cron.go`). **Mutation vérifiée** : allowlist vidée → le test rougit en
   nommant le fichier, puis repasse vert une fois restaurée.
 - 2.8 `[x]` Tests : (a) `cmd/levelup/pool_engine_test.go` — pool de fixture à un slot (JGtm) ;
-  `newPooledEngine` construit le moteur pour Nuzzles, ABSENT du pool ; le client poolé n'acquiert
+  `newPooledEngine` construit le moteur pour joueur_074, ABSENT du pool ; le client poolé n'acquiert
   que des leases `PolicyAnyPublic` sur un endpoint public ; le rang de carrière rend
   `ErrNoPinnedToken`. (b) `internal/scheduler/auto_sync_pool_gate_test.go` (test INTERNE, la
   fonction n'est pas exportée) — `checkSyncPreconditions` accepte un joueur hors pool quand sa

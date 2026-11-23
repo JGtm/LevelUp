@@ -1,4 +1,4 @@
-2026/08/19 21:56:35 INFO faits du match charges path=C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\.ai\V7.5\replay2d\registre_film\lotCbis\faits_7344d24f.json match=7344d24f joueurs=8 variante=Strongholds:Arena
+2026/08/19 21:56:35 INFO faits du match charges path=<poste>\Projects\LevelUp-wt-cter-fusion\.ai\V7.5\replay2d\registre_film\lotCbis\faits_7344d24f.json match=7344d24f joueurs=8 variante=Strongholds:Arena
 2026/08/19 21:56:37 INFO replaybuild: actions d'objectif identifiees match_id=7344d24f famille=zone nommees=246 identifiees=246 slotsApparies=8
 2026/08/19 21:57:42 INFO capacites : lectures d i48 recordsDelta=189014 masqueAvecI48=38 lues=38 illisibles=0 sansIdentite=6
 2026/08/19 21:57:57 INFO camouflage : lectures d i28 queue[1] recordsDelta=189014 masqueAvecI28=1504 lues=1504 illisibles=0 sansVoie=706
@@ -18,4 +18,4 @@
 2026/08/19 22:01:03 INFO rejeu : episodes d'equipement actif viesPubliees=122 viesCamo=5 episodesCamo=10 viesSurbouclier=0 episodesSurbouclier=0
 2026/08/19 22:01:03 INFO rejeu : palette de capacites palette=famille_a lectures=32 rangsNommes=4
 2026/08/19 22:01:03 INFO rejeu : couverture par calque tirsRattaches=2836 tirsDisponibles=2917 tirsSansSlot=81 tirsAmbigus=0 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=186 grenadesDisponibles=186 verdictTirs=nominal verdictGrenades=nominal verdictPont=nominal
-2026/08/19 22:01:03 INFO artefact rejeu écrit path=C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\data\cache\replays\halo_infinite\7344d24f.json tracks=122 module=fo08_wetland bytes=2238996 match=7344d24f title=halo_infinite
+2026/08/19 22:01:03 INFO artefact rejeu écrit path=<poste>\Projects\LevelUp-wt-cter-fusion\data\cache\replays\halo_infinite\7344d24f.json tracks=122 module=fo08_wetland bytes=2238996 match=7344d24f title=halo_infinite

@@ -159,7 +159,7 @@ mot.
 ## Gates
 
 Tous joués en avant-plan, depuis `apps/go-api` pour le Go, avec
-`GOCACHE=/c/Users/Guillaume/AppData/Local/go-build-v2-capabilities CGO_ENABLED=1`.
+`GOCACHE=<poste>/AppData/Local/go-build-v2-capabilities CGO_ENABLED=1`.
 
 | Gate | Commande | Dernière ligne |
 |---|---|---|

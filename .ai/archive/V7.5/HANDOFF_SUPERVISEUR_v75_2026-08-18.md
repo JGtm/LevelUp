@@ -9,7 +9,7 @@
 
 ## 0. Etat exact au moment du handoff
 
-- Branche unique `feat/v75`, HEAD **`5ab07d67b`**, worktree principal `C:\Users\Guillaume\Projects\LevelUp`.
+- Branche unique `feat/v75`, HEAD **`5ab07d67b`**, worktree principal `<poste>\Projects\LevelUp`.
   **Rien n'est pousse depuis des jours** (mode branche unique : lots = commits, CI verte au niveau
   job a la cloture, UN merge final + tag v7.5.0). La CI n'a donc vu aucun de ces commits.
 - Arbre principal : propre HORS trois fichiers non suivis — `.ai/AUDIT_V7.2.0_MAIN_2026-08-06.md`

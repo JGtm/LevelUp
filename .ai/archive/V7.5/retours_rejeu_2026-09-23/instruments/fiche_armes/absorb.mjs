@@ -1,7 +1,7 @@
 // Records SAUTES mais PRESENTS : un loadout a >= 3 armes dont les armes « en trop » sont celles
 // d'un bipede vivant ABSENT de la meme image-cle (lues a l'image-cle d'avant ou d'apres).
 import fs from 'fs';
-const DIR = 'C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
+const DIR = 'C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
 const files = fs.readdirSync(DIR).filter(f => /^[0-9a-f]{8}\.json$/.test(f)).sort();
 let tot = { big:0, explained:0, explainedByMissingAbove:0, holedKf:0, holedKfWithAbsorb:0 }; const ex = [];
 for (const f of files) {

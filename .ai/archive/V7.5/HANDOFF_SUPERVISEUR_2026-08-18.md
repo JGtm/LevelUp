@@ -113,7 +113,7 @@ Donnees source : scratchpad de la session (`ecs_inventaire.json`), compilees en 
 
 ## 6. Reprise en 5 lignes
 
-1. `git -C C:\Users\Guillaume\Projects\LevelUp-wt-fusion-finale log --oneline -3` : la fusion
+1. `git -C <poste>\Projects\LevelUp-wt-fusion-finale log --oneline -3` : la fusion
    finale est-elle poussee (`origin/wt/fusion-finale`) ? Sinon relancer/terminer l'executeur.
 2. Revue sur pieces (gates rejoues) → `merge --no-ff` dans `feat/v75` → push → CI verte au niveau job.
 3. Gate visuel USER (habillage + poses) sur :5173 ; corrections eventuelles en `wt/*`.

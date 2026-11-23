@@ -22,7 +22,6 @@
  */
 import type { Palette } from '../semantic-tokens'
 import { ENCOUNTER_BADGE_COLORS } from './_encounterColors'
-import { IMPACT_BLUE_VERMILLION } from './_impactRoleColors'
 import { MAP_MARKER_OUTLINE } from './_mapMarkerOutline'
 
 export const okabePalette: Palette = {
@@ -150,8 +149,6 @@ export const okabePalette: Palette = {
   //  les teintes Okabe claires échouaient le texte blanc ; labels disambiguent)
   ...ENCOUNTER_BADGE_COLORS,
 
-  // ── Rôles d'impact — bleu / vermillon, rampe claire (cf. _impactRoleColors.ts)
-  ...IMPACT_BLUE_VERMILLION.light,
 
   // ── Classes de frags — famille dédiée (2026-08-29) ─────────────────────────
   // AVANT cette famille, les tokens empruntés collapsaient : lourde ≡ grenade ≡

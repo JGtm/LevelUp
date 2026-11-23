@@ -324,46 +324,6 @@ type SquadMapHeatmap struct {
 	Cells    []SquadMapHeatmapCell `json:"cells"`
 }
 
-// SquadImpactBadgeCount est l'agrégat d'un badge sur un joueur (col aggrégat
-// du scoreboard teammates.07).
-type SquadImpactBadgeCount struct {
-	BadgeKey string `json:"badge_key"`
-	Count    int    `json:"count"`
-}
-
-// SquadImpactCell est une cellule joueur×match du scoreboard teammates.07 :
-// la liste des badges obtenus par ce joueur dans ce match.
-type SquadImpactCell struct {
-	Player    string   `json:"player"`
-	MatchID   string   `json:"match_id"`
-	BadgeKeys []string `json:"badge_keys"`
-}
-
-// SquadImpactPlayerSummary agrège les comptes par badge + score pondéré pour
-// un joueur sur l'ensemble des matchs.
-type SquadImpactPlayerSummary struct {
-	Player string                  `json:"player"`
-	Counts []SquadImpactBadgeCount `json:"counts"`
-	Score  float64                 `json:"score"`
-}
-
-// SquadImpactMatchHeader est un en-tête de colonne match dans teammates.07.
-type SquadImpactMatchHeader struct {
-	MatchID string `json:"match_id"`
-	Outcome int    `json:"outcome"` // outcome du joueur principal
-}
-
-// SquadImpactMatrix regroupe toutes les données nécessaires au scoreboard
-// teammates.07. Les players sont triés par Score DESC côté serveur ; le front
-// rend le tableau tel quel + applique badges (Champion / Maillon faible /
-// Passager clandestin) selon position.
-type SquadImpactMatrix struct {
-	Matches  []SquadImpactMatchHeader   `json:"matches"`
-	Players  []SquadImpactPlayerSummary `json:"players"`
-	Cells    []SquadImpactCell          `json:"cells"`
-	BadgeOrd []string                   `json:"badge_ord"` // ordre canonique des badges (= colonnes agg)
-}
-
 // SquadMatchHistoryRow est une ligne du tableau historique des matchs partagés
 // (teammates.11). Une ligne par match unique sur le scope filtré (cascade,
 // période, sessions escouade, sélection coéquipiers). Tri client par
@@ -554,15 +514,14 @@ type TeammatesPageResponse struct {
 	SessionTimeline []SquadSessionPoint `json:"session_timeline,omitempty"`
 	// MapHeatmap alimente teammates.03 (heatmap player×map top 15).
 	MapHeatmap *SquadMapHeatmap `json:"map_heatmap,omitempty"`
-	// ImpactMatrix alimente teammates.07 (scoreboard impact, 8 badges).
-	ImpactMatrix *SquadImpactMatrix `json:"impact_matrix,omitempty"`
-	// SquadImpactHistory alimente « Points d'impact par soirée et par rôle » (onglet
-	// Contributions, sous la matrice) : la soirée affichée et les soirées précédentes de la
-	// composition, mêmes rôles et même barème que la matrice (squad_impact_history.go). Nil
-	// sans coéquipier sélectionné, sans soirée ou quand aucun rôle ne tombe sur l'escouade (cause
-	// journalisée côté service) : le front garde alors la carte avec un constat pour un titre qui
-	// déclare la capability match.events.timeline, et la retire sinon.
-	SquadImpactHistory *SquadImpactHistory `json:"squad_impact_history,omitempty"`
+	// SquadImpactSessions alimente « Impact des coéquipiers » par session (onglet Contributions) :
+	// un tableau d'une ligne par session, avec la matrice de rôles de chaque session et le décompte
+	// de toutes les sessions affichées (squad_impact_sessions.go). Nil sans coéquipier
+	// sélectionné, sans session ou quand aucun rôle ne tombe sur l'escouade (cause journalisée côté
+	// service). Le front lit la capability match.events.timeline pour décider de la section : un titre
+	// qui la déclare garde la section (titre et cadre vide quand le champ est absent) ; un titre qui ne
+	// la déclare pas n'a pas la section, titre compris.
+	SquadImpactSessions *SquadImpactSessions `json:"squad_impact_sessions,omitempty"`
 	// PerMinuteStats alimente teammates.14 (bars groupées K/D/A par minute par joueur).
 	PerMinuteStats []SquadPerMinuteEntry `json:"per_minute_stats,omitempty"`
 	// SynergyRadar alimente teammates.06 (radar 6 axes par joueur sur les

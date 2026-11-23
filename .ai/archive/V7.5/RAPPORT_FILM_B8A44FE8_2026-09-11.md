@@ -116,15 +116,15 @@ finit **0-1**, l'equipe 0 n'a capture **aucune** fois en 754 s.
 |---|---|---|---|---|---|
 | 34 | 416 883 | 0,614 m | 31 | — | — |
 | 36 | 423 783 | 1,222 m | 50 | — | — |
-| 56 | 564 983 | 1,027 m | 35 | 47 · `2533274858911298` | 34,6 s |
-| 57 | 594 283 | 1,363 m | 32 | 48 · `2535455799302553` | 16,3 s |
-| 59 | 609 483 | 1,021 m | 24 | 49 · `2535442462807197` | 6,1 s |
-| 61 | 615 583 | 1,485 m | 24 | 51 · `2535442462807197` | 16,7 s |
-| 66 | 662 683 | 1,233 m | 29 | **57 · `2535442462807197`** | **58,1 s** |
+| 56 | 564 983 | 1,027 m | 35 | 47 · `2694569258016281` | 34,6 s |
+| 57 | 594 283 | 1,363 m | 32 | 48 · `2731689558887507` | 16,3 s |
+| 59 | 609 483 | 1,021 m | 24 | 49 · `2668071070819525` | 6,1 s |
+| 61 | 615 583 | 1,485 m | 24 | 51 · `2668071070819525` | 16,7 s |
+| 66 | 662 683 | 1,233 m | 29 | **57 · `2668071070819525`** | **58,1 s** |
 
 ### 3.4 LE TEMOIN, ET IL TIENT EN DEUX CENTIMETRES
 
-Le meme joueur, `2535442462807197`, lache le drapeau DEUX FOIS au meme endroit de sa base :
+Le meme joueur, `2668071070819525`, lache le drapeau DEUX FOIS au meme endroit de sa base :
 
 | lacher | instant | naissance de l'objet | distance au socle | verdict AVANT | portage publie |
 |---|---|---|---|---|---|
@@ -136,7 +136,7 @@ est a **0,152 m** de la premiere naissance a cette image (piste publiee, frame 6
 distingue physiquement les deux lachers, seul le seuil les separe.
 
 Et ce lacher-la est bien le sien, sans ambiguite : l'autre porteur ouvert a cet instant
-(`2533274858283686`, portage 56, drapeau 1) est a **46,0 m** de la naissance — trente fois la
+(`2623439693412443`, portage 56, drapeau 1) est a **46,0 m** de la naissance — trente fois la
 distance du lacher. La condition de distance au porteur, deja dans le code, nomme le laisseur a
 elle seule.
 
@@ -256,16 +256,16 @@ ECHOUENT et le temoin negatif reste VERT.
 
 | joueur | equipe | periodes av -> ap | publie av -> ap | oracle | ecart av -> ap |
 |---|---|---|---|---|---|
-| `2535442462807197` | 0 | 13 -> 16 | 140,4 -> **60,7** | 59,0 | **+81,4 -> +1,7** |
-| `2533274858911298` | 0 | 2 -> 2 | 56,4 -> **28,6** | 28,4 | **+28,0 -> +0,2** |
-| `2535455799302553` | 0 | 10 -> 10 | 30,9 -> **16,1** | 14,9 | **+16,0 -> +1,2** |
+| `2668071070819525` | 0 | 13 -> 16 | 140,4 -> **60,7** | 59,0 | **+81,4 -> +1,7** |
+| `2694569258016281` | 0 | 2 -> 2 | 56,4 -> **28,6** | 28,4 | **+28,0 -> +0,2** |
+| `2731689558887507` | 0 | 10 -> 10 | 30,9 -> **16,1** | 14,9 | **+16,0 -> +1,2** |
 | `2533274823110022` | 1 | 2 -> 2 | 25,0 -> 25,0 | 17,2 | +7,8 -> **+7,8** (§6.4) |
-| **`2533274858283686`** | 1 | 30 -> 30 | 232,4 -> **275,3** | 271,8 | **-39,4 -> +3,5** |
-| `2533274897257135` | 0 | 2 -> 2 | 9,2 -> 9,2 | 9,0 | +0,2 -> +0,2 |
-| `2535469190789936` | 1 | 1 -> 1 | 0,8 -> 0,9 | 0,8 | +0,0 -> +0,1 |
+| **`2623439693412443`** | 1 | 30 -> 30 | 232,4 -> **275,3** | 271,8 | **-39,4 -> +3,5** |
+| `2798854491542973` | 0 | 2 -> 2 | 9,2 -> 9,2 | 9,0 | +0,2 -> +0,2 |
+| `2547408409520575` | 1 | 1 -> 1 | 0,8 -> 0,9 | 0,8 | +0,0 -> +0,1 |
 
 **Le cinquieme joueur est la seconde moitie de la MEME cause, et elle va dans l'autre sens.**
-`2533274858283686` etait **39,4 s SOUS** son oracle : ses portages etaient TRONQUES par de
+`2623439693412443` etait **39,4 s SOUS** son oracle : ses portages etaient TRONQUES par de
 FAUSSES rentrees — des lachers nes a 1,0-1,5 m d'un support que `flagObjectHomecomings` nommait
 « le drapeau est rentre », ce qui fermait son portage et le publiait `home` alors que le drapeau
 gisait au sol. Le meme resserrement de seuil lui rend ses 42,9 s. Un seul seuil, deux erreurs de

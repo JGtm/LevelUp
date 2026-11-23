@@ -1,7 +1,7 @@
 // Pour chaque chassis du parc : vies, docs, echantillons, episodes, tirs publies (w),
 // et le VOISIN (slot-1 / slot+1) de meme fenetre, avec sa famille.
 import fs from 'fs';
-const dir = 'C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
+const dir = 'C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
 const files = fs.readdirSync(dir).filter(f => f.endsWith('.json') && !f.includes('derived'));
 const agg = {};
 for (const f of files) {

@@ -13,4 +13,4 @@
 2026/08/18 08:26:01 INFO rejeu : episodes d'equipement actif viesPubliees=122 viesCamo=5 episodesCamo=10 viesSurbouclier=0 episodesSurbouclier=0
 2026/08/18 08:26:01 INFO rejeu : palette de capacites palette=famille_a lectures=32 rangsNommes=4
 2026/08/18 08:26:01 INFO rejeu : couverture par calque tirsRattaches=2836 tirsDisponibles=2917 tirsSansSlot=81 tirsAmbigus=0 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=186 grenadesDisponibles=186 verdictTirs=nominal verdictGrenades=nominal verdictPont=nominal
-2026/08/18 08:26:01 INFO artefact rejeu écrit path=C:\Users\Guillaume\Projects\LevelUp-wt-visee-pub\data\cache\replays\halo_infinite\7344d24f.json tracks=122 module=fo08_wetland bytes=2160362 match=7344d24f-0154-4949-80ad-e2b781c122f1 title=halo_infinite
+2026/08/18 08:26:01 INFO artefact rejeu écrit path=<poste>\Projects\LevelUp-wt-visee-pub\data\cache\replays\halo_infinite\7344d24f.json tracks=122 module=fo08_wetland bytes=2160362 match=7344d24f-0154-4949-80ad-e2b781c122f1 title=halo_infinite

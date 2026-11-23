@@ -284,13 +284,13 @@ Pour Infinite, la fonction produit donc :
 ### Verification effectuee, et sa limite — a lire
 
 J'ai testé avec un identifiant de match Infinite réel (`f6315f2a-e54b-4b89-8274-bc07869d7689`,
-Chocoboflor, issu de `apps/go-api/tests/fixtures/golden_values/career_top_matches_chocoboflor.json`) :
+joueur_165, issu de `apps/go-api/tests/fixtures/golden_values/career_top_matches_chocoboflor.json`) :
 
 | URL | Résultat |
 |---|---|
-| `/halo-infinite/players/Chocoboflor/matches/f6315f2a-...` | `200 text/html` **93719** o |
-| `/halo-infinite/players/Chocoboflor/matches/00000000-0000-0000-0000-000000000000` (temoin bidon) | `200 text/html` **93719** o |
-| `/halo-5-guardians/players/Chocoboflor/matches/arena/5d16ff8d-...` | `200 text/html` **76003** o |
+| `/halo-infinite/players/joueur_165/matches/f6315f2a-...` | `200 text/html` **93719** o |
+| `/halo-infinite/players/joueur_165/matches/00000000-0000-0000-0000-000000000000` (temoin bidon) | `200 text/html` **93719** o |
+| `/halo-5-guardians/players/joueur_165/matches/arena/5d16ff8d-...` | `200 text/html` **76003** o |
 
 **Je ne peux donc PAS prouver par `curl` que la page de match existe** : Halo Waypoint est une
 SPA rendue côté client, elle renvoie exactement le même shell (au **octet près**) pour un

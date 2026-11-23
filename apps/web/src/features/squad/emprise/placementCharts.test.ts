@@ -237,12 +237,12 @@ describe('medianOffsets — les gros points qui se recouvrent sont écartés (Es
 
   it('la carte pose le gros point décalé ; l’infobulle garde la vraie distance', () => {
     const block = { ...PLACEMENT_2209, players: oklm }
-    const madina = dotsOf(life(block), 'Joueur90002')[0]
-    const choco = dotsOf(life(block), 'Joueur90001')[0]
-    const yM = (madina.data[0] as Datum).value[1]
-    const yC = (choco.data[0] as Datum).value[1]
+    const joueur_075 = dotsOf(life(block), 'Joueur90002')[0]
+    const joueur_901 = dotsOf(life(block), 'Joueur90001')[0]
+    const yM = (joueur_075.data[0] as Datum).value[1]
+    const yC = (joueur_901.data[0] as Datum).value[1]
     expect(yC - yM).toBeCloseTo(MEDIAN_SPREAD, 10)
-    expect((madina.data[0] as Datum).tip).toContain('Joueur90002')
+    expect((joueur_075.data[0] as Datum).tip).toContain('Joueur90002')
   })
 })
 
@@ -335,8 +335,8 @@ describe('buildPlacementLifeOption — joueurs, légende, gros point', () => {
 
   it('le gros point : distance médiane en X, MOYENNE des frags par vie en Y', () => {
     // Seul sur la carte : aucun autre gros point ne le recouvre, rien ne l’écarte (medianOffsets).
-    const choco = PLACEMENT_2209.players!.find((p) => p.gamertag === 'Joueur90001')!
-    const big = dotsOf(life({ ...PLACEMENT_2209, players: [choco] }), 'Joueur90001')[0].data[0] as Datum
+    const joueur_901 = PLACEMENT_2209.players!.find((p) => p.gamertag === 'Joueur90001')!
+    const big = dotsOf(life({ ...PLACEMENT_2209, players: [joueur_901] }), 'Joueur90001')[0].data[0] as Datum
     // Vies à 0,4 / 0,5 / 1,1 / 1,4 : médiane 0,8 ; frags 0, 1, 0, 2 : moyenne 0,75.
     expect(big.value[0]).toBeCloseTo(0.8, 10)
     expect(big.value[1]).toBeCloseTo(0.75, 10)

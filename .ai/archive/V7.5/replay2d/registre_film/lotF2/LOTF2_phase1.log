@@ -83,7 +83,7 @@
     ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
     ti47_annonces_test.go:70:   apres un singleton {i59 } : 1 distances (+0 hors plafond) · 46 bits (W=19) : 100.0 %
     ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
-    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\7344d24f_ti47_chainage.tsv
+    ti47_annonces_test.go:72:   TSV : <poste>\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\7344d24f_ti47_chainage.tsv
     ti47_annonces_test.go:78: VALEURS (largeur 45 bits · champ analyse [20:45[, soit 25 bits) : 14451 records annoncent i2 · 0 refuses (payload trop court) · 14451 emissions retenues · 12760 valeurs distinctes
     ti47_annonces_test.go:78:    33551146          32   0.22 %
     ti47_annonces_test.go:78:    18715318          17   0.12 %
@@ -233,7 +233,7 @@ EXIT_7344d24f=0
     ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
     ti47_annonces_test.go:70:   apres un singleton {i63 } : 1 distances (+0 hors plafond) · 44 bits (W=17) : 100.0 %
     ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
-    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\696a9d7c_ti47_chainage.tsv
+    ti47_annonces_test.go:72:   TSV : <poste>\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\696a9d7c_ti47_chainage.tsv
     ti47_annonces_test.go:78: VALEURS (largeur 45 bits · champ analyse [20:45[, soit 25 bits) : 12287 records annoncent i2 · 0 refuses (payload trop court) · 12287 emissions retenues · 10928 valeurs distinctes
     ti47_annonces_test.go:78:    33551146          21   0.17 %
     ti47_annonces_test.go:78:    19920111          11   0.09 %
@@ -389,7 +389,7 @@ EXIT_696a9d7c=0
     ti47_annonces_test.go:70:       masque du record suivant : masque multiple=2
     ti47_annonces_test.go:70:   apres un singleton {i59 } : 1 distances (+0 hors plafond) · 125 bits (W=98) : 100.0 %
     ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
-    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\01e1f945_ti47_chainage.tsv
+    ti47_annonces_test.go:72:   TSV : <poste>\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\01e1f945_ti47_chainage.tsv
     ti47_annonces_test.go:78: VALEURS (largeur 45 bits · champ analyse [20:45[, soit 25 bits) : 6475 records annoncent i2 · 0 refuses (payload trop court) · 6475 emissions retenues · 5115 valeurs distinctes
     ti47_annonces_test.go:78:    33551073          20   0.31 %
     ti47_annonces_test.go:78:    19012627          16   0.25 %
@@ -543,7 +543,7 @@ EXIT_01e1f945=0
     ti47_annonces_test.go:70:       masque du record suivant : masque multiple=1
     ti47_annonces_test.go:70:   apres un singleton {i56 } : 2 distances (+1 hors plafond) · 55 bits (W=28) : 50.0 % · 328 bits (W=301) : 50.0 %
     ti47_annonces_test.go:70:       masque du record suivant : i21=1 (HORS GRAMMAIRE) · i2=1 (personal-ai-data-component)
-    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\0a247154_ti47_chainage.tsv
+    ti47_annonces_test.go:72:   TSV : <poste>\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\0a247154_ti47_chainage.tsv
     ti47_annonces_test.go:78: VALEURS (largeur 45 bits · champ analyse [20:45[, soit 25 bits) : 9795 records annoncent i2 · 0 refuses (payload trop court) · 9795 emissions retenues · 8936 valeurs distinctes
     ti47_annonces_test.go:78:    33551699          19   0.19 %
     ti47_annonces_test.go:78:    15135675          10   0.10 %
@@ -651,7 +651,7 @@ EXIT_0a247154=0
     ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
     ti47_annonces_test.go:70:   apres un singleton {i56 } : 1 distances (+0 hors plafond) · 418 bits (W=391) : 100.0 %
     ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
-    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\606d9844_ti47_chainage.tsv
+    ti47_annonces_test.go:72:   TSV : <poste>\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\606d9844_ti47_chainage.tsv
     ti47_annonces_test.go:78: VALEURS (largeur 45 bits · champ analyse [20:45[, soit 25 bits) : 2672 records annoncent i2 · 0 refuses (payload trop court) · 2672 emissions retenues · 2106 valeurs distinctes
     ti47_annonces_test.go:78:    14038320           8   0.30 %
     ti47_annonces_test.go:78:    14349596           8   0.30 %
@@ -783,7 +783,7 @@ EXIT_606d9844=0
     ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
     ti47_annonces_test.go:70:   apres un singleton {i59 } : 1 distances (+1 hors plafond) · 343 bits (W=316) : 100.0 %
     ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
-    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\8076f97f_ti47_chainage.tsv
+    ti47_annonces_test.go:72:   TSV : <poste>\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\8076f97f_ti47_chainage.tsv
     ti47_annonces_test.go:78: VALEURS (largeur 45 bits · champ analyse [20:45[, soit 25 bits) : 4486 records annoncent i2 · 0 refuses (payload trop court) · 4486 emissions retenues · 4027 valeurs distinctes
     ti47_annonces_test.go:78:    17489493           9   0.20 %
     ti47_annonces_test.go:78:    17235561           8   0.18 %
@@ -879,7 +879,7 @@ EXIT_8076f97f=0
     ti47_annonces_test.go:70:       masque du record suivant : i22=1 (HORS GRAMMAIRE)
     ti47_annonces_test.go:70:   apres un singleton {i38 } : 1 distances (+0 hors plafond) · 32 bits (W=5) : 100.0 %
     ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
-    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\24dbb67d_ti47_chainage.tsv
+    ti47_annonces_test.go:72:   TSV : <poste>\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\24dbb67d_ti47_chainage.tsv
     ti47_annonces_test.go:78: VALEURS (largeur 45 bits · champ analyse [20:45[, soit 25 bits) : 670 records annoncent i2 · 1 refuses (payload trop court) · 669 emissions retenues · 165 valeurs distinctes
     ti47_annonces_test.go:78:    20580884         249  37.22 %
     ti47_annonces_test.go:78:    20582932          36   5.38 %
@@ -985,7 +985,7 @@ EXIT_24dbb67d=0
     ti47_annonces_test.go:70:       masque du record suivant : i1=1 (managed-object-networked-splash-message-dynamic-component)
     ti47_annonces_test.go:70:   apres un singleton {i63 } : 1 distances (+0 hors plafond) · 392 bits (W=365) : 100.0 %
     ti47_annonces_test.go:70:       masque du record suivant : i8=1 (HORS GRAMMAIRE)
-    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\530820e5_ti47_chainage.tsv
+    ti47_annonces_test.go:72:   TSV : <poste>\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\530820e5_ti47_chainage.tsv
     ti47_annonces_test.go:78: VALEURS (largeur 45 bits · champ analyse [20:45[, soit 25 bits) : 14 records annoncent i2 · 0 refuses (payload trop court) · 14 emissions retenues · 13 valeurs distinctes
     ti47_annonces_test.go:78:    5392896            2  14.29 %
     ti47_annonces_test.go:78:    3084648            1   7.14 %
@@ -1080,7 +1080,7 @@ EXIT_530820e5=0
     ti47_annonces_test.go:70:       masque du record suivant : masque multiple=1
     ti47_annonces_test.go:70:   apres un singleton {i63 } : 2 distances (+0 hors plafond) · 449 bits (W=422) : 50.0 % · 481 bits (W=454) : 50.0 %
     ti47_annonces_test.go:70:       masque du record suivant : masque multiple=1 · i53=1 (HORS GRAMMAIRE)
-    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\53ce4390_ti47_chainage.tsv
+    ti47_annonces_test.go:72:   TSV : <poste>\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\53ce4390_ti47_chainage.tsv
     ti47_annonces_test.go:78: VALEURS (largeur 45 bits · champ analyse [20:45[, soit 25 bits) : 157 records annoncent i2 · 0 refuses (payload trop court) · 157 emissions retenues · 36 valeurs distinctes
     ti47_annonces_test.go:78:    26244425          24  15.29 %
     ti47_annonces_test.go:78:    6585888           19  12.10 %
@@ -1191,7 +1191,7 @@ EXIT_53ce4390=0
     ti47_annonces_test.go:70:       masque du record suivant : masque multiple=10
     ti47_annonces_test.go:70:   apres un singleton {i63 } : 1 distances (+0 hors plafond) · 167 bits (W=140) : 100.0 %
     ti47_annonces_test.go:70:       masque du record suivant : i1=1 (managed-object-networked-splash-message-dynamic-component)
-    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\64e8adfa_ti47_chainage.tsv
+    ti47_annonces_test.go:72:   TSV : <poste>\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\64e8adfa_ti47_chainage.tsv
     ti47_annonces_test.go:78: VALEURS (largeur 45 bits · champ analyse [20:45[, soit 25 bits) : 51 records annoncent i2 · 0 refuses (payload trop court) · 51 emissions retenues · 50 valeurs distinctes
     ti47_annonces_test.go:78:    11192371           2   3.92 %
     ti47_annonces_test.go:78:    75278              1   1.96 %
@@ -1281,7 +1281,7 @@ EXIT_64e8adfa=0
     ti47_annonces_test.go:70:       masque du record suivant : i45=1 (HORS GRAMMAIRE)
     ti47_annonces_test.go:70:   apres un singleton {i57 } : 1 distances (+1 hors plafond) · 151 bits (W=124) : 100.0 %
     ti47_annonces_test.go:70:       masque du record suivant : masque multiple=1
-    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\000d5950_ti47_chainage.tsv
+    ti47_annonces_test.go:72:   TSV : <poste>\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\000d5950_ti47_chainage.tsv
     ti47_annonces_test.go:78: VALEURS (largeur 45 bits · champ analyse [20:45[, soit 25 bits) : 9 records annoncent i2 · 0 refuses (payload trop court) · 9 emissions retenues · 9 valeurs distinctes
     ti47_annonces_test.go:78:    790573             1  11.11 %
     ti47_annonces_test.go:78:    2752068            1  11.11 %

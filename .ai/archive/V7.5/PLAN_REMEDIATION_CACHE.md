@@ -172,7 +172,7 @@ les tests existants de la passe : 20 PASS, **0 SKIP**, exit 0.
 - [x] `make go-api-lint` — **exit 0, 0 issues** (avertissement gosec/plr0913 pre-existant, hors mon code).
 - [x] Validation temoin (D8) : `--repair-impoverished --dry-run` pointe read-only sur le cache/DBs
       reels du depot principal (`LEVELUP_REPO_ROOT` + `--cache` sur
-      `C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/...`). Aucun decodage, aucune ecriture.
+      `<poste>/Downloads/Scripts/LevelUp-go-migration/...`). Aucun decodage, aucune ecriture.
       **FAIT le 2026-08-25, exit 0** (detail au journal §8) : **2 appauvris-reparables** sur 951 films
       du cache — 32 deja complets, 0 vacuite legitime, 1 hors schema courant, 0 hors registre, 916 sans
       artefact. La DB shared etait LISIBLE malgre le serveur actif (`OpenReadForQuery`) : l'erreur dure

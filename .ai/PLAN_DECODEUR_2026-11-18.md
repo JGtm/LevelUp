@@ -12,7 +12,7 @@ Plan frère : `.ai/PLAN_BACKLOG_2026-11-18.md` (même pilote). Plan maître de l
 
 Abréviations : `DEC` = dépôt `JGtm/halo-infinite-film-decoder` (PUBLIC), lu pour l'instruction à sa version
 v1.4.1 dans le cache des modules Go ; `LU` = ce dépôt ; « témoin » = libfilmshell (décodeur de Den, MIT,
-copie locale `C:\Users\Guillaume\Downloads\Scripts\libfilmshell\`), lu pour LOCALISER, jamais traduit.
+copie locale `<poste>\Downloads\Scripts\libfilmshell\`), lu pour LOCALISER, jamais traduit.
 
 ## 0. Objectif et critère de succès
 
@@ -218,7 +218,7 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       requête » ; golden de forme refigé ; aucune sortie cuite ne change.
 - [x] J.3 Deux replis tenus par l'hôte : les deux entrées du registre retirées, constantes gardées et
       marquées dépréciées ; décompte de `FORMAT.md` corrigé. Aucun changement de sortie.
-- [ ] J.4 `cmd/replay-equiv` (dans LevelUp) : étape `scoreTimeline` (joueurs du tableau et leurs compteurs),
+- [x] J.4 (fait le 2026-11-22 à la troisième intégration : étapes `scoreTimeline` et `eliminations` observées) `cmd/replay-equiv` (dans LevelUp) : étape `scoreTimeline` (joueurs du tableau et leurs compteurs),
       nom inscrit aux étapes observées ; les 20 références refigées dans le clone, 20 identiques ensuite.
 - [x] J.5 Commentaire faux de `Stances` (`document.go:168-181`) corrigé ; `FORMAT.md` et `GLOSSARY.md` à
       jour pour ce que cette piste touche.
@@ -258,7 +258,7 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       modèle revu avec le user avant tout code.
 - [x] A.2 Tests : horloge arrêtée puis qui descend ; déjà en marche à la première lecture ; qui monte ;
       plusieurs manches ; film sans horloge (aucune date, compté).
-- [ ] A.3 Mesure APRÈS : 1 455 rejeux datés ; écart au coup d'envoi d'avant, par rejeu, au registre des
+- [!] A.3 (2026-11-23 : mesure sur le parc reportée avec la régénération, décision du user du 2026-11-22 ; mesuré sur les 19 témoins du gate : 0,3 à 0,9 s plus tôt) Mesure APRÈS : 1 455 rejeux datés ; écart au coup d'envoi d'avant, par rejeu, au registre des
       changements de sortie.
 - **Gate A** : équivalence, écarts = `t0FilmMs` et sa couverture ; les lecteurs de LevelUp
   (`sync/replayartifacts/t0film.go`) lisent le même champ, vérifié à la montée (L.4).
@@ -270,7 +270,7 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       attendue : les 44 rejeux faux passent à « incomplet », aucun rejeu exact ne bascule.
 - [!] B.2 Scripts inconnus des groupes : comptés et publiés en couverture au lieu d'être ignorés en silence
       (cas de l'Assaut).
-- [ ] B.3 Recherche (une session) : le barème des véhicules du build `HI_1_11_0` (12 films, 313 joueurs,
+- [x] B.3 (fait le 2026-11-22 : PROUVÉ, et ce n'est pas un barème : sur `HI_1_11_0` en Grande bataille le rang d'une réponse désigne celle du rang +1 de la table, rangs 179 à 263, puis +2, rangs 447 à 460 ; correction codée, `reponsesdejeu/decalages.go`, compteur `coverage.scoreActions.treeShift`, commit `652beeb` ; sur 23 films : rangs non confirmés 278 → 0, joueurs au-dessus des points publiés 41 → 0, verdict complet 12 → 18 films ; les 100 points sont la pénalité de suicide ou de trahison, que la courbe publiée ne rend pas ; non étendu à `HI_1_10_0`, égalité non testable) Recherche (une session) : le barème des véhicules du build `HI_1_11_0` (12 films, 313 joueurs,
       écarts multiples de 25) et la réponse de 100 points hors arbre (24 rejeux). Sortie : une table par build
       PROUVÉE par le tableau, ou `[!]`. Jamais un barème ajusté par régression.
 - [x] B.4 Mesure APRÈS contre le score personnel de l'API (export 0.3).
@@ -325,7 +325,7 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       dont le compte du film est à 10 % des tirs tirés, la part à 10 % des tirs au but, et la distribution du
       rapport film / tirs tirés et film / tirs au but. Si le film suit les tirs au but, le dire, avec ce que cela
       change pour la précision (qui ne se calculerait alors plus par le film seul). Verdict écrit, quel qu'il soit.
-- [ ] D.3 Relever la part des joueurs bien lus, par la grammaire seulement : tirs portés par un objet
+- [x] D.3 (fait le 2026-11-22 pour la part prouvée : tirs lus à tout rang d'une trame, 85 % → 100 % du témoin, règle du numéro de tir en retard ; BR75 moins 2 joueurs accepté par le user le 2026-11-22 ; le créateur des projectiles et la précision des armes à énergie partent dans le chantier « précision » annoncé par le user ce jour-là) Relever la part des joueurs bien lus, par la grammaire seulement : tirs portés par un objet
       projectile ajoutés aux événements de tir s'ils ne se recoupent pas (preuve par D.2) ; messages
       multiples d'une même touche reconnus par ce que le film écrit (même auteur, même victime, même image),
       jamais par une fenêtre de temps. Chaque règle est écrite ici, datée, avant son code. Cible : fixée au
@@ -335,14 +335,14 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Piste E — drapeau en Grande bataille (Opus pour E.1 ; Sonnet)
 
-- [ ] E.1 Recherche (une session) sur `390b1de5` et les 19 portages qui commencent loin du drapeau : d'où
+- [x] E.1 (fait le 2026-11-22 : cause PROUVÉE ; un relevé mal aligné du tableau des compteurs, lu sur le seul côté plausible, composant 24 A = 12 et B = 7 034, ouvrait un portage de 94,3 s ; le nommage du porteur est hors de cause, 1 161 événements nommés pareil par les deux voies ; rapport `dec-v150-recup/e/rapport.md`) Recherche (une session) sur `390b1de5` et les 19 portages qui commencent loin du drapeau : d'où
       vient l'événement d'ouverture ; ce que disent la seconde chaîne (marqueur de portage) et les messages
       de jeu du drapeau que le témoin lit. Sortie : cause prouvée, ou `[!]`.
-- [ ] E.2 Si E.1 conclut : la correction qu'il prescrit, écrite ici d'abord. À défaut de cause, AUCUN veto
+- [x] E.2 (fait le 2026-11-22, commits `55e9541` puis `990cdf7` ; première règle, écrite avant son code : une émission des composants à deux compteurs, 2, 12, 20 à 24, jetée en entier dès qu'un côté sort du domaine) AMENDÉ LE 2026-11-22 AVANT SON CODE, après le gate d'attribution : la liste de composants dégradait `zone_defensive_kills` sur deux films à zones (le canal B du composant 22 y est une durée ; un joueur 9 → 2 pour 9 à l'API). Règle corrigée : le canal frère n'est jugé que si la table du mode le NOMME comme compteur ; plus aucune liste de composants. Si E.1 conclut : la correction qu'il prescrit, écrite ici d'abord. À défaut de cause, AUCUN veto
       par distance n'est ajouté.
-- [ ] E.3 Ouverture de la bande au-delà de 8 joueurs, seulement si E.1 a rendu juste la bande livrée et si
+- [!] E.3 (2026-11-22 : non ouverte. Condition du plan non tenue : au-delà de 8 joueurs le temps de porteur n'est à 2 s de l'API que pour 85,7 % des joueurs ; 16 portages gardent un état « au socle » faux avant eux, pour trois causes inscrites au backlog) Ouverture de la bande au-delà de 8 joueurs, seulement si E.1 a rendu juste la bande livrée et si
       le temps de porteur s'accorde à l'API sur les 9 films de Grande bataille à drapeau (export 0.3).
-- [ ] E.4 Mesure APRÈS : temps de porteur contre l'API, par joueur, sur les 186 films à drapeau.
+- [x] E.4 (2026-11-22, par simulation sur les 186 films : à 2 s de l'API, 88,11 % → 88,23 % des joueurs, 85,50 % → 85,70 % au-delà de 8 joueurs ; à rejouer sur le parc régénéré en L.7) Mesure APRÈS : temps de porteur contre l'API, par joueur, sur les 186 films à drapeau.
 - **Gate E** : aucun porteur juste avant ne devient faux ; équivalence attribuée.
 
 ## Piste F — départs et résumés d'usage (Sonnet)
@@ -357,10 +357,10 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Piste G — lettre réelle des zones (Opus pour G.1 ; Sonnet)
 
-- [ ] G.1 Recherche (une session), sur 5 films de Bases : l'état du groupe de lettre du marqueur se lit-il,
+- [x] G.1 (fait le 2026-11-22 : la lettre SE LIT, marqueur `ti=12 i23`, groupe d'états « control_point », état = empreinte de la lettre, 77 films sur 77 ; le lien du marqueur à la zone publiée ne s'établit PAS par un identifiant, seulement par concordance des changements de propriétaire ; `letterRank` égale la lettre lue sur 231 zones sur 231) Recherche (une session), sur 5 films de Bases : l'état du groupe de lettre du marqueur se lit-il,
       et le lien du marqueur à une zone déjà publiée s'établit-il par le film seul. Sortie : oui avec la
       lecture, ou `[!]`.
-- [ ] G.2 Si oui : champ `letter` ajouté à côté de `letterRank` (gardé), sur les 77 films de Bases ; accord
+- [!] G.2 (2026-11-22 : pas de champ `letter`. Sans identifiant, le remplir ferait décider une sortie par une concordance, ce que R-2 interdit ; le rang publié est déjà la vraie lettre. La lettre lue comme contrôle, deux compteurs de couverture, est au backlog) Si oui : champ `letter` ajouté à côté de `letterRank` (gardé), sur les 77 films de Bases ; accord
       avec le rang mesuré et écrit au registre.
 - **Gate G** : équivalence attribuée.
 
@@ -374,13 +374,13 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       commande non nulle), jamais la série brute des valeurs.
 - [!] H.4 Diagnostic : pourquoi ni accroupissement ni glissade ne sont publiés sur 200 rejeux ; correction
       si la cause est une lecture, entrée au backlog sinon.
-- [ ] H.5 Répliques, selon DD-4 : recherche bornée (une session), dans les fichiers du jeu installé et hors
+- [!] H.5 (2026-11-22 : lien établi pour l'AUDIO, 201 identifiants de son sur 201 menés à un fichier de voix français du jeu installé, pas pour le TEXTE, introuvable dans le jeu ; DD-4 demande les deux : rien n'est publié. Le user signale le « chatter » de la page de Den : vérifié, son outil ne porte ni texte ni nom de son, seulement 16 noms de priorité ; décision du user attendue sur le son seul avec une étiquette de genre, version suivante ; rapport `dec-v150-recup/h5/rapport.md`) Répliques, selon DD-4 : recherche bornée (une session), dans les fichiers du jeu installé et hors
       décodeur, du texte ET de l'audio d'une réplique à partir de l'identifiant de son et de l'indice que le
       film porte (point de départ : la chaîne des sons d'armes de `LU apps/go-api/cmd/weapon-sounds`). Si le
       lien s'établit : publication de l'événement par le décodeur, et côté LevelUp une table des répliques
       (texte en français et en anglais, son) faite comme celle des sons d'armes, lue par la fiche du joueur.
       Sinon `[!]` avec ce qui a été écarté.
-- [ ] H.6 Côté LevelUp, à la montée : rechargements, sauts et temps en commande dans la section « En
+- [x] H.6 (fait le 2026-11-23 sur la branche de montée : section « Gestes », déplacement et rechargements, mention d'estimation quand la couverture dit qu'une part n'est pas publiée ; le bouton de saut n'est pas publié par le décodeur, donc pas affiché) Côté LevelUp, à la montée : rechargements, sauts et temps en commande dans la section « En
       passant » de la fiche du joueur, dans les deux langues ; rien n'est affiché sans couverture suffisante.
 - [x] H.7 (ajouté le 2026-11-18, demande du user : « chaque frag, imagé dans le killfeed, est taggé d'une
       certaine manière quand on frag au tir à la tête ») Marque de tir à la tête PAR ÉLIMINATION. Aujourd'hui le
@@ -414,33 +414,91 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Étape L — publication, montée, régénération (pilote)
 
-- [ ] L.1 Intégration des pistes dans `feat/v1.5.0`, une à une (règle R-4) ; schéma 126, chronique,
+- [x] L.1 (fait le 2026-11-22, quatre intégrations, tête `990cdf7`) Intégration des pistes dans `feat/v1.5.0`, une à une (règle R-4) ; schéma 126, chronique,
       révisions de couche, goldens, fixtures de contrat (annexe, gestes 3 à 7).
-- [ ] L.2 Équivalence finale refigée, 20 identiques ; gate du corpus ; registre des replis ; documentation
+- [x] L.2 (fait le 2026-11-22 : équivalence 20 identiques et deux passes identiques sur `e703301` ; gate du corpus code 0, 19 témoins ok, après correction d'un défaut de comptage et inscription au manifeste de 20 écarts acceptés par le user le 2026-11-22 et d'une conséquence inscrite par le pilote ; registre des replis à 127 entrées, égal à `FORMAT.md`) Équivalence finale refigée, 20 identiques ; gate du corpus ; registre des replis ; documentation
       du format (gestes 8 à 11).
-- [ ] L.3 PR du décodeur, CI verte, tag v1.5.0, release GitHub dont le corps est le registre des changements
+- [x] L.3 (fait le 2026-11-22 : PR n° 33, CI verte sur Linux et Windows, squash `dc967c2`, tag `v1.5.0` posé sur ce commit, release GitHub publiée avec les changements de sortie) PR du décodeur, CI verte, tag v1.5.0, release GitHub dont le corps est le registre des changements
       de sortie (geste 12).
-- [ ] L.4 Montée dans LevelUp sur une branche `chore/830-decodeur-v150` : `require`, miroirs Go et web,
+- [x] L.4 (fait le 2026-11-23 : montée v1.5.0 prête sur la branche `chore/830-decodeur-v150`, tête `94da1aba75`, poussée ; la branche n'est pas fusionnée dans `release/v8.3.0`, décision du user du 2026-11-23) Montée dans LevelUp : `require` au tag `v1.5.0`, miroirs Go et web,
       contrat de l'API, fixtures, lecteurs alignés (coup d'envoi, usage, « En passant »), retrait de
       l'ancienne précision par film (inventaire fermé de la section F) et de la liste des champs « servis
       seuls » (gestes 13 à 15).
-- [ ] L.5 Gates de LevelUp sans `GOWORK`, suite complète du web, `make gate-push`, CI (geste 16) ; notes de
+- [x] L.5 (fait le 2026-11-23 : CI de la branche verte, suite web complète verte (15 658 tests), suite Go d'intégration `-p 1` verte (229 paquets), filet de poussée sans échec ; notes de version et changelog en français et en anglais) Gates de LevelUp sans `GOWORK`, suite complète du web, `make gate-push`, CI (geste 16) ; notes de
       version dans les deux langues, changelog, journal, backlog, registre des reports (geste 17).
-- [ ] L.6 (porte : go du user) Régénération du parc, une fois, serveur arrêté, puis les dérivés (geste 18).
-- [ ] L.7 Mesures APRÈS sur le parc régénéré, comparées à `avant.md` ; vérifications à l'écran inscrites à
+- [!] L.6 (reporté par décision du user du 2026-11-22 : une seule régénération, après la v1.6.0 ; voir le registre des reports) Régénération du parc, une fois, serveur arrêté, puis les dérivés (geste 18).
+- [~] L.7 (mesures après faites sur échantillons, voir le journal ; mesure sur le parc reportée avec L.6) Mesures APRÈS sur le parc régénéré, comparées à `avant.md` ; vérifications à l'écran inscrites à
       l'artefact des vérifications du user ; gestes de prod inscrits à la liste de la release (geste 19).
 - **Gate L** : chaque ligne du registre des changements de sortie retrouvée dans les mesures APRÈS.
 
 ## Étape R — relecture et clôture
 
-- [ ] R.1 Relecture adversariale (skill `adversarial-review`, Fable) du diff du décodeur et du diff de la
+- [x] R.1 (2026-11-22, diff du décodeur relu par Fable avant le tag : aucun P0, trois P1, quatre P2, trois P3 ; diff de la montée relu par Fable le 2026-11-22 : aucun P0, trois P1 corrigés) Relecture adversariale (skill `adversarial-review`, Fable) du diff du décodeur et du diff de la
       montée ; axes imposés : heuristique déguisée, repli neuf, identifiant réel, sortie changée sans ligne
       au registre.
-- [ ] R.2 P0 et P1 corrigés en une ronde ; P2 au backlog seulement s'ils valent le coup.
-- [ ] R.3 Tous les items statués ; recherches closes ou `[!]` avec leurs pièces ; backlog mis à jour entrée
+- [x] R.2 (2026-11-22 : aucun P0 ; P1 du décodeur corrigés, `fb90397` et `f72779d` ; P1 de la montée corrigés, `407109bec1` ; P2 au backlog sauf ceux corrigés en passant ; un P2 du décodeur reclassé bloquant par le gate du corpus et corrigé, `e703301`) P0 et P1 corrigés en une ronde ; P2 au backlog seulement s'ils valent le coup.
+- [~] R.3 (2026-11-23 : tous les items statués ; reports inscrits au registre ; worktrees de la v1.5.0 gardés tant que la montée n'est pas fusionnée ; backlog à jour) Tous les items statués ; recherches closes ou `[!]` avec leurs pièces ; backlog mis à jour entrée
       par entrée ; worktrees retirés un à un après recherche de jonction.
 
 ## Journal d'exécution
+
+- 2026-11-23 — CLÔTURE du plan, hors régénération. Montée du décodeur v1.5.0 dans LevelUp prête sur la branche `chore/830-decodeur-v150` (commit `94da1aba75`, poussé) : `require` au tag `v1.5.0`, miroirs Go et web, deux lignes neuves de la fiche du joueur, icônes tête et parfait branchées sur les éliminations du document, noms d'objectif au fil, actions VIP, retrait de l'ancienne précision par film, notes et changelog en deux langues. Relecture : aucun P0, trois P1 corrigés. Gates verts : CI de la branche, suite web complète (15 658 tests), suite Go d'intégration `-p 1` (229 paquets). 21 décisions inscrites au manifeste du gate du corpus avec l'accord du user (22 et 23 novembre). La branche de montée n'est pas fusionnée dans `release/v8.3.0` : décision du user du 2026-11-23, la v1.6.0 part de sa tête. Régénération (L.6) et rattrapage du coup d'envoi reportés après la v1.6.0 : décision du user du 2026-11-22.
+
+- 2026-11-22 — DÉCODEUR v1.5.0 PUBLIÉ. Accord du user sur les écarts du gate (« Oui je suis d'accord avec toi ») : 20
+  décisions inscrites à `config/replay_corpus.toml`, limitées aux témoins touchés ; une 21e, la courbe d'équipe d'un seul
+  point à zéro sur un témoin, inscrite par le pilote comme conséquence et signalée au user. Gate du corpus : code 0, 19
+  témoins ok (quatrième passage). PR n° 33 fusionnée en squash (`dc967c2`, arbre identique à `e703301`), tag `v1.5.0`,
+  release GitHub. LevelUp exige `v1.5.0` (`1d8f237b6a`, branche `chore/830-decodeur-v150`). Lancés : filet de poussée,
+  suite web complète et suite Go d'intégration ; notes de version (Sonnet). Section « Chantier précision » créée au
+  backlog à la demande du user. Restent : L.5 (gates, CI, notes), L.6 (régénération du parc, à annoncer au user, AVANT
+  le premier démarrage de la version), L.7 (mesures après, vérifications à l'écran), R.3 (clôture, worktrees).
+
+- 2026-11-22 — GATE DU CORPUS ROUGE sur la tête `f72779d` (17 témoins en perte, 2 FAUX), tag suspendu. Les 2 FAUX : le
+  compte des émissions jetées gonflait hors Drapeau (0 → 1 838 sur un film de crâne), constat de la relecture que le pilote
+  avait rangé au backlog comme mineur, à tort : corrigé (`e703301`, une émission jetée ne se compte que sur un film que sa
+  table reconnaît ; équivalence 20 identiques après refigeage de 6 références, suite verte). Deux baisses instruites, sans
+  défaut de cette version : les candidats d'objectif de deux films de zones d'anciens builds (100 → 76, 104 → 83) perdent
+  des valeurs à canal négatif, `objectives[]` y est vide avant comme après ; les points de score perdus (2 à 8 sur 8
+  témoins) sont des points faux, 3 couples se rapprochent de l'API, 0 s'éloigne. Autres familles de perte classées :
+  effets du coup d'envoi par l'horloge et des tirs lus en plus grand nombre ; parts en hausse à instruire sur
+  `shots.aim.none`, `projectiles.shotAmbiguous`, et sur quelques témoins pour `shots.noSlot` et `vehicles.shotsNoRide`.
+  Montée LevelUp : fusion de la branche de version et corrections de la relecture Fable (`407109bec1`), révisions du coup
+  d'envoi, des notes et des dérivations montées ensemble ; ordre de déploiement : régénération du parc AVANT le premier
+  démarrage de la version. Gate relancé sur `d88b026716` contre `8f610daf1b`. Les décisions d'acceptation du manifeste du
+  gate sont au user.
+
+- 2026-11-22 — relecture adversariale du diff du décodeur (Fable, `v1.4.1..990cdf7`) : aucun P0. P1 : deux constantes
+  publiques retirées (promesse semver : à rétablir dépréciées) ; `emissionHorsDomaine` juge un canal nommé seul au-delà de
+  250 alors que ses textes disent « les deux côtés nommés » ; les lignes de la troisième intégration manquaient au registre
+  principal (une écriture du pilote avait échoué en silence : statuts du plan et registre réécrits ce jour, vérifiés par
+  relecture du fichier). P2 retenus au backlog : victime d'une élimination appariée au plus proche sans compte
+  d'ambiguïté ; compteur des émissions jetées gonflé hors Drapeau. P2 de texte corrigés avec les P1. Une ronde de
+  corrections lancée (Sonnet), avec les trois remarques de lint de la CI.
+- 2026-11-22 — troisième intégration commitée et poussée (`7f36cca`) : schéma des faits 30, `grammar-2026-11-22.2`,
+  `us8`, chronique 126 à treize apports, équivalence 20 identiques et deux passes identiques à l'octet, chaque
+  écart attribué à l'une des cinq fusions. À la demande du user (« c'est lent, tu peux pas paralléliser un peu ? »),
+  les quatre recherches ont tourné ensemble pendant l'intégration : B.3 et E.1 prouvées et codées (`652beeb`,
+  `55e9541`, fusionnées en `f443fc8` et `3296c81`), G.1 conclut que le rang publié est déjà la lettre, H.5 trouve
+  l'audio sans le texte. Relecture du pilote sur B.3 : la signature publiée de `GroupeDesScripts` est gardée,
+  `GroupeDuFilm` prend le build.
+
+- 2026-11-22 — quatrième intégration commitée et poussée (`990cdf7`) : règle du drapeau par la table du mode prouvée
+  (compteurs de zones de nouveau égaux à l'API sur 14 joueurs, faux portage de 94 s toujours absent, aucun compteur
+  d'objectif ne s'éloigne de l'API sur les 20 films), suite complète verte (33 paquets, code 0), équivalence 20
+  identiques et deux passes identiques, chronique 126 à quinze apports. PR du décodeur ouverte (n° 33). Lancés ensemble :
+  l'alignement final de la montée dans LevelUp (Sonnet ; miroirs fusionnés dans `chore/830-decodeur-v150`, pseudo-version
+  du décodeur) et la relecture adversariale du diff du décodeur (Fable, R.1 avancée avant le tag). À surveiller : le
+  compte des émissions jetées gonfle sur des films hors Drapeau, sans effet sur les compteurs ; `coverage.objectives.available`
+  baisse sur deux films.
+
+- 2026-11-22 — quatrième intégration ARRÊTÉE à l'attribution, à juste titre : la règle de la piste e, écrite sur une liste de
+  composants, jetait 46 émissions sur 54 d'un compteur de zones sur un film et éloignait deux films de l'API. Décision du
+  pilote : la règle se lit dans la table des noms du mode (E.2 amendé) ; l'agent reprend avec ce correctif puis termine.
+  Rouge hérité de la règle des places : cause = feuille de match du corpus à identifiants fictifs face à un film réel,
+  un joueur sans mort n'était pas retrouvé ; corrigé dans l'outil de test, pas un défaut de production. Cinq garde-rails
+  de LevelUp rendus verts côté décodeur, `decfilm.ObjectiveTypeVip` exportée, deux constantes de repli sans usage
+  retirées. Miroirs de LevelUp rendus et poussés sur `chore/830-decodeur-v150-miroirs` (`4ff6f5d088`), à fusionner
+  dans la branche de montée après le tag ; plafonds de la façade à réajuster (181 déclarations, famille objectifs 40).
 
 - 2026-11-22 — VAGUE 2 RENDUE, cinq pistes fusionnées dans `feat/v1.5.0` (`e3f0401`, poussée ; portes de référence rouges
   en attendant la troisième intégration, lancée).
@@ -529,7 +587,7 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
   LevelUp. Le document ne porte aujourd'hui aucune marque par élimination.
 - 2026-11-22 — REPRISE APRÈS INCIDENT. Le clone `C:/t/dec/main` et ses sept commits jamais poussés ont été supprimés
   le 22/11 par la tâche de ménage du disque (`C:/t` vidé après 72 h). Les cinq commits de code ont été RECONSTRUITS
-  depuis les transcripts des agents dans un clone neuf, `C:/Users/Guillaume/Downloads/Scripts/dec-v150`, branche
+  depuis les transcripts des agents dans un clone neuf, `<poste>/Downloads/Scripts/dec-v150`, branche
   `feat/v1.5.0` POUSSÉE sur GitHub : `e3e3141` (J), `0dc2f54` (J.7), `cde2917` (A), `7ecc4da` (C.2), `586afe4` (C.3) ;
   mêmes fichiers et mêmes volumes que les originaux, fichiers d'horloge régénérés à l'octet. INTÉGRATION AU SCHÉMA
   126 refaite en une fois (`e8d6856`, poussée) : chronique 126 à cinq apports, révisions `grammar-2026-11-22` et

@@ -32,7 +32,7 @@
 > déplacé par S1.2, ligne de journal ajoutée par L9) — version déplacée gardée, champ
 > `ecartees_journal_non_publiable` reporté dans `solo_lives_block.go` ; généré régénéré sans écart.
 > Branche : `feat/sessions-emprise`, créée sur `cd3145ec2`, rebasée sur `554457c31` ; worktree
-> `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-sessions`.
+> `<poste>\Downloads\Scripts\LevelUp-wt-sessions`.
 > **Clôture (2026-10-06) : S1 à S5 et S7 faits, S6 fondu dans S5 ; revue adversariale (S7.5)
 > faite par le superviseur, constats R1-R7 corrigés en S8 ; suite sur son signal : rebase sur
 > `feat/v75` et alignement sémantique des textes de Sessions (§8).**

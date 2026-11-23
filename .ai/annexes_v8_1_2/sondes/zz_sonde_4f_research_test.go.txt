@@ -44,7 +44,7 @@ func TestSonde4f(t *testing.T) {
 	reg := c.reg
 	pistes := indexBySlot(sorted)
 	sieges := siegesTries(pistes)
-	var victim uint64 = 2535457217346540
+	var victim uint64 = 2690056610860898
 	for _, d := range g.Deaths {
 		if d.XUID != victim {
 			continue

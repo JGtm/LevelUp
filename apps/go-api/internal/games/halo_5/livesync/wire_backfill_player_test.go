@@ -16,8 +16,8 @@ func TestEnrichmentBackfillPlayerFor_FriendsOfThePlayer(t *testing.T) {
 	cfg := writeProfilesV3(t, `{
 		"version": "3.0",
 		"profiles": {
-			"halo_5": {"JGtm": {"xuid": "1"}, "Madina": {"xuid": "2"}},
-			"halo_infinite": {"Choco": {"xuid": "3"}}
+			"halo_5": {"JGtm": {"xuid": "1"}, "joueur_075": {"xuid": "2"}},
+			"halo_infinite": {"joueur_901": {"xuid": "3"}}
 		}
 	}`)
 	friendsPath := cfg.RuntimePaths().PlayerFriendsPath()
@@ -43,7 +43,7 @@ func TestEnrichmentBackfillPlayerFor_FriendsOfThePlayer(t *testing.T) {
 	if len(got.FriendGamertags) != 2 || !contains(got.FriendGamertags, "AmiA") || !contains(got.FriendGamertags, "AmiB") {
 		t.Errorf("amis = %v, attendu la liste du joueur [AmiA AmiB]", got.FriendGamertags)
 	}
-	for _, autre := range []string{"Madina", "Choco", "AutreAmi"} {
+	for _, autre := range []string{"joueur_075", "joueur_901", "AutreAmi"} {
 		if contains(got.FriendGamertags, autre) {
 			t.Errorf("%q n'est pas un ami du joueur : %v", autre, got.FriendGamertags)
 		}

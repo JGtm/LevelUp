@@ -36,7 +36,7 @@ le code.
 
 **E3. « Le porteur de drapeau n'est structurellement pas pontable sur ce film » est CONTREDIT par
 le parc** (touche §4.4, §8.1, et les épingles 8/4/12 du test E2E). L'artefact du parc au schéma 20
-**nomme** les actions de drapeau de SweatyYeti75. Le calque `objectives` a donc DÉRIVÉ entre le
+**nomme** les actions de drapeau de joueur_631. Le calque `objectives` a donc DÉRIVÉ entre le
 schéma 20 et aujourd'hui, et cette dérive est instruite au **§9 ci-dessous**. Les épingles 8/4/12
 et la liste des joueurs pontés ont été **retirées** du test E2E : on ne sanctuarise pas un état
 non compris. L'oracle des captures, qui comparait `TeamScores[0]` seul alors que
@@ -269,19 +269,19 @@ lecture seule) contre la cuisson du **film complet du cache** au HEAD (`cmd/repl
 | xuid | nom | courbe de score, parc | actions, parc (schéma 20) | courbe, HEAD | actions, HEAD (avant correctif) |
 |---|---|---|---|---|---|
 | 2533274823110022 | JGtm | non | — | non | `kills=2 assists=1` |
-| 2533275001554469 | GEK XD | oui | `kills=1 assists=2` | oui | `kills=1 assists=2` |
-| 2535429692041611 | LostYeti71 | oui | `kills=1` | oui | `kills=1` |
-| 2535432531943478 | TheBackwoodBoss | oui | `kills=2` | oui | `kills=2` |
-| **2535463878425995** | **SweatyYeti75** | oui | **`kills=7 assists=1 flag_captures=1 flag_steals=1`** | oui | **—** |
-| 2535465632069522 | DiegoGamer8K | oui | `assists=1` | oui | **—** |
-| 2535465779546251 | EwN1W | non | — | non | `kills=2 assists=1` |
+| 2630521749790773 | JOUEUR_1528 | oui | `kills=1 assists=2` | oui | `kills=1 assists=2` |
+| 2588623217004373 | joueur_658 | oui | `kills=1` | oui | `kills=1` |
+| 2639041738602226 | joueur_1023 | oui | `kills=2` | oui | `kills=2` |
+| **2569104772637498** | **joueur_631** | oui | **`kills=7 assists=1 flag_captures=1 flag_steals=1`** | oui | **—** |
+| 2805158871119453 | joueur_1242 | oui | `assists=1` | oui | **—** |
+| 2715607967843624 | joueur_1537 | non | — | non | `kills=2 assists=1` |
 
 Totaux : **17 actions au parc** (11 `kills`, 4 `assists`, 1 `flag_captures`, 1 `flag_steals`)
 contre **12 au HEAD** (8 `kills`, 4 `assists`, **aucune famille `flag`**). La couverture du
 drapeau, elle, est **identique** aux deux états (bursts/captures/steals/openings/noBridge/spawns/
 objectLives = 3/3/3/3/3/2/4) : c'est bien le calque `objectives` qui a bougé, pas `flagCarries`.
 
-Les deux actions de drapeau du match sont **toutes deux à SweatyYeti75** : `flag_steals` à
+Les deux actions de drapeau du match sont **toutes deux à joueur_631** : `flag_steals` à
 t=99 002 ms, `flag_captures` à t=105 526 ms.
 
 ### 9.2 Bissection — commit fautif et ligne
@@ -292,8 +292,8 @@ MANCHE (fil des morts) »). Cuisson du même film complet de part et d'autre, **
 
 | commit | actions | familles | joueurs porteurs d'actions |
 |---|---|---|---|
-| `d173b1a8c^` (`ed5c378b8`) | **17** | `kills=11 assists=4 flag_captures=1 flag_steals=1` | GEK XD, LostYeti71, TheBackwoodBoss, **SweatyYeti75**, DiegoGamer8K |
-| **`d173b1a8c`** | **12** | `kills=8 assists=4` | JGtm, GEK XD, LostYeti71, TheBackwoodBoss, EwN1W |
+| `d173b1a8c^` (`ed5c378b8`) | **17** | `kills=11 assists=4 flag_captures=1 flag_steals=1` | JOUEUR_1528, joueur_658, joueur_1023, **joueur_631**, joueur_1242 |
+| **`d173b1a8c`** | **12** | `kills=8 assists=4` | JGtm, JOUEUR_1528, joueur_658, joueur_1023, joueur_1537 |
 
 **Ligne** : `apps/go-api/internal/replaybuild/matchfacts.go`, `identifiedEvents` — l'appel
 `objectiveevents.SlotIdentityFrom(recs, lines)` (pont par **TRIPLET**, exige les lignes de match)
@@ -305,13 +305,13 @@ Les deux ponts, mesurés **sur le même film**, slot par slot :
 
 | slot | pont TRIPLET | pont MORTS | verdict |
 |---|---|---|---|
-| 10 | TheBackwoodBoss | TheBackwoodBoss | accord |
+| 10 | joueur_1023 | joueur_1023 | accord |
 | 14 | — | JGtm | le triplet se tait |
-| 16 | GEK XD | GEK XD | accord |
-| 18 | LostYeti71 | LostYeti71 | accord |
-| 20 | DiegoGamer8K | — | **les morts se taisent** |
-| 22 | **SweatyYeti75** | — | **les morts se taisent** |
-| 24 | — | EwN1W | le triplet se tait |
+| 16 | JOUEUR_1528 | JOUEUR_1528 | accord |
+| 18 | joueur_658 | joueur_658 | accord |
+| 20 | joueur_1242 | — | **les morts se taisent** |
+| 22 | **joueur_631** | — | **les morts se taisent** |
+| 24 | — | joueur_1537 | le triplet se tait |
 
 **ZÉRO CONTRADICTION.** Chacun nomme 5 slots, 3 en commun et à l'identique ; chacun nomme 2 slots
 que l'autre laisse tomber. Ce ne sont pas deux réponses concurrentes, ce sont **deux couvertures
@@ -319,7 +319,7 @@ complémentaires** — et `d173b1a8c` a remplacé l'une par l'autre au lieu de l
 
 **Pourquoi le pont par morts se tait sur les slots 20 et 22** : `deathInstantMin = 3`
 (`objectiveevents/slotidentity_deaths.go`). Un slot n'est nommé que s'il aligne au moins **trois**
-instants de mort coïncidents. SweatyYeti75 meurt **2** fois, DiegoGamer8K **1** fois. Ils sont
+instants de mort coïncidents. joueur_631 meurt **2** fois, joueur_1242 **1** fois. Ils sont
 hors de portée **par construction** — et ce sont, par définition, les joueurs qui meurent le
 moins, c'est-à-dire les meilleurs, c'est-à-dire ceux qui portent le drapeau.
 
@@ -327,8 +327,8 @@ moins, c'est-à-dire les meilleurs, c'est-à-dire ceux qui portent le drapeau.
 de l'autre) :
 
 ```
-slot 20 : 1 progression de mort [59881]        -> 2535465632069522 (DiegoGamer8K)  1 sur 1, et LUI SEUL
-slot 22 : 2 progressions de mort [46451 70141] -> 2535463878425995 (SweatyYeti75)  2 sur 2, et LUI SEUL
+slot 20 : 1 progression de mort [59881]        -> 2805158871119453 (joueur_1242)  1 sur 1, et LUI SEUL
+slot 22 : 2 progressions de mort [46451 70141] -> 2569104772637498 (joueur_631)  2 sur 2, et LUI SEUL
 ```
 
 Les instants de mort de ces deux slots coïncident **exclusivement** avec le xuid que le triplet
@@ -363,10 +363,10 @@ propriété que `d173b1a8c` avait gagnée est conservée.
 Câblé dans `replaybuild.identifiedEvents`, qui recevait déjà les faits pour la courbe de score.
 
 **Résultat mesuré sur le film complet** : **23 actions**, **7 joueurs pontés sur 7 présents au
-film**, et chacun publie **EXACTEMENT sa ligne de la feuille de match** (JGtm 2/1, GEK XD 1/2,
-LostYeti71 1/0, TheBackwoodBoss 2/0, SweatyYeti75 7/1, DiegoGamer8K 0/1, EwN1W 2/1 — total
+film**, et chacun publie **EXACTEMENT sa ligne de la feuille de match** (JGtm 2/1, JOUEUR_1528 1/2,
+joueur_658 1/0, joueur_1023 2/0, joueur_631 7/1, joueur_1242 0/1, joueur_1537 2/1 — total
 15 `kills`, 6 `assists`, conforme à l'API). Les deux actions de drapeau sont revenues, sur
-SweatyYeti75, aux mêmes instants qu'au parc. Le 8e joueur de la feuille (5 frags, 0 mort) n'a
+joueur_631, aux mêmes instants qu'au parc. Le 8e joueur de la feuille (5 frags, 0 mort) n'a
 aucune trajectoire dans le film : il n'a pas de slot à nommer.
 
 ### 9.6 Tests de non-régression
@@ -376,7 +376,7 @@ aucune trajectoire dans le film : il n'a pas de slot à nommer.
   déjà pris.
 - `wire/build_queue_worker_binary_integration_test.go` — sur la cuisson E2E réelle : 7 joueurs
   pontés, chacun **à égalité** avec la feuille de match, et `flag_captures = 1` / `flag_steals = 1`
-  au porteur `2535463878425995`. **Vérifié par MUTATION** : correctif débranché, le test rougit
+  au porteur `2569104772637498`. **Vérifié par MUTATION** : correctif débranché, le test rougit
   avec « joueurs pontés = 5, attendu 7 » et les deux actions de drapeau à 0.
 
 ### 9.7 Périmètre sur le parc, et bump de schéma
@@ -401,7 +401,7 @@ construit sa propre identité **dans `analysis/replay`** (`build_objectives_live
 title-agnostic qui ne reçoit **aucun fait de match** — c'est une frontière délibérée
 (« publiable hors ligne »). Mesure : les 3 prises `noBridge` se répartissent en **2 sur un slot 12
 agrégé** (jamais nommable : ses compteurs ne correspondent à aucun joueur) et **1 sur le slot 22**
-(SweatyYeti75). Faire descendre les lignes jusqu'à ce calque ferait donc passer `flagCarries` de
+(joueur_631). Faire descendre les lignes jusqu'à ce calque ferait donc passer `flagCarries` de
 0 à 1 portage sur ce film — gain réel mais modeste, au prix du franchissement d'une frontière
 d'architecture. **Décision produit, hors mandat** : portée au registre des reports.
 
@@ -464,7 +464,7 @@ triplet, « Q » revendiqué par personne d'autre.
 ### 10.3 (constat 3) La justification du « 7 joueurs pontés » était fausse
 
 Le commentaire disait « le 8e (5 frags, 0 mort) n'a aucune trajectoire dans le film : il n'a pas de
-slot à nommer ». **Faux** : `2535458702376288` occupe le **slot 12**, dont les compteurs de film
+slot à nommer ». **Faux** : `2643148600905879` occupe le **slot 12**, dont les compteurs de film
 valent (5, 0, **60**). Ses frags et ses morts sont exactement ceux de sa feuille ; c'est le
 compteur d'assistances, lu à 60 contre 0, qui fait refuser le triplet — et le pont par morts ne
 peut évidemment pas voir un joueur qui ne meurt jamais. La vraie raison est écrite, et elle est

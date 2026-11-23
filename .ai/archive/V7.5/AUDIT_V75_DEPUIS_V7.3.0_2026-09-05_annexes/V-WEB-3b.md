@@ -1,6 +1,6 @@
 # Vérification adverse V-WEB-3b
 
-Dépôt `C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration`, branche `feat/v75`, HEAD `736ccf3c3`.
+Dépôt `<poste>/Downloads/Scripts/LevelUp-go-migration`, branche `feat/v75`, HEAD `736ccf3c3`.
 Lecture seule. Constats source : `scratchpad/audit/W4.md` (§ Constats) + W3 P1-6 (`W3.md:309-336`).
 
 ## Constat 1 — Cinq tables Halo Infinite en dur dans le TS du rejeu : RÉFUTÉ

@@ -1,6 +1,6 @@
 const fs=require('fs'),zlib=require('zlib');
 const id=process.argv[2];
-const d=JSON.parse(zlib.gunzipSync(fs.readFileSync('c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
+const d=JSON.parse(zlib.gunzipSync(fs.readFileSync('<poste>/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
 console.log('killEffects',JSON.stringify(d.killEffects).slice(0,800));
 console.log('layers',JSON.stringify(d.layers).slice(0,600));
 console.log('track0',JSON.stringify(Object.keys(d.tracks[0])));

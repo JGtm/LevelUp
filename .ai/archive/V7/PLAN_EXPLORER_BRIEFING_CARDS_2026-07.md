@@ -2,7 +2,7 @@
 
 > **✅ COMPLÉTÉ le 2026-07-13** (branche `feat/explorer-briefing-cards`). Lots A/B/C/D
 > exécutés + gates verts (go test ./..., golangci-lint 0, check-types, vitest 2157, eslint 0).
-> Vérif visuelle navigateur Infinite (JGtm 1001) + H5 (XxDaemon 309). Écarts assumés vs plan
+> Vérif visuelle navigateur Infinite (JGtm 1001) + H5 (joueur_639 309). Écarts assumés vs plan
 > consignés en Découvertes — dont 2 DÉCISIONS À VALIDER par l'utilisateur : (1) module
 > « classé » pivoté en « Pronostic » (pas de donnée CSR ; attendu vs réel sur LUSR v2) ;
 > (2) affichage du Δ classement cumulé (grand nombre LUSR sur scopes longs).
@@ -410,8 +410,8 @@ Aucun item sans statut. Commit(s) avec accord utilisateur.
   --new-from-rev=a25ab7cf2` = 0 issue ; `make check-types` OK ; vitest complet 2157 passés
   / 14 skipped / 0 échec ; eslint 0 erreur ; grep hex 0.
 - [x] **D2 — Vérification visuelle** (navigateur chrome-devtools :5173, auth_mode=none
-  temporaire, profils JGtm/XxDaemon, locale FR) :
-  1. `[x]` Sans filtre (Infinite JGtm 1001, H5 XxDaemon 309) : socle + frise + 3 dimensions
+  temporaire, profils JGtm/joueur_639, locale FR) :
+  1. `[x]` Sans filtre (Infinite JGtm 1001, H5 joueur_639 309) : socle + frise + 3 dimensions
      + tendance rendus, propres. Recoupé : socle MATCHS = « N matchs trouvés » du tableau
      (309/309, 1001/1001) après fix scope ; winrate/bilan cohérents.
   2. `[x]` Filtre UNE carte (Coliseum/Corpo) : dimension « carte » ABSENTE, mode/playlist présents.
@@ -468,7 +468,7 @@ Aucun item sans statut. Commit(s) avec accord utilisateur.
   puis fallback `ResolveModeUI(game_variant)` — cohérent avec la colonne Mode du tableau.
 - **[Lot D — DÉCISION PRODUIT à valider] Module « classé » → « Pronostic »** : sur pièces,
   le RankDelta canonique (delta CSR par match) est SYSTÉMATIQUEMENT nil dans les player DBs
-  (le loader `LoadPlayerMatches` ne charge pas `SkillSnapshot.Delta` ; vérifié JGtm/Madina
+  (le loader `LoadPlayerMatches` ne charge pas `SkillSnapshot.Delta` ; vérifié JGtm/joueur_075
   1000+ matchs classés → rank_delta nil). Et `expected_win_prob` (LUSR v2) n'existe QUE sur
   les matchs NON classés (sur un match CSR la ligne `_latest` gagnante est CSR → winProb
   NULL, cf. match_history_repo.go:207). Donc le « module classé » (delta CSR + attendu vs

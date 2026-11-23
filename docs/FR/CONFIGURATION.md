@@ -39,7 +39,7 @@ joueur garde le même XUID dans chaque section de titre.
       },
       "AutreJoueur": {
         "db_path": "",
-        "xuid": "2535413181053876",
+        "xuid": "2734274180837334",
         "waypoint_player": "AutreJoueur",
         "auth_only": true
       }

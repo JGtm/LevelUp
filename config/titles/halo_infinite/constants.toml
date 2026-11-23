@@ -96,7 +96,7 @@ default   = 1.0   # kill, medal, first_kill/death, finisher, clutch…
 # ×2 depuis (borne à minuit UTC — l'imprécision d'heure de déploiement est
 # négligeable à l'échelle d'un graphe par match). Validation empirique locale sur
 # 3 joueurs suivis : 86/87 fenêtres à un seul match propres à ±1 % du delta
-# xp_total réel (JGtm 28/29, Madina 28/28, Chocoboflor 30/30), toutes post-18/11.
+# xp_total réel (JGtm 28/29, joueur_075 28/28, joueur_165 30/30), toutes post-18/11.
 #
 # from/to : date UTC "YYYY-MM-DD" ; vide = borne ouverte (from vide = -inf,
 # to vide = +inf). from INCLUSIF, to EXCLUSIF. multiplier > 0.

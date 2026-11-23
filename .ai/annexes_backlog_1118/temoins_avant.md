@@ -66,7 +66,7 @@ détecteur copié) ; le garde-rail lui-même passe (4 tests réussis).
 
 Exemptés : `features/asset-drawer/AssetDockedPanel.tsx`, `features/tactical/TacticalAnalysisView.tsx`, `features/tactical/TacticalPlanTueurs.tsx`, `features/squad/SquadFocusStrip.tsx`, `features/squad/useSquadPresets.tsx`.
 
-## 4. Match `38900a5e` : le fil entre 4:30 et 5:30 et la fiche d'ELOsk11
+## 4. Match `38900a5e` : le fil entre 4:30 et 5:30 et la fiche du joueur A
 
 ### Ce qui a été passé aux vraies fonctions, et ce qui manque
 
@@ -92,58 +92,58 @@ Deux variantes :
 - **B. frags reconstitués** : les 69 lignes `killPersonalScore` (tueur, cible) de `scoreActions` du document, datées à l'image
   du score, sans arme. Ce n'est PAS le flux de l'API : c'est une approximation qui montre le fil avec des frags. Les lignes autres que les frags sont identiques à la variante A.
 
-Les deux variantes montrent le point qui compte pour la piste A : à l'image 9785, la fin de vie d'ELOsk11 (corps supprimé, aucun lâcher, aucun compte à rebours) est
+Les deux variantes montrent le point qui compte pour la piste A : à l'image 9785, la fin de vie du joueur A (corps supprimé, aucun lâcher, aucun compte à rebours) est
 une ligne « mort » (« non prouvée ») ET une ligne « a quitté la partie », deux lignes à la même image.
 
 ### Fil de 4:30 à 5:30, variante A (sans frags), de la plus ancienne à la plus récente
 
 | Horloge | Image | Famille | Joueur | Texte affiché |
 |---|---|---|---|---|
-| 4:30 | 8879 | mort neutre (prouvee) | yougo77500 | yougo77500 mort |
-| 4:32 | 8953 | medaille | Madina97294 | Madina97294 Remote Detonation |
-| 4:33 | 8963 | event:pickups | Draconewt | Draconewt a ramassé : Empaleur |
-| 4:41 | 9215 | medaille | Draconewt | Draconewt Rifleman |
-| 4:45 | 9324 | event:pickups | yougo77500 | yougo77500 a pris : Déchiqueteur |
-| 4:45 | 9350 | event:pickups | DubsDay | DubsDay a pris : Hydra |
-| 4:52 | 9539 | mort neutre (prouvee) | ELOsk11 | ELOsk11 mort |
-| 4:54 | 9614 | mort neutre (prouvee) | WDW Eclipse | WDW Eclipse mort |
-| 4:59 | 9749 | mort neutre (prouvee) | DubsDay | DubsDay mort |
-| 5:00 | 9785 | mort neutre (non prouvee) | ELOsk11 | ELOsk11 mort |
-| 5:00 | 9785 | presence:left(film) | ELOsk11 | ELOsk11 a quitté la partie |
+| 4:30 | 8879 | mort neutre (prouvee) | joueur B | joueur B mort |
+| 4:32 | 8953 | medaille | joueur C | joueur C Remote Detonation |
+| 4:33 | 8963 | event:pickups | joueur D | joueur D a ramassé : Empaleur |
+| 4:41 | 9215 | medaille | joueur D | joueur D Rifleman |
+| 4:45 | 9324 | event:pickups | joueur B | joueur B a pris : Déchiqueteur |
+| 4:45 | 9350 | event:pickups | joueur E | joueur E a pris : Hydra |
+| 4:52 | 9539 | mort neutre (prouvee) | joueur A | joueur A mort |
+| 4:54 | 9614 | mort neutre (prouvee) | joueur F | joueur F mort |
+| 4:59 | 9749 | mort neutre (prouvee) | joueur E | joueur E mort |
+| 5:00 | 9785 | mort neutre (non prouvee) | joueur A | joueur A mort |
+| 5:00 | 9785 | presence:left(film) | joueur A | joueur A a quitté la partie |
 | 5:03 | 9895 | mort neutre (prouvee) | JGtm | JGtm mort |
-| 5:03 | 9895 | mort neutre (prouvee) | yougo77500 | yougo77500 mort |
-| 5:12 | 10151 | event:pickups | Draconewt | Draconewt a pris : Bandit EVO |
+| 5:03 | 9895 | mort neutre (prouvee) | joueur B | joueur B mort |
+| 5:12 | 10151 | event:pickups | joueur D | joueur D a pris : Bandit EVO |
 | 5:13 | 10188 | presence:joined(film) | 343 Mickey | 343 Mickey a rejoint la partie |
-| 5:21 | 10416 | event:pickups | yougo77500 | yougo77500 a pris : Crémateur |
-| 5:25 | 10552 | medaille | Draconewt | Draconewt Snipe |
-| 5:28 | 10631 | mort neutre (prouvee) | yougo77500 | yougo77500 mort |
-| 5:29 | 10678 | mort neutre (prouvee) | WDW Eclipse | WDW Eclipse mort |
+| 5:21 | 10416 | event:pickups | joueur B | joueur B a pris : Crémateur |
+| 5:25 | 10552 | medaille | joueur D | joueur D Snipe |
+| 5:28 | 10631 | mort neutre (prouvee) | joueur B | joueur B mort |
+| 5:29 | 10678 | mort neutre (prouvee) | joueur F | joueur F mort |
 
 ### Fil de 4:30 à 5:30, variante B (frags reconstitués depuis `scoreActions`)
 
 | Horloge | Image | Famille | Joueur | Texte affiché |
 |---|---|---|---|---|
-| 4:30 | 8880 | frag | Chocoboflor | Chocoboflor [tueur] > yougo77500 [victime] |
-| 4:32 | 8953 | medaille | Madina97294 | Madina97294 Remote Detonation |
-| 4:33 | 8963 | event:pickups | Draconewt | Draconewt a ramassé : Empaleur |
-| 4:41 | 9215 | medaille | Draconewt | Draconewt Rifleman |
-| 4:45 | 9324 | event:pickups | yougo77500 | yougo77500 a pris : Déchiqueteur |
-| 4:45 | 9350 | event:pickups | DubsDay | DubsDay a pris : Hydra |
-| 4:52 | 9539 | frag | Draconewt | Draconewt [tueur] > ELOsk11 [victime] |
-| 4:54 | 9614 | frag | JGtm | JGtm [tueur] > WDW Eclipse [victime] |
-| 4:59 | 9749 | frag | Madina97294 | Madina97294 [tueur] > DubsDay [victime] |
-| 5:00 | 9785 | mort neutre (non prouvee) | ELOsk11 | ELOsk11 mort |
-| 5:00 | 9785 | presence:left(film) | ELOsk11 | ELOsk11 a quitté la partie |
-| 5:03 | 9895 | frag | JGtm | JGtm [tueur] > yougo77500 [victime] |
-| 5:03 | 9895 | frag | yougo77500 | yougo77500 [tueur] > JGtm [victime] |
-| 5:12 | 10151 | event:pickups | Draconewt | Draconewt a pris : Bandit EVO |
+| 4:30 | 8880 | frag | joueur G | joueur G [tueur] > joueur B [victime] |
+| 4:32 | 8953 | medaille | joueur C | joueur C Remote Detonation |
+| 4:33 | 8963 | event:pickups | joueur D | joueur D a ramassé : Empaleur |
+| 4:41 | 9215 | medaille | joueur D | joueur D Rifleman |
+| 4:45 | 9324 | event:pickups | joueur B | joueur B a pris : Déchiqueteur |
+| 4:45 | 9350 | event:pickups | joueur E | joueur E a pris : Hydra |
+| 4:52 | 9539 | frag | joueur D | joueur D [tueur] > joueur A [victime] |
+| 4:54 | 9614 | frag | JGtm | JGtm [tueur] > joueur F [victime] |
+| 4:59 | 9749 | frag | joueur C | joueur C [tueur] > joueur E [victime] |
+| 5:00 | 9785 | mort neutre (non prouvee) | joueur A | joueur A mort |
+| 5:00 | 9785 | presence:left(film) | joueur A | joueur A a quitté la partie |
+| 5:03 | 9895 | frag | JGtm | JGtm [tueur] > joueur B [victime] |
+| 5:03 | 9895 | frag | joueur B | joueur B [tueur] > JGtm [victime] |
+| 5:12 | 10151 | event:pickups | joueur D | joueur D a pris : Bandit EVO |
 | 5:13 | 10188 | presence:joined(film) | 343 Mickey | 343 Mickey a rejoint la partie |
-| 5:21 | 10416 | event:pickups | yougo77500 | yougo77500 a pris : Crémateur |
-| 5:25 | 10552 | medaille | Draconewt | Draconewt Snipe |
-| 5:28 | 10631 | frag | Chocoboflor | Chocoboflor [tueur] > yougo77500 [victime] |
-| 5:29 | 10678 | frag | Chocoboflor | Chocoboflor [tueur] > WDW Eclipse [victime] |
+| 5:21 | 10416 | event:pickups | joueur B | joueur B a pris : Crémateur |
+| 5:25 | 10552 | medaille | joueur D | joueur D Snipe |
+| 5:28 | 10631 | frag | joueur G | joueur G [tueur] > joueur B [victime] |
+| 5:29 | 10678 | frag | joueur G | joueur G [tueur] > joueur F [victime] |
 
-### Fiche d'ELOsk11 (état avant la piste A)
+### Fiche du joueur A (état avant la piste A)
 
 Lu par `playerStateAt(player, image, vitalityPresence(doc))` (`lib/replay/rosterLogic.ts`) ; compteurs par `playerCountersAt`. Dernières vies du joueur dans le
 document : [4857, 5822] released ; [6067, 7939] released ; [8183, 9539] released ; [9783, 9785] deleted. Présence au tableau : de 0 à 9937.
@@ -157,4 +157,4 @@ document : [4857, 5822] released ; [6067, 7939] released ; [8183, 9539] released
 
 Lecture : aux images 9786, 9900 et 9940 la fiche dit « mort » (`alive: false`, réapparition `-1`), même à 9940 où la présence est fermée depuis 3 images (9937) ;
 « absent » n'existe pas dans le code d'aujourd'hui pour cet état. L'image 9700 est dans le compte à rebours de la vie précédente (réapparition lue : 9783).
-Gate A : de l'image 9785 (fin de la dernière vie) à 9937 (fermeture de la présence), donc aux images 9786 et 9900, la fiche doit dire « a quitté la partie » ; à 9940 la place n'est plus occupée par lui ; et plus aucune ligne « mort » pour ELOsk11 à l'image 9785.
+Gate A : de l'image 9785 (fin de la dernière vie) à 9937 (fermeture de la présence), donc aux images 9786 et 9900, la fiche doit dire « a quitté la partie » ; à 9940 la place n'est plus occupée par lui ; et plus aucune ligne « mort » pour joueur A à l'image 9785.

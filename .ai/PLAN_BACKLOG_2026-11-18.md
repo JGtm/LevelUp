@@ -17,7 +17,7 @@ Demande du user (2026-11-18) : analyser les entrées du backlog ajoutées la vei
 instruire sur preuve, garder ce qui est pertinent et faisable, planifier en pistes parallèles (Sonnet par
 défaut, Haiku quand c'est mécanique, Opus quand il le faut, Fable pour la revue finale), périmètre fermé,
 découvertes au backlog seulement si elles valent le coup. Deux retours ajoutés par le user : le pictogramme
-d'une ligne de ramassage du fil du rejeu lui déplaît ; sur le match `38900a5e`, à 5:00, ELOsk11 est donné mort
+d'une ligne de ramassage du fil du rejeu lui déplaît ; sur le match `38900a5e`, à 5:00, le joueur A est donné mort
 alors qu'il quitte la partie.
 
 Abréviation : `MR/` = `apps/web/src/features/match-replay/`.
@@ -28,7 +28,7 @@ Objectif : régler ce qui se règle maintenant dans les entrées des 17 et 18 no
 du user, et donner un sort écrit à chaque entrée instruite.
 
 Critère de succès : chaque entrée de la section 1 a un sort écrit (traitée, close, reformulée, gardée avec sa
-condition) ; sur le match `38900a5e`, ELOsk11 n'a plus de ligne « mort » à 5:00 et sa fiche dit qu'il a quitté
+condition) ; sur le match `38900a5e`, le joueur A n'a plus de ligne « mort » à 5:00 et sa fiche dit qu'il a quitté
 la partie ; `make gate-push` vert ; suite complète du web verte ; CI verte sur `release/v8.3.0`.
 
 | Piste | Ce que le user verra |
@@ -62,7 +62,7 @@ avant de coder (étape 0.4).
 
 | Retour | Constat sur pièces | Sort |
 |---|---|---|
-| ELOsk11 « mort » à 5:00 (match `38900a5e`) | Le décodeur lit le départ : mort à 4:41 (image 9539, compte à rebours lu), réapparition à l'image 9783, corps SUPPRIMÉ à l'image 9785 (`endReason: "deleted"`, aucun lâcher, aucun compte à rebours), présence au tableau fermée à l'image 9937, place reprise par le bot 343 Mickey à 9938. Le site n'en tire rien : toute fin de vie close sans frag devient une ligne « mort » (`MR/model/killFeedLogic.ts:300-302` et `:469-471`), `MR/model/lifeEndProof.ts:9` range `deleted` sous « fin de manche », et la fiche lit « mort » dès qu'aucune vie ne couvre l'image (`apps/web/src/lib/replay/rosterLogic.ts:538-554`). Seule la croix sur la carte est évitée. Parc : 1 386 départs en cours de match dans 729 rejeux ; 875 finissent par un corps supprimé (le schéma d'ELOsk11), 503 par une vraie mort suivie du départ, 8 sans raison publiée ; 5 rejeux ne publient pas de présence | Piste A (A.1), côté site seulement |
+| Le joueur A « mort » à 5:00 (match `38900a5e`) | Le décodeur lit le départ : mort à 4:41 (image 9539, compte à rebours lu), réapparition à l'image 9783, corps SUPPRIMÉ à l'image 9785 (`endReason: "deleted"`, aucun lâcher, aucun compte à rebours), présence au tableau fermée à l'image 9937, place reprise par le bot 343 Mickey à 9938. Le site n'en tire rien : toute fin de vie close sans frag devient une ligne « mort » (`MR/model/killFeedLogic.ts:300-302` et `:469-471`), `MR/model/lifeEndProof.ts:9` range `deleted` sous « fin de manche », et la fiche lit « mort » dès qu'aucune vie ne couvre l'image (`apps/web/src/lib/replay/rosterLogic.ts:538-554`). Seule la croix sur la carte est évitée. Parc : 1 386 départs en cours de match dans 729 rejeux ; 875 finissent par un corps supprimé (le schéma du joueur A), 503 par une vraie mort suivie du départ, 8 sans raison publiée ; 5 rejeux ne publient pas de présence | Piste A (A.1), côté site seulement |
 | Pictogramme d'une ligne de ramassage | Tracé au trait générique (`MR/model/feedGlyphs.ts`, clés `pickup`, `pickupPower`, `pickupEquipment`), choisi par la nature de la prise (`MR/ui/ReplayEventLine.tsx:61`). La ligne connaît l'arme, et le document porte son dessin (`weaponLabels[clé].img`, `tinted`), déjà employé par une ligne d'élimination (`FeedWeaponIcon`) | Piste A (A.2), selon D-1 |
 
 ### 1.2 Entrées retenues
@@ -246,7 +246,7 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
       de `apps/web/src/components/` et de `apps/web/src/features/squad/` ; sorties des tests par minute de
       l'Escouade (`per_minute_caracterisation_test.go`, `per_minute_temoins_test.go`) ; compte du garde-rail
       des couches ; pour le match `38900a5e`, les lignes du fil entre 4:30 et 5:30 et l'état de la fiche
-      d'ELOsk11 aux images 9700, 9786, 9900 et 9940, tirés d'un test jetable hors dépôt.
+      du joueur A aux images 9700, 9786, 9900 et 9940, tirés d'un test jetable hors dépôt.
 - [x] 0.3 (fait le 2026-11-18 : (a) 0 compte à rebours sur 875 ; (b) 6 539 joueurs sur 12 126 en écart sur au moins une image, 166 au total final différent ; (c) 0 lâcher repris à + 1 ou + 2 sur 28 540 ; (d) 2,2 à 4,3 ms) Mesures qui décident, sur les rejeux du poste, un fichier à la fois, lecture seule, résultats dans
       `.ai/annexes_backlog_1118/mesures.md` :
       (a) départs : faite le 2026-11-18 (`mesure_departs.md`) ; à compléter par la répartition de l'écart
@@ -289,7 +289,7 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
       (`matchMedals.ts:40`) ; `ReplayFeedMedals.tsx` et `MedalBadges.tsx` dessinent par
       `components/ui/MedalIcon.tsx`, comme la fiche. Test : une médaille à découpe rend son image dans les deux
       composants ; une médaille à image seule est inchangée.
-- **Gate A** : gate commun web sur `MR/` ; témoin 0.2 rejoué : plus de ligne « mort » pour ELOsk11, fiche
+- **Gate A** : gate commun web sur `MR/` ; témoin 0.2 rejoué : plus de ligne « mort » pour le joueur A, fiche
   « a quitté la partie » aux images 9786 et 9900 ; mesure (a) rejouée avec la règle codée : 875 départs
   reconnus, 511 fins de vie gardées (503 morts et 8 dernières vies sans raison publiée ; chiffre corrigé le
   2026-11-18 sur la mesure 0.3). Amendé le 2026-11-18 au retour de la piste : 884 départs avec la marge de 3 s du fil
@@ -467,8 +467,7 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
       « conforme à une décision datée », « écart à corriger » (avec la cote ou le dessin attendu) ou « sans
       dessin, au user ». Résultat dans `.ai/annexes_backlog_1118/ecarts_maquettes.md` ; les écarts à corriger
       sont inscrits ici en liste fermée avant tout code, et montrés au user.
-- [ ] Q.2 (porte : liste lue par le user ; LISTE FERMÉE du 2026-11-18, sous réserve de sa lecture : a) boutons de la barre d'une ligne en carrés de 30 px, lecture en rond plein de 36 px ; b) capture et export en boutons ordinaires, sans cartouche ; c) fenêtre de fiche à 8 px sous le haut du plan ; d) la fenêtre de fiche défile en entier ; e) un seul bloc arrondi pour la toile et la colonne du Standard ; f) infobulle de « Plan tourné » avec le gain en pour-cent ; g) « Tirs à la tête | 3 », sans « sur N mesurées » ; h) marges du Plein cadre à 16 px sur les côtés et 6 px en bas. Les points a et b, qui redessinent la barre d'une ligne, se décident avec la planche de la piste M. c et e touchent tous deux `ReplayCanvas.tsx` : l'un après l'autre) Corrections de la liste fermée de Q.1 et des retours de la
-      validation à l'écran du user, un commit par point.
+- [x] Q.2 (fait le 2026-11-22, `9277c6fa73`, un seul commit pour toute la liste ; portes passées : décisions du user du 2026-11-18 sur les écarts, puis sur le prototype des quatre choix) Corrections livrées : a) commandes de la barre d'une ligne en carrés de 30 px au rayon de 8 px, sans bordure ni fond au repos, lecture inchangée (rond plein de 36 px) ; b) capture, export et enregistrement en boutons ordinaires dans la barre d'une ligne, sans cartouche ; c) fenêtre de fiche à 8 px sous le haut du bloc du plan ; e) un seul bloc arrondi pour la toile et la colonne du Standard ; g) « Tirs à la tête » lu sur le compteur du jeu, valeur seule, ligne absente quand le film ne le donne pas ; h) marges du Plein cadre à 16 px sur les côtés et 6 px en bas ; i) lignes du fil qui concernent le joueur suivi sur fond légèrement teinté ; j) barre de lecture sous le bloc arrondi au Cinéma, et au Plein cadre quand la barre fine est éteinte ; k) Suivre / Seul / Masquer en un segment de trois colonnes égales. Écartés par le user : d) défilement entier de la fenêtre de fiche (l'actuel reste) et f) gain en pour-cent dans l'infobulle de « Plan tourné » (la maquette n'est pas suivie).
 - **Gate Q** : gate commun web sur `MR/` ; grille de conformité mise à jour ligne par ligne.
 
 ## Piste T — coup d'envoi du match : un seul système (pilote pour T.0 et T.1 ; Sonnet)
@@ -523,7 +522,7 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
       l'appellent tous deux.
 - [x] T.5 (fait le 2026-11-18 : `levelup backfill-kickoff`, simulation comprise ; rattrapage au démarrage par révision `KickoffRev`, liée aux révisions des notes ; `cmd/backfill_t0`, `backfill_t0_film`, `backfill_time_played` et `analysis/spawn_detection.go` supprimés avec leurs tests et leurs 38 paires de la baseline ; mesure sur copie : 2 045 matchs, 1 447 film, 587 estimation, 11 inconnus, second passage sans écriture, 50 rejeux retirés : 50 coups d'envoi gardés) Une commande `levelup` de rattrapage avec simulation ; les trois `cmd/backfill_*` sont supprimés
       avec leurs tests (aucun code mort).
-- [ ] T.6 (porte : accord du user, serveur arrêté, copie de la base faite) Rattrapage du poste, puis rejeu de
+- [!] T.6 (reporté par décision du user du 2026-11-22 : la régénération du parc se fait une seule fois, après la version suivante du décodeur ; le rattrapage du coup d'envoi et le rejeu des notes partent au premier démarrage de la version ; voir le registre des reports) (porte : accord du user, serveur arrêté, copie de la base faite) Rattrapage du poste, puis rejeu de
       la note LUSR si T.0 l'a jugé nécessaire. La prod reçoit le même geste à la publication.
 - Lien avec le plan du décodeur : si T.0 montre que l'horloge de manche date mieux le coup d'envoi que le
   premier mouvement, le décodeur publie le coup d'envoi lu sur l'horloge et retire le détecteur de mouvement
@@ -554,29 +553,46 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 
 ## Étape I — intégration (pilote)
 
-- [ ] I.1 Recalage sur `origin/release/v8.3.0` ; fusion des sous-branches dans `chore/830-backlog-1118` ;
+- [x] I.1 (fait : trois livraisons fusionnées dans `release/v8.3.0` au lieu d'une seule, amendement écrit au journal du 2026-11-18 ; la troisième le 2026-11-22) Recalage sur `origin/release/v8.3.0` ; fusion des sous-branches dans `chore/830-backlog-1118` ;
       `openapi.yaml` et `make generate-types` une seule fois.
-- [ ] I.2 Témoins APRÈS comparés à 0.2 : écarts listés, chacun rattaché à un item ou déclaré défaut.
-- [ ] I.3 `docs/CHANGELOG.md` et notes de version de la 8.3.0, en français et en anglais (départs, ramassages,
+- [x] I.2 (fait le 2026-11-23 : 17 témoins comparés dans `.ai/annexes_backlog_1118/temoins_apres.md` ; 8 identiques, 5 changés comme le plan le prévoit, 1 changé par un autre chantier, 2 non rejouables sans le rejeu du match témoin, aucun écart non expliqué) Témoins APRÈS comparés à 0.2 : écarts listés, chacun rattaché à un item ou déclaré défaut.
+- [x] I.3 (fait le 2026-11-23 pour le changelog et les notes de version, en français et en anglais ; le dossier `C:/t` des caches dédiés a été vidé le 2026-11-22, voir journal) `docs/CHANGELOG.md` et notes de version de la 8.3.0, en français et en anglais (départs, ramassages,
       « Seul » et « Suivre », Escouade, Échap) ; `.ai/thought_log.md` ; caches dédiés rendus.
 - **Gate I** : `make gate-push` ; `cd apps/go-api && go test -tags=integration -p 1 ./internal/sync/... ./internal/platform/duckdb/...` ;
   `make go-api-lint` ; `cd apps/web && npx vitest run` complet, cache de types purgé avant `make check-types`.
 
 ## Étape R — relecture et clôture
 
-- [ ] R.1 Backlog mis à jour par un agent Haiku : entrées traitées déplacées au tableau des entrées closes ;
+- [x] R.1 (fait le 2026-11-23 : entrées traitées closes ou reformulées, découvertes du plan ajoutées, reports inscrits au registre) Backlog mis à jour par un agent Haiku : entrées traitées déplacées au tableau des entrées closes ;
       une entrée dont la porte du user n'est pas passée garde sa ligne, avec la date de la demande ; entrées
       du décodeur selon D-8 ; registre des reports.
-- [ ] R.2 Une ronde de relecture adversariale du diff complet (skill `adversarial-review`, Fable) et deux
+- [x] R.2 (les relectures ciblées des jetons, de la file et du coup d'envoi sont couvertes par les axes 1 et 2 de cette relecture, qui les a examinés en priorité et jugés sains) (fait le 2026-11-23 : relecture adversariale du code livré par Fable, aucun P0 ni P1 de code ; quatre P2 et six P3 consignés au backlog. Un P1 de confidentialité corrigé le jour même : des annexes versionnées nommaient des joueurs par leur pseudo et portaient un chemin du poste ; libellés neutres, commit `9bb45958da`.)
+      Une ronde de relecture adversariale du diff complet (skill `adversarial-review`, Fable) et deux
       relectures ciblées (Sonnet) : jetons et file (pistes E et F), écritures en base (piste T) ; P0 et P1
       corrigés en une ronde, P2 au backlog seulement s'ils valent le coup.
-- [ ] R.3 Artefact des vérifications du user : départ d'ELOsk11 à 5:00 sur le match `38900a5e` ; ligne de
+- [x] R.3 (fait le 2026-11-23 : 16 lignes inscrites dans l'artefact de vérifications du user (collection `verifs`), 14 faisables dès maintenant et 2 à venir ; la ligne sur les pictogrammes de ramassage est réécrite. Les 5 lignes « à venir » de la montée du décodeur relèvent de son plan, pas de celui-ci.)
+      Artefact des vérifications du user : départ du joueur A à 5:00 sur le match `38900a5e` ; ligne de
       ramassage ; « Seul » puis « Suivre » ; sortie du Plein cadre ; orientation Auto dans la Tactique ; barre
       d'une ligne au Cinéma, fenêtre d'environ 1 440 px, disposition en colonne.
-- [ ] R.4 Tous les items statués ; outillage de mesure retiré ou documenté ; fusion dans `release/v8.3.0` ;
+- [x] R.4 (fait le 2026-11-23 : aucun item sans statut ; caches de compilation du lot rendus ; CI de la branche de version lue ; les deux worktrees du lot et ses branches locales, tous contenus dans la branche de version, restent à retirer dans un tour à part, après recherche de jonction) Tous les items statués ; outillage de mesure retiré ou documenté ; fusion dans `release/v8.3.0` ;
       CI lue après la poussée.
 
 ## Journal d'exécution
+
+- 2026-11-23 — CLÔTURE DU PLAN. Code livré et fusionné dans la branche de version en trois livraisons ; relecture
+  adversariale finale sans P0 ni P1 de code ; notes de version et changelog dans les deux langues ; grille de
+  conformité aux maquettes à jour ; 27 entrées du backlog closes, découvertes et reports inscrits ; 16 vérifications à
+  l'écran remises au user dans l'artefact habituel ; témoins « après » comparés, aucun écart non expliqué. Restent hors
+  plan, inscrits au registre des reports : le rattrapage du coup d'envoi et le rejeu des notes (après la régénération
+  du parc, elle-même après la version 1.6.0 du décodeur), les contrôles à l'écran du user avant `main`, la décision du
+  user sur les cinq écarts de forme des bases joueur et sur trois points de maquette sans dessin.
+
+- 2026-11-23 — relecture finale et vérifications à l'écran. La relecture adversariale du code livré ne relève aucun P0 ni P1 de code ; un P1 de confidentialité (pseudos de joueurs et chemin du poste dans des annexes versionnées) est corrigé (commit `9bb45958da`). Les vérifications à l'écran sont inscrites dans l'artefact de vérifications du user : 16 lignes pour ce plan, 14 faisables dès maintenant, 2 à venir. R.2 et R.3 passent en `[x]`. Restent ouverts : I.2 (témoins après), R.4 (clôture, fusion dans `main`, CI) ; la validation à l'écran reste due au user.
+
+- 2026-11-23 — CLÔTURE DES DOCUMENTS. Code livré en trois fois dans `release/v8.3.0` (première : K.2, E, H, C, G, B, A, F ; seconde : D, K, S ; troisième : piste T, M.2, M.3 et Q.2) ; Q.2 statué (`[x]`), I.1 et I.3 faits (changelog et notes de version des deux langues), R.1 fait (backlog et registre).
+  T.6 passe en `[!]` : le user a décidé le 2026-11-22 de ne régénérer le parc qu'une fois, après la version suivante du décodeur ; le rattrapage du coup d'envoi et le rejeu des notes partent au premier démarrage de la version.
+  Restent ouverts : I.2 (témoins après), R.2 (relecture), R.3 (vérifications à l'écran du user), R.4 (clôture, fusion dans `main`, CI).
+  Grille de conformité aux maquettes mise à jour (`.ai/annexes_refonte_ui_rejeu/conformite_maquettes.md`).
 
 - 2026-11-18 — PREMIÈRE LIVRAISON dans `release/v8.3.0` (`f5c0b92cec`, poussée) : K.2, E, H, C, G, B, A, F. AMENDEMENT
   écrit : le plan prévoyait une seule fusion à la fin ; cette livraison partielle sert le plan du fond Relief, qui
@@ -613,7 +629,7 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 
 - 2026-11-18 — piste A rendue après trois compléments du pilote (durée de « a quitté la partie », taille de
   `killFeedLogic.ts` ramenée de 591 à 567 lignes, test de la marge), relue, commitée (`d99966fcaa`). Sur le vrai
-  rejeu du match signalé par le user : fiche d'ELOsk11 « mort » à l'image 9700, « a quitté la partie » aux
+  rejeu du match signalé par le user : fiche du joueur A « mort » à l'image 9700, « a quitté la partie » aux
   images 9786, 9900, 9940 et à la dernière ; plus de ligne « mort » à 5:00. Sa place d'écriture va à la session
   du fond Relief (deux écrivains chacun). Vérifications lourdes du pilote sur l'intégration (K.2, E, H, C, G) :
   types, lint, compilation et `vet` verts ; suite complète du web 14 315 réussis, 2 échecs sans défaut de code

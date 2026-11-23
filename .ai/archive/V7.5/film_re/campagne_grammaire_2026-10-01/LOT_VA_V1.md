@@ -204,7 +204,7 @@ seules), `distribuer.go` (doc de `CanalDesTetes` seule ; cœur non touché), `di
 
 ## 6. Gates (sorties exactes)
 
-Environnement : `GOCACHE=C:/Users/Guillaume/AppData/Local/go-build-cg3-vuea`, CGO msys64 ucrt64, une
+Environnement : `GOCACHE=<poste>/AppData/Local/go-build-cg3-vuea`, CGO msys64 ucrt64, une
 commande go à la fois ; films lus en place (`data/cache/film_chunks`, lecture seule) ; racine factice
 et copie du parc au scratchpad (`scratchpad/cg3-V1/`).
 

@@ -21,13 +21,13 @@ pour ne rien manquer.
 
 | Piece | Chemin absolu | Ce qu'elle donne |
 |---|---|---|
-| Decodeur Bond CB2 | `C:\Users\Guillaume\Projects\LevelUp\apps\go-api\internal\analysis\replay\mapvar\cb2.go` | `DecodeRoot` generique ; tout tag inconnu = erreur, jamais de saut silencieux |
+| Decodeur Bond CB2 | `<poste>\Projects\LevelUp\apps\go-api\internal\analysis\replay\mapvar\cb2.go` | `DecodeRoot` generique ; tout tag inconnu = erreur, jamais de saut silencieux |
 | Grammaire `.mvar` | `...\mapvar\mapvar.go` | `root[3]` objets (type_id, pos, up, forward, flags, categorie, team, labels, instance_id, forme) ; `root[10][1]` table de chaines ; **`root[6]` et `root[11]` NON EXPLOITES** |
 | Roles d'objectif | `...\mapvar\objectives.go` | labels = murmur3_x86_32(seed 0) du nom snake_case ; 28 noms resolus ; les `*_include/_exclude` sont des FILTRES DE MODE, pas des roles |
 | Generateur du catalogue | `...\apps\go-api\cmd\mapobj-build\` | `--from-file` + `--dump-objects` (dump JSON de TOUS les objets), `--refresh-from <dossier>` hors ligne, `--save-mvar` |
-| Depot local des `.mvar` | `C:\Users\Guillaume\Projects\LevelUp\.ai\re_dump\mapvar\` | **199 fichiers**, nommes `{carte}_{fichier}.mvar` |
-| Catalogue fige | `C:\Users\Guillaume\Projects\LevelUp\data\titles\halo_infinite\reference\map_objectives.json` | schema 2, cle = map_id, 72 cartes, champs `names[]`, `objectives[]`, `bounds`, `level_id`, `objects_n` |
-| Artefacts de rejeu cuits | `C:\Users\Guillaume\Projects\LevelUp\data\cache\replays\halo_infinite\{film}.json` | `weaponPads[]` = L'ORACLE (x, y, z au centimetre, `weapon`, `spawns`, `presence`) |
+| Depot local des `.mvar` | `<poste>\Projects\LevelUp\.ai\re_dump\mapvar\` | **199 fichiers**, nommes `{carte}_{fichier}.mvar` |
+| Catalogue fige | `<poste>\Projects\LevelUp\data\titles\halo_infinite\reference\map_objectives.json` | schema 2, cle = map_id, 72 cartes, champs `names[]`, `objectives[]`, `bounds`, `level_id`, `objects_n` |
+| Artefacts de rejeu cuits | `<poste>\Projects\LevelUp\data\cache\replays\halo_infinite\{film}.json` | `weaponPads[]` = L'ORACLE (x, y, z au centimetre, `weapon`, `spawns`, `presence`) |
 | Correspondance film -> carte | `...\internal\analysis\replay\objectifs_phase1_drapeau_test.go` (`objCTFModules`, `objCTFCarteNom`) | Catalyst : `64e8adfa`, `530820e5`, `01e1f945` ; Cliffhanger : `bcb6d393`, `000d5950` |
 | Piege connu | memoire du depot | une carte Forge `.mvar` = **canevas + rack** ; Smallhalla est Forge (canevas `fo08_wetland`) |
 
@@ -105,7 +105,7 @@ tous les cas : elle repond a H-SCENARIO, qui vaut meme en cas de negatif.
 ## 5. Contraintes d'execution
 
 Lecture seule ; aucune base de donnees ouverte ; chemins ABSOLUS vers
-`C:\Users\Guillaume\Projects\LevelUp\data\...` et `...\.ai\re_dump\mapvar\` ; instruments
+`<poste>\Projects\LevelUp\data\...` et `...\.ai\re_dump\mapvar\` ; instruments
 sous garde d'environnement (`MVAR_FILE`, `MVAR_DIR`, `MVAR_ORACLE`) — sans la garde, le
 test SKIPPE ; `CGO_ENABLED=0` ; `GOCACHE` local au worktree ; **un seul `go` a la fois** ;
 jamais de push, de stash, ni de `git add -A`. Gates par phase :

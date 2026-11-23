@@ -27,7 +27,7 @@ const pair = (assistant: string, finisher: string, count: number, stolen = 0): F
   stolen,
 })
 
-const COLORS: Record<string, string> = { Madina: '#aa3322', JGtm: '#2255cc', Kaya: '#22aa55' }
+const COLORS: Record<string, string> = { joueur_075: '#aa3322', JGtm: '#2255cc', Kaya: '#22aa55' }
 
 const opts = (locale: 'fr' | 'en' = 'fr', width = 1000): AssistFlowChartOpts => ({
   width,
@@ -36,8 +36,8 @@ const opts = (locale: 'fr' | 'en' = 'fr', width = 1000): AssistFlowChartOpts => 
   texts: { ...ASSIST_FLOW_TEXT[locale], share: (p) => `${p} des assistances de l’escouade` },
 })
 
-const PAIRS = [pair('Madina', 'JGtm', 14, 3), pair('JGtm', 'Madina', 9), pair('JGtm', 'Kaya', 6), pair('Kaya', 'JGtm', 6)]
-const FLOW = buildAssistFlow(PAIRS, { assistantOrder: ['JGtm', 'Madina', 'Kaya'], finisherOrder: ['JGtm', 'Madina', 'Kaya'], total: 56 })
+const PAIRS = [pair('joueur_075', 'JGtm', 14, 3), pair('JGtm', 'joueur_075', 9), pair('JGtm', 'Kaya', 6), pair('Kaya', 'JGtm', 6)]
+const FLOW = buildAssistFlow(PAIRS, { assistantOrder: ['JGtm', 'joueur_075', 'Kaya'], finisherOrder: ['JGtm', 'joueur_075', 'Kaya'], total: 56 })
 
 type Opt = {
   series: {
@@ -94,10 +94,10 @@ describe('buildAssistFlowOption', () => {
     expect(s.layoutIterations).toBe(0)
     expect(s.data.map((n) => n.name)).toEqual([
       'assistant:JGtm',
-      'assistant:Madina',
+      'assistant:joueur_075',
       'assistant:Kaya',
       'finisher:JGtm',
-      'finisher:Madina',
+      'finisher:joueur_075',
       'finisher:Kaya',
     ])
   })
@@ -113,22 +113,22 @@ describe('buildAssistFlowOption', () => {
 
   it('ruban à la couleur de l’ASSISTANT, largeur = assistances', () => {
     const s = build().series[0]
-    const l = s.links.find((x) => x.source === 'assistant:Madina' && x.target === 'finisher:JGtm')!
+    const l = s.links.find((x) => x.source === 'assistant:joueur_075' && x.target === 'finisher:JGtm')!
     expect(l.value).toBe(14)
     expect(l.lineStyle.color).toBe('#aa3322')
-    const back = s.links.find((x) => x.source === 'assistant:JGtm' && x.target === 'finisher:Madina')!
+    const back = s.links.find((x) => x.source === 'assistant:JGtm' && x.target === 'finisher:joueur_075')!
     expect(back.lineStyle.color).toBe('#2255cc')
   })
 
-  it('infobulle d’un ruban : « Madina a assisté JGtm sur 14 frags (25 % des assistances de l’escouade) », puis « dont 3 … »', () => {
+  it('infobulle d’un ruban : « joueur_075 a assisté JGtm sur 14 frags (25 % des assistances de l’escouade) », puis « dont 3 … »', () => {
     const o = build()
-    const l = o.series[0].links.find((x) => x.source === 'assistant:Madina' && x.target === 'finisher:JGtm')!
+    const l = o.series[0].links.find((x) => x.source === 'assistant:joueur_075' && x.target === 'finisher:JGtm')!
     expect(o.tooltip.formatter({ data: l })).toBe(
-      'Madina a assisté JGtm sur 14 frags (25 % des assistances de l’escouade)<br/>dont 3 où l’assistant a fait plus de dégâts que le finisseur',
+      'joueur_075 a assisté JGtm sur 14 frags (25 % des assistances de l’escouade)<br/>dont 3 où l’assistant a fait plus de dégâts que le finisseur',
     )
     // Pas de « dont » quand aucune assistance du couple n’est de ce type.
-    const plain = o.series[0].links.find((x) => x.source === 'assistant:JGtm' && x.target === 'finisher:Madina')!
-    expect(o.tooltip.formatter({ data: plain })).toBe('JGtm a assisté Madina sur 9 frags (16 % des assistances de l’escouade)')
+    const plain = o.series[0].links.find((x) => x.source === 'assistant:JGtm' && x.target === 'finisher:joueur_075')!
+    expect(o.tooltip.formatter({ data: plain })).toBe('JGtm a assisté joueur_075 sur 9 frags (16 % des assistances de l’escouade)')
   })
 
   it('sans total de référence, aucune part n’est dite', () => {
@@ -168,7 +168,7 @@ describe('buildAssistFlowOption', () => {
 
   it('le rendu réel écrit les noms, les totaux et peint les couleurs des joueurs', () => {
     const svg = renderOptionToSvg(buildAssistFlowOption(FLOW, opts()), 800, assistFlowHeight(FLOW))
-    expect(svg).toContain('Madina · 14')
+    expect(svg).toContain('joueur_075 · 14')
     expect(svg).toContain('JGtm · 20')
     expect(svg.toLowerCase()).toContain('#aa3322')
     expect(svg.toLowerCase()).toContain('#2255cc')

@@ -267,7 +267,7 @@ Type-0, 11-bit marker `0x534` (HIT) / `0x535` (MISS); `anchor = bp+3`. type @anc
 Hammer, `0x60` Energy Sword, `0x42` other); weapon high-32 @anchor+86 (type-dependent: `0x42`→+88, `0x60`→+101/+103);
 **`player_index` (5 bits) @anchor+23** — the actor, covering all 8 players. **Mandatory filter:** the 11-bit marker
 is noisy (~36k raw hits), so require `type∈{0x47,0x60,0x42}` AND weapon∈catalogue. The event is the swing, not the
-kill (join to kill-feed by `player_index==killer` + small |dt|). Validated: IKE(pi4) hammer→JGtm 4/4.
+kill (join to kill-feed by `player_index==killer` + small |dt|). Validated: JOUEUR_502(pi4) hammer→JGtm 4/4.
 
 ### 6.3 Grenade events (thrower inline)
 Type-0, 24-bit marker `0x4c0c00` → grenade_id 32b → skip 47b → **`player_index` 5b** (thrower). Ids: Frag

@@ -32,12 +32,12 @@ import (
 )
 
 const (
-	xuidChoco  = "2547408409520575"
-	xuidJGtm   = "2603225103667623"
-	xuidDanker = "2534182457688434"
+	xuidJoueur901  = "2547408409520575"
+	xuidJGtm       = "2603225103667623"
+	xuidJoueur9001 = "2534182457688434"
 
-	emblemChoco = "https://gamecms-hacs.svc.halowaypoint.com/hi/images/file/progression/Inventory/Emblems/nouvel_embleme.png"
-	emblemJGtm  = "https://gamecms-hacs.svc.halowaypoint.com/hi/images/file/progression/Inventory/Emblems/343other_propaganda_emblem.png"
+	emblemJoueur901 = "https://gamecms-hacs.svc.halowaypoint.com/hi/images/file/progression/Inventory/Emblems/nouvel_embleme.png"
+	emblemJGtm      = "https://gamecms-hacs.svc.halowaypoint.com/hi/images/file/progression/Inventory/Emblems/343other_propaganda_emblem.png"
 
 	// writeWait borne l'attente de l'écriture d'arrière-plan du service d'identité.
 	writeWait = 10 * time.Second
@@ -253,18 +253,18 @@ func (a instanceAccounts) List() ([]domain.AdminUserSummary, error) { return a.u
 
 func jgtmAdminAccounts() instanceAccounts {
 	return instanceAccounts{users: []domain.AdminUserSummary{
-		{Username: "Joueur9001", Role: domain.RoleUser, Gamertag: "Joueur9001", XUID: xuidDanker},
+		{Username: "Joueur9001", Role: domain.RoleUser, Gamertag: "Joueur9001", XUID: xuidJoueur9001},
 		{Username: "JGtm", Role: domain.RoleAdmin, Gamertag: "JGtm", XUID: xuidJGtm},
 	}}
 }
 
-// profilesChocoJGtmDanker déclare Joueur90001 et JGtm suivis, Joueur9001 auth_only.
+// profilesJoueur901JGtmJoueur9001 déclare Joueur90001 et JGtm suivis, Joueur9001 auth_only.
 // Le champ « admin » de db_profiles.json nomme Joueur9001 : le choix du porteur ne
 // le lit pas, seul le rôle des comptes de l'instance compte.
-const profilesChocoJGtmDanker = `{"version":"3.0","admin":"Joueur9001","profiles":{"halo_infinite":{` +
-	`"Joueur90001":{"db_path":"unused","xuid":"` + xuidChoco + `"},` +
+const profilesJoueur901JGtmJoueur9001 = `{"version":"3.0","admin":"Joueur9001","profiles":{"halo_infinite":{` +
+	`"Joueur90001":{"db_path":"unused","xuid":"` + xuidJoueur901 + `"},` +
 	`"JGtm":{"db_path":"unused","xuid":"` + xuidJGtm + `"},` +
-	`"Joueur9001":{"db_path":"unused","xuid":"` + xuidDanker + `","auth_only":true}}}}`
+	`"Joueur9001":{"db_path":"unused","xuid":"` + xuidJoueur9001 + `","auth_only":true}}}}`
 
 // TestSpartanCron_JetonsMorts_PorteurValide_LigneEnregistree : Joueur90001 (profil
 // suivi, refresh token refusé : aucun créneau dans le pool) est lu avec le token de
@@ -276,11 +276,11 @@ const profilesChocoJGtmDanker = `{"version":"3.0","admin":"Joueur9001","profiles
 func TestSpartanCron_JetonsMorts_PorteurValide_LigneEnregistree(t *testing.T) {
 	observability.ResetCronStatus()
 	t.Cleanup(observability.ResetCronStatus)
-	cfg := writeProfilesJSON(t, profilesChocoJGtmDanker)
+	cfg := writeProfilesJSON(t, profilesJoueur901JGtmJoueur9001)
 	tokens := newBearerPool(t, map[string]string{
-		"Joueur90001": xuidChoco, "JGtm": xuidJGtm, "Joueur9001": xuidDanker,
+		"Joueur90001": xuidJoueur901, "JGtm": xuidJGtm, "Joueur9001": xuidJoueur9001,
 	}, "Joueur90001")
-	rec := &liveRecorder{emblems: map[string]string{xuidChoco: emblemChoco, xuidJGtm: emblemJGtm}}
+	rec := &liveRecorder{emblems: map[string]string{xuidJoueur901: emblemJoueur901, xuidJGtm: emblemJGtm}}
 	repos := map[string]*playerCareerRepo{"Joueur90001": newPlayerCareerRepo(), "JGtm": newPlayerCareerRepo()}
 	var providerCalls callCounter
 	bearerReadsBefore := observability.LoadCounter("spartan_cron_bearer_reads_total")
@@ -289,14 +289,14 @@ func TestSpartanCron_JetonsMorts_PorteurValide_LigneEnregistree(t *testing.T) {
 		WithAccounts(jgtmAdminAccounts()).
 		RunOnce(context.Background())
 
-	choco := repos["Joueur90001"].wait(t, "Joueur90001")
-	if choco.xuid != xuidChoco {
-		t.Errorf("ligne de Joueur90001 écrite sous le xuid %q, attendu %q", choco.xuid, xuidChoco)
+	joueur901 := repos["Joueur90001"].wait(t, "Joueur90001")
+	if joueur901.xuid != xuidJoueur901 {
+		t.Errorf("ligne de Joueur90001 écrite sous le xuid %q, attendu %q", joueur901.xuid, xuidJoueur901)
 	}
-	if got := deref(choco.partial.EmblemImageURL); got != emblemChoco {
-		t.Errorf("emblème enregistré %q, attendu %q", got, emblemChoco)
+	if got := deref(joueur901.partial.EmblemImageURL); got != emblemJoueur901 {
+		t.Errorf("emblème enregistré %q, attendu %q", got, emblemJoueur901)
 	}
-	if got := deref(choco.partial.LastFetchStatus); got != "ok" {
+	if got := deref(joueur901.partial.LastFetchStatus); got != "ok" {
 		t.Errorf("statut enregistré %q, attendu \"ok\"", got)
 	}
 	jgtm := repos["JGtm"].wait(t, "JGtm")
@@ -304,7 +304,7 @@ func TestSpartanCron_JetonsMorts_PorteurValide_LigneEnregistree(t *testing.T) {
 		t.Errorf("ligne de JGtm : xuid=%q emblème=%q", jgtm.xuid, deref(jgtm.partial.EmblemImageURL))
 	}
 
-	assertCalls(t, rec.callsFor(xuidChoco), "Joueur90001", liveCall{token: "spartan-JGtm", owner: xuidJGtm})
+	assertCalls(t, rec.callsFor(xuidJoueur901), "Joueur90001", liveCall{token: "spartan-JGtm", owner: xuidJGtm})
 	assertCalls(t, rec.callsFor(xuidJGtm), "JGtm", liveCall{token: "spartan-JGtm", owner: xuidJGtm})
 	if got := observability.LoadCounter("spartan_cron_bearer_reads_total") - bearerReadsBefore; got != 1 {
 		t.Errorf("lectures portées comptées : %d, attendu 1 (Joueur90001 seul)", got)
@@ -321,9 +321,9 @@ func TestSpartanCron_JetonsMorts_PorteurValide_LigneEnregistree(t *testing.T) {
 func TestSpartanCron_CompteAdminInutilisable_AucunPorteur(t *testing.T) {
 	observability.ResetCronStatus()
 	t.Cleanup(observability.ResetCronStatus)
-	cfg := writeProfilesJSON(t, profilesChocoJGtmDanker)
+	cfg := writeProfilesJSON(t, profilesJoueur901JGtmJoueur9001)
 	tokens := newBearerPool(t, map[string]string{
-		"Joueur90001": xuidChoco, "JGtm": xuidJGtm, "Joueur9001": xuidDanker,
+		"Joueur90001": xuidJoueur901, "JGtm": xuidJGtm, "Joueur9001": xuidJoueur9001,
 	}, "Joueur90001")
 	tokens.MarkUnhealthy("JGtm", errors.New("401 en test"))
 	rec := &liveRecorder{}
@@ -351,9 +351,9 @@ func TestSpartanCron_CompteAdminInutilisable_AucunPorteur(t *testing.T) {
 func TestSpartanCron_ComptesIllisibles_AucunAutreCompte(t *testing.T) {
 	observability.ResetCronStatus()
 	t.Cleanup(observability.ResetCronStatus)
-	cfg := writeProfilesJSON(t, profilesChocoJGtmDanker)
+	cfg := writeProfilesJSON(t, profilesJoueur901JGtmJoueur9001)
 	tokens := newBearerPool(t, map[string]string{
-		"Joueur90001": xuidChoco, "JGtm": xuidJGtm, "Joueur9001": xuidDanker,
+		"Joueur90001": xuidJoueur901, "JGtm": xuidJGtm, "Joueur9001": xuidJoueur9001,
 	}, "Joueur90001")
 	rec := &liveRecorder{emblems: map[string]string{xuidJGtm: emblemJGtm}}
 	repos := map[string]*playerCareerRepo{"Joueur90001": newPlayerCareerRepo(), "JGtm": newPlayerCareerRepo()}
@@ -366,7 +366,7 @@ func TestSpartanCron_ComptesIllisibles_AucunAutreCompte(t *testing.T) {
 
 	repos["JGtm"].wait(t, "JGtm")
 	assertCalls(t, rec.callsFor(xuidJGtm), "JGtm", liveCall{token: "spartan-JGtm", owner: xuidJGtm})
-	if calls := rec.callsFor(xuidChoco); len(calls) != 0 || providerCalls.get() != 1 {
+	if calls := rec.callsFor(xuidJoueur901); len(calls) != 0 || providerCalls.get() != 1 {
 		t.Errorf("Joueur90001 lu sans compte admin reconnu : %d appels API, %d services", len(calls), providerCalls.get())
 	}
 	if got := observability.LoadCounter("spartan_cron_no_bearer_total") - noBearerBefore; got != 1 {
@@ -384,9 +384,9 @@ func TestSpartanCron_AucunPorteurValide_RienNEstEcrit(t *testing.T) {
 	observability.ResetCronStatus()
 	t.Cleanup(observability.ResetCronStatus)
 	cfg := writeProfilesJSON(t, `{"version":"3.0","profiles":{"halo_infinite":{`+
-		`"Joueur90001":{"db_path":"unused","xuid":"`+xuidChoco+`"},`+
-		`"Joueur9001":{"db_path":"unused","xuid":"`+xuidDanker+`","auth_only":true}}}}`)
-	tokens := newBearerPool(t, map[string]string{"Joueur90001": xuidChoco, "Joueur9001": xuidDanker}, "Joueur90001")
+		`"Joueur90001":{"db_path":"unused","xuid":"`+xuidJoueur901+`"},`+
+		`"Joueur9001":{"db_path":"unused","xuid":"`+xuidJoueur9001+`","auth_only":true}}}}`)
+	tokens := newBearerPool(t, map[string]string{"Joueur90001": xuidJoueur901, "Joueur9001": xuidJoueur9001}, "Joueur90001")
 	rec := &liveRecorder{}
 	repos := map[string]*playerCareerRepo{"Joueur90001": newPlayerCareerRepo()}
 	var providerCalls callCounter
@@ -413,9 +413,9 @@ func TestSpartanCron_ProfilNonSuivi_RienNEstLu(t *testing.T) {
 	observability.ResetCronStatus()
 	t.Cleanup(observability.ResetCronStatus)
 	cfg := writeProfilesJSON(t, `{"version":"3.0","profiles":{"halo_infinite":{`+
-		`"Joueur90001":{"db_path":"unused","xuid":"`+xuidChoco+`","sync_enabled":false},`+
+		`"Joueur90001":{"db_path":"unused","xuid":"`+xuidJoueur901+`","sync_enabled":false},`+
 		`"JGtm":{"db_path":"unused","xuid":"`+xuidJGtm+`","auth_only":true}}}}`)
-	tokens := newBearerPool(t, map[string]string{"Joueur90001": xuidChoco, "JGtm": xuidJGtm}, "Joueur90001")
+	tokens := newBearerPool(t, map[string]string{"Joueur90001": xuidJoueur901, "JGtm": xuidJGtm}, "Joueur90001")
 	rec := &liveRecorder{}
 	repos := map[string]*playerCareerRepo{"Joueur90001": newPlayerCareerRepo(), "JGtm": newPlayerCareerRepo()}
 	var providerCalls callCounter

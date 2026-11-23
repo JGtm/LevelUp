@@ -12,7 +12,7 @@ Aucune analyse, aucun renommage, aucune écriture.
 
 > **Écart d'outillage, consigné** : `mcp__ghidra__connect_instance` refuse la connexion —
 > la découverte UDS rend l'instance avec un nom de projet `unknown`
-> (`\tmp\ghidra-mcp-Guillaume\ghidra-32880.sock`, 0 octet) et le pont refuse alors tout
+> (`\tmp\ghidra-mcp-utilisateur\ghidra-32880.sock`, 0 octet) et le pont refuse alors tout
 > `tcp_port`. Le serveur du greffon, lui, répond : `127.0.0.1:8089` (même PID),
 > `/mcp/schema` rend 196 outils et `/get_current_program_info` rend `HaloInfinite.exe`.
 > Le lot a donc piloté Ghidra par l'API HTTP du greffon, qui est le même serveur.

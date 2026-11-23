@@ -216,7 +216,7 @@ func TestSondeVies4f(t *testing.T) {
 	opt := g.options()
 	origin := sorted[0].TimestampUS
 	step := uint64(opt.frameIntervalMS()) * 1000
-	var victim uint64 = 2535457217346540
+	var victim uint64 = 2690056610860898
 	tUS := int64(1111523*1000) + int64(g.FilmClockOriginUS)
 	for _, coll := range []bool{false, true} {
 		in := IdentityInput{

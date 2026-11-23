@@ -53,7 +53,7 @@ func TestFilterTopRowsToFriends_CaseInsensitiveAndTrim(t *testing.T) {
 func TestFilterTopRowsToFriends_NonFriendDropped(t *testing.T) {
 	rows := []domain.TopTeammateRow{
 		{XUID: "x1", Gamertag: "Alice"},
-		{XUID: "x2", Gamertag: "Random"},
+		{XUID: "x2", Gamertag: "joueur_367"},
 	}
 	out := filterTopRowsToFriends(rows, []string{"Alice"})
 	if len(out) != 1 || out[0].Gamertag != "Alice" {

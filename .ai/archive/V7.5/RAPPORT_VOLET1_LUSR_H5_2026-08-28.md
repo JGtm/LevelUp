@@ -37,14 +37,14 @@ et les journaux applicatifs persistants (`logs/sync.log`, `logs/scheduler.log`,
 | 2026-06-21 14:32 | `4cd2f3f84` `feat(lusr)` : seam **title-aware** `SetLUSRChainClassifierForTitle` / `GetLUSRChainForTitle` ; création de `halo_5/lusr_chain.go` (`h5_arena`) ; pose du classifier h5 dans `cmd/server/main.go` ; `processOneShadowMatch` lit `ctxkeys.TitleSlug(ctx)` | **commit armant le mécanisme** |
 | 2026-06-23 19:52 | `6c8fd260a` : `cmd/h5-lusr-backfill` + `cmd/h5-enrich` (chemins halo_5 uniquement) | commit |
 | 2026-06-24 21:51 | `5be99a2c3` C6 : `GetPerformanceChain` / `computeSkillRatingsBatch` / `RunFormulaSim` deviennent title-aware via `ctxkeys.TitleSlug(ctx)` (v1 LUSR + chaîne de perf) | commit (élargit la surface) |
-| **2026-06-25 09:37** | **`db_profiles.json` modifié** (mtime) : ajout du bloc `"halo_5"` contenant **exactement** Chocoboflor, JGtm, Madina97294, XxDaemonGamerxX | **déclencheur** |
+| **2026-06-25 09:37** | **`db_profiles.json` modifié** (mtime) : ajout du bloc `"halo_5"` contenant **exactement** joueur_165, JGtm, joueur_117, joueur_291 | **déclencheur** |
 | 2026-06-25 / 26 | rounds « hardening H5 » (journal `.ai/archive/thought_log_2026-Q2.md`) | contexte |
 | 2026-06-26 11:05:14 | boot serveur : `LUSR mode: v2 CANONICAL (v1 skippé)` (`logs/sync.log`) | journal |
 | **2026-06-26 11:20:13 → 11:28:32** | **`auto_sync: tick démarré` → `sync.v2: cycle démarré` → `phase post_sync` → CORRUPTION** | **fait** |
-| 2026-06-26 11:21:32 | `post-sync: LUSR v2 shadow OK gamertag=Chocoboflor processed=471 canonical=true` | journal |
-| 2026-06-26 11:22:02 | idem `XxDaemonGamerxX processed=31` | journal |
+| 2026-06-26 11:21:32 | `post-sync: LUSR v2 shadow OK gamertag=joueur_165 processed=471 canonical=true` | journal |
+| 2026-06-26 11:22:02 | idem `joueur_291 processed=31` | journal |
 | 2026-06-26 11:23:35 | idem `JGtm processed=902` | journal |
-| 2026-06-26 11:28:30 | idem `Madina97294 processed=1064` | journal |
+| 2026-06-26 11:28:30 | idem `joueur_117 processed=1064` | journal |
 | 2026-06-26 16:05 | `33f40f269` patch ART sur `cmd/h5-lusr-backfill` (DELETE → `RecomputeLUSRCanonicalForPlayer`) — **sans rapport causal**, même journée | commit |
 | 2026-06-27 19:11 → 20:30 | cycles suivants : `processed=5`, `processed=1` (les nouveaux matchs du jour reçoivent aussi une ligne `h5_arena`) | journal |
 | 2026-06-28 / 29 | 186 puis 264 lignes `LUSR v2 shadow terminé` — la double passe par joueur persiste | journal |
@@ -163,13 +163,13 @@ n'existait pas dans le shared Infinite → `LoadState` renvoie nil → aucun mat
 ```
 
 2. **Les volumes du run correspondent aux volumes de corruption** (plan lot 4 : JGtm 895 /
-   Madina 1064 / Chocoboflor 471 / Daemon 31) :
+   joueur_075 1064 / joueur_165 471 / Daemon 31) :
 
 ```
-11:21:32 post-sync: LUSR v2 shadow OK gamertag=Chocoboflor      processed=471  canonical=true
-11:22:02 post-sync: LUSR v2 shadow OK gamertag=XxDaemonGamerxX  processed=31   canonical=true
+11:21:32 post-sync: LUSR v2 shadow OK gamertag=joueur_165      processed=471  canonical=true
+11:22:02 post-sync: LUSR v2 shadow OK gamertag=joueur_291  processed=31   canonical=true
 11:23:35 post-sync: LUSR v2 shadow OK gamertag=JGtm             processed=902  canonical=true
-11:28:30 post-sync: LUSR v2 shadow OK gamertag=Madina97294      processed=1064 canonical=true
+11:28:30 post-sync: LUSR v2 shadow OK gamertag=joueur_117      processed=1064 canonical=true
 ```
 
 (JGtm 902 vs 895 : le journal compte les matchs traités, le plan compte les lignes restées
@@ -180,10 +180,10 @@ gagnantes dans `match_skill_rank_latest` ; 7 lignes ont été réécrites depuis
    moteurs lisent le même shared Infinite mais tiennent deux watermarks) :
 
 ```
-2026-06-26T11:22:00 xuid=2533274858283686 processed=0    already=1141   <- profil halo_infinite
-2026-06-26T11:28:30 xuid=2533274858283686 processed=1064 already=0      <- profil halo_5
-2026-06-26T11:21:32 xuid=2535469190789936 processed=471  already=0
-2026-06-26T11:25:48 xuid=2535469190789936 processed=0    already=496
+2026-06-26T11:22:00 xuid=2623439693412443 processed=0    already=1141   <- profil halo_infinite
+2026-06-26T11:28:30 xuid=2623439693412443 processed=1064 already=0      <- profil halo_5
+2026-06-26T11:21:32 xuid=2547408409520575 processed=471  already=0
+2026-06-26T11:25:48 xuid=2547408409520575 processed=0    already=496
 ```
 
 4. **Avant le 25/06, la double passe n'existe pas.** Dernier cycle antérieur au journal :
@@ -194,8 +194,8 @@ gagnantes dans `match_skill_rank_latest` ; 7 lignes ont été réécrites depuis
 
 5. **Le déclencheur est daté par le système de fichiers** : `db_profiles.json` mtime
    **2026-06-25 09:37**, et son bloc `"halo_5"` contient exactement les 4 gamertags
-   corrompus — les 5 profils `auth_only` (Trimbutton, DankerGlue, QuiteSiren, UppedJoker,
-   GeleJugefi) ne sont déclarés que sous `halo_infinite` et **ne sont pas corrompus**,
+   corrompus — les 5 profils `auth_only` (joueur_1018, joueur_1016, QuiteSiren, UppedJoker,
+   joueur_1017) ne sont déclarés que sous `halo_infinite` et **ne sont pas corrompus**,
    ce qui referme la corrélation.
 
 ### Chaîne causale complète (PROUVÉE)
@@ -394,7 +394,7 @@ couverts. C'est le miroir exact de ce que fait déjà `engine_postsync_scoring.g
 
 ---
 
-## 6. Statut des lignes résiduelles Madina — et une découverte plus large
+## 6. Statut des lignes résiduelles joueur_075 — et une découverte plus large
 
 ### 6.1 Les 2 lignes de `match_skill_rank_latest` : NUISIBLES, lues par des lecteurs vivants
 
@@ -412,7 +412,7 @@ la gagnante de la vue `_latest`. Elle est lue par :
 Côté web, `apps/web/src/features/career/lusr-chains.ts` :
 `resolveLusrGroupsForDisplay(titleSlug, dataGroups)` **ajoute** les groupes présents dans la
 donnée mais absents des connus du titre, et `career.toml:387-389` fournit le libellé
-(`career.lusr.chain.h5_arena` = « Arène » / « Arena »). La page Carrière de Madina97294
+(`career.lusr.chain.h5_arena` = « Arène » / « Arena »). La page Carrière de joueur_117
 **sous Halo Infinite** affiche donc une 5e chaîne « Arène » à côté d'Assassin / Objectif /
 BTB / Chaos.
 
@@ -442,7 +442,7 @@ Consommé par `career_repo_lusr.go:71` (`GetLUSRHistory`), regroupé par
   moitié étant les lignes `LUSR_V2` filtrées par la requête) ;
 - `apps/web/src/features/career/CareerRankingBlock.tsx:122` — `lusrByGroup` est dérivé des
   **mêmes checkpoints bruts**, donc la ligne « Arène » du module Classement provient de ce
-  résidu pour les 4 joueurs, pas seulement pour Madina.
+  résidu pour les 4 joueurs, pas seulement pour joueur_075.
 
 **Statut de cette découverte : PLAUSIBLE À TRÈS HAUTE CONFIANCE, NON MESURÉE** — la
 vérification exigerait une lecture DuckDB, interdite par le périmètre. Elle est entièrement
@@ -466,7 +466,7 @@ est réfuté par le plan lui-même, qui revendique zéro suppression.
    `--commit`, une base à la fois), modelé sur `cmd/recompute_perfnote`.
    **Coût : ~150 lignes jetables + 1 test, ~1 h de développement, ~10 min d'exécution sur
    4 bases, backup préalable obligatoire, serveur arrêté.** Effet de bord voulu : les 2
-   matchs Madina non rejouables se retrouvent sans ligne LUSR — ce qui est la vérité (le
+   matchs joueur_075 non rejouables se retrouvent sans ligne LUSR — ce qui est la vérité (le
    moteur les juge non notables), pas une perte.
 3. **Ne rien faire n'est pas neutre** : l'artefact est visible en permanence sur la page
    Carrière des 4 joueurs (série et ligne « Arène » fantômes) et fausse le module
@@ -500,7 +500,7 @@ est réfuté par le plan lui-même, qui revendique zéro suppression.
    l'action admin le peuvent. Le détecteur G3 appliqué au titre `halo_5` avec
    `allowed={"h5_arena"}` répondrait en une requête.
 5. **`h5-lusr-smoke:29` et `h5-read-smoke:31` embarquent un chemin absolu en dur**
-   (`c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/…`) dans du code versionné —
+   (`<poste>/Downloads/Scripts/LevelUp-go-migration/…`) dans du code versionné —
    hygiène, sans lien avec l'incident.
 6. **Le commit `5be99a2c3` (C6)** a rendu title-aware le LUSR **v1** (`batchComputeLUSR`) et
    la chaîne de performance (`GetPerformanceChain`) **sans jamais stamper le ctx depuis

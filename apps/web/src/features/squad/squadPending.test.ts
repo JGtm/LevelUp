@@ -185,7 +185,7 @@ describe('decideCompositionReanchor', () => {
     ).toEqual({ kind: 'none' })
   })
 
-  it('session courante ≠ dernière de la composition → snap (cœur du fix Choco/Madina)', () => {
+  it('session courante ≠ dernière de la composition → snap (cœur du fix joueur_901/joueur_075)', () => {
     // On ajoute un coéquipier, "today" n'est pas une session de la composition →
     // on retombe sur S_old (dernière session où TOUS ont joué ensemble).
     expect(

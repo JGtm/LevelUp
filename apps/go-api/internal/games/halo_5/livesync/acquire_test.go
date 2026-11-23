@@ -54,7 +54,7 @@ func TestAcquireRunner_PinnedDead_FallsBackToPool(t *testing.T) {
 	cfg := &config.AppConfig{RepoRoot: t.TempDir()}
 	p := &acqPool{pinnedErr: errors.New("ErrNoTokenForPlayer (RT mort)")}
 
-	r, runCtx, release, err := AcquireRunner(context.Background(), p, cfg, halo5.TitleSlug, "Joueur90001", "xuid-choco")
+	r, runCtx, release, err := AcquireRunner(context.Background(), p, cfg, halo5.TitleSlug, "Joueur90001", "xuid-joueur_901")
 	if err != nil {
 		t.Fatalf("AcquireRunner: fallback attendu, err: %v", err)
 	}
@@ -67,8 +67,8 @@ func TestAcquireRunner_PinnedDead_FallsBackToPool(t *testing.T) {
 	if tok == nil || tok.SpartanToken != "pool" {
 		t.Errorf("ctx token = %v, want token pool (fallback)", tok)
 	}
-	if got := ctxkeys.HaloXUID(runCtx); got != "xuid-choco" {
-		t.Errorf("ctx xuid = %q, want xuid-choco (joueur consulté, pas le compte pool)", got)
+	if got := ctxkeys.HaloXUID(runCtx); got != "xuid-joueur_901" {
+		t.Errorf("ctx xuid = %q, want xuid-joueur_901 (joueur consulté, pas le compte pool)", got)
 	}
 	if len(p.acquired) != 2 || p.acquired[0] != pool.PolicyPinnedPlayer || p.acquired[1] != pool.PolicyAnyPublic {
 		t.Errorf("policies tentées = %v, want [pinned, anyPublic]", p.acquired)

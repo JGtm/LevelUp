@@ -93,3 +93,31 @@ export function KDSplitBar({
     />
   )
 }
+
+/**
+ * Bilan victoires / défaites au format de la colonne « Rencontres » : nombre de victoires, barre,
+ * nombre de défaites (jetons d'issue `outcome-win` / `outcome-loss`). Les égalités et les matchs sans
+ * issue ne comptent d'aucun côté.
+ */
+export function WinLossSplitBar({
+  wins,
+  losses,
+  locale,
+}: {
+  wins: number
+  losses: number
+  locale: Locale
+}) {
+  const ttWins = formatMessage(commonManifest, 'common.encounter_split.wins', locale, { count: wins })
+  const ttLosses = formatMessage(commonManifest, 'common.encounter_split.losses', locale, { count: losses })
+  return (
+    <SplitBar
+      leftCount={wins}
+      rightCount={losses}
+      leftColor={tokenCssVar('outcome-win')}
+      rightColor={tokenCssVar('outcome-loss')}
+      leftTooltip={ttWins}
+      rightTooltip={ttLosses}
+    />
+  )
+}

@@ -4,7 +4,7 @@
 > D11, D12). Branche `wt/power-positions`. Outil : `apps/go-api/cmd/mappower-build
 > --mesure --reglage v2`, paquet pur `apps/go-api/internal/analysis/powerpos`
 > (`ReglageV2`, `angles.go`, `ponderation.go`, `morphologie.go`, `diagnostic.go`).
-> Données lues en SEULE lecture sur `C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration`
+> Données lues en SEULE lecture sur `<poste>/Downloads/Scripts/LevelUp-go-migration`
 > (`duckdb.OpenReadForQuery`, vues `_latest` uniquement, aucune écriture).
 > **`ReglageV1` est intact** (preuve datée du verdict v1, D12) ; la v2 est un réglage NEUF.
 >

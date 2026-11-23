@@ -127,7 +127,7 @@ data/global/admin_state/
 backups/
 data/restore/
 # Répertoires parasites créés par des chemins Windows (backslashes mangés par bash)
-# ex: apps/go-api/UsersGuillaumeDownloads.../  lors du source .env.local par make/air
+# ex: apps/go-api/UsersutilisateurDownloads.../  lors du source .env.local par make/air
 #apps/go-api/[A-Z]*/
 
 # RAG LanceDB (base vectorielle locale)

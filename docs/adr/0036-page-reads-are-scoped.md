@@ -418,11 +418,11 @@ Each reads the player's matches (`QMatchsDuJoueurTpl`, Campaign excluded) or the
 filter perimeter, binds that list as one `VARCHAR[]` parameter on every `_latest` view it reads (see
 *Consequences*), and hands the same list to its directory. Measured on the compacted copy (2 threads
 / 512 MB, whole read with its directory, three alternated runs before -> after on a loaded
-machine): Q26 `JGtm` 282-301 -> 169-287 ms, `XxDaemonGamerxX` 144-161 -> 42-46 ms; Q27 `JGtm`
-460-465 -> 133-247 ms, `Madina97294` 371-500 -> 122-163 ms; Q28 `JGtm` 371-421 -> 253-437 ms (five
-runs: 302-391 -> 233-272 ms), `XxDaemonGamerxX` 139-168 -> 43-44 ms; `MortsParCarte` with the
+machine): Q26 `JGtm` 282-301 -> 169-287 ms, `joueur_291` 144-161 -> 42-46 ms; Q27 `JGtm`
+460-465 -> 133-247 ms, `joueur_117` 371-500 -> 122-163 ms; Q28 `JGtm` 371-421 -> 253-437 ms (five
+runs: 302-391 -> 233-272 ms), `joueur_291` 139-168 -> 43-44 ms; `MortsParCarte` with the
 whitelist the tab sends by default (all the player's matches) `JGtm` 371-622 -> 227-383 ms, with a
-30-match whitelist 313-480 -> 30-53 ms. `Nuzzles` (7,190 matches, whose kill feed holds 66 % of the
+30-match whitelist 313-480 -> 30-53 ms. `joueur_074` (7,190 matches, whose kill feed holds 66 % of the
 journal, so the list saves little): Q27 388-457 -> 306-354 ms, `MortsParCarte` 356-588 -> 238-260
 ms, Q26 and Q28 unchanged within the noise (five runs, medians 519 -> 579 ms and 1,061 -> 1,158 ms;
 0.8 to 0.9 s of Q28 is its directory, whose reads were already bound: see the next paragraph). Served rows identical on the
@@ -434,11 +434,11 @@ the Halo 5 copy no longer count.
 
 Item B.7 (2026-09-27): the directory itself (`platform/duckdb/squad_repo_annuaire.go`, templates
 `analysis/identity_annuaire.go`) bound its lists as `IN (?, ?, …)`: up to 14,900, 10,163 and
-17,741 parameters per query for `Nuzzles`' Relations. Every list of the directory is now one
+17,741 parameters per query for `joueur_074`' Relations. Every list of the directory is now one
 `VARCHAR[]` parameter — the `match_id`s of the kill-feed leg as the constant that crosses the
 `_latest` window, every other list in a semi-join, the locating read's xuids unfolded in its
 `cherches` CTE — with the templates still the single source shared with the view (the view's DDL is
-unchanged). Measured on the compacted copy (three alternated runs): `Nuzzles` Relations Q28
+unchanged). Measured on the compacted copy (three alternated runs): `joueur_074` Relations Q28
 1,118-1,339 -> 551-839 ms (directory 731-912 -> 256-286 ms), heatmap 294-340 -> 179-199 ms; Squad
 (`JGtm`, a composition of 579 matches) Q32 314-702 -> 192-257 ms, Q32b 103-106 -> 46-62 ms; the
 match view of `JGtm`, whose lists are short, pays the fixed cost of the parameter: medians Q12
@@ -452,7 +452,7 @@ leaving an unnamed xuid out of its map. Guardrail: `TestAnnuaire_ListesLieesEnUn
 Not a window, but the same kind of cost, listed here because it is a whole-table read on a request
 path: when the base-scope directory's last fallback fires (a player that no alias, participant
 gamertag or kill feed of the read's matches names: 23 of `JGtm`'s 1,160 matches, 4,688 of
-`Nuzzles`'s 7,190), its locating read scans the raw `match_kill_events` (3.95 M rows) in two passes
+`joueur_074`'s 7,190), its locating read scans the raw `match_kill_events` (3.95 M rows) in two passes
 (killer, then victim): the directory then costs 150 to 360 ms, above the 100 ms budget of a match
 view read (`platform/duckdb/squad_repo_annuaire.go`, `localiserKillFeed`). A single pass (killer OR
 victim) is the lead; not measured. Not assigned.
@@ -466,9 +466,9 @@ database of 2026-09-26, 90 % of the film-table rows were superseded passes (11.2
 `DELETE`, view output, DDL, indexes and sequences checked before each COMMIT) and is run, server
 stopped, after each re-decode campaign — never at boot nor after a sync. Measured on a copy
 (2 threads / 512 MB, loaded machine, two runs, before -> after): Career encounters Q26 1.6-2.4 s ->
-0.24-0.76 s, rivals Q27 3.1-4.3 s -> 0.28-0.64 s, Relations Q28 1.8-2.9 s -> 0.16-0.51 s (`Nuzzles`
+0.24-0.76 s, rivals Q27 3.1-4.3 s -> 0.28-0.64 s, Relations Q28 1.8-2.9 s -> 0.16-0.51 s (`joueur_074`
 3.3-3.7 s -> 1.6-1.7 s), match view Q23b median 1.9-2.5 s -> 0.23-0.30 s, `MortsParCarte`
-2.7-5.0 s -> 0.35-0.64 s, the directory's locating read (`Nuzzles`, 2,973 xuids) 0.19-0.25 s -> 0.06-0.09 s (the raw
+2.7-5.0 s -> 0.35-0.64 s, the directory's locating read (`joueur_074`, 2,973 xuids) 0.19-0.25 s -> 0.06-0.09 s (the raw
 journal now holds only the served pass: same candidates). Compaction does not retire these
 exceptions — the windows still span the whole history — it keeps their cost proportional to the
 history instead of to the number of decodes; lot B then bound three of them to the player's matches

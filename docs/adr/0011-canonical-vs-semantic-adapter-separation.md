@@ -2,7 +2,7 @@
 
 **Status** — Proposed (2026-04-29). Pré-requis pour P4.1 pilote home (`PLAN_ACTION.md`, ADR 0007).
 
-**Deciders** — Guillaume (GS).
+**Deciders** — JGtm.
 
 ## Context
 

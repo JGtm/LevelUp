@@ -341,7 +341,7 @@ non porte laisse son slot non lie ; ses deltas suivants, dans le meme intervalle
   fait lire la vue C au mauvais endroit : c'est EXACTEMENT le mecanisme de l'hypothese de travail
   de la campagne, avec une source `ti=43` nommable.
 
-Le cas temoin connu est `81c02726` (G MONEY, tick 2941, NEW `ti=43` qui desynchronise sur `i21`,
+Le cas temoin connu est `81c02726` (JOUEUR_441, tick 2941, NEW `ti=43` qui desynchronise sur `i21`,
 `PLAN_RETOURS_REJEU_2026-09-23.md` l. 919) : la perte constatee est celle du paquet du NEW lui-meme
 et des suivants. L'ampleur sur les films denses HI_1_13_0 est INCONNUE et vraisemblablement faible :
 `ti=43` n'apparait pas parmi les archetypes les plus lies par anticipation sur `bfecd02b`
@@ -446,7 +446,7 @@ Somme minimale des 22 (`i19..i40`, toutes portes fermees, `i21` sans groupe) : *
      etant ce que la vue C laisse fermer ;
    - nouveaux paquets « vue C : terminateur hors cadre » : ils diront si le residu de HI_1_12_0
      est de la meme nature que celui de HI_1_13_0 ;
-   - `81c02726` : le NEW du tick 2941 traverse proprement ; la 3e montee de G MONEY (2984-3021,
+   - `81c02726` : le NEW du tick 2941 traverse proprement ; la 3e montee de JOUEUR_441 (2984-3021,
      3104-3119) est lue, `noTrack` 2 -> 0 (a verifier au document, pas au compteur seul).
 2. **Port `ti=0/2`** : la ligne `ti=2 i15` (3 635) disparait ; les records d'image-cle du moteur
    (113 sur les sept mini-bobines, note 3.7 §6) ferment sur les builds d'arene ; sur `a349fea8` /

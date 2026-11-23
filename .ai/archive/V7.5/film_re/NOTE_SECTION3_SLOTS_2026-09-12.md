@@ -45,7 +45,7 @@ Instruments (tous sous garde d'environnement, sautes en CI) :
    encadres par une position parasite du balayage, comptee a part depuis).
 4. **LE GAMERTAG EST LU, ET IL Y A DEUX CHAMPS DE TEXTE.** Le champ `sub+0xc14` (`FUN_1407ece18`,
    unites de 16 bits MSB d'abord, terminees par NUL, 16 au plus) rend les 44 gamertags des
-   6 films. Contrôle positif du 30/08 PASSE : `whiteknight2519` (`0x13CCA6`) et `LORD PEINX13`
+   6 films. Contrôle positif du 30/08 PASSE : `joueur_283` (`0x13CCA6`) et `JOUEUR_731`
    (`0x13F7AF`) tombent dans l'enregistrement du bon XUID. Le second champ est le bloc de queue
    `sub+0x1400` (44 octets = 22 unites, recopie BRUT donc petit-boutiste) : **640/640 blocs
    portent le gamertag de leur propre enregistrement**, sur 76 films.
@@ -192,7 +192,7 @@ deux lectures du 30/08 n'etait fortuite.** Le balayage aligne sur l'octet n'accr
 d'un champ (les champs sont a une position quelconque du flux, et l'un est en unites
 gros-boutistes) : il demarre au premier octet ou la donnee decalee tombe dans l'ASCII imprimable,
 c'est-a-dire quelque part a l'interieur du champ. C'est pourquoi le 30/08 voyait `blpp` (la fin de
-`VitaminA1688` decalee d'un bit), `rndrh` (`Madina97294`) ou `rphfn` (`AlliedLace98437`).
+`joueur_362` decalee d'un bit), `rndrh` (`joueur_117`) ou `rphfn` (`joueur_543`).
 
 ---
 
@@ -260,7 +260,7 @@ enregistrement), les 7 objets aussi.
 ### B.3 Et ce n'est pas ailleurs non plus
 
 P-STA / P-DIS / P-PRE, sur les memes 44 enregistrements. Trois joueurs sont vus dans au moins deux
-films (`JGtm` 5 films, `Madina97294` 4, `Chocoboflor` 2).
+films (`JGtm` 5 films, `joueur_117` 4, `joueur_165` 2).
 
 | zone | STABLE par joueur | empreintes distinctes | dont partagees | prefixe commun le plus court |
 |---|---|---|---|---|
@@ -284,7 +284,7 @@ P-TAG, sur la liste de mots de 32 bits (`sub+0x910`, 167 mots quand elle est ple
 lus, 635 valeurs distinctes, dont 305 a `0xFFFFFFFF`** (la marque « absent » d'un identifiant de
 tag), **4 451 inferieurs a 256** et **1 423 hauts**. La tete de la liste est reconnaissable et
 partiellement stable par joueur (`JGtm` : `00008593 ffffffff 42c9679f` sur 5 films ;
-`Madina97294` : `cc614892 ffffffff 42c9679f` sur 4 ; `42c9679f` est commun a presque tous les
+`joueur_117` : `cc614892 ffffffff 42c9679f` sur 4 ; `42c9679f` est commun a presque tous les
 joueurs). **Mesure, pas conclusion** : la zone melange des valeurs a forme d'identifiant, une
 majorite de petits entiers et au moins une constante partagee. Son role n'est pas etabli.
 
@@ -480,9 +480,9 @@ fait echouer l'ouverture.
 
 ```bash
 cd apps/go-api
-C="C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks"
-R="C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite"
-B="C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/backups/pre-restauration-cle-2026-08-20/replays_local/halo_infinite"
+C="<poste>/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks"
+R="<poste>/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite"
+B="<poste>/Downloads/Scripts/LevelUp-go-migration/data/backups/pre-restauration-cle-2026-08-20/replays_local/halo_infinite"
 T="$C/000d5950;$C/00162144;$C/00502e52;$C/0014603f;$C/007d53a4;$C/02784ce1"
 
 # A.2 / A.3 : la grammaire ferme, et le gamertag sort (38/38 et 44/44)

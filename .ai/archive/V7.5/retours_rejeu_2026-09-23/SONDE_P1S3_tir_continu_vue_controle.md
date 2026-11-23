@@ -18,7 +18,7 @@ Légende : **[M]** mesuré · **[D]** déduit · **[H]** hypothèse.
    `replication_control_view.cpp`), entrée `kind 0` du joueur (`FUN_1406d0388`), **bloc d'action**
    (`FUN_1406d025c`, +0x18 du bloc de 0x68 octets `FUN_1406cd860`) : **m0 = R(3)** (main 0, gâchettes
    d'entrée 0..2, MSB = entrée 0 = gâchette principale), m2 = R(3) (main 1), m4 / m5 = R(2) (barillets).
-   Le tireur = l'**index de contrôle R(5)** = l'index de joueur du roster (G MONEY = 2).
+   Le tireur = l'**index de contrôle R(5)** = l'index de joueur du roster (JOUEUR_441 = 2).
 2. **Pourquoi aucun record 36 [M, Ghidra]** : `action_weapon_fire` n'est émis qu'au bout du tir d'un
    barillet (`FUN_14202f3a0` → `FUN_141fd3b00` → `FUN_141fd8460(0x1ffffffff, 0x24, …)`) et seulement si
    `FUN_140de87fc` rend l'octet 1 = 1. Pour un barillet de **type de prédiction 1 ou 3**
@@ -36,7 +36,7 @@ Légende : **[M]** mesuré · **[D]** déduit · **[H]** hypothèse.
    `FUN_1407fa928` fait tirer le barillet À SA CADENCE (tag) → `FUN_1408a397c` (effet, son) et
    `FUN_14202f3a0` (projectiles). **Les instants des tirs ne sont pas dans le film : Theater les simule
    depuis l'état de gâchette et la cadence de l'arme.**
-5. **Sur 81c02726 [M]** : les 1 050 entrées qui tirent de tout le film sont de l'index 2 (G MONEY),
+5. **Sur 81c02726 [M]** : les 1 050 entrées qui tirent de tout le film sont de l'index 2 (JOUEUR_441),
    **1 050 / 1 050 dans des paquets validés** par l'oracle de fermeture, toutes `m0 = 4` (gâchette
    principale) ; 994 dans ses deux épisodes de Ghost, 56 dans une troisième monture non publiée [D] ;
    aucun autre joueur. Gate : **6 / 6 frags** précédés d'entrées qui tirent (toutes les entrées lues
@@ -78,7 +78,7 @@ code qui supprime l'émission ; valeurs des tags non lues ici, cf. §7 M4b.0].
 @0x14202f6a3), qui ne garde que l'émission (`CALL FUN_141fd3b00` @0x1420331b8, `FUN_141fd3d90`
 @0x14203326d) ; il est sauté seulement quand le tir rejoue un événement reçu (`param_4 != NULL`).
 **Contrôle [D]** : sur 81c02726, rafales de l'épisode 1 (§4.4) = 40,6 s de gâchette tenue ; à la
-cadence du Ghost (7,5 coups/s, V3F) ≈ 305 tirs ; le premier record de G MONEY porte `n = 56` =
+cadence du Ghost (7,5 coups/s, V3F) ≈ 305 tirs ; le premier record de JOUEUR_441 porte `n = 56` =
 312 mod 256 → **312 tirs, 7,7 /s** : le compteur a fait un tour ; P1 ne pouvait pas trancher 56 / 312,
 la vue C tranche.
 
@@ -131,7 +131,7 @@ L'écrivain (`FUN_14076a2f4` → `FUN_1406d175c`) prend l'arme de l'UNITÉ du jo
 
 ## 4. Mesure sur 81c02726 (question 3) [M]
 
-Horloge : trame = (horodatage − 451 125 221 µs) / 100 ms. G MONEY = index 2 ; épisodes publiés
+Horloge : trame = (horodatage − 451 125 221 µs) / 100 ms. JOUEUR_441 = index 2 ; épisodes publiés
 311-1088 (Ghost 769) et 2064-2869 (Ghost 771) ; frags au Ghost 395, 623, 650, 2159, 2228, 2402.
 
 ### 4.1 Oracle de cadrage (`TestP1S3VueCTirContinu`, 19 933 paquets delta)
@@ -150,7 +150,7 @@ index ≥ 8 : 146 entrées, 2 validées (bruit des paquets non clos).
 
 | | entrées | validées | qui tirent | dans épisodes | hors |
 |---|---:|---:|---:|---:|---:|
-| index 2 (G MONEY) | 5 796 | 5 788 | **1 050 (1 050 validées)** | 994 | 56 |
+| index 2 (JOUEUR_441) | 5 796 | 5 788 | **1 050 (1 050 validées)** | 994 | 56 |
 | index 0,1,3,5,6,7 | 32 253 | 32 218 | 0 | — | — |
 | index 4 | 5 417 | 5 408 | 1 (non validée) | | |
 
@@ -172,7 +172,7 @@ témoin qui vaut est −60 s et « hors épisodes ».
 
 **Hors épisodes = une troisième monture non publiée [D]** : les 169 entrées sont dans deux rafales,
 t 2984..3020 et 3104..3119 ; le document fait bouger le Ghost 771 à 2950-3094 (2 m/s et plus) alors
-que sa monture publiée finit à 2869 et que la trace de G MONEY s'arrête à 2942 ; aucun autre joueur
+que sa monture publiée finit à 2869 et que la trace de JOUEUR_441 s'arrête à 2942 ; aucun autre joueur
 n'a de gâchette continue.
 
 ### 4.4 Rafales (marche + balayage) et couverture
@@ -240,8 +240,8 @@ inutilisable (0 unique sur 6 281).
 
 1. `consumeEntreeControle` refuse trois branches résolues (§2) ; `consume1406d025c` lit faux la cible
    typée et le vecteur — même bloc dans `i19 unit-actor-control` (vue B).
-2. 81c02726 : 3e monture de G MONEY sur le Ghost 771 absente du document (≈ 2950-3119) ; trace de
-   G MONEY arrêtée à 2942.
+2. 81c02726 : 3e monture de JOUEUR_441 sur le Ghost 771 absente du document (≈ 2950-3119) ; trace de
+   JOUEUR_441 arrêtée à 2942.
 3. La vue C n'est atteinte que sur 34 % des paquets de 81c02726 (6 865 / 19 933) : ~8 900 paquets
    « lisent » une vue C vide qui ne clôt pas = fin de vue B fausse.
 4. La cible typée du bloc (genre 1, catégorie 1) nommerait l'objet visé pendant la rafale [H].
@@ -259,4 +259,4 @@ inutilisable (0 unique sur 6 281).
       ./internal/games/halo_infinite/film/internal/grammar/
 
     # 8a485699 (non joué ici) : MOUV511_CARTE="launch site" S3_ORIGINE_US=2331882869 S3_INDEX=7
-    # S3_EPISODES=2334-2449,3099-3205 S3_FRAGS=... (Banshee et Chopper de KyleT1848)
+    # S3_EPISODES=2334-2449,3099-3205 S3_FRAGS=... (Banshee et Chopper de joueur_1001)

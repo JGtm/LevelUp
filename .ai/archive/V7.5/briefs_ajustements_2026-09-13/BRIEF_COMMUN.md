@@ -29,7 +29,7 @@ l'improvisation, hallucination et devinettes ». Conséquences NON NÉGOCIABLES 
   avant toute commande go (chemin absolu). CGO : gcc msys64 ucrt64 déjà dans le PATH
   (si `go build` échoue sur le lien, essaie depuis PowerShell natif).
 - Un serveur API tourne sur `http://127.0.0.1:8000` (branche feat/v75, données réelles du
-  poste, joueur peuplé `JGtm`, coéquipiers `Madina97294`, `Chocoboflor`). Tu ne l'arrêtes
+  poste, joueur peuplé `JGtm`, coéquipiers `joueur_117`, `joueur_165`). Tu ne l'arrêtes
   pas, tu ne lances PAS de second serveur Go sur les mêmes bases (modèle mono-process
   DuckDB : interdit). Si ton lot ajoute des champs/endpoints Go, tu les vérifies par tests Go
   et, côté web, par tests vitest + un stub Playwright de la route ; le superviseur fera la
@@ -87,7 +87,7 @@ Un harnais existe : `apps/web/e2e/_helpers/visual.ts` (`prepareVisualPage`, atte
 stabilité canvas) et `apps/web/e2e/visual/app-pages.visual.spec.ts` (exemples de pages).
 Écris un spec TEMPORAIRE `apps/web/e2e/visual/_tmp-<lot>.visual.spec.ts` qui :
 - ouvre chaque page/onglet cible sur `http://localhost:<PORT>` avec `E2E_VISUAL_PLAYER=JGtm`
-  (et `E2E_VISUAL_SQUAD_TEAMMATES=Madina97294,Chocoboflor` pour Escouade), attend la
+  (et `E2E_VISUAL_SQUAD_TEAMMATES=joueur_117,joueur_165` pour Escouade), attend la
   stabilité, puis `page.screenshot({ path: '<scratch>/<lot>-<page>.png', fullPage: true })`
   (viewport 1440 px de large ; regarde aussi une largeur 1024 si la disposition est en jeu).
 - Commande : `cd apps/web && E2E_BASE_URL=http://localhost:<PORT> E2E_VISUAL_PLAYER=JGtm
@@ -99,7 +99,7 @@ stabilité canvas) et `apps/web/e2e/visual/app-pages.visual.spec.ts` (exemples d
 - Capture AVANT (état initial) et APRÈS pour chaque page touchée : les deux jeux de PNG
   restent dans le scratchpad, chemins listés dans ton rapport.
 - Supprime le spec temporaire avant ton commit final.
-Scratchpad : `C:\Users\GUILLA~1\AppData\Local\Temp\claude\c--Users-Guillaume-Downloads-Scripts-LevelUp-go-migration\346b3f3e-40bc-4f2c-9027-587c8b85c85a\scratchpad\<lot>\` (crée le dossier).
+Scratchpad : `<poste>\AppData\Local\Temp\claude\c--Users-poste-Downloads-Scripts-LevelUp-go-migration\346b3f3e-40bc-4f2c-9027-587c8b85c85a\scratchpad\<lot>\` (crée le dossier).
 
 ## Rapport final (structure imposée)
 

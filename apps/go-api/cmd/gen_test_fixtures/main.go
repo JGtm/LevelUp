@@ -7,8 +7,8 @@
 //	  les matchs locaux dans external_film_dir, en utilisant le manifest
 //	  correspondant pour reconstruire l'URL blob CDN public.
 //	  Usage : gen_test_fixtures complete-chunks \
-//	            -src C:/Users/Guillaume/Downloads/film_chunks \
-//	            -manifests C:/Users/Guillaume/Downloads/film_manifests
+//	            -src C:/Users/utilisateur/Downloads/film_chunks \
+//	            -manifests C:/Users/utilisateur/Downloads/film_manifests
 //
 //	download-full-match : telecharge un match complet (manifest + tous les
 //	  chunks + 3 API responses) dans testdata/<name>_full_match/. Tokens
@@ -23,8 +23,8 @@
 //	list-external : audit du dataset externe — compte les matchs, identifie
 //	  les chunks manquants pour chacun.
 //	  Usage : gen_test_fixtures list-external \
-//	            -src C:/Users/Guillaume/Downloads/film_chunks \
-//	            -manifests C:/Users/Guillaume/Downloads/film_manifests
+//	            -src C:/Users/utilisateur/Downloads/film_chunks \
+//	            -manifests C:/Users/utilisateur/Downloads/film_manifests
 //
 // Reference :
 //   - internal/sync/testdata/jgtm_full_match/README.md (procedure manuelle)

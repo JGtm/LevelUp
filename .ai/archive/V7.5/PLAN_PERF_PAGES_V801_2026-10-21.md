@@ -33,8 +33,8 @@ depuis le checkout principal, après `git merge-base --is-ancestor origin/feat/v
 sinon rebase dans le worktree ; jamais de modification de l'arbre de travail d'une autre session.
 Fusion vers `main` + tag v8.0.1 : geste du user (session de release). Push `main` : jamais.
 
-Environnement Go : `GOCACHE=C:\Users\Guillaume\AppData\Local\go-build-perf-pages`,
-`GOLANGCI_LINT_CACHE=C:\Users\Guillaume\AppData\Local\golangci-perf-pages`, gcc
+Environnement Go : `GOCACHE=<poste>\AppData\Local\go-build-perf-pages`,
+`GOLANGCI_LINT_CACHE=<poste>\AppData\Local\golangci-perf-pages`, gcc
 `C:\msys64\ucrt64\bin`. Jamais `go build ./...`. Un seul `go` à la fois. Intégration
 `-tags=integration -p 1`. Push depuis le checkout principal si le crochet knip échoue dans le
 worktree (pas de `node_modules`) ; jamais `--no-verify`.
@@ -42,7 +42,7 @@ worktree (pas de `node_modules`) ; jamais `--no-verify`.
 ## 1. Pièces du dossier
 
 - Journal prod 2026-10-20 : Accueil 15,2 s en moyenne (16 requêtes, max 29,2 s), vue match 14,6 s
-  (5, max 21,8 s) ; frags assistés en échec de délai à chaque Accueil de JGtm et Madina97294.
+  (5, max 21,8 s) ; frags assistés en échec de délai à chaque Accueil de JGtm et joueur_117.
 - Mesure navigateur levelup-76 (prod, JGtm, iPhone émulé) : Accueil 28,6 s puis 20 s, 2,9 Mo de JSON
   décodé, `recent_matches` = 1 182 éléments, 158 000 nœuds DOM, 161 Mo de tas JS ; rechargement
   « analyse en cours » de 60 s sur toute la liste.
@@ -58,7 +58,7 @@ worktree (pas de `node_modules`) ; jamais `--no-verify`.
 ## 2. Critères de succès
 
 Socle : banc reproductible (±20 % entre deux passages), sans aucun effet hors du worktree.
-Volet 1 : Accueil (JGtm, Nuzzles, Madina97294) — réponse de tête < 300 Ko décodés, au plus 30
+Volet 1 : Accueil (JGtm, joueur_074, joueur_117) — réponse de tête < 300 Ko décodés, au plus 30
 cartes montées au premier rendu, durée serveur réduite d'un facteur fixé APRÈS la ventilation par
 section du banc (étape 2) ; vue match — selon la mesure de l'étape 2 (§5, étape 5).
 Volet 2 : aucun lecteur de requête de classe A ne lit plus `match_kill_events_latest` (garde-rail au
@@ -182,10 +182,10 @@ Pour chaque étape qui change du code, AVANT de cocher son gate :
       `pass` redémarre le serveur à neuf à chaque passage (un serveur gardé dérivait de 6 à 15 % par
       passage, mémoire privée ~1,6 Go — Découvertes).
 - [x] 1.5 Endpoints mesurés (12) ; matchs de référence : JGtm `8ba9251a-53f3-4367-aa55-9c5df983120f`,
-      Nuzzles `37c6e818-fc07-4b2e-90ed-f2f84c904933`, Madina97294 `a853258c-3027-4144-85c5-7309b9dc0031`.
+      joueur_074 `37c6e818-fc07-4b2e-90ed-f2f84c904933`, joueur_117 `a853258c-3027-4144-85c5-7309b9dc0031`.
       Les POST portent `Origin: http://localhost:5173` (CSRF par origine) ; Comparaison :
-      `{"target_gamertag":"Madina97294"}`.
-- Gate : [x] passages 2 et 3 à serveur neuf : 0 page hors ±20 % (max +7,5 %, hors Relations Nuzzles
+      `{"target_gamertag":"joueur_117"}`.
+- Gate : [x] passages 2 et 3 à serveur neuf : 0 page hors ±20 % (max +7,5 %, hors Relations joueur_074
   bimodale 4,3 / 6,2 / 5,0 s, à ±20 % entre les passages 2 et 3) ; `bench-pages.sh check` : `data/auth`
   absent, aucun jeton dans le dossier d'auth du banc, aucun fichier suivi modifié sous `data/`,
   webhook vide, aucune tentative `halo_api` journalisée, aucun compteur `halo_api_*` exposé.
@@ -194,9 +194,9 @@ Pour chaque étape qui change du code, AVANT de cocher son gate :
 
 - [x] 2.1 Annexe A (A.1 durées et octets, A.2 ventilation par section).
 - [x] 2.2 Classement (lente = médiane > 2 s sur un compte) :
-      lentes — Accueil (Nuzzles 6,2 s), vue match (Nuzzles 4,1 s, JGtm 2,1 s), Comparaison (6,3 s),
-      Carrière rencontres (Nuzzles 2,0 s), Explorer (Nuzzles 2,4 s), et en « tout l'historique »
-      Relations (Nuzzles 5,0 s), Escouade (Nuzzles 3,6 s), Timeseries (7,8 à 27,6 s) ;
+      lentes — Accueil (joueur_074 6,2 s), vue match (joueur_074 4,1 s, JGtm 2,1 s), Comparaison (6,3 s),
+      Carrière rencontres (joueur_074 2,0 s), Explorer (joueur_074 2,4 s), et en « tout l'historique »
+      Relations (joueur_074 5,0 s), Escouade (joueur_074 3,6 s), Timeseries (7,8 à 27,6 s) ;
       ok — Carrière, rivaux (< 2 s), artefact et contexte du rejeu (< 0,15 s).
       Conséquences, avec les réponses du user du 2026-10-21 : étape 5 `[~]` (D-11 rejetée ; le temps
       de la vue match vient de Q23b et Q28c, servis par 9.2 et 9.4) ; Comparaison, Carrière
@@ -355,7 +355,7 @@ de résumés S0-S2) ; il ne remplace ni la fenêtre de l'Accueil ni les résumé
 - Gate : [x] `go test` défaut puis `-tags=integration -p 1` sur service, analysis, domain, port, api/...,
   platform/duckdb, archlint ; [x] `golangci-lint run --new-from-merge-base=origin/main` 0 problème ;
   [x] `tsc -b` + `vitest run src/features/home src/lib/api src/lib/analysis-pending src/test` ;
-  [x] `bash scripts/check_test_baseline.sh tests` ; [x] banc avant/après (pilote, 2026-10-21, copie compactée) : tête de l'Accueil 94-101 Ko (3,1-18,3 Mo avant), durée 0,14 / 0,39 / 0,25 s pour JGtm / Nuzzles / Madina97294 (0,31 / 1,04 / 0,51 s avant), `home_assisted_frags_recent` 6-16 ms ;
+  [x] `bash scripts/check_test_baseline.sh tests` ; [x] banc avant/après (pilote, 2026-10-21, copie compactée) : tête de l'Accueil 94-101 Ko (3,1-18,3 Mo avant), durée 0,14 / 0,39 / 0,25 s pour JGtm / joueur_074 / joueur_117 (0,31 / 1,04 / 0,51 s avant), `home_assisted_frags_recent` 6-16 ms ;
   [x] revue adversariale : voir le bloc « Revue adversariale » de l'étape 4 (rondes 1 et 2).
 
 ### Étape 4 — Accueil en fenêtre, web (volet 1)
@@ -376,12 +376,12 @@ de résumés S0-S2) ; il ne remplace ni la fenêtre de l'Accueil ni les résumé
       `{ source, matchIds: [], contextDescriptor: { kind: 'recent' } }`, conservé en sessionStorage :
       `hasNavContent`) ; `useMatchNeighborsResolved` : contexte sans liste = voisins et total de Q25 (tout
       l'historique), libellé du descripteur, contexte propagé à prev/next. Favoris : liste d'ids conservée
-      (bornée). Q25 lit le lecteur partagé LIVE (`neighborsRead`), plus le snapshot immuable (revue ronde 1, P1 : sur la copie de prod, les 253 matchs les plus récents de Nuzzles étaient absents du snapshot : voisins vides et total 6 989 au lieu de 7 242 ; `TestMatchNeighbors_LisentLeLiveJamaisLeSnapshot`). Parité Q25 / ordre de l'Accueil : `TestHomeTiles_OrdreIdentiqueAQ25` (schéma DuckDB réel,
+      (bornée). Q25 lit le lecteur partagé LIVE (`neighborsRead`), plus le snapshot immuable (revue ronde 1, P1 : sur la copie de prod, les 253 matchs les plus récents de joueur_074 étaient absents du snapshot : voisins vides et total 6 989 au lieu de 7 242 ; `TestMatchNeighbors_LisentLeLiveJamaisLeSnapshot`). Parité Q25 / ordre de l'Accueil : `TestHomeTiles_OrdreIdentiqueAQ25` (schéma DuckDB réel,
       ex aequo compris) a REVÉLÉ que Q25 n'avait pas de départage -> `ORDER BY instant DESC, match_id DESC`
       dans `Q25NeighborMatches` et `Q25NeighborMatchesTemplate` (le test échoue sans). [!] La parité « trois
       comptes sur la copie des bases du banc » n'est pas exécutable ici : la copie vit dans le worktree
       `LevelUp-wt-chronos`, `data/` de ce worktree n'a que `metadata-prebuilt.zip` (consigne : ne toucher
-      aucun autre dossier) ; FAIT par le pilote (2026-10-21) après la correction P1-1 : parcours complet par curseur des trois comptes (JGtm 1 182, Nuzzles 7 242, Madina97294 1 292 tuiles, 0 doublon, total juste) et voisins + total de Q25 conformes sur 10 positions par compte (récents, bords de page, milieu, plus ancien) : 0 écart. Avant la correction : Nuzzles 10 écarts sur 10 (snapshot).
+      aucun autre dossier) ; FAIT par le pilote (2026-10-21) après la correction P1-1 : parcours complet par curseur des trois comptes (JGtm 1 182, joueur_074 7 242, joueur_117 1 292 tuiles, 0 doublon, total juste) et voisins + total de Q25 conformes sur 10 positions par compte (récents, bords de page, milieu, plus ancien) : 0 écart. Avant la correction : joueur_074 10 écarts sur 10 (snapshot).
 - [x] 4.5 Analyse en cours : `tilesPageRefetchInterval` / `tilesPageStaleTime` (60 s tant que CETTE page
       porte une tuile en cours) sur chaque page de tuiles et sur les favoris ; `homeRefetchInterval` /
       `homeStaleTime` ne lisent plus que la tête. Test : deux pages, 60 s seulement pour celle qui porte
@@ -662,7 +662,7 @@ retirées dans le même commit, `bash scripts/check_test_baseline.sh`), mesure b
       Fait (2026-10-21) : `archlint/kill_feed_summaries_guard_test.go` (`TestJournalDesMortsLuSeulementParLesLecteursDeLignes` + auto-preuve du détecteur) : balayage syntaxique de `platform/duckdb`, `api`, `service`, `analysis` ; une déclaration de premier niveau qui nomme `KillEventsCanonicalTable` ou un littéral `match_kill_events_latest` (commentaires exclus par construction) doit figurer dans l'allowlist datée `file:déclaration` (16 entrées, décroissante : une entrée périmée fait échouer). Les 16 = lecteurs de lignes de l'ADR 0039 décision 8 (Q20, Q21b, Q21c, Q32e, Q32c, `qSoloFrags`, les deux `loadSyntheticKillEvents`, `measuredKillsSQLTemplate`, quatre lecteurs Tactique, source d'événements Halo 5, annuaire des noms) + la sonde d'existence `WeaponEvidenceTable` (hors liste de l'ADR, ajoutée avec sa raison) ; mutation vérifiée (un littéral ajouté dans `service` fait échouer le test). `QKillsBetweenPlayers` subsiste (une seule requête bornée) : `TestUneSeuleRequeteDeFragsEntreDeuxJoueurs` est donc conservé, signature mise à jour en 9.2. Le garde de la Campagne (`campaign_exclusion_guard_test.go`) surveille désormais aussi `match_kill_pairs` et `match_assist_pairs` (sans quoi basculer un lecteur le sortait du garde ; les trois dispenses datées du 2026-10-15 restent valides). ADR 0039 mis à jour (statut, décision 8, « Readers served ») : le lecteur de citations d'armes de `sync` n'est PAS basculé (hors liste fermée du plan, hors garde-rail) -- statué `[!]` pour ce lecteur seul, voir Découvertes.
 - Gate : doctrine §4 ; parité verte pour chaque lecteur sur tous les comptes de la copie ; aucune page
   plus lente (médiane ≤ +10 %) ; revue adversariale close.
-- Statut du gate (pilote, 2026-10-21) : [x] parité au niveau des PAGES sur la copie de prod (26 réponses JSON, serveur d'avant l'étape 9 contre serveur d'après, trois comptes) : TOUS les chiffres servis par les résumés sont identiques (rencontres, rivaux, Relations, Comparaison, couverture des armes à l'identique ; dans les autres pages, aucune différence sur paires, assistances, armes, frags assistés, couverture) ; les seules différences (progression des citations, secondes d'objectifs, famille d'objectif d'une forme, distance moyenne des frags) varient AUSSI entre deux passages du même serveur → bruit antérieur (Découvertes). [x] banc : la plupart des pages 10 à 54 % plus rapides qu'après le seul compactage (Nuzzles vue match 0,34 → 0,16 s, rivaux 0,13 → 0,06 s ; Comparaison 0,84 → 0,63 s) ; seule la vue match de JGtm paraissait +23 %, re-mesurée sur 15 appels : 0,386 → 0,392 s (+1,6 %, bruit). [x] revue adversariale (une ronde, Sonnet) : 0 P0/P1, 3 P2 ; garde-rail durci par le pilote (littéral coupé détecté, plafond de 16 entrées), texte de dispense Campagne corrigé ; le 3e P2 (références de lignes périmées dans une autre dispense) consigné.
+- Statut du gate (pilote, 2026-10-21) : [x] parité au niveau des PAGES sur la copie de prod (26 réponses JSON, serveur d'avant l'étape 9 contre serveur d'après, trois comptes) : TOUS les chiffres servis par les résumés sont identiques (rencontres, rivaux, Relations, Comparaison, couverture des armes à l'identique ; dans les autres pages, aucune différence sur paires, assistances, armes, frags assistés, couverture) ; les seules différences (progression des citations, secondes d'objectifs, famille d'objectif d'une forme, distance moyenne des frags) varient AUSSI entre deux passages du même serveur → bruit antérieur (Découvertes). [x] banc : la plupart des pages 10 à 54 % plus rapides qu'après le seul compactage (joueur_074 vue match 0,34 → 0,16 s, rivaux 0,13 → 0,06 s ; Comparaison 0,84 → 0,63 s) ; seule la vue match de JGtm paraissait +23 %, re-mesurée sur 15 appels : 0,386 → 0,392 s (+1,6 %, bruit). [x] revue adversariale (une ronde, Sonnet) : 0 P0/P1, 3 P2 ; garde-rail durci par le pilote (littéral coupé détecté, plafond de 16 entrées), texte de dispense Campagne corrigé ; le 3e P2 (références de lignes périmées dans une autre dispense) consigné.
 
 ### Étape 10 — Clôture
 
@@ -703,10 +703,10 @@ une étape commencée n'est jamais livrée à moitié.
 Copie des bases de PROD du 2026-10-21 09:57 ; médiane de 5 appels après chauffe, octets décodés.
 `timeseries_tout`, `escouade_tout`, `relations` : périmètre « tout l'historique » (corps `{}`),
 pas le réglage par défaut du web (dernière session) — pire cas. Stabilité : passages 2 et 3 à serveur
-neuf à ±8 % (Relations Nuzzles 4,3 → 6,2 → 5,0 s, bimodale, consignée), mémoire privée du serveur de
+neuf à ±8 % (Relations joueur_074 4,3 → 6,2 → 5,0 s, bimodale, consignée), mémoire privée du serveur de
 banc ~1,56 Go après un passage.
 
-| Page | JGtm | Nuzzles | Madina97294 |
+| Page | JGtm | joueur_074 | joueur_117 |
 |---|---|---|---|
 | accueil | 2.77 s · 3.1 Mo | 6.20 s · 18.3 Mo | 3.08 s · 3.4 Mo |
 | vue_match | 2.07 s · 0.1 Mo | 4.06 s · 0.2 Mo | 1.31 s · 0.1 Mo |
@@ -723,7 +723,7 @@ banc ~1,56 Go après un passage.
 
 ### A.2 Ventilation (sections, passage 3)
 
-| Lecture | JGtm | Nuzzles | Madina97294 | Famille |
+| Lecture | JGtm | joueur_074 | joueur_117 | Famille |
 |---|---|---|---|---|
 | Accueil — `home_favorite_weapon` (arme favorite, tout l'historique) | 1,58 s | 1,98 s | 1,89 s | volet 2, S1 armes (9.3) |
 | Accueil — `home_assisted_frags_recent` (Q26l, toutes les tuiles) | 1,12 s | 3,49 s | 0,87 s | volet 1 (fenêtre) + volet 2 S2 (9.4) |
@@ -740,7 +740,7 @@ La copie de prod n'avait jamais été compactée : 26,6 M lignes brutes pour 3,7
 tables append-only du film (`match_kill_events` 7,97 M → 0,42 M, ~20 passes par match laissées par
 les recuissons d'octobre). Compactage : ~33 s, sauvegarde préalable. Passage à serveur neuf :
 
-| Page | JGtm | Nuzzles | Madina97294 |
+| Page | JGtm | joueur_074 | joueur_117 |
 |---|---|---|---|
 | accueil | 2.77 → 0.31 s | 6.20 → 1.04 s | 3.08 → 0.51 s |
 | vue_match | 2.07 → 0.92 s | 4.06 → 0.34 s | 1.31 → 1.15 s |
@@ -753,7 +753,7 @@ les recuissons d'octobre). Compactage : ~33 s, sauvegarde préalable. Passage à
 | comparaison | 6.25 → 0.83 s | — | — |
 
 Après compactage, l'arme favorite coûte 60-150 ms (1,6-2,0 s avant), les frags assistés 55-205 ms,
-Q23b/Q28c 250-1 080 ms (Madina97294 reste à ~1 s sur la vue match).
+Q23b/Q28c 250-1 080 ms (joueur_117 reste à ~1 s sur la vue match).
 
 ## Découvertes
 

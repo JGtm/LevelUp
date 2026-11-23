@@ -1,4 +1,4 @@
-// JETABLE (étape 0.2) : témoin du fil et de la fiche d'ELOsk11 sur le match 38900a5e, avec les vraies fonctions du site.
+// JETABLE (étape 0.2) : témoin du fil et de la fiche du joueur A sur le match 38900a5e, avec les vraies fonctions du site.
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -35,7 +35,7 @@ vi.mock('@/lib/accessibility', () => ({
   tokenCssVar: (token: string) => `var(--ac-${token})`,
 }))
 
-const DIR = 'c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite'
+const DIR = '<dossier du projet>/data/cache/replays/halo_infinite'
 const OUT = path.join(os.tmpdir(), 'bl1118_temoin_38900a5e.json')
 
 function kill(over: Partial<KillEvent>): KillEvent {
@@ -47,7 +47,7 @@ function kill(over: Partial<KillEvent>): KillEvent {
 }
 
 describe('témoin 38900a5e', () => {
-  it('fil 4:30-5:30 et fiche ELOsk11', () => {
+  it('fil 4:30-5:30 et fiche joueur A', () => {
     const raw = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(DIR, '38900a5e.json.gz'))).toString('utf8'))
     const doc = normalizeReplayDocument(raw)
     const players = buildPlayers(doc, [])
@@ -156,11 +156,11 @@ describe('témoin 38900a5e', () => {
       view.unmount()
     }
 
-    // Fiche d'ELOsk11
-    const elo = players.find((p) => /elosk11/i.test(playerName(p) ?? ''))
+    // Fiche du joueur A
+    const elo = players.find((p) => /joueur A/i.test(playerName(p) ?? ''))
     expect(elo).toBeDefined()
     const presenceDoc = vitalityPresence(doc)
-    const rosterEntry = doc.roster.find((r) => /elosk11/i.test(r.name ?? ''))
+    const rosterEntry = doc.roster.find((r) => /joueur A/i.test(r.name ?? ''))
     const fiche = [9700, 9786, 9900, 9940].map((frame) => {
       const s = playerStateAt(elo!, frame, presenceDoc)
       const open = (rosterEntry?.presence ?? []).some((p) => frame >= p.from && frame <= p.to)

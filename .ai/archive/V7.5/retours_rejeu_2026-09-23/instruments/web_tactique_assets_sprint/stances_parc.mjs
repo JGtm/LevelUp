@@ -5,7 +5,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-const DIR = 'C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite'
+const DIR = 'C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite'
 const fichiers = readdirSync(DIR).filter((f) => /^[0-9a-f]{8}\.json$/.test(f)).sort()
 const parSchema = new Map()
 const parGenre = new Map()

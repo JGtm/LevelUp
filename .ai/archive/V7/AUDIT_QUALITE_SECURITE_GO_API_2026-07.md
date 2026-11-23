@@ -183,7 +183,7 @@ Avalements silencieux à impact durable (les 4 majeurs) :
 - `worldenrich/wiring.go:64` — `_ = store.UpdateOAuthRefreshToken(...)` : si l'écriture
   du RT roté échoue, le nouveau RT est perdu sans log -> prochain refresh
   `invalid_grant` -> auth du joueur morte (re-capture interdite par le modèle). C'est
-  exactement l'incident Madina de l'ADR 0023.
+  exactement l'incident joueur_075 de l'ADR 0023.
 - `sync/engagement.go:470-483` — historique retourné `nil` sur erreur de requête (vue
   renommée après migration) -> chaque match calculé comme « premier match », score faux
   **flush en DB**. `rows.Err()` non vérifié.

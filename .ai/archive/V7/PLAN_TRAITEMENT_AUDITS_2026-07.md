@@ -1,6 +1,6 @@
 # PLAN — Traitement exhaustif des 4 audits du 2026-07-02
 
-> Date de rédaction : 2026-07-02. Exécutant prévu : Opus. Superviseur : Guillaume.
+> Date de rédaction : 2026-07-02. Exécutant prévu : Opus. Superviseur : JGtm.
 > Sources (elles FONT FOI — ce plan les ordonne, il ne les remplace pas) :
 > - [.ai/AUDIT_ARCHI_GO_API_2026-07.md](../AUDIT_ARCHI_GO_API_2026-07.md) — 173 findings (50 Majeurs numérotés + 118 Mineurs groupés) — cité « ARCHI n° »
 > - [.ai/AUDIT_DETTE_DOC_2026-07.md](../AUDIT_DETTE_DOC_2026-07.md) — doc/durabilité/flags — cité « DETTE §x »
@@ -2424,7 +2424,7 @@ technique (V1-V5) est livré et vérifié ; le tracker est réconcilié avec la 
 ### MERGE MAIN — exécuté le 2026-07-10 (GO utilisateur)
 
 - V7/V8/V9/V10ab livrés + lots GH1-GH6 (gate humain, 4 re-passes, toutes vertes).
-- **GATE HUMAIN : CLOS le 2026-07-10** (re-passe finale GH5/GH6 validée par Guillaume).
+- **GATE HUMAIN : CLOS le 2026-07-10** (re-passe finale GH5/GH6 validée par JGtm).
 - Gates de merge : CI branche verte (672960cb0) ; intégration -p 1 locale exit 0/0 FAIL ;
   front tsc 0 / lint 0 err / vitest 2099. Répétition générale sur copie prod (restic
   9e96ed20) : boot OK, migrations appliquées (metadata HI applied=3 dont les 2 colonnes

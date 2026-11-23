@@ -1,6 +1,6 @@
 const fs=require('fs'),zlib=require('zlib');
 const id=process.argv[2];
-const d=JSON.parse(zlib.gunzipSync(fs.readFileSync('c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
+const d=JSON.parse(zlib.gunzipSync(fs.readFileSync('<poste>/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
 console.log(JSON.stringify(d.coverage.hits));
 console.log(JSON.stringify(d.coverage.t0Film), d.t0FilmMs, d.originMs, JSON.stringify(d.coverage.originResolved), JSON.stringify(d.coverage.clocks).slice(0,600));
 console.log('roundClock',JSON.stringify(d.roundClock).slice(0,500));

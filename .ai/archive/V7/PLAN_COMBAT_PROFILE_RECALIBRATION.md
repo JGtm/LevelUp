@@ -14,7 +14,7 @@ Les 4 joueurs suivis affichaient tous le même profil (« Offensif précis / Dé
 
 - **DR** : médiane 1.49, p75 1.55, p90 1.60, p99 1.76, max 2.10.
 - **OC** : médiane 0.82, p75 0.85, p90 0.87, p99 0.92, max 0.98 (borné — saturation).
-- **Engagement absolu** = `pace_joueur / pace_lobby` (colonnes déjà persistées `engagement_pace_player` / `engagement_pace_lobby`). Mesuré : Madina 1.34 > JGtm 0.99 > Chocoboflor 0.87 > XxDaemon 0.71 (conforme au terrain).
+- **Engagement absolu** = `pace_joueur / pace_lobby` (colonnes déjà persistées `engagement_pace_player` / `engagement_pace_lobby`). Mesuré : joueur_075 1.34 > JGtm 0.99 > joueur_165 0.87 > joueur_639 0.71 (conforme au terrain).
 
 ## Décisions validées (vocabulaire + bornes)
 
@@ -68,6 +68,6 @@ Le repère « 100 % » des barres OC/DR (`NormalizeForBar` + `combat-yield-bar.t
 - Front : typecheck + mapping labels.
 
 ## Done definition
-- 4 joueurs différenciés (JGtm Précis/Exposé/Mesuré, Madina Équilibré/Solide/Agressif, Choco Équilibré/Solide/Discret, Daemon Dispersé/Fragile/Passif).
+- 4 joueurs différenciés (JGtm Précis/Exposé/Mesuré, joueur_075 Équilibré/Solide/Agressif, joueur_901 Équilibré/Solide/Discret, Daemon Dispersé/Fragile/Passif).
 - `go test ./...` + `go vet` verts ; `npm typecheck/lint` verts.
 - Glossaire + thought_log à jour.

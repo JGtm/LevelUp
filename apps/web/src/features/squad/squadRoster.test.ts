@@ -24,24 +24,24 @@ describe('squadTeammates', () => {
 })
 
 describe('findSquadByRoster (clé XUID, player-agnostic)', () => {
-  // Escouade « Big Bsses » créée par JGtm (me-x), roster {JGtm, Madina, Choco}.
+  // Escouade « Big Bsses » créée par JGtm (me-x), roster {JGtm, joueur_075, joueur_901}.
   const bigBsses = sq('big', [
     member('me-x', 'JGtm', 'jgtm'),
-    member('madina-x', 'Joueur90002'),
-    member('choco-x', 'Joueur90001'),
+    member('joueur_075-x', 'Joueur90002'),
+    member('joueur_901-x', 'Joueur90001'),
   ])
 
   it('viewer == créateur : roster hors viewer reconnu', () => {
-    // JGtm (me-x) sélectionne Madina + Choco → matche Big Bsses.
-    expect(findSquadByRoster([bigBsses], ['madina-x', 'choco-x'], 'me-x')?.squad.id).toBe('big')
+    // JGtm (me-x) sélectionne joueur_075 + joueur_901 → matche Big Bsses.
+    expect(findSquadByRoster([bigBsses], ['joueur_075-x', 'joueur_901-x'], 'me-x')?.squad.id).toBe('big')
   })
 
   it('escouade créée par A, vue par B : reconnue, sans doublon du viewer', () => {
-    // Joueur90001 (choco-x) voit Big Bsses : roster hors lui = {JGtm, Madina}.
-    const others = squadTeammates(bigBsses.members, 'choco-x').map((m) => m.xuid)
-    expect(others).toEqual(['me-x', 'madina-x'])
-    expect(others).not.toContain('choco-x') // pas de doublon de lui-même
-    expect(findSquadByRoster([bigBsses], ['me-x', 'madina-x'], 'choco-x')?.squad.id).toBe('big')
+    // Joueur90001 (joueur_901-x) voit Big Bsses : roster hors lui = {JGtm, joueur_075}.
+    const others = squadTeammates(bigBsses.members, 'joueur_901-x').map((m) => m.xuid)
+    expect(others).toEqual(['me-x', 'joueur_075-x'])
+    expect(others).not.toContain('joueur_901-x') // pas de doublon de lui-même
+    expect(findSquadByRoster([bigBsses], ['me-x', 'joueur_075-x'], 'joueur_901-x')?.squad.id).toBe('big')
   })
 
   it('viewer dont le gamertag diffère du slug : toujours matché (clé xuid)', () => {
@@ -51,8 +51,8 @@ describe('findSquadByRoster (clé XUID, player-agnostic)', () => {
   })
 
   it('ne matche pas un roster partiel, sur-ensemble ou inconnu', () => {
-    expect(findSquadByRoster([bigBsses], ['madina-x'], 'me-x')).toBeNull()
-    expect(findSquadByRoster([bigBsses], ['madina-x', 'choco-x', 'x-x'], 'me-x')).toBeNull()
+    expect(findSquadByRoster([bigBsses], ['joueur_075-x'], 'me-x')).toBeNull()
+    expect(findSquadByRoster([bigBsses], ['joueur_075-x', 'joueur_901-x', 'x-x'], 'me-x')).toBeNull()
     expect(findSquadByRoster([bigBsses], ['inconnu-x'], 'me-x')).toBeNull()
   })
 

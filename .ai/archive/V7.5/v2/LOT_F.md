@@ -10,7 +10,7 @@
 Toutes les commandes `go` en série, depuis `apps/go-api`, cache dédié :
 
 ```
-GOCACHE=/c/Users/Guillaume/AppData/Local/go-build-v2-tests-ci CGO_ENABLED=1
+GOCACHE=<poste>/AppData/Local/go-build-v2-tests-ci CGO_ENABLED=1
 ```
 
 Aucun test sur film réel (aucune variable `REPLAY_FILM_DIR`, `KILLSOURCE_FIXTURES`,
@@ -55,8 +55,8 @@ la ligne de l'API. Tout joueur publié porte donc le triplet de l'API par constr
 régression du décodeur ne produit pas un écart de valeur — elle fait DISPARAÎTRE le joueur du
 calque. Ce que l'assertion garde réellement :
 
-- **la liste figée des 5 joueurs appariés** (`2533275001554469`, `2535429692041611`,
-  `2535432531943478`, `2535463878425995`, `2535465632069522`) — le VRAI détecteur de régression
+- **la liste figée des 5 joueurs appariés** (`2630521749790773`, `2588623217004373`,
+  `2639041738602226`, `2569104772637498`, `2805158871119453`) — le VRAI détecteur de régression
   du pont ; les 3 non appariés sont figés eux aussi, un 4e refus ou un 6e appariement rougit ;
 - **la cohérence INTERNE à la chaîne du film** entre les deux dérivations du même compteur : le
   NOMBRE D'INCRÉMENTS qui sert de clé d'appariement (`objectiveevents.countsOf`) et la DERNIÈRE
@@ -71,7 +71,7 @@ Le message d'échec, qui disait `DIFFÉRENTIEL film ↔ API`, est renommé
 **Le fait des deux chaînes, lui, TIENT** (vérifié par la revue) : le roster NOMMÉ du film
 (7 xuids) est exactement
 l'ensemble des joueurs que l'API donne à au moins une mort — le seul joueur à 0 mort
-(`2535458702376288`) est le seul absent. Une vie n'est nommée que par la mort qui la ferme
+(`2643148600905879`) est le seul absent. Une vie n'est nommée que par la mort qui la ferme
 (`lives.go`). En revanche le NOMBRE de vies nommées n'est PAS le nombre de morts (4 joueurs
 sur 7 coïncident, 3 non, dans les deux sens) : la mesure est figée telle quelle, sans théorie.
 
@@ -86,7 +86,7 @@ confronter aurait laissé une retouche du fixture déplacer l'attendu en silence
 |---|---|
 | `replay/origin.go:114` `read := ... + 100` | `originMs = 34970 ms, attendu 34870 ms` ET `t0FilmMs = 35270 ms, attendu 35170 ms` |
 | `replay/score_timeline.go:136` `ScoreTick{T: t, V: v + 1}` | 4 lignes `SÉRIE PUBLIÉE ≠ CLÉ D'APPARIEMENT` (frags, morts ET assistances décalés) + `courbe d'équipe : 2 points, attendu 3 ([{194 2} {705 4}])` |
-| `fixture.json` `"kills": 7` → `6` | `oracle recopié périmé pour 2535463878425995 : fixture.json dit 6/2/1 camp 0, la recopie dit 7/2/1 camp 0` |
+| `fixture.json` `"kills": 7` → `6` | `oracle recopié périmé pour 2569104772637498 : fixture.json dit 6/2/1 camp 0, la recopie dit 7/2/1 camp 0` |
 
 Gate F.1 (avant-plan) :
 
@@ -449,7 +449,7 @@ comptage de tests dans le log du job `frontend` d'un run réel, et le coût de
 ## Gate F (final, rejoué sur l'état complet de la branche)
 
 Toutes les commandes en avant-plan, depuis `apps/go-api` sauf mention, préfixe
-`GOCACHE=/c/Users/Guillaume/AppData/Local/go-build-v2-tests-ci CGO_ENABLED=1`.
+`GOCACHE=<poste>/AppData/Local/go-build-v2-tests-ci CGO_ENABLED=1`.
 
 | Commande | Dernière ligne |
 |---|---|
@@ -556,7 +556,7 @@ chaînes.
 
 | Mutation | Observé — et conforme à ce que la doc dit maintenant |
 |---|---|
-| `fixture.json:52` kills 7→6 **et** recopie de l'oracle alignée à 6 | `4 joueurs publiés, attendu 5 ([2533275001554469 2535429692041611 2535432531943478 2535465632069522])` + `joueur 2535463878425995 apparié le 2026-09-05 mais plus publié : le pont d'identité a régressé` — **aucune ligne de comparaison de valeurs**, exactement ce que l'en-tête annonce |
+| `fixture.json:52` kills 7→6 **et** recopie de l'oracle alignée à 6 | `4 joueurs publiés, attendu 5 ([2630521749790773 2588623217004373 2639041738602226 2805158871119453])` + `joueur 2569104772637498 apparié le 2026-09-05 mais plus publié : le pont d'identité a régressé` — **aucune ligne de comparaison de valeurs**, exactement ce que l'en-tête annonce |
 | `replay/score_timeline.go:136` `V: v + 1` | 4 lignes `SÉRIE PUBLIÉE ≠ CLÉ D'APPARIEMENT pour <xuid> : la série finit à N frags … alors que le pont l'a apparié sur M … incréments` |
 
 ### [x] F-R1-2 (P2) — le ratchet `gamefiles` ne balayait pas « tout le module »

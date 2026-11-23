@@ -27,9 +27,9 @@ func TestBuildSoloFirstBlood_ProjectsMatchPoints(t *testing.T) {
 		{MatchID: "m2", StartTime: m1Start.Add(time.Hour), MapName: i18n.FromColumns("Bazaar", "")},
 		{MatchID: "m3", StartTime: m1Start.Add(2 * time.Hour)},
 	}
-	got := buildSoloFirstBlood("Madina", rows, matches, i18n.Default)
-	if len(got) != 1 || got[0].Player != "Madina" {
-		t.Fatalf("want 1 série pour Madina, got %#v", got)
+	got := buildSoloFirstBlood("joueur_075", rows, matches, i18n.Default)
+	if len(got) != 1 || got[0].Player != "joueur_075" {
+		t.Fatalf("want 1 série pour joueur_075, got %#v", got)
 	}
 	pts := got[0].Matches
 	if len(pts) != 3 {
@@ -71,13 +71,13 @@ func TestBuildSoloFirstBlood_ProjectsMatchPoints(t *testing.T) {
 // vide plutôt qu'une grille de lanes muettes).
 func TestBuildSoloFirstBlood_NilWhenNoEvent(t *testing.T) {
 	rows := []narrative.FirstEventsRow{{MatchID: "m1"}, {MatchID: "m2"}}
-	if got := buildSoloFirstBlood("Madina", rows, nil, i18n.Default); got != nil {
+	if got := buildSoloFirstBlood("joueur_075", rows, nil, i18n.Default); got != nil {
 		t.Errorf("want nil sans aucun événement, got %#v", got)
 	}
 	if got := buildSoloFirstBlood("", rows, nil, i18n.Default); got != nil {
 		t.Errorf("want nil sans gamertag, got %#v", got)
 	}
-	if got := buildSoloFirstBlood("Madina", nil, nil, i18n.Default); got != nil {
+	if got := buildSoloFirstBlood("joueur_075", nil, nil, i18n.Default); got != nil {
 		t.Errorf("want nil sans row, got %#v", got)
 	}
 }

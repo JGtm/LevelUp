@@ -34,18 +34,18 @@ et l'étend aux champs rang/XP qui souffrent du même bug.
 | Joueur | total rows | banner stocké | emblem stocké | dernière bannière |
 |--------|-----------:|--------------:|--------------:|-------------------|
 | JGtm | 86 | 1 / 86 | 13 / 86 | aujourd'hui |
-| Madina97294 | 65 | 0 / 65 | 9 / 65 | jamais |
-| XxDaemonGamerxX | 0 | 0 | 0 | jamais |
-| Chocoboflor | DB lockée | — | — | — |
+| joueur_117 | 65 | 0 / 65 | 9 / 65 | jamais |
+| joueur_291 | 0 | 0 | 0 | jamais |
+| joueur_165 | DB lockée | — | — | — |
 
 ### Côté tokens (logs pool.log dernières 24h)
 
 | Joueur | source | Exchange Halo | Customization endpoint |
 |--------|--------|---|---|
 | JGtm | duckdb_oauth | ✅ OK | ✅ rend données complètes |
-| Chocoboflor | duckdb_oauth | ✅ OK | ✅ (présumé OK) |
-| Madina97294 | env_oauth (KO invalid_grant) + duckdb_oauth (OK) | ✅ via duckdb | ❌ aucune trace récente d'appel |
-| XxDaemonGamerxX | duckdb_oauth | ✅ OK | ❌ 5× 403 sur 24h |
+| joueur_165 | duckdb_oauth | ✅ OK | ✅ (présumé OK) |
+| joueur_117 | env_oauth (KO invalid_grant) + duckdb_oauth (OK) | ✅ via duckdb | ❌ aucune trace récente d'appel |
+| joueur_291 | duckdb_oauth | ✅ OK | ❌ 5× 403 sur 24h |
 
 ### Symptômes post-refactor V1 (signalés par toi)
 
@@ -59,7 +59,7 @@ et l'étend aux champs rang/XP qui souffrent du même bug.
 
 1. **§12 — token mismatch suspect** : non confirmé. JGtm a son propre token valide. Le rang stale vient probablement du cache Halo serveur OU d'un autre bug
 2. **403 XxDaemonGamer** : token valide pour les autres endpoints, seul customization 403 → 99% c'est sa privacy Halo Waypoint
-3. **Madina** : aucun appel customization dans les logs récents → le live fetch n'est pas déclenché pour elle (à investiguer)
+3. **joueur_075** : aucun appel customization dans les logs récents → le live fetch n'est pas déclenché pour elle (à investiguer)
 4. **Flicker tous champs** : pollution par UPSERT du refactor §11 (cause identifiée, fix planifié ci-dessous)
 
 ---
@@ -143,9 +143,9 @@ synchrone, et la mise à jour est asynchrone et acquise à la prochaine fetch.
 
 - Bug §12 "JGtm rank stale" : non lié au refactor V2 (cause à investiguer
   séparément : cache serveur Halo, throttle, ou autre)
-- Privacy 403 XxDaemonGamerxX : V2 surface le `last_attempt_status = 'forbidden_403'`
+- Privacy 403 joueur_291 : V2 surface le `last_attempt_status = 'forbidden_403'`
   et le frontend affiche le fallback gris. Pas de fix possible côté code (réglage joueur Halo)
-- Bug "Madina pas d'appel customization" : V2 inclut un diag explicite pour
+- Bug "joueur_075 pas d'appel customization" : V2 inclut un diag explicite pour
   comprendre. Si root cause hors V2, ticket dédié
 
 ---
@@ -175,7 +175,7 @@ Plutôt qu'un revert massif risqué, on procède par chirurgie ciblée :
 
 Après revert : on est revenu au comportement original `career_progression`
 + `mergeCareerRow` + `Q26cHomeSpartanIdentity`. Ce comportement avait des
-bugs (la bannière de Madina, etc.) MAIS PAS le flicker. C'est un état stable
+bugs (la bannière de joueur_075, etc.) MAIS PAS le flicker. C'est un état stable
 sur lequel construire V2 proprement.
 
 ---
@@ -190,7 +190,7 @@ stopper après n'importe quelle phase et le système reste stable.
 - `git log --oneline` pour lister les commits §11 (3-5 commits identifiés)
 - `git revert <hash>` pour chacun (NE PAS faire de reset, garder l'historique propre)
 - Build + test
-- **Livrable** : système revenu à l'état "stable mais imparfait" (bannière de Madina manque, mais pas de flicker)
+- **Livrable** : système revenu à l'état "stable mais imparfait" (bannière de joueur_075 manque, mais pas de flicker)
 - **Risque** : faible (revert atomique, restauration garantie)
 
 ### Phase 2 — Audit + fix `mergeCareerRow` (1h)
@@ -240,7 +240,7 @@ C'est probablement déjà OK depuis le revert Phase 1, mais on audite explicitem
 **Livrable** : test `TestGetSpartanIdentity_ReturnsDBFirst_LiveDoesNotEraseExisting`
 **Risque** : faible
 
-### Phase 5 — Diag pourquoi Madina n'a pas de customization fetch (30 min)
+### Phase 5 — Diag pourquoi joueur_075 n'a pas de customization fetch (30 min)
 
 Ajouter un log Info dans `fetchAndMerge` qui dit :
 - xuid
@@ -249,7 +249,7 @@ Ajouter un log Info dans `fetchAndMerge` qui dit :
 - needRefresh
 - kickoffBackgroundRefresh fired ? (oui/non/raison)
 
-Visite home Madina → lire les logs → comprendre pourquoi le fetch n'est jamais déclenché.
+Visite home joueur_075 → lire les logs → comprendre pourquoi le fetch n'est jamais déclenché.
 
 **Livrable** : verdict écrit dans thought_log
 **Risque** : aucun (juste du log, pas de fix)
@@ -267,7 +267,7 @@ L'INSERT inclut ce champ. La home peut le surfacer côté API JSON pour que
 le frontend affiche un message explicite (ex: "ce joueur a son profil
 Spartan en privé").
 
-**Livrable** : XxDaemonGamerxX → forbidden_403 visible dans le JSON
+**Livrable** : joueur_291 → forbidden_403 visible dans le JSON
 **Risque** : faible (ajout colonne, pas modification)
 
 ### Phase 7 — Tests E2E par scénario API (1h)
@@ -306,7 +306,7 @@ Tests d'intégration avec mock `CareerFetcher` qui simule :
 | 2 | Audit + fix `mergeCareerRow` | 1h | moyen |
 | 3 | INSERT field-aware | 45 min | faible |
 | 4 | Stale-while-revalidate strict | 30 min | faible |
-| 5 | Diag Madina | 30 min | aucun |
+| 5 | Diag joueur_075 | 30 min | aucun |
 | 6 | Surface last_fetch_status | 30 min | faible |
 | 7 | Tests E2E par scénario | 1h | aucun |
 | 8 | Cleanup + livraison | 30 min | aucun |
@@ -321,7 +321,7 @@ Tests d'intégration avec mock `CareerFetcher` qui simule :
 - [ ] Plus de méthode `WithSpartanIdentityRepo` dans `CareerLiveService`
 - [ ] Plus de table `spartan_identity` dans la migration au boot
 - [ ] `go test ./...` passe
-- [ ] Home affiche les bannières connues (JGtm OK, Madina/XxDaemon affichent fallback gris ou dernière connue de career_progression)
+- [ ] Home affiche les bannières connues (JGtm OK, joueur_075/joueur_639 affichent fallback gris ou dernière connue de career_progression)
 
 ### Phase 2 (merge fix)
 - [ ] Test : live rend `BannerImageURL=""`, dbLast a `BannerImageURL="url"` → INSERT n'inclut PAS banner_image_url
@@ -336,12 +336,12 @@ Tests d'intégration avec mock `CareerFetcher` qui simule :
 - [ ] Test : home visit avec live qui timeout → réponse ≤200ms avec dbFallback complet
 - [ ] Test : live qui rend partiel → 1ère réponse = dbFallback, 2ème réponse = nouvelles valeurs
 
-### Phase 5 (diag Madina)
+### Phase 5 (diag joueur_075)
 - [ ] Log explicite dans logs/service.log : "career_live: kickoff_skipped reason=X xuid=Madina_xuid"
 - [ ] Verdict écrit dans thought_log
 
 ### Phase 6 (last_fetch_status)
-- [ ] JSON home pour XxDaemonGamerxX contient `spartan_identity.fetch_status = 'forbidden_403'`
+- [ ] JSON home pour joueur_291 contient `spartan_identity.fetch_status = 'forbidden_403'`
 - [ ] Frontend reçoit le statut et peut décider l'affichage
 
 ### Phase 7 (E2E)
@@ -418,7 +418,7 @@ Avant que je touche au code, valide ou corrige :
 2. **L'approche append-only** : on garde la table `career_progression` existante (1 ligne par sync, ARG_MAX FILTER en lecture) — pas de nouvelle table ?
 3. **L'ordre des phases** : revert §11 d'abord, puis fix `mergeCareerRow`, puis le reste ?
 4. **Les tests E2E** : tu veux que je liste les 6 scénarios attendus avant que je code Phase 7 ?
-5. **Le scheduler 6h `CustomizationRefresher`** : garder ou supprimer ? Je propose de décider après Phase 5 (diag Madina)
+5. **Le scheduler 6h `CustomizationRefresher`** : garder ou supprimer ? Je propose de décider après Phase 5 (diag joueur_075)
 
 Si tu valides, je commence par te lister les commits exacts à reverter (avec hashes, dates, descriptifs) en Phase 1, et je te montre avant d'exécuter quoi que ce soit.
 

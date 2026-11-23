@@ -1,6 +1,6 @@
 # Plan — Ajustements UI pré-v7.5 (retours du 2026-09-19)
 
-Source unique : `C:\Users\Guillaume\Downloads\Ajustements pre-v75.txt` + la conversation du
+Source unique : `<poste>\Downloads\Ajustements pre-v75.txt` + la conversation du
 2026-09-19. Contrat d'exécution : skill `plan-execution`. Branche d'intégration :
 `wt/ajustements-pre-v75` (worktree `LevelUp-wt-ajustements-pre-v75`, base `feat/v75`
 `de7cb7af0`). Lots parallèles sur `wt/ajustements-matchview` et `wt/ajustements-heatmap`,

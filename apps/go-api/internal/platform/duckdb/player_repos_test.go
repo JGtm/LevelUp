@@ -1600,7 +1600,7 @@ func TestHomeRepo_LoadCSRAlltimePeak_PeakAchievedAt(t *testing.T) {
 	t.Run("corrélé via match_csrs", func(t *testing.T) {
 		pdb := newTestPlayerDB(t)
 		ctx := context.Background()
-		// Cas Madina validé : pic Diamond 4 (val 1400) ⟷ match du 2025-11-06 21:25.
+		// Cas joueur_075 validé : pic Diamond 4 (val 1400) ⟷ match du 2025-11-06 21:25.
 		seedCSRAlltimeAndMatchCSR(t, pdb, csrAlltimeSeed{
 			tier: "Diamond", subTier: 4, value: 1400,
 			matchID: "peak_m", matchTier: "Diamond", matchSubTier: 4, matchValue: 1400,

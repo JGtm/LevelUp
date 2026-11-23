@@ -109,7 +109,7 @@ des Paramètres qui n'existe plus.
   au repos de 15 s, tests du joueur et des statuts terminaux), Go `e2aa51dbfa` (mémoire de `history_complete`
   dans le dépôt, oubli branché sur l éviction de purge) ; gates de l agent verts, archlint complet compris.
 - 2026-11-22 : lecture de la prod : synchronisation automatique active (cycle de 15 min, 11 joueurs) ;
-  `generalgrant14` absent de la prod. Découverte ci-dessous (alerte « zero-insert »).
+  `joueur_1194` absent de la prod. Découverte ci-dessous (alerte « zero-insert »).
 
 ## Découvertes
 

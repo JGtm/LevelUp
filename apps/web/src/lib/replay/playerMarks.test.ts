@@ -10,7 +10,7 @@ function row(over: Partial<MatchScoreboardRow>): MatchScoreboardRow {
 
 describe('buildPlayerMarks', () => {
   const board = [
-    row({ xuid: 'ME', gamertag: 'Guillaume', is_me: true }),
+    row({ xuid: 'ME', gamertag: 'JGtm', is_me: true }),
     row({ xuid: 'A', gamertag: 'Ma Pote', team_side: 't0' }),
     row({ xuid: 'B', gamertag: 'Adversaire Ami', team_side: 't1' }),
     row({ xuid: 'C', gamertag: 'Inconnu', team_side: 't1' }),
@@ -28,7 +28,7 @@ describe('buildPlayerMarks', () => {
   })
 
   it('le joueur de la page n’est jamais marqué ami de lui-même', () => {
-    expect(buildPlayerMarks(board, ['Guillaume']).get('ME')).toBe('me')
+    expect(buildPlayerMarks(board, ['JGtm']).get('ME')).toBe('me')
   })
 
   it('liste d’amis vide ou entrées vides : seul « moi » est marqué', () => {
@@ -43,7 +43,7 @@ describe('buildPlayerMarks', () => {
  */
 describe('buildPlayerMarks — avec un point de vue', () => {
   const board = [
-    row({ xuid: 'ME', gamertag: 'Guillaume', is_me: true }),
+    row({ xuid: 'ME', gamertag: 'JGtm', is_me: true }),
     row({ xuid: 'A', gamertag: 'Ma Pote', team_side: 't0' }),
     row({ xuid: 'B', gamertag: 'Adversaire Ami', team_side: 't1' }),
     row({ xuid: 'C', gamertag: 'Inconnu', team_side: 't1' }),
@@ -60,7 +60,7 @@ describe('buildPlayerMarks — avec un point de vue', () => {
   })
 
   it('la ligne « moi » redevient un joueur comme un autre — amie si elle est amie', () => {
-    expect(buildPlayerMarks(board, ['Guillaume'], 'C').get('ME')).toBe('friend')
+    expect(buildPlayerMarks(board, ['JGtm'], 'C').get('ME')).toBe('friend')
   })
 
   it('point de vue = la ligne « moi » : identique à l’appel sans point de vue', () => {

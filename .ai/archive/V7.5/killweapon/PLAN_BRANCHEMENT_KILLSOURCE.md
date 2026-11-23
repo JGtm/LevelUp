@@ -395,7 +395,7 @@ Q27 sur JGtm (`2533274823110022`), copie Infinite :
 | groupe NULL (bots), exclu par `opp_xuid <> ?` | 1 | 71 | 12 |
 
 Le degonflement est la, et le duel de controle du plan est retrouve **au chiffre pres** :
-`Luigi Numba 01 -> JGtm` **101 -> 29**. Les cinq suivants : 82->28, 81->24, 81->24, 78->42,
+`joueur_1187 -> JGtm` **101 -> 29**. Les cinq suivants : 82->28, 81->24, 81->24, 78->42,
 76->19. Q26 est protege STRUCTURELLEMENT (son `kv_stats` se joint a `encounter_stats`, issu de
 `match_participants` deja filtre : un `opp_xuid` NULL ne joint jamais).
 
@@ -511,7 +511,7 @@ fantome Halo 5 suit mecaniquement et est declare, pas arbitre.
 
 | lecteur | avant | apres | lecture |
 |---|---|---|---|
-| Q19b / `qKV` — duel de controle `Luigi Numba 01 -> JGtm` | **101** | **29** | le chiffre annonce par le plan, retrouve au chiffre pres |
+| Q19b / `qKV` — duel de controle `joueur_1187 -> JGtm` | **101** | **29** | le chiffre annonce par le plan, retrouve au chiffre pres |
 | Q27 — JGtm, tous opposants | 3 370 couples / 15 741 frags / 19 384 morts | **3 370 / 10 486 / 12 309** | **memes couples**, cumuls degonfles ; groupe NULL (71 frags de bot) ecarte |
 | Q20 journal — match le plus doublonne | 1 832 lignes, **458 instants** | 458 lignes, **458 instants** | la deduplication n a retire QUE des doublons : pas une mort distincte perdue |
 | Q23b / squad / engagement — meme match | 1 832 | 458 | idem |
@@ -656,7 +656,7 @@ population : les 1 343 matchs couverts
   match_kill_events_latest   124 694 lignes
   facteur de degonflement    2,006
 
-le duel de controle, joint par XUID (Luigi Numba 01 -> JGtm) :
+le duel de controle, joint par XUID (joueur_1187 -> JGtm) :
   avant   101 frags affiches
   apres    29 frags
 ```

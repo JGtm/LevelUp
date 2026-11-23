@@ -18,11 +18,11 @@ import (
 )
 
 const (
-	soireeJGtm     = "2603225103667623"
-	soireeMadina   = "2623439693412443"
-	soireeChoco    = "2547408409520575"
-	soireeTeaSnack = "2555408283632666"
-	soireeSession  = "S_07_10"
+	soireeJGtm      = "2603225103667623"
+	soireeJoueur075 = "2623439693412443"
+	soireeJoueur901 = "2547408409520575"
+	soireeTeaSnack  = "2555408283632666"
+	soireeSession   = "S_07_10"
 )
 
 // soireeDu7Octobre : les huit matchs (heure UTC du registre), la quatrième place de chacun, et
@@ -49,23 +49,23 @@ func soireeDu7Octobre() *mockSquadRepo {
 		at := time.Date(2026, 10, 7, m.h, m.m, 0, 0, time.UTC)
 		rows = append(rows, makeSquadRowSess(m.id, m.carte, domain.OutcomeWin, soireeSession, at))
 		allies = append(allies,
-			ally(m.id, soireeJGtm), ally(m.id, soireeMadina), ally(m.id, soireeChoco), ally(m.id, m.quatrieme))
+			ally(m.id, soireeJGtm), ally(m.id, soireeJoueur075), ally(m.id, soireeJoueur901), ally(m.id, m.quatrieme))
 	}
 	return &mockSquadRepo{
 		// Le top des coéquipiers fréquents (Q29) tel que mesuré : Joueur900008 y figure, avec
 		// deux matchs ensemble — ceux de cette soirée.
 		topRows: []domain.TopTeammateRow{
-			{XUID: soireeMadina, Gamertag: "Joueur90002", GamesTogether: 587},
-			{XUID: soireeChoco, Gamertag: "Joueur90001", GamesTogether: 466},
+			{XUID: soireeJoueur075, Gamertag: "Joueur90002", GamesTogether: 587},
+			{XUID: soireeJoueur901, Gamertag: "Joueur90001", GamesTogether: 466},
 			{XUID: "2558964982616721", Gamertag: "Joueur90000000f", GamesTogether: 39},
 			{XUID: soireeTeaSnack, Gamertag: "Joueur900008", GamesTogether: 2},
 		},
-		squadRowsByTeammate: map[string][]domain.SquadMatchRow{soireeMadina: rows, soireeChoco: rows},
+		squadRowsByTeammate: map[string][]domain.SquadMatchRow{soireeJoueur075: rows, soireeJoueur901: rows},
 		allyRows:            allies,
 		amis:                []string{"Joueur90000000f", "Joueur90002", "Joueur90001"},
 		profils: []domain.PlayerSummary{
-			profilSuivi(soireeJGtm, "JGtm"), profilSuivi(soireeChoco, "Joueur90001"),
-			profilSuivi(soireeMadina, "Joueur90002"), profilSuivi("2558964982616721", "Joueur90000000f"),
+			profilSuivi(soireeJGtm, "JGtm"), profilSuivi(soireeJoueur901, "Joueur90001"),
+			profilSuivi(soireeJoueur075, "Joueur90002"), profilSuivi("2558964982616721", "Joueur90000000f"),
 			profilSuivi("2543518745364847", "J900004"),
 			{XUID: "2734274180837334", Gamertag: "Joueur9009", AuthOnly: true},
 		},

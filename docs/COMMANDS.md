@@ -1944,11 +1944,15 @@ the next), removes each converted PNG (`--keep` keeps them), is idempotent, and 
 `teams/` and everything under `halo_infinite/` stay PNG. A vitest guard
 (`halo5Images.guard.test.ts`) fails if a PNG comes back.
 
-### Local merge gate (`gate-push`)
+### Local gate before `main` (`gate-push`)
 
 ```bash
 make gate-push               # golangci-lint ratchet + replay-equiv harness + web typecheck/lint + test baseline, film and DuckDB lanes in parallel (~25 min + ~12 min)
 ```
+
+Run it ONCE, on the release branch, before the release is merged into `main`. Never before merging a work
+branch into `release/vX.Y.Z`: there, the touched packages, one full `vitest` run and the CI are the gate. From
+a worktree, `replay-equiv` reads the film park and the originals list of the main repository by itself.
 
 `make gate-push` plays `make replay-equiv` (the replay equivalence harness): the references under
 `replay/testdata/equivalence` of the film decoder (read at the version `go.mod` requires) drifted unnoticed
@@ -2016,8 +2020,12 @@ powershell -File scripts/disk-hygiene.ps1 -Lot <lot> -Apply  # lot closure: dele
   most recent write anywhere in the tree.
 - Safety: no deletion while a `go`, `compile`, `link`, `*.test`, `golangci-lint`, `gate`,
   `replay-*` or `levelup*` process runs (report only). `-Lot` refuses a cache written in the last
-  10 minutes. A tree containing a junction or link is never deleted, only reported. Worktrees are
-  reported, never removed.
+  10 minutes. A tree containing a junction or link is never deleted, only reported. A folder that is,
+  or contains up to 3 levels down, a git repository or worktree (a `.git` folder or file) is never
+  deleted, even under `C:\t`: it is listed as "git repository or worktree: kept", in simulation and
+  with `-Apply`. Registered worktrees are reported, never removed.
+- `-TmpRoot <folder>` replaces `C:\t` as the swept root (default unchanged); meant for trials on a
+  throwaway tree, with `-Scope Tmp`.
 - Log: `%LOCALAPPDATA%\levelup-disk-hygiene\disk-hygiene.log` (free space before and after, every
   deletion and refusal; `ALERTE` below 60 GB free).
 - Scheduled task `LevelUp-disk-hygiene`: daily at 04:00, current user, not elevated, `-Apply`.

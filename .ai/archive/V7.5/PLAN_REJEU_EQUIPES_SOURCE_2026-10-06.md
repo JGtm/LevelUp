@@ -48,27 +48,27 @@ entité ne porte, et la pose des places assoit le bouche-trou sur la place du pa
 
 | Match | Entrée (index) | Équipe publiée | Présence | Chaîne de la place (équipe) | Remarque |
 |---|---|---|---|---|---|
-| 43716616 | 343 Sandwolf (8) | — | 248-281 | 5 (0) : Slowpoke6743 (certain -> 118) -> bot -> KernelPanic10 (318) | KF 118 / 318 |
-| 4ecdf3e7 | 343 Cliffton (8) | — | 1236-1246 | 1 (0) : lil conqueror23 (-> 1179) -> bot -> Wrneverchanges (1284) | KF 1084 / 1284 |
-| 4f77afc1 | 343 Connmando (24) | — | 3353-3363 | 26 (1) : Narotlcs (-> 3352) -> bot -> entrée sans nom idx 31 (3538) | l'artefact montre la place 1 vide de 934 à 10144, mais le film y lit une entité d'équipe 1 non liée (slot 1836, KF 335..9944) : place 26 seule libre (cf. D8) |
-| 4f77afc1 | 343 Darkstar (24) | — | 2219-2220 | 2 (0) : AJM002 (-> 2136) -> bot -> Feelgood Joker (2336) | même remarque : place 2 seule libre selon le film |
-| 5676a9ba | 343 Rhinosaurus (24) | — | 3675 | 1 (0) : EddieFingerTits (-> 3590) -> bot -> fur1ousjoe (3759) | KF 3559 / 3759 |
-| 572e236b | 343 Bachici (8) | — | 582-594 | 7 (0) : biOly goLab1054 (-> 582) -> bot -> DRghie (695) | dernière vie du partant finie à la frame de la déclaration |
-| 72b0a25e | 343 Rhinosaurus (8) | — | 150-162 | 3 (1) : CafeMiroir64382 (-> 80) -> bot -> Patatasxd3526 (214) | KF 14 / 214 |
-| 859da825 | 343 Forge Lord (8) | — | 1709-1826 | 2 (0) : opresko (-> 1627) -> bot -> SplinterCell958 (1827) | KF 1627 / 1827 |
-| 859da825 | SplinterCell958 (9) | 0 | 1827-4338 | même chaîne | place 2 refusée : vie de 4 frames [3167..3170] (slot 548) nommée opresko par création (index 2) après l'absence prouvée de son entité |
-| 879a4dba | 343 Beard (24) | — | 1962-1985 | 19 (1) : jas0n38 (-> 1955) -> bot -> RezzaCapa (2155) | KF 1955 / 2155 |
-| 9ffce8ef | 343 SpaceCase (8) | — | 856-857 | 4 (1) : Fxrdzy (-> 739) -> bot -> AreolaAcrobat (939) | KF 739 / 939 |
-| a6ae19fb | 343 Hollis (8) | — | 352-431 | 3 (0) : KNEELb3foreZOD (-> 323) -> bot -> entrée sans nom idx 9 (523) | KF 323 / 523 |
-| b0fe12b1 | 343 Ben Desk (8) | — | 1697-1707 | 7 (1) : JALiiSCKiiO (-> 1687) -> bot -> MrNormalMrs (1887) | KF 1687 / 1887 |
+| 43716616 | 343 Sandwolf (8) | — | 248-281 | 5 (0) : joueur_721 (certain -> 118) -> bot -> joueur_608 (318) | KF 118 / 318 |
+| 4ecdf3e7 | 343 Cliffton (8) | — | 1236-1246 | 1 (0) : joueur_1464 (-> 1179) -> bot -> joueur_1362 (1284) | KF 1084 / 1284 |
+| 4f77afc1 | 343 Connmando (24) | — | 3353-3363 | 26 (1) : joueur_1379 (-> 3352) -> bot -> entrée sans nom idx 31 (3538) | l'artefact montre la place 1 vide de 934 à 10144, mais le film y lit une entité d'équipe 1 non liée (slot 1836, KF 335..9944) : place 26 seule libre (cf. D8) |
+| 4f77afc1 | 343 joueur_518 (24) | — | 2219-2220 | 2 (0) : JOUEUR_469 (-> 2136) -> bot -> joueur_615 (2336) | même remarque : place 2 seule libre selon le film |
+| 5676a9ba | 343 Rhinosaurus (24) | — | 3675 | 1 (0) : joueur_1431 (-> 3590) -> bot -> joueur_1231 (3759) | KF 3559 / 3759 |
+| 572e236b | 343 Bachici (8) | — | 582-594 | 7 (0) : joueur_828 (-> 582) -> bot -> joueur_595 (695) | dernière vie du partant finie à la frame de la déclaration |
+| 72b0a25e | 343 Rhinosaurus (8) | — | 150-162 | 3 (1) : joueur_347 (-> 80) -> bot -> joueur_338 (214) | KF 14 / 214 |
+| 859da825 | 343 Forge Lord (8) | — | 1709-1826 | 2 (0) : joueur_1029 (-> 1627) -> bot -> joueur_429 (1827) | KF 1627 / 1827 |
+| 859da825 | joueur_429 (9) | 0 | 1827-4338 | même chaîne | place 2 refusée : vie de 4 frames [3167..3170] (slot 548) nommée joueur_1029 par création (index 2) après l'absence prouvée de son entité |
+| 879a4dba | 343 Beard (24) | — | 1962-1985 | 19 (1) : joueur_1543 (-> 1955) -> bot -> joueur_1373 (2155) | KF 1955 / 2155 |
+| 9ffce8ef | 343 SpaceCase (8) | — | 856-857 | 4 (1) : joueur_1363 (-> 739) -> bot -> joueur_1262 (939) | KF 739 / 939 |
+| a6ae19fb | 343 Hollis (8) | — | 352-431 | 3 (0) : joueur_1422 (-> 323) -> bot -> entrée sans nom idx 9 (523) | KF 323 / 523 |
+| b0fe12b1 | 343 Ben Desk (8) | — | 1697-1707 | 7 (1) : joueur_1445 (-> 1687) -> bot -> joueur_1303 (1887) | KF 1687 / 1887 |
 | c7f94693 | 343 Donos (8) | — (sa vie : 0) | 865-983 | 7 (1) : JGtm (-> 859) -> bot -> Aceshigh949851 (1015) | l'équipe 0 publiée sur sa vie est empruntée à l'index 8 (Byrontron) : FAUSSE |
-| c7f94693 | 343 The Thumb (8) | — | 1937 | 6 (0) : SirAvlas (-> 1818) -> bot -> DJTuna77 (2015) | KF 1815 / 2015 |
+| c7f94693 | 343 The Thumb (8) | — | 1937 | 6 (0) : joueur_1460 (-> 1818) -> bot -> joueur_255 (2015) | KF 1815 / 2015 |
 | d1dfbc02 | 343 Ham Sammich (8) | — | 5947-5986 | indéterminable par les places : un occupant parti après la dernière KF porteuse (5870) -> bot | départ non lu : les 8 occupants sont publiés présents jusqu'à 5986 ; seul le champ BOT_METADATA dit l'équipe (0) |
-| e85d7bad | 343 Total Ten (8) | — | 843-854 | 3 (0) : Freeskyfall (-> 788) -> bot -> Stock7981 (965) | KF 765 / 965 |
-| f0220a96 | 343 Chilies (8) | — | 1577-1585 | 0 (0) : M0NSTER IlI (-> 1555) -> bot -> Ginger Ninja yt (1679) | KF 1479 / 1679 |
-| f2966f08 | 343 Ritzy (8) | — (vies : -1) | 138-263 | 6 (1) : Drowsy Grim (-> 94) -> bot -> SputNick193114 (294) | KF 94 / 294 |
-| 43e96765 | 343 PardonMy (8) | 0 (entité KF 1145) | 1136-1344 | 0 (0) : LeodaganQC (-> 1046) -> bot -> Cmillward21 | Cmillward21 lu à la KF 1145, premier corps à 1367 : il attend le retrait du bot (1344) ; place 0 prise par ses tirs dès 1145 -> bot sans place, 209 frames de dépassement |
-| bf2a9f05 | AllGodsLove (8) | 0 | 1004-1019, 1824-3056 | 3 (0) : yolojoe13 (-> 1624) -> AllGodsLove (1824) | [1004..1019] = vie (slot 529) nommée par l'index 8 pendant la déclaration du bot Mickey [1008..1023], hors roster ; aucune place libre sur les deux intervalles |
+| e85d7bad | 343 Total Ten (8) | — | 843-854 | 3 (0) : joueur_1314 (-> 788) -> bot -> joueur_256 (965) | KF 765 / 965 |
+| f0220a96 | 343 Chilies (8) | — | 1577-1585 | 0 (0) : joueur_1292 (-> 1555) -> bot -> joueur_1126 (1679) | KF 1479 / 1679 |
+| f2966f08 | 343 Ritzy (8) | — (vies : -1) | 138-263 | 6 (1) : Drowsy Grim (-> 94) -> bot -> joueur_536 (294) | KF 94 / 294 |
+| 43e96765 | 343 PardonMy (8) | 0 (entité KF 1145) | 1136-1344 | 0 (0) : joueur_1265 (-> 1046) -> bot -> joueur_697 | joueur_697 lu à la KF 1145, premier corps à 1367 : il attend le retrait du bot (1344) ; place 0 prise par ses tirs dès 1145 -> bot sans place, 209 frames de dépassement |
+| bf2a9f05 | joueur_1021 (8) | 0 | 1004-1019, 1824-3056 | 3 (0) : joueur_1413 (-> 1624) -> joueur_1021 (1824) | [1004..1019] = vie (slot 529) nommée par l'index 8 pendant la déclaration du bot Mickey [1008..1023], hors roster ; aucune place libre sur les deux intervalles |
 
 « (-> N) » : fin de la présence CERTAINE publiée du partant. « KF a / b » : images-clés porteuses qui
 encadrent la déclaration.
@@ -100,10 +100,10 @@ encadrent la déclaration.
       d'un paquet à l'autre (jusqu'à 29 paquets) ; 0x783 = 0x784 sur les 77 bots ; un même bot change de
       valeur d'un match à l'autre avec son équipe (`343 PardonMy` : 1, 0, 0, 1). Contrôle indépendant
       par la règle des places sur les 21 bots sans entité : sur les 20 dont une place libre détermine
-      l'équipe (16 à place unique, dont Connmando et Darkstar une fois la place 1 de `4f77afc1` rendue à
+      l'équipe (16 à place unique, dont Connmando et joueur_518 une fois la place 1 de `4f77afc1` rendue à
       l'entité d'équipe 1 que le film y lit ; Bachici à une frame près ; Oscar, BF Scrub et Mickey hors
       roster), 20/20 accords — 19/19 si l'on s'en tient aux places publiées par l'artefact (Connmando y a
-      deux places libres d'équipes différentes, Darkstar deux places d'équipe 0). Le champ vaut
+      deux places libres d'équipes différentes, joueur_518 deux places d'équipe 0). Le champ vaut
       0 pour 13 bots et 1 pour 8 : l'accord ne vient pas d'une valeur constante. Ham Sammich :
       indéterminable par les places, le champ dit 0. L'écrivain du paquet n'a pas été lu dans Ghidra.
 - [x] G2.d Verdict : la source existe dans le film (BOT_METADATA) et se lit dans la couche des faits, pas
@@ -189,7 +189,7 @@ G3, mesure de la durée de ré-extraction sur UN film.
       par BOT_METADATA (D5 corrigé : `572e236b`, Bachici sur la place 7) ; l'humain ARRIVÉ pendant la
       déclaration du bot, sans vie avant son retrait, lui succède — place du bot en priorité du
       chaînage, présence ouverte au lendemain du retrait (D4 corrigé : `43e96765`, place 0 =
-      LeodaganQC -> PardonMy -> Cmillward21 dès 1345, 0 dépassement). D2, D3, D6 : consignés
+      joueur_1265 -> PardonMy -> joueur_697 dès 1345, 0 dépassement). D2, D3, D6 : consignés
       (ne découlent pas de l'équipe, cf. G3.5). D7, D8 : consignés.
 - [x] G3.3 `SchemaVersion` 79 -> 80 (contenu, AUCUN champ neuf : les trois compteurs envisagés en
       couverture auraient changé le contrat servi, donc `generated.ts` du web — retirés, journal et
@@ -206,13 +206,13 @@ G3, mesure de la durée de ré-extraction sur UN film.
       |---|---|---|---|---|
       | AVANT (`e0cd93662`) | 18 | 21 | 3 | 229 |
       | APRÈS | 0 | 3 | 3 | 60 |
-      Restes, un par film, aucun ne vient de l'équipe : `859da825` (SplinterCell958 sans place,
-      1 place en trop, 4 dépassements : D2), `bf2a9f05` (AllGodsLove, 1, 16 : D3), `d1dfbc02`
+      Restes, un par film, aucun ne vient de l'équipe : `859da825` (joueur_429 sans place,
+      1 place en trop, 4 dépassements : D2), `bf2a9f05` (joueur_1021, 1, 16 : D3), `d1dfbc02`
       (`343 Ham Sammich`, équipe 0 lue, aucune place libre, 1, 40 : D6). Témoin clé `43716616` :
-      place 5 = Slowpoke6743 (0-247) -> `343 Sandwolf` (248-281, `apparie`) -> KernelPanic10
+      place 5 = joueur_721 (0-247) -> `343 Sandwolf` (248-281, `apparie`) -> joueur_608
       (318-) ; plus de place 8. Équipes de vies changées sur les 19 témoins : 4 vies de bots
       seulement (Forge Lord -1 -> 0, Donos 0 -> 1, Ritzy -1 -> 1 deux fois). Chaînes de place des
-      18 bots conformes au tableau G1, sauf `4f77afc1` Darkstar (place 1 au lieu de 2 : la place 1
+      18 bots conformes au tableau G1, sauf `4f77afc1` joueur_518 (place 1 au lieu de 2 : la place 1
       paraît libre faute de liaison de ses entités d'équipe 1, D8).
 - [x] G3.6 `adversarial-review`, `delivery-checklist`, commits, push, CI verte.
       - Commits `d7e329695` (G3.0 à G3.5), `16e992c63` (ronde 1, relecteur A), puis celui des
@@ -272,12 +272,12 @@ l'image-clé près, 20 s).
 - [x] G4.1 Intervalles demandés (`relais` + `debut`) : 50.
       - Films où au moins un bot est déclaré (48 films sur 126) : 44 intervalles. `relais` 37 (durée
         médiane 199 f, max 1594 f) : entièrement couverts 2, en partie 34 dont 31 compatibles avec une
-        place jamais vide, pas du tout 1 (143 f : `0d265ab0`, place 1, NotThtGuyPal -> SpiffyDart86537).
+        place jamais vide, pas du tout 1 (143 f : `0d265ab0`, place 1, joueur_1028 -> joueur_160).
         `debut` 7 : entièrement 2, en partie 5 dont 1 compatible, pas du tout 0.
       - Films sans aucun bot déclaré (78 films) : 6 intervalles, aucun couvert (`relais` 4 : 103, 199,
         202 et 356 f ; `debut` 2 : 315 et 354 f ; films `0301037e`, `a464e20b`, `c259789d`).
       - Les 7 intervalles non couverts, tous films confondus : médiane 202 f, le plus long 356 f
-        (`0301037e`, place 3, Kai Cyr -> BroseJose7).
+        (`0301037e`, place 3, joueur_1439 -> joueur_1468).
       - Hors demande, compté à part : 59 places dont le dernier occupant part avant la fin sans
         successeur (`fin`) ; films avec bots 39 (entièrement 9, en partie 26 dont 18 compatibles, pas du
         tout 4), films sans bot 20 (aucun couvert). Durées médianes : 1 413 f dans les films avec bots
@@ -295,8 +295,8 @@ l'image-clé près, 20 s).
       - humains présents dès la frame 0 : 1 072 présences, 461 sans corps à la frame 0 (médiane 37 f,
         max 1 303 f, 228 de 5 s ou plus), 4 sans aucun corps ;
       - humains arrivés en cours de match : 53 présences, 51 sans corps au début (médiane 276 f, max
-        1 951 f, 50 de 5 s ou plus), 0 sans aucun corps. Exemples : KernelPanic10 lu à 318, premier
-        corps à 831 ; Wrneverchanges 1284 -> 1688 ; Aceshigh949851 1015 -> 1284 ; Cmillward21 1145 -> 1367 ;
+        1 951 f, 50 de 5 s ou plus), 0 sans aucun corps. Exemples : joueur_608 lu à 318, premier
+        corps à 831 ; joueur_1362 1284 -> 1688 ; Aceshigh949851 1015 -> 1284 ; joueur_697 1145 -> 1367 ;
       - bots présents dès la frame 0 : 5 présences, 1 sans corps (1 f) ;
       - bots arrivés en cours de match : 77 présences, 34 sans corps au début (médiane 82 f, max 211 f),
         25 sans aucun corps de toute leur déclaration.
@@ -324,7 +324,7 @@ l'image-clé près, 20 s).
       4. vérification : `coverage.seats` des 19 témoins (script `verifier_temoins.sh` du
          scratchpad, en lecture) — attendu schéma 80, `sansEquipe` 0 partout, `sansPlace` 3,
          `placesEnTrop` 3, `depassements` 60 (restes `859da825`, `bf2a9f05`, `d1dfbc02`), place 5 de
-         `43716616` = Slowpoke6743 -> `343 Sandwolf` -> KernelPanic10, aucune place 8. AVANT (publié,
+         `43716616` = joueur_721 -> `343 Sandwolf` -> joueur_608, aucune place 8. AVANT (publié,
          schéma 78) : 18 / 21 / 3 / 229.
 
 ### Clôture
@@ -359,9 +359,9 @@ parc si c'est mesurable en processus. CHECKPOINT avant toute déduction si le fi
       (ADR 0037 IR-9 : la publication ne voit pas la structure de lecture). Sorties : `departs2.txt`,
       `departs3.txt`, `morts_corps.txt`, `vies_apres_depart.txt`, `fiches_en_trop.txt`.
 - [x] D.2 Diagnostic D2 (`859da825`). La « vie » [3167..3170] du slot 548 n'est la vie de PERSONNE :
-      - le corps 548 est créé à 1519 avec l'index 2 (opresko, présent) ; la marche des trames lit ses
+      - le corps 548 est créé à 1519 avec l'index 2 (joueur_1029, présent) ; la marche des trames lit ses
         records de 1519 à 1534, puis plus rien jusqu'à la fin ; ni suppression, ni dead-state ;
-      - l'entité d'opresko (slot 1329) est lue jusqu'à l'image-clé 9 (1627), son absence est prouvée à
+      - l'entité d'joueur_1029 (slot 1329) est lue jusqu'à l'image-clé 9 (1627), son absence est prouvée à
         l'image-clé 10 (1827) ;
       - les 5 échantillons [3167..3170] (quantum X constant 528) viennent du balayage de positions par
         ancrage (`grammar.ScanBipedPositions`) ; la marche lit TOUS les paquets des frames 3164 à 3172
@@ -374,14 +374,14 @@ parc si c'est mesurable en processus. CHECKPOINT avant toute déduction si le fi
         publiée (comptée et journalisée ; « la grammaire prime » : la preuve d'absence aux images-clés
         contre des échantillons d'ancrage). P1 : la vie reste publiée mais n'ouvre aucune présence
         (pion fantôme de 4 frames). Source : faire recouper l'ancrage par la marche dans `grammar`
-        (faits, re-cuisson complète, hors périmètre). Attendu avec P2 : 0/0/0/0, SplinterCell958 sur
+        (faits, re-cuisson complète, hors périmètre). Attendu avec P2 : 0/0/0/0, joueur_429 sur
         la place 2 après `343 Forge Lord`.
 - [x] D.3 Diagnostic D3 (`bf2a9f05`), confirmé par la marche :
       - le corps 529 est créé à 1004 avec l'index 8, lu jusqu'à 1019, supprimé à 1021 ;
       - BOT_METADATA : `343 Mickey` [1008..1023] et `343 BF Scrub` [772..783] sur l'index 8 ;
-      - l'entité d'AllGodsLove (slot 1758, index 8) est créée à 1640 (marche), lue de l'image-clé 11
+      - l'entité d'joueur_1021 (slot 1758, index 8) est créée à 1640 (marche), lue de l'image-clé 11
         (1824), absence prouvée à l'image-clé 10 (1624) ;
-      - cause : le registre retombe sur l'index -> xuid (AllGodsLove) parce que la lecture par
+      - cause : le registre retombe sur l'index -> xuid (joueur_1021) parce que la lecture par
         déclaration (`identity_registry_declarations.go`) se limite aux index sans humain ET exige que
         la déclaration couvre la création (1004 < 1008 : le paquet BOT_METADATA suit la création,
         cas déjà décrit en tête du fichier) ; Mickey, sans entité, n'a pas d'entrée de roster.
@@ -389,23 +389,23 @@ parc si c'est mesurable en processus. CHECKPOINT avant toute déduction si le fi
         entités prouvent son absence sur toute la vie, et à une création qu'aucune déclaration ne
         couvre et qui précède la seule déclaration croisant la vie ; le bot ainsi nommé entre au roster
         (présence = sa déclaration, équipe lue 0). Attendu : 0/0/0/0, Mickey sur la place 0
-        (Aeroflame -> Mickey -> Luigi107763), AllGodsLove sur la place 3 (après yolojoe13, parti à
+        (joueur_1435 -> Mickey -> joueur_405), joueur_1021 sur la place 3 (après joueur_1413, parti à
         1631). BF Scrub (aucune vie) reste hors roster.
 - [x] D.4 Diagnostic D6 (`d1dfbc02`). Le film n'écrit pas qui part :
       - dernière image-clé porteuse 30 (5870), les 8 humains y sont lus ; `343 Ham Sammich` déclaré de
         5947 à la fin (index 8, équipe 0), son entité de participant créée à 5947 (marche, slot 2530) ;
       - aucune suppression d'entité de participant des 8 humains avant la fin du film (la marche en lit
-        ailleurs : `bf2a9f05` Aeroflame 846, yolojoe13 1631, AllGodsLove 3177, Shiva1663 3592 ;
-        `859da825` Witty Hole 4248, après la dernière image-clé 4227 ; elle en manque : opresko,
-        HiEmilio9212) ;
+        ailleurs : `bf2a9f05` joueur_1435 846, joueur_1413 1631, joueur_1021 3177, joueur_021 3592 ;
+        `859da825` joueur_1398 4248, après la dernière image-clé 4227 ; elle en manque : joueur_1029,
+        joueur_809) ;
       - dead-states de bipède (marche ; les faits ne gardent que ceux des véhicules) : le corps de
-        NerdGaiden est tué à 5932 par l'index 3 (Da5BearJud3n), lui-même tué à 5928 par l'index 5 —
-        deux morts absentes du fil des morts (dernière : 5910). NerdGaiden joue donc jusqu'à 5932 ;
+        joueur_1268 est tué à 5932 par l'index 3 (joueur_1256), lui-même tué à 5928 par l'index 5 —
+        deux morts absentes du fil des morts (dernière : 5910). joueur_1268 joue donc jusqu'à 5932 ;
       - délais de réapparition du film (faits) : 97 écarts entre deux vies d'un joueur, tous de 80 à
         90 frames ;
-      - équipe 0 à 5947 : JGtm en vie (records jusqu'à 5988) ; NerdGaiden mort à 5932 (réapparition au
-        plus tôt 6012, après la fin 5986) ; BlU3KN1GHT5479 mort à 5910 (au plus tôt 5990) ;
-        `stitch vs all` mort à 5845, attendu entre 5925 et 5935, non réapparu jusqu'à la fin (141
+      - équipe 0 à 5947 : JGtm en vie (records jusqu'à 5988) ; joueur_1268 mort à 5932 (réapparition au
+        plus tôt 6012, après la fin 5986) ; joueur_1371 mort à 5910 (au plus tôt 5990) ;
+        `joueur_1277` mort à 5845, attendu entre 5925 et 5935, non réapparu jusqu'à la fin (141
         frames). Seule lecture qui désigne quelqu'un : le délai de réapparition — une DÉDUCTION.
       - Options : (a) laisser D6 compté (0/1/1/40) ; (b) déduction par le délai de réapparition
         (publication) : un membre de l'équipe du bot arrivant, mort et non réapparu au-delà du plus long
@@ -432,11 +432,11 @@ parc si c'est mesurable en processus. CHECKPOINT avant toute déduction si le fi
       d'implémenté pour D6 (retour au superviseur avec les chiffres).
 - [x] D.6d D12, mesure seulement (instrument `TestRJEDepartsDeLaBase`, base copiée, 19 témoins, sans
       redécodage) : 34 départs d'humains datés par la base ; calés par le pont, 2 présences publiées
-      courent au-delà (`9ffce8ef` Fxrdzy, et opresko sur `859da825`, par la vie fantôme de D2), 9 avec
+      courent au-delà (`9ffce8ef` joueur_1363, et joueur_1029 sur `859da825`, par la vie fantôme de D2), 9 avec
       la correction de -22 s des relais. Mais sur les départs, l'écart base - suppression lue par la
-      marche vaut 375 frames pour les 4 départs de `bf2a9f05` et 368 pour Witty Hole sur `859da825` :
+      marche vaut 375 frames pour les 4 départs de `bf2a9f05` et 368 pour joueur_1398 sur `859da825` :
       le retard de la base sur un départ (environ 37 s, constant par film) n'est pas celui des arrivées.
-      Calée sans ce retard, la base place le départ de Witty Hole après la fin du film. Rien de
+      Calée sans ce retard, la base place le départ de joueur_1398 après la fin du film. Rien de
       généralisé.
 - [x] D.5d Décision du superviseur pour D6 (2026-10-07) : ni le film ni l'API ne montrent de départ, le bot
       n'a pas de place à reprendre ; un bot déclaré sans AUCUNE vie qui ne trouve AUCUNE place n'entre pas
@@ -476,13 +476,13 @@ parc si c'est mesurable en processus. CHECKPOINT avant toute déduction si le fi
       | APRÈS | 0 | 0 | 0 | 0 |
       Seuls les 3 documents de D2, D3, D6 changent (les 16 autres : identiques hors marque de schéma).
       `859da825` : la piste fantôme du slot 548 disparaît (bornes de carte rendues : minX -17,65 -> -11,43,
-      minZ -28,86 -> -0,26), opresko présent 0-1627 (affichage 1708), SplinterCell958 sur la place 2 lue
+      minZ -28,86 -> -0,26), joueur_1029 présent 0-1627 (affichage 1708), joueur_429 sur la place 2 lue
       dans ses tirs, 147 tirs de plus publiés par la place, 3 rafales par la place ; 4 lectures
       d'image-clé du slot 548 à 1627 passent « non publiées ». `bf2a9f05` : vie [1004..1019] nommée
-      `343 Mickey` (lecture directe), Mickey sur la place 0 entre Aeroflame (affichage borné à 1003) et
-      Luigi107763, AllGodsLove sur la place 3 après yolojoe13, 28 tirs de plus par la place.
+      `343 Mickey` (lecture directe), Mickey sur la place 0 entre joueur_1435 (affichage borné à 1003) et
+      joueur_405, joueur_1021 sur la place 3 après joueur_1413, 28 tirs de plus par la place.
       `d1dfbc02` : `343 Ham Sammich` hors du roster publié (8 entrées). Témoin `43716616` : place 5 =
-      Slowpoke6743 -> `343 Sandwolf` -> KernelPanic10, aucune place 8.
+      joueur_721 -> `343 Sandwolf` -> joueur_608, aucune place 8.
 - [x] D.7c Gates locaux : `go test` de `games/halo_infinite/...`, `replaybuild`, `service/replayview`,
       `sync/killcollector` (verts), `archlint` (vert), `go vet` avec et sans `research`, golangci-lint
       (paquets touchés, depuis `b5c9489ef`) : 0 constat ; vitest du rejeu (fixtures au schéma 81) : 245
@@ -521,10 +521,10 @@ parc si c'est mesurable en processus. CHECKPOINT avant toute déduction si le fi
       fichiers verts).
 - [x] I.4 Témoins redécodés un par un en processus (binaire du commit de fusion, racine de scratch, verrou
       solo, premier plan ; aucun ne republie depuis des faits) : schéma 81, 0 / 0 / 0 / 0 sur les 19 ; D2,
-      D3, D6 inchangés (SplinterCell958 place 2, Mickey place 0, AllGodsLove place 3, aucun bot au roster
+      D3, D6 inchangés (joueur_429 place 2, Mickey place 0, joueur_1021 place 3, aucun bot au roster
       de `d1dfbc02`) ; place 5 de `43716616` inchangée.
 - [x] I.5 Recette de la re-cuisson unique, à jouer par le superviseur après la fusion du lot dans
-      `feat/v75`, depuis `C:\Users\Guillaume\Downloads\Scripts\LevelUp\apps\go-api` (worktree principal à la
+      `feat/v75`, depuis `<poste>\Downloads\Scripts\LevelUp\apps\go-api` (worktree principal à la
       tête de `feat/v75`), SERVEUR ARRÊTÉ (port 8000 libre), CGO (`PATH` avec `C:\msys64\ucrt64\bin`,
       `CGO_ENABLED=1`, `CC=C:\msys64\ucrt64\bin\gcc.exe`), une commande à la fois, aucune en arrière-plan :
       1. `go run ./cmd/levelup backfill-replay --only-existing --dry-run`, puis
@@ -545,8 +545,8 @@ parc si c'est mesurable en processus. CHECKPOINT avant toute déduction si le fi
       6. `go run ./cmd/levelup tactical-rasters --backfill` (aucune base ; réécrit les sidecars dont
          l'artefact a changé de schéma) ;
       7. vérification : `coverage.seats` des 19 témoins (`verifier_temoins.sh` du scratchpad, depuis la racine
-         du worktree principal) — schéma 81, 0 / 0 / 0 / 0, place 5 de `43716616` = Slowpoke6743 ->
-         `343 Sandwolf` -> KernelPanic10 ; `go run ./cmd/levelup backfill-killsource --dry-run` doit ne plus
+         du worktree principal) — schéma 81, 0 / 0 / 0 / 0, place 5 de `43716616` = joueur_721 ->
+         `343 Sandwolf` -> joueur_608 ; `go run ./cmd/levelup backfill-killsource --dry-run` doit ne plus
          rien avoir à décoder (convergence ; seuls restent les matchs sans film en cache).
       `backfill-bomb-stats` et `backfill-flag-grabs-net` ne sont pas requis (`objectives.Rev` inchangée, la
       phase D ne touche aucun de leurs calques).
@@ -560,8 +560,8 @@ parc si c'est mesurable en processus. CHECKPOINT avant toute déduction si le fi
          crédit 9 216 matchs en 4 min 51 s ; une seconde passe `--films-only` (32 s) n'a pris que 6 films ;
       3. à 6. `backfill-usage-summary`, `backfill-pad-tiers --force`, `backfill-vehicle-takes --force`,
          `tactical-rasters --backfill` : 126 chacun, 21 s en tout, 0 erreur ;
-      7. 19 / 19 témoins au schéma 81 et à 0 / 0 / 0 / 0, place 5 de `43716616` = Slowpoke6743 (lu) ->
-         `343 Sandwolf` (apparié) -> KernelPanic10 (tirs), sans place 8 ; les 126 artefacts à 0 sur les
+      7. 19 / 19 témoins au schéma 81 et à 0 / 0 / 0 / 0, place 5 de `43716616` = joueur_721 (lu) ->
+         `343 Sandwolf` (apparié) -> joueur_608 (tirs), sans place 8 ; les 126 artefacts à 0 sur les
          quatre compteurs ; `backfill-replay --dry-run` : 0 à construire. Écart à l'attendu :
          `backfill-killsource --dry-run` annonce encore 105 films que la passe réelle ne prend pas (D14).
       Total 03:54:20 -> 05:34:50, soit 1 h 40 min 30 s ; serveur et front relancés à 05:35.
@@ -594,10 +594,10 @@ parc si c'est mesurable en processus. CHECKPOINT avant toute déduction si le fi
 - D1 (`c7f94693`) : la vie [947..981] de `343 Donos` est publiée d'équipe 0 par le pont slot -> index
   (désignateur de l'index 8, lu sur l'entité d'un AUTRE bot, Byrontron, en fin de match). Son équipe est
   1 (BOT_METADATA et place). Le pont par index prête une équipe que l'occupant n'a pas.
-- D2 (`859da825`) : la vie [3167..3170] (slot 548) est nommée opresko par lien direct de création
+- D2 (`859da825`) : la vie [3167..3170] (slot 548) est nommée joueur_1029 par lien direct de création
   (index 2) alors que l'absence de son entité est prouvée depuis l'image-clé 1827 ; elle rouvre une
-  présence et refuse la place 2 à SplinterCell958.
-- D3 (`bf2a9f05`) : la vie [1004..1019] (slot 529) est nommée AllGodsLove par l'index 8 pendant la
+  présence et refuse la place 2 à joueur_429.
+- D3 (`bf2a9f05`) : la vie [1004..1019] (slot 529) est nommée joueur_1021 par l'index 8 pendant la
   déclaration du bot `343 Mickey` [1008..1023] ; Mickey et `343 BF Scrub` (index 8 tenu par un humain,
   sans entité) n'ont pas d'entrée de roster ; idem `343 Oscar` sur `0d265ab0`.
 - D4 (`43e96765`) : l'humain qui succède au bot est lu (entité) avant le retrait du bot et n'apparaît
@@ -610,7 +610,7 @@ parc si c'est mesurable en processus. CHECKPOINT avant toute déduction si le fi
 - D7 : deux entrées du roster sans nom (`4f77afc1` idx 31, `a6ae19fb` idx 9) occupent des places.
 - D8 (`4f77afc1`) : l'index 1 porte deux entités d'équipe 1 que la liaison ne lie à personne
   (`entitesNonLiees = 2` ; slot 1299 aux KF -866..134, slot 1836 aux KF 335..9944), puis l'entité
-  d'équipe 0 de Truly Elusive (slot 6600, dès 10144), seul occupant que la table de `chunk_00` nomme à
+  d'équipe 0 de joueur_1301 (slot 6600, dès 10144), seul occupant que la table de `chunk_00` nomme à
   ce siège. L'artefact assoit sur la place 1 les bots The Thumb et Razzle (équipe 0, `apparie`) et la
   montre vide de 934 à 10144, pendant que le film y lit un occupant d'équipe 1.
 - D9 (`8076f97f`, HI_1_12_0) : le lecteur historique de BOT_METADATA (`scanBotEntries`) lit un bot
@@ -627,15 +627,15 @@ parc si c'est mesurable en processus. CHECKPOINT avant toute déduction si le fi
   films parmi les « republiés » alors que chacun redécode : la durée d'une telle passe est celle d'un
   décodage. Non traité (le comportement est juste, seul le compte trompe).
 - D11 (`d1dfbc02`) : le fil des morts n'a pas les deux dernières morts que les dead-states de bipède lisent
-  (5928 : Da5BearJud3n tué par l'index 5 ; 5932 : NerdGaiden tué par l'index 3) ; sa dernière mort est à
-  5910. La vie de NerdGaiden finit donc à 5931 sans mort. Non traité.
+  (5928 : joueur_1256 tué par l'index 5 ; 5932 : joueur_1268 tué par l'index 3) ; sa dernière mort est à
+  5910. La vie de joueur_1268 finit donc à 5931 sans mort. Non traité.
 - D12 : la marche des trames lit à la frame près la création et la suppression des entités de
-  participant (`ti=9`), que les faits ne portent pas (images-clés seulement). `859da825` : Witty Hole
+  participant (`ti=9`), que les faits ne portent pas (images-clés seulement). `859da825` : joueur_1398
   supprimé à 4248, après la dernière image-clé (4227), publié présent jusqu'à la fin (4338). La marche
-  manque des suppressions (opresko, HiEmilio9212). Non traité (faits, re-cuisson).
+  manque des suppressions (joueur_1029, joueur_809). Non traité (faits, re-cuisson).
 - D13 (`bf2a9f05`) : `xuidOfPublishedTrack` (published_tracks.go) donne a une piste de BOT (nom de bot, xuid
   vide) le xuid que le pont de son slot donne : la piste de `343 Mickey` (slot 529) compte comme
-  trajectoire publiee d AllGodsLove dans `publishedXUIDs` et ajoute 1 au repli `repli_nom_piste_par_le_pont`.
+  trajectoire publiee d joueur_1021 dans `publishedXUIDs` et ajoute 1 au repli `repli_nom_piste_par_le_pont`.
   Comportement anterieur au lot (toute piste de bot sur un slot ponte vers un humain) ; sans effet sur
   les places ni les compteurs des temoins. Non traite.
 - Revue adversariale (ronde 1, relecteur frais) : 0 P0 ; 1 P1 (G2.a généralisé au-delà des 2 films
@@ -661,5 +661,5 @@ parc si c'est mesurable en processus. CHECKPOINT avant toute déduction si le fi
   marche des trames ; D2 : la vie fautive est une lecture fausse du balayage par ancrage (la marche
   ferme tous les paquets des frames 3164 à 3172 sans record du slot 548) ; D3 : cause confirmée,
   correction de publication ; D6 : le film n'écrit pas le départ, seule une déduction par le délai
-  de réapparition désigne `stitch vs all`. CHECKPOINT, retour au superviseur ; aucune ligne de
+  de réapparition désigne `joueur_1277`. CHECKPOINT, retour au superviseur ; aucune ligne de
   production écrite.

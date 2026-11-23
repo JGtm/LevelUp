@@ -83,7 +83,7 @@ type FragRoleEntry struct {
 - **Mêlée niveau 2** (H5) : `assassination = total_assassinations` ; `direct_melee = total_melee_kills`. Les deux
   compteurs API sont **DISJOINTS** (probe empirique tranchée 2026-07-19 : `melee_kills` n'inclut PAS les assassinats).
   Total de la classe Mêlée = `melee + assass` (SANS soustraction ni clamp) ⇒ `Σ rôles == total classe` (invariant b).
-  Preuve : match `3066a511-ebd0-428f-9555-50422caebaba`/xuid `2535421586125737` → melee=6, assass=4, per-kill 6+4 ;
+  Preuve : match `3066a511-ebd0-428f-9555-50422caebaba`/xuid `2664543533134265` → melee=6, assass=4, per-kill 6+4 ;
   match `9bb09267…` melee=2 < assass=4 (impossible sous inclusion) ; 1212/1213 couples disjoints. (Ancienne formule
   `direct = melee − assassination` supposait à tort l'inclusion — corrigée.)
 
@@ -193,7 +193,7 @@ all-pairs deutan 11.0 PASS (report ci-dessus). Composant NON monté sur page (c'
 - [x] P2.3 **Gate G2.3 — TRANCHÉ : compteurs DISJOINTS** (probe empirique 2026-07-19, verdict opposé à l'hypothèse
       initiale d'inclusion). `melee_kills` et `assassination_kills` sont des compteurs API SÉPARÉS : `melee_kills`
       n'inclut PAS les assassinats. Preuve per-kill : match `3066a511-ebd0-428f-9555-50422caebaba`/xuid
-      `2535421586125737` → melee_kills=6, assassination_kills=4, décompte per-kill = 6 mêlées + 4 assassinats
+      `2664543533134265` → melee_kills=6, assassination_kills=4, décompte per-kill = 6 mêlées + 4 assassinats
       (aucun chevauchement) ; contre-preuve d'inclusion : match `9bb09267…` a melee_kills=2 < assassination_kills=4
       (impossible si assass ⊆ melee) ; 1212/1213 couples disjoints sur l'échantillon. **Correctif appliqué**
       (`fragdist.go`) : total classe Mêlée = `melee + assass` ; `assassination = counts.Assassination`,

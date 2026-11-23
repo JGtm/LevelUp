@@ -13,7 +13,7 @@ Crash `duckdb::FatalException` observé en prod le 2026-05-22 :
 ```
 INTERNAL Error: Failed to append to PRIMARY_match_participants_match_id_xuid:
 Constraint Error: PRIMARY KEY or UNIQUE constraint violation:
-duplicate key 0941d737-1fb4-4a11-8a9a-169624911729, 2533274828226170
+duplicate key 0941d737-1fb4-4a11-8a9a-169624911729, 2738015123372434
 ```
 
 Cause racine identifiée (cf. audit `HANDOFF_SYNC_CONCURRENCY_AUDIT.md` §2) : **corruption silencieuse de l'index ART** (Adaptive Radix Tree) de DuckDB sur `shared.match_participants(match_id, xuid)`, déclenchée par des UPSERTs concurrents sur la même clé via `INSERT ... ON CONFLICT DO UPDATE`.
@@ -23,7 +23,7 @@ Issues DuckDB upstream pertinentes :
 - [#16520](https://github.com/duckdb/duckdb/issues/16520) — Duplicate key during data insert
 - Changelog v1.4.1 : *"ART index could omit rows non-deterministically when running on multiple threads"*
 
-ART corruption observée chiffrée : ~2% des matchs (`indexed != scan`), ~32 matchs sur 1610 dans la prod actuelle. Données silencieusement perdues (ex : LUSR de Madina figé Argent IV au lieu de Platine).
+ART corruption observée chiffrée : ~2% des matchs (`indexed != scan`), ~32 matchs sur 1610 dans la prod actuelle. Données silencieusement perdues (ex : LUSR de joueur_075 figé Argent IV au lieu de Platine).
 
 ### Cartographie des writers sur `shared.match_participants`
 
@@ -41,7 +41,7 @@ ART corruption observée chiffrée : ~2% des matchs (`indexed != scan`), ~32 mat
 **Sources de concurrence problématiques** :
 
 - **Intra-cycle** : `skill_heal` et `stats_heal` lancent 8 goroutines parallèles qui UPSERT chacune un match différent. Pour les heals filtrés par `WHERE xuid = ?`, deux goroutines du MÊME heal ne touchent pas la même `(match_id, xuid)` — mais l'index ART est PARTAGÉ entre toutes les clés et le bug DuckDB se manifeste même sur clés différentes (cf. handoff §2 risque 1).
-- **Inter-joueurs** (futur Phase 3.4) : si le scheduler `RunOnce` est parallélisé sur 3 joueurs simultanément, Madina écrit `(matchA, MadinaXUID)` et Choco écrit `(matchA, ChocoXUID)` sur la même table en parallèle. Si matchA est partagé, c'est encore plus probable (3 syncs concurrents sur les mêmes match_ids).
+- **Inter-joueurs** (futur Phase 3.4) : si le scheduler `RunOnce` est parallélisé sur 3 joueurs simultanément, joueur_075 écrit `(matchA, MadinaXUID)` et joueur_901 écrit `(matchA, ChocoXUID)` sur la même table en parallèle. Si matchA est partagé, c'est encore plus probable (3 syncs concurrents sur les mêmes match_ids).
 
 Le `dblease.AcquireWriter` sérialise au niveau **process** (1 lease global par path DB) mais ne sérialise PAS les goroutines à l'intérieur d'un même lease. Les errgroups 8 goroutines tournent sous UN seul lease et hammer le même index ART.
 
@@ -105,7 +105,7 @@ Les deux ensembles protègent contre :
 | Retry automatique sur `Constraint Error` | Ne marche pas : le crash est `FatalException` C++ non-récupérable depuis Go |
 | Batch INSERT `INSERT ... VALUES (...), (...), ...` | Issue DuckDB #8147 confirme conflits intra-statement non supportés — aggrave |
 | Sharding par `match_id` (1 worker par shard) | Équivalent fonctionnel au singleflight mais plus lourd à implémenter, perd la flexibilité |
-| `healParallelism = 1` (revert Action B) | Régression perf — sync Madina passerait de 8 min à ~30 min |
+| `healParallelism = 1` (revert Action B) | Régression perf — sync joueur_075 passerait de 8 min à ~30 min |
 
 ## Consequences
 
@@ -131,7 +131,7 @@ Cf. handoff §2 risque #1-7 :
 2. Une corruption peut survenir hors writes (DELETE+reinsert intra-txn — issue #16520).
 3. `SIGABRT` handler (Phase 4.2) peut arriver trop tard pour catcher le crash C++.
 4. Rebuild swap-table (Phase 4.1) prend un lock writer ~1s sur 50k rows.
-5. Les batchs computed sur rows partiellement visibles ont produit des résultats faux (LUSR Madina) → recompute force=true requis (Phase 4.4).
+5. Les batchs computed sur rows partiellement visibles ont produit des résultats faux (LUSR joueur_075) → recompute force=true requis (Phase 4.4).
 
 ## Implementation
 

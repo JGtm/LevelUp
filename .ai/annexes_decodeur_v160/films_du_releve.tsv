@@ -1,0 +1,14 @@
+rang	identifiant court	nom neutre	source	mode	version	joueurs	morceaux	Mo	pourquoi
+1	e5adf7b2	film01	corpus d'équivalence	Grande bataille (Slayer Fiesta)	40 / HI_1_11_0	28	31	30.4	Seul film de la build HI_1_11_0 ; film de Grande bataille demandé ; plus de 24 joueurs
+2	03b7bbb6	film02	témoin de durée	Slayer	HI_1_13_0 (version majeure non relevée)	8	25	18.4	Témoin de durée conservé pour la continuité des mesures ; build la plus récente du relevé
+3	221dd082	film03	témoin de durée	Slayer	HI_1_12_0 (version majeure non relevée)	8	30	22.7	Témoin de durée conservé pour la continuité des mesures ; seul film présent de la build HI_1_12_0
+4	1c4c63c2	film04	corpus d'équivalence	Drapeau (BTB, un drapeau)	39 / HI_1_10_0	24	69	88.0	Plus gros film du jeu (morceaux et Mo) : borne haute ; candidat du pic de mémoire
+5	51101d1d	film05	corpus d'équivalence	Drapeau (arène, drapeau neutre)	41 / HI_1_13_0	13	13	9.1	Plus petit film du jeu : borne basse
+6	50247b26	film06	corpus d'équivalence	Grande bataille (Slayer BTB)	31 / sans section	30	32	43.0	Version la plus ancienne du corpus ; identification absente ; le plus de joueurs du jeu
+7	084a804d	film07	corpus d'équivalence	Grande bataille (Drapeau Heavies)	39 / HI_1_10_0	26	57	58.9	Véhicules denses ; Grande bataille ; plus de 24 joueurs ; taille haute
+8	11de8353	film08	corpus d'équivalence	Grande bataille (Slayer Fiesta)	38 / HI_1_9_0	27	33	29.5	Seul film de version 38 du corpus ; plus de 24 joueurs
+9	a521164d	film09	corpus d'équivalence	Autres (Total Control, BTB Heavies)	33 / HI_1_4_1	27	21	26.0	Seul film de la build HI_1_4_1 et seul film de version 33 retenu ; plus de 24 joueurs
+10	7344d24f	film10	corpus d'équivalence	Bases	41 / HI_1_13_0	8	33	25.8	Seul film Bases retenu ; version récente ; taille moyenne
+11	01e1f945	film11	corpus d'équivalence	Colline	41 / HI_1_13_0	8	30	22.5	Seul film Colline présent (aucun témoin de colline n'est présent)
+12	60ae07c4	film12	corpus d'équivalence	Crâne (classé)	37 / HI_1_8_0	8	44	32.0	Seul film Crâne retenu ; version ancienne (37)
+13	9f57c612	film13	corpus d'équivalence	Autres (Bombe, Assaut)	41 / HI_1_13_0	12	27	19.8	Seul film Assaut présent ; version récente

@@ -19,12 +19,12 @@ masqués proprement sur Halo 5 (capability), gates complètes vertes (lot D).
 ## Données validées en amont (2026-07-23, parquets staging du jour)
 
 - `match_participants.kills_expected/deaths_expected` (Infinite) : couverture ~98 %
-  (514/524 Chocoboflor, 1040/1060 JGtm, 1181/1212 Madina, 32/32 Daemon).
-- **6 lignes avec valeurs infinies** (3 JGtm, 3 Madina) → garde `isfinite` OBLIGATOIRE.
+  (514/524 joueur_165, 1040/1060 JGtm, 1181/1212 joueur_075, 32/32 Daemon).
+- **6 lignes avec valeurs infinies** (3 JGtm, 3 joueur_075) → garde `isfinite` OBLIGATOIRE.
 - Bruit mesuré : écart moyen kills réel−attendu < 1 ; dispersion par match ±3-5 ;
   p10..p90 ≈ −4..+7 → le cumulé/lissé est la bonne forme, pas le brut.
-- Modèle assists personnel (`player_assists_model`, per-mode) : Madina 14 modes,
-  JGtm 7, Chocoboflor 4, **Daemon 0** (32 matchs < seuil) → fallback populationnel
+- Modèle assists personnel (`player_assists_model`, per-mode) : joueur_075 14 modes,
+  JGtm 7, joueur_165 4, **Daemon 0** (32 matchs < seuil) → fallback populationnel
   (`assists_model_coefs`, metadata) requis, déjà codé pour is_me.
 - **Halo 5 : 0 `kills_expected` en shared** (0/5590 sur les 4 joueurs), 0 modèle
   assists → feature ABSENTE sur H5 (capability), le modèle local `localExpectedKD`
@@ -206,7 +206,7 @@ masqués proprement sur Halo 5 (capability), gates complètes vertes (lot D).
 
 ## Découvertes (hors périmètre — ne pas traiter)
 
-- 6 lignes `kills_expected = +Inf` en base Infinite (3 JGtm, 3 Madina) : bug amont
+- 6 lignes `kills_expected = +Inf` en base Infinite (3 JGtm, 3 joueur_075) : bug amont
   probable du calcul local ou de l'API — à investiguer un jour (nettoyage données).
 - `capabilities.toml` fin : clé `analytics.timeseries` marquée `not_exposed` sur les
   deux titres alors que la page est servie (chemin legacy) — incohérence doc à

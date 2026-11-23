@@ -1,5 +1,5 @@
 const fs=require('fs'),z=require('zlib');
-const d=JSON.parse(z.gunzipSync(fs.readFileSync('C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+process.argv[2]+'.json.gz')));
+const d=JSON.parse(z.gunzipSync(fs.readFileSync('<poste>/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+process.argv[2]+'.json.gz')));
 const ep=d.equipmentPlacements; console.log(ep.length, JSON.stringify(ep.slice(0,3)));
 const kinds={}; for(const p of ep){ const k=(p.kind||p.cause||p.how||'?'); kinds[k]=(kinds[k]||0)+1;} console.log(kinds);
 console.log(Object.keys(ep[0]).join(','));

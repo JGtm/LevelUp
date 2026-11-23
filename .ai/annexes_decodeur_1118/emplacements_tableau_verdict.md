@@ -1,7 +1,7 @@
 # C.5 : emplacements du tableau des scores, valeurs écrites par le film et accord avec l'API
 
 Mesure du 2026-11-22, sans code de production. 58 films, 559 joueurs appariés (sur 777 lignes API des mêmes matchs).
-Données et scripts : `C:/Users/Guillaume/Downloads/Scripts/dec-v150-recup/c5/` (tableaux bruts : `verdict_tableau_1manche.tsv`,
+Données et scripts : `<poste>/Downloads/Scripts/dec-v150-recup/c5/` (tableaux bruts : `verdict_tableau_1manche.tsv`,
 `verdict_tableau_multi.tsv`, `rythme_par_nom.tsv`, `famille_par_nom.tsv`, `figees_*.tsv`).
 
 ## Réponse courte

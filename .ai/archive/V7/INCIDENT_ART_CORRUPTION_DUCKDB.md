@@ -71,7 +71,7 @@ Le bug **régénère après un rebuild** : usage prolongé → corruption revien
 
 ```
 loadLUSRParticipants chargeait 1-2 participants au lieu de 8-16
-→ LUSR Madina figé à Argent IV au lieu de Platine attendu
+→ LUSR joueur_075 figé à Argent IV au lieu de Platine attendu
 ```
 
 Pattern de détection (BootARTGuard) :
@@ -84,7 +84,7 @@ SELECT COUNT(*) FROM match_participants WHERE match_id || '' = ?  -- Table scan,
 ### Facette DELETE-side (mai 2023 — cette session)
 
 ```
-17:07:38 [WARN] post-sync: sessions échoué gamertag=Chocoboflor
+17:07:38 [WARN] post-sync: sessions échoué gamertag=joueur_165
 err="recalculateSessionsInline write: WriteSessionAssignments(ec938fb4-...):
 FATAL Error: Invalid Input Error: Failed to delete all rows from index.
 Only deleted 0 out of 1 rows.
@@ -190,7 +190,7 @@ Le code Go qui les manipule :
 
 ### Impact data
 
-- ⚠️ LUSR figé : Madina97294 affiché Argent IV au lieu de Platine attendu (cause documentée dans `docs/INCIDENT_2026-05-20_match_participants_index.md`).
+- ⚠️ LUSR figé : joueur_117 affiché Argent IV au lieu de Platine attendu (cause documentée dans `docs/INCIDENT_2026-05-20_match_participants_index.md`).
 - ⚠️ Performance scores non recalculés sur les nouveaux matchs.
 - ⚠️ Sessions/dominance flags figés.
 - ✅ **Pas de perte de data** : la table sous-jacente reste correcte ; seuls les index sont corrompus. Le rebuild swap CTAS préserve toutes les rows (validé : 25069 / 410 / 815 / 1106 / 22 rows préservées sur les 5 DBs rebuilées).

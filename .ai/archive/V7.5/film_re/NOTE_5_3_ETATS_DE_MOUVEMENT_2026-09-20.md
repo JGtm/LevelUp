@@ -201,12 +201,12 @@ Tous `_test.go` sous `//go:build research`, paquet `grammar`, aucun octet de pro
 | `mouvement_5_7_5_candidats_research_test.go` | scores precision/rappel **et le recensement de DENSITE** |
 
 ```bash
-export GOCACHE=/c/Users/Guillaume/Downloads/Scripts/LevelUp-wt-decfilm-57/.gocache
+export GOCACHE=<poste>/Downloads/Scripts/LevelUp-wt-decfilm-57/.gocache
 export PATH=/c/msys64/ucrt64/bin:$PATH CGO_ENABLED=1
 cd apps/go-api
 MOUV57_FILM=<worktree>/data/cache/film_chunks/bfecd02b \
 MOUV57_CARTE=snowbound \
-MOUV57_BORNES='C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-decfilm-57\data\titles\halo_infinite\reference\map_quant_bounds.json' \
+MOUV57_BORNES='<poste>\Downloads\Scripts\LevelUp-wt-decfilm-57\data\titles\halo_infinite\reference\map_quant_bounds.json' \
   go test -tags=research -count=1 -v -timeout 60m \
     -run '^TestMouvement57' ./internal/games/halo_infinite/film/internal/grammar/
 ```
@@ -265,7 +265,7 @@ bit 45 (c est le point 2 ci-dessus) · **D10 (5.3)** `marchViews = 8` contre tro
 
 ### (8) L ENVIRONNEMENT
 
-Worktree `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-decfilm-57`, branche `feat/decfilm-57`.
+Worktree `<poste>/Downloads/Scripts/LevelUp-wt-decfilm-57`, branche `feat/decfilm-57`.
 `GOCACHE=<worktree>/.gocache`, `PATH=/c/msys64/ucrt64/bin:$PATH`, `CGO_ENABLED=1`,
 `GOLANGCI_LINT_CACHE=<worktree>/.golangci-cache`.
 
@@ -402,12 +402,12 @@ Mesures actuelles (bfecd02b, sans le drapeau) : `i59` fautif **19** fois, `i57` 
 Instrument : `grammar/mouvement_5_3_2d_*` (quatre fichiers, voir point 7).
 
 ```bash
-export GOCACHE=/c/Users/Guillaume/Downloads/Scripts/LevelUp-wt-decfilm-53/.gocache
+export GOCACHE=<poste>/Downloads/Scripts/LevelUp-wt-decfilm-53/.gocache
 export PATH=/c/msys64/ucrt64/bin:$PATH CGO_ENABLED=1
 cd apps/go-api
 MOUV532D_FILM=<...>/data/cache/film_chunks/bfecd02b \
 MOUV532D_CARTE=snowbound \
-MOUV532D_BORNES='C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-decfilm-53\data\titles\halo_infinite\reference\map_quant_bounds.json' \
+MOUV532D_BORNES='<poste>\Downloads\Scripts\LevelUp-wt-decfilm-53\data\titles\halo_infinite\reference\map_quant_bounds.json' \
 MOUV532D_SIMSTATE=1 \
   go test -tags=research -count=1 -v -timeout 60m \
     -run '^TestMouvement532Trame$' ./internal/games/halo_infinite/film/internal/grammar/
@@ -476,7 +476,7 @@ les records `ti=35` au-dessus de 11 228. L instrument REFUSE deja de publier une
 
 ### (9) L ENVIRONNEMENT
 
-Worktree `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-decfilm-53`, branche
+Worktree `<poste>/Downloads/Scripts/LevelUp-wt-decfilm-53`, branche
 `feat/decfilm-53`. `export GOCACHE=<worktree>/.gocache`, `PATH=/c/msys64/ucrt64/bin:$PATH`,
 `CGO_ENABLED=1`, `GOLANGCI_LINT_CACHE=<worktree>/.golangci-cache`.
 
@@ -2237,8 +2237,8 @@ disponible.
 Temps film depuis le premier paquet delta lu, `mm:ss`, un instant par episode (deux lectures a
 moins de deux secondes sur le meme slot ne comptent qu une fois).
 
-**`bfecd02b`** (Snowbound — le match de JGtm ; roster lu DANS le film : Tataaannn, JGtm,
-Chocoboflor, Draconewt, MEK1906, Madina97294, SHN Lups99, indahoopty8751) :
+**`bfecd02b`** (Snowbound — le match de JGtm ; roster lu DANS le film : joueur_737, JGtm,
+joueur_165, joueur_023, JOUEUR_419, joueur_117, joueur_670, joueur_834) :
 
 | etat | cinq instants |
 |---|---|

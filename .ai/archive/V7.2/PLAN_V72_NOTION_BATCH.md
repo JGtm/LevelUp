@@ -34,7 +34,7 @@ concurrentes (cache) ; intégration `-p 1` ; vérifs visuelles = utilisateur.
 | V72-21 | « Écart de frags cumulé » disparu sur Explorer (recherche joueur) | 2 | [x] conditionnel matchs communs + etat vide explicite (resolu user) |
 | V72-22 | Terme « Lobby » dans le graphe Engagement à traduire | 2 | [x] Partie / Part partie (+ accent Part equipe) |
 | V72-23 | Légendes collées en bas des blocs (passe générale) | 2 | [x] ChartCard.legend + migration blocs informatifs (interactifs documentes) |
-| V72-24 | Explorer : recherche joueur lente + rechargements bizarres | 3 | [x] replace URL + pool tokens (A1 valide Madina) + typeahead live=0 |
+| V72-24 | Explorer : recherche joueur lente + rechargements bizarres | 3 | [x] replace URL + pool tokens (A1 valide joueur_075) + typeahead live=0 |
 | V72-25 | Explorer : graphe « Écart de frags cumulé » sans axe X | 2 | [x] axe X Explorer (Relations inchange) |
 | V72-26 | Sessions : légende OC / DR en anglais (graphe rendement/résistance) | 2 | [x] Rendement / Resistance |
 | V72-27 | Notif : valeur illisible + nom de rang en anglais | 3 | [x] rang FR par id + arrondi gap (+ current_mu/next_tier_mu defensif) |

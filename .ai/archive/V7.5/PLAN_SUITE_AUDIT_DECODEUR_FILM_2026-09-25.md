@@ -70,8 +70,8 @@ Coût estimé : §4.7 (~20 agents Opus, effort high, jalon par jalon).
 - Branche : **`feat/suite-audit-decodeur`** (`feat/**` déclenche la CI au push ; jamais `wt/**`).
 - Worktree dédié : **`LevelUp-wt-suite-audit`**, à côté du checkout principal, créé depuis
   `feat/v75` : `git worktree add ../LevelUp-wt-suite-audit -b feat/suite-audit-decodeur feat/v75`.
-  Créé le 2026-09-26 : `C:/Users/Guillaume/Projects/LevelUp-wt-suite-audit` (le checkout
-  principal est `C:/Users/Guillaume/Projects/LevelUp` depuis la bascule du 2026-09-25). Jonction
+  Créé le 2026-09-26 : `<poste>/Projects/LevelUp-wt-suite-audit` (le checkout
+  principal est `<poste>/Projects/LevelUp` depuis la bascule du 2026-09-25). Jonction
   `apps/web/node_modules` vers le principal (le hook de push `knip-ratchet` l'exige) : à retirer
   par `(Get-Item <jonction>).Delete()` AVANT `git worktree remove`.
 - Une seule branche pour tout le plan (CLAUDE.md : 1 tâche = 1 branche, N commits), fusionnée dans

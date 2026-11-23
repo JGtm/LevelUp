@@ -4,7 +4,7 @@
 >
 > **GEOMETRIE SEULE — ELARGI (validation + calibrage, N'EST PAS un GO strict) : NO-GO** — 1 carte(s) sur les 4 exigees tiennent (bazaar) ; 2 piege(s) PUR(S) sur ces cartes. Les cartes de calibrage ont servi a choisir les reglages : un GO elargi dit que la methode tient sur ce qu'elle a vu, pas qu'elle generalise.
 
-> Genere par `go test -tags research ./cmd/mappower-build/ -run VerdictV2` (`verdict_v2_*_research_test.go`, `verdict_lignees_research_test.go`). Fichier juge : `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-power-positions\.ai\V7.5\positions_de_force\geometrie_2026-09-20\positions_geo.json` (cuisson du 2026-09-20T12:48:45Z). Reglage serialise dans le fichier : `{"PoidsH":0.3,"PoidsV":0.2,"PoidsE":0.15,"PoidsR":0.2,"PoidsM":0.15,"PorteeRessourceM":20,"QuantileSeuil":0.9,"TailleMiniComposante":12,"MaxPositions":8,"RayonMaximumLocalM":3,"RayonPositionM":4}`. Oracle : `ORACLE_PRO_V2_2026-09-20.md` (§6 positions, §7 contre-exemples).
+> Genere par `go test -tags research ./cmd/mappower-build/ -run VerdictV2` (`verdict_v2_*_research_test.go`, `verdict_lignees_research_test.go`). Fichier juge : `<poste>\Downloads\Scripts\LevelUp-wt-power-positions\.ai\V7.5\positions_de_force\geometrie_2026-09-20\positions_geo.json` (cuisson du 2026-09-20T12:48:45Z). Reglage serialise dans le fichier : `{"PoidsH":0.3,"PoidsV":0.2,"PoidsE":0.15,"PoidsR":0.2,"PoidsM":0.15,"PorteeRessourceM":20,"QuantileSeuil":0.9,"TailleMiniComposante":12,"MaxPositions":8,"RayonMaximumLocalM":3,"RayonPositionM":4}`. Oracle : `ORACLE_PRO_V2_2026-09-20.md` (§6 positions, §7 contre-exemples).
 
 Regles appliquees, toutes ecrites avant la mesure (plan D11, oracle v2 §10) :
 

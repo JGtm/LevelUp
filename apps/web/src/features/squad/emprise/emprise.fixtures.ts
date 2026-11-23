@@ -18,8 +18,8 @@ import type {
   SquadMatchHistoryRow,
 } from '@/lib/api/types'
 
-export const XUID = { jgtm: 'x-jgtm', choco: 'x-choco', madina: 'x-madina' } as const
-type Who = Partial<Record<'jgtm' | 'choco' | 'madina' | 'rest', number>>
+export const XUID = { jgtm: 'x-jgtm', joueur_901: 'x-joueur_901', joueur_075: 'x-joueur_075' } as const
+type Who = Partial<Record<'jgtm' | 'joueur_901' | 'joueur_075' | 'rest', number>>
 
 /** Noms des armes du registre (langue de la requête : FR). */
 export const WEAPONS: Record<string, string> = {
@@ -98,7 +98,7 @@ const MATCHES: MatchSpec[] = [
   {
     id: 'm1', start: '2026-09-22T19:23:00Z', map: 'Starboard', mode: 'Drapeau', outcome: WIN, score: '3–0', dom: 1, pwk: [0, 4], film: true,
     items: {
-      powerup: { [OVERSHIELD]: { us: 5, them: 2, who: { choco: 2, jgtm: 2, madina: 1 }, pads: 10 } },
+      powerup: { [OVERSHIELD]: { us: 5, them: 2, who: { joueur_901: 2, jgtm: 2, joueur_075: 1 }, pads: 10 } },
       power_weapon: { [SWORD]: { us: 0, them: 2 }, [SHOCK]: { us: 2, them: 2, who: { rest: 2 } } },
       rack: { [VK78]: { us: 2, them: 0, who: { jgtm: 1, rest: 1 } }, [BULLDOG]: { us: 0, them: 1 } },
     },
@@ -106,14 +106,14 @@ const MATCHES: MatchSpec[] = [
   {
     id: 'm2', start: '2026-09-22T19:36:00Z', map: 'Curfew', mode: 'Assassin', outcome: WIN, score: '50–48', pwk: [12, 4], film: true,
     items: {
-      powerup: { [CAMO]: { us: 4, them: 0, who: { madina: 3, jgtm: 1 }, pads: 7, dropped: { madina: 1 } } },
+      powerup: { [CAMO]: { us: 4, them: 0, who: { joueur_075: 3, jgtm: 1 }, pads: 7, dropped: { joueur_075: 1 } } },
       power_weapon: {
-        [SPNKR]: { us: 3, them: 0, who: { choco: 1, jgtm: 1, rest: 1 } },
+        [SPNKR]: { us: 3, them: 0, who: { joueur_901: 1, jgtm: 1, rest: 1 } },
         [SENTINEL]: { us: 1, them: 2, who: { rest: 1 } },
         [SKEWER]: { us: 2, them: 0, who: { rest: 2 } },
       },
       rack: {
-        [SHREDDER]: { us: 2, them: 1, who: { madina: 2 } },
+        [SHREDDER]: { us: 2, them: 1, who: { joueur_075: 2 } },
         [VK78]: { us: 3, them: 0, who: { rest: 3 } },
         [PULSE]: { us: 1, them: 3, who: { rest: 1 } },
         [VESTIGE]: { us: 1, them: 1, who: { jgtm: 1 } },
@@ -123,16 +123,16 @@ const MATCHES: MatchSpec[] = [
   {
     id: 'm3', start: '2026-09-22T19:46:00Z', map: 'Origin', mode: 'Drapeau', outcome: LOSS, score: '1–3', pwk: [8, 11], film: true,
     items: {
-      power_weapon: { [SPNKR]: { us: 2, them: 6, who: { jgtm: 2 } }, [SNIPER]: { us: 3, them: 1, who: { jgtm: 2, madina: 1 } } },
+      power_weapon: { [SPNKR]: { us: 2, them: 6, who: { jgtm: 2 } }, [SNIPER]: { us: 3, them: 1, who: { jgtm: 2, joueur_075: 1 } } },
       rack: { [BR75]: { us: 0, them: 7 }, [SIDEKICK]: { us: 2, them: 0, who: { jgtm: 2 } } },
     },
   },
   {
     id: 'm4', start: '2026-09-22T19:59:00Z', map: 'Solution', mode: 'Assassin', outcome: WIN, score: '50–17', dom: 1, pwk: [5, 0], film: true,
     items: {
-      power_weapon: { [SNIPER]: { us: 2, them: 0, who: { madina: 2 } } },
+      power_weapon: { [SNIPER]: { us: 2, them: 0, who: { joueur_075: 2 } } },
       rack: {
-        [SHREDDER]: { us: 4, them: 1, who: { choco: 2, madina: 2 } },
+        [SHREDDER]: { us: 4, them: 1, who: { joueur_901: 2, joueur_075: 2 } },
         [RAVAGER]: { us: 0, them: 1 },
         [BANDIT]: { us: 1, them: 0, who: { rest: 1 } },
         [DISRUPTOR]: { us: 0, them: 1 },
@@ -143,14 +143,14 @@ const MATCHES: MatchSpec[] = [
   {
     id: 'm6', start: '2026-09-22T20:19:00Z', map: 'Shogun', mode: 'Assassin', outcome: LOSS, score: '37–50', pwk: [4, 10], film: true,
     items: {
-      powerup: { [CAMO]: { us: 2, them: 3, who: { choco: 1, madina: 1 }, pads: 8, kept: { choco: 1 } } },
+      powerup: { [CAMO]: { us: 2, them: 3, who: { joueur_901: 1, joueur_075: 1 }, pads: 8, kept: { joueur_901: 1 } } },
       power_weapon: {
         [SPNKR]: { us: 1, them: 3, who: { rest: 1 } },
         [SWORD]: { us: 1, them: 2, who: { rest: 1 } },
-        [SENTINEL]: { us: 1, them: 0, who: { choco: 1 } },
+        [SENTINEL]: { us: 1, them: 0, who: { joueur_901: 1 } },
       },
       rack: {
-        [SHREDDER]: { us: 1, them: 0, who: { choco: 1 } },
+        [SHREDDER]: { us: 1, them: 0, who: { joueur_901: 1 } },
         [VK78]: { us: 0, them: 1 },
         [PULSE]: { us: 2, them: 0, who: { rest: 2 } },
         [RAVAGER]: { us: 0, them: 1 },
@@ -165,22 +165,22 @@ const MATCHES: MatchSpec[] = [
     items: {
       powerup: { [OVERSHIELD]: { us: 1, them: 3, who: { rest: 1 }, pads: 8 } },
       power_weapon: {
-        [SPNKR]: { us: 3, them: 4, who: { jgtm: 2, choco: 1 } },
+        [SPNKR]: { us: 3, them: 4, who: { jgtm: 2, joueur_901: 1 } },
         [SNIPER]: { us: 0, them: 2 },
         [SWORD]: { us: 1, them: 1, who: { jgtm: 1 } },
         [NEEDLER]: { us: 1, them: 4, who: { jgtm: 1 } },
       },
-      rack: { [VESTIGE]: { us: 0, them: 1 }, [SIDEKICK]: { us: 1, them: 0, who: { madina: 1 } } },
+      rack: { [VESTIGE]: { us: 0, them: 1 }, [SIDEKICK]: { us: 1, them: 0, who: { joueur_075: 1 } } },
     },
   },
 ]
 
 const PLAYERS = [
   { xuid: XUID.jgtm, gamertag: 'JGtm' },
-  { xuid: XUID.choco, gamertag: 'Joueur90001' },
-  { xuid: XUID.madina, gamertag: 'Joueur90002' },
+  { xuid: XUID.joueur_901, gamertag: 'Joueur90001' },
+  { xuid: XUID.joueur_075, gamertag: 'Joueur90002' },
 ]
-const OWNERS = ['jgtm', 'choco', 'madina'] as const
+const OWNERS = ['jgtm', 'joueur_901', 'joueur_075'] as const
 
 function shares(resource: string, spec: ItemSpec): SquadEmpriseObjectShare[] {
   const bonus = resource === 'powerup'

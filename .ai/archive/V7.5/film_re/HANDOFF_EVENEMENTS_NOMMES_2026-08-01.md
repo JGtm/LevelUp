@@ -51,7 +51,7 @@ table se trompait de nature.** Elle portait les noms de `personal_score_awards`
 STATISTIQUE, pas les recompenses de score que le serveur en derive ; pour la plupart les deux
 coincident numeriquement, ce qui masquait la confusion. **`comp 22 A` l'a demasquee** :
 l'oracle a 8 joueurs (`match_objective_stats_latest`) donne exactement `flag_grabs`, slot par
-slot — **16 pour Madina97294 la ou la recompense `flag_taken` dit 4** — et le binaire disait
+slot — **16 pour joueur_117 la ou la recompense `flag_taken` dit 4** — et le binaire disait
 la meme chose depuis le debut avec `CtfStats_FlagGrabs`. Detail : etat de l'art **§22.2** ;
 noms canoniques dans le code : `objectiveevents/named.go` (constantes `Stat*`).
 

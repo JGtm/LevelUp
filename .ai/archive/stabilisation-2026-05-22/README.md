@@ -16,7 +16,7 @@ Cette archive regroupe les 5 documents d'audit/incident qui ont déclenché le p
 
 | Phase | Branche | Statut |
 |-------|---------|--------|
-| 1 | `fix/duckdb-art-corruption-rebuild` | Pushed (rebuild appliqué prod : Madina 1/10→10/10) |
+| 1 | `fix/duckdb-art-corruption-rebuild` | Pushed (rebuild appliqué prod : joueur_075 1/10→10/10) |
 | 2 | `chore/metadata-shutdown-cleanup` | Pushed |
 | 3 | `fix/duckdb-pool-hardening` | Pushed (Q26 split reporté Phase 3.bis) |
 | 4 + 1.bis | `feat/ascension-pipeline-v2-wiring` | Pushed (5 commits Phase 4 + 1 commit Phase 1.bis carry-adj) |
@@ -24,12 +24,12 @@ Cette archive regroupe les 5 documents d'audit/incident qui ont déclenché le p
 
 ## Suite
 
-- **Phase 1.bis carry-adj** : modifs formule appliquées (Elo dynamique muOpp + carry asymétrique sur enemyAvgKE). Réduit la régression mais ne ferme pas l'écart Madina (1286 vs cible 1700+). Investigation gap résiduelle ouverte — sigma stagnant ? splitParticipantKEs ? breakdown composantes ?
+- **Phase 1.bis carry-adj** : modifs formule appliquées (Elo dynamique muOpp + carry asymétrique sur enemyAvgKE). Réduit la régression mais ne ferme pas l'écart joueur_075 (1286 vs cible 1700+). Investigation gap résiduelle ouverte — sigma stagnant ? splitParticipantKEs ? breakdown composantes ?
 - **Phase 3.bis** : Q26 LoadHomeMatches split cross-DB (player + shared) à refactorer en 2 phases Go-side. Modèle : `Q26CareerTopEncountersTpl` dans `career_repo.go`.
 - **Investigation upstream `duckdb-go`** : ouvrir une issue avec repro minimal de la corruption ART après prochaine montée de version DuckDB. Cf. [ADR 0017 §Investigation upstream](../../../docs/adr/0017-rebuild-art-corruption-pattern.md#investigation-upstream).
 
 ## Cibles LUSR de validation (pour réf future)
 
-- **Madina97294** : fin Platine / début-milieu Diamant (μ ≈ 1700-1900)
-- **Chocoboflor** : milieu/bas Or (μ ≈ 1400-1500) — atteint ✓
+- **joueur_117** : fin Platine / début-milieu Diamant (μ ≈ 1700-1900)
+- **joueur_165** : milieu/bas Or (μ ≈ 1400-1500) — atteint ✓
 - **JGtm** : milieu/bas Or (μ ≈ 1400-1500) — atteint ✓

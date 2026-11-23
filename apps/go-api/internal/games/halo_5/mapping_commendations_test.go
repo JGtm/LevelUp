@@ -51,7 +51,7 @@ func commendResolver() func(string) string {
 func TestMapCarnageCommendations_DeltaCountAndFilters(t *testing.T) {
 	rows := mapCarnageCommendations("m1", carnageWithCommendations(), commendResolver())
 
-	// Madina : 17 (kills) + 1 (one) + 3 (meta) = 3 rows (flat +0 ignoré).
+	// joueur_075 : 17 (kills) + 1 (one) + 3 (meta) = 3 rows (flat +0 ignoré).
 	// JGtm   : 3 (kills) = 1 row (Id vide ignoré).
 	if len(rows) != 4 {
 		t.Fatalf("rows = %d, want 4 — %+v", len(rows), rows)

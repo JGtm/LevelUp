@@ -18,7 +18,7 @@ Ce plan garde son propre go. Points portés ici :
 - un besoin de changer le décodeur ou le document de rejeu revient au user avant tout code.
 
 Constats relus le 2026-11-15 sur `origin/release/v8.2.0` (`0ccbed4e2c`) et sur le projet csstat
-(`C:\Users\Guillaume\Downloads\Scripts\csstat`, `docs/highlights-pipeline.md`). L'exécutant les RE-VÉRIFIE
+(`<poste>\Downloads\Scripts\csstat`, `docs/highlights-pipeline.md`). L'exécutant les RE-VÉRIFIE
 sur sa base, `release/v8.3.0` (le user a sorti la 3D et les temps forts de la 8.2.0 pour la 8.3.0 le
 2026-11-15) : le plan 3D aura changé le rejeu entre-temps.
 

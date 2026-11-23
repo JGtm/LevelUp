@@ -37,10 +37,10 @@ func (l *lecteurCompte) lire(_ context.Context, gts []string) (map[string]string
 
 func TestResolveFriendXUIDs_RegistreDAbordPuisUneLecture(t *testing.T) {
 	l := &lecteurCompte{base: map[string]string{"Hors registre": "x_hors"}}
-	registre := map[string]string{"Joueur90002": "x_madina", "Joueur90001": "x_choco", "Sans xuid": ""}
+	registre := map[string]string{"Joueur90002": "x_joueur_075", "Joueur90001": "x_joueur_901", "Sans xuid": ""}
 	got := ResolveFriendXUIDs(context.Background(), "test",
 		[]string{"joueur90002", " Joueur90001 ", "Inconnu", "Hors registre", "", "Sans xuid"}, registre, l.lire)
-	want := map[string]string{"x_madina": "joueur90002", "x_choco": "Joueur90001", "x_hors": "Hors registre"}
+	want := map[string]string{"x_joueur_075": "joueur90002", "x_joueur_901": "Joueur90001", "x_hors": "Hors registre"}
 	if !maps.Equal(got, want) {
 		t.Errorf("résolus = %v, attendu %v", got, want)
 	}

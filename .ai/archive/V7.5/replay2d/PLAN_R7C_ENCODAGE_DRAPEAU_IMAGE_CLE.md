@@ -5,7 +5,7 @@
 > sur piece, divise l'ecart median par deux — et laisse le taux d'atterrissage bit-exact a
 > **0,54 %**, avec un residu qui est une DERIVE DISPERSEE (p10 46-105 bits, p50 ~500, p90 a
 > quatre ordres de grandeur, aucun palier) : chaque champ devie un peu, aucun n'est casse.
-> Worktree `C:/Users/Guillaume/Projects/LevelUp-wt-kfflag`, branche `wt/kf-encodage-drapeau`,
+> Worktree `<poste>/Projects/LevelUp-wt-kfflag`, branche `wt/kf-encodage-drapeau`,
 > base `wt/kf-biped-bit-exact` = `9b269d7f7` (R3+R5+R6+R7-a+R7-b).
 > Execution sous le contrat du skill `plan-execution`.
 
@@ -127,7 +127,7 @@ chemin PERSISTANT, et le verdict se lit sur une ligne `EXIT_*=0`.
    string UI, **aucune publication a l'artefact**, aucun balayage de masse (3 films).
 3. Lecture seule stricte hors du worktree (le corpus `data/cache/film_chunks` du worktree
    principal est LU, jamais ecrit). Ghidra : LECTURE SEULE, aucun rename, aucun script.
-4. `GOCACHE=C:/Users/Guillaume/Projects/LevelUp-wt-kfflag/.gocache`, **une seule commande `go`
+4. `GOCACHE=<poste>/Projects/LevelUp-wt-kfflag/.gocache`, **une seule commande `go`
    a la fois**, `CGO_ENABLED=0`.
 5. Bascules globales restaurees en `defer` ; `LockProcessDecode` tenu pour tout le test.
 6. Pas de Python, pas d'emoji, seuils 500 L / 80 L / 5 parametres respectes.

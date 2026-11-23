@@ -22,13 +22,13 @@ afterEach(cleanup)
 
 describe('FicheIdentite', () => {
   const props = {
-    name: 'Madina97294', camp: 'Équipe Eagle', ink: 'var(--ac-team-ally)',
+    name: 'joueur_117', camp: 'Équipe Eagle', ink: 'var(--ac-team-ally)',
     counters: { kills: 8, deaths: 5, assists: 2, fromFilm: true }, surface: 'outer' as const, locale: 'fr' as const,
   }
 
   it('la pastille de camp, le nom en gras, le camp, frags / morts / assistances', () => {
     const { container } = render(<FicheIdentite {...props} />)
-    const nom = screen.getByText('Madina97294')
+    const nom = screen.getByText('joueur_117')
     expect(nom.tagName).toBe('B')
     expect(nom.className).toContain('font-bold')
     expect(screen.getByText('Équipe Eagle')).toBeTruthy()
@@ -44,10 +44,10 @@ describe('FicheIdentite', () => {
 
   it('le nom est à 17 px dans la colonne, à 16 px dans la fenêtre', () => {
     const { unmount } = render(<FicheIdentite {...props} surface="outer" />)
-    expect(screen.getByText('Madina97294').style.fontSize).toBe(`${COTES_FICHE_INSTANT.identite.nomPx.outer}px`)
+    expect(screen.getByText('joueur_117').style.fontSize).toBe(`${COTES_FICHE_INSTANT.identite.nomPx.outer}px`)
     unmount()
     render(<FicheIdentite {...props} surface="internal" />)
-    expect(screen.getByText('Madina97294').style.fontSize).toBe(`${COTES_FICHE_INSTANT.identite.nomPx.internal}px`)
+    expect(screen.getByText('joueur_117').style.fontSize).toBe(`${COTES_FICHE_INSTANT.identite.nomPx.internal}px`)
     expect(COTES_FICHE_INSTANT.identite.nomPx).toEqual({ outer: 17, internal: 16 })
   })
 

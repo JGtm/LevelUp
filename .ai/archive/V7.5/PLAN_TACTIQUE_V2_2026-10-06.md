@@ -22,7 +22,7 @@
 > Statut du plan : **CLOS — lots L1 à L13 exécutés (2026-10-06 / 2026-10-07) sur `feat/tactique-v2`,
 > `feat/v75` fusionnée (`2668848b1`, puis `879f31bbf`), revue adversariale faite en deux rondes (L11.4,
 > L12), clôture finale L13 ; L10.2 couvert par L13.F1 (journal L13).** Fusion dans `feat/v75` : à la charge du superviseur. Branche `feat/tactique-v2`
-> (créée sur `origin/feat/v75` = `b033d30f0`), worktree `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-tactique`.
+> (créée sur `origin/feat/v75` = `b033d30f0`), worktree `<poste>\Downloads\Scripts\LevelUp-wt-tactique`.
 
 ## 0. Objectif, critère de succès, hors périmètre
 

@@ -197,7 +197,7 @@ describe('Répartition des prises dans l’escouade', () => {
 
   it('fiches JGtm, Joueur90001, Joueur90002, sans fiche du reste de l’équipe ; JGtm : 3 bonus · 9 armes spéciales', () => {
     mount()
-    for (const id of [XUID.jgtm, XUID.choco, XUID.madina]) {
+    for (const id of [XUID.jgtm, XUID.joueur_901, XUID.joueur_075]) {
       expect(screen.getByTestId(`emprise-sheet-${id}`)).toBeInTheDocument()
     }
     expect(screen.queryByTestId('emprise-sheet-rest')).toBeNull()
@@ -207,19 +207,19 @@ describe('Répartition des prises dans l’escouade', () => {
     const jgtm = screen.getByTestId(`emprise-sheet-${XUID.jgtm}`)
     expect(jgtm.textContent).toContain('Ressource dominante')
     expect(jgtm.textContent).toContain('Armes spéciales')
-    expect(screen.getByTestId(`emprise-sheet-${XUID.madina}`).textContent).toContain('Bonus')
+    expect(screen.getByTestId(`emprise-sheet-${XUID.joueur_075}`).textContent).toContain('Bonus')
   })
 
   it('une pastille par prise, pastille vide = bonus perdu ; un zéro reste une ligne atténuée', () => {
     mount()
-    const madinaCamo = screen.getByTestId(`emprise-sheet-line-${XUID.madina}-powerup_camo`)
-    expect(madinaCamo.querySelectorAll('[data-dot="taken"]')).toHaveLength(3)
-    expect(madinaCamo.querySelectorAll('[data-dot="lost"]')).toHaveLength(1)
+    const joueur075Camo = screen.getByTestId(`emprise-sheet-line-${XUID.joueur_075}-powerup_camo`)
+    expect(joueur075Camo.querySelectorAll('[data-dot="taken"]')).toHaveLength(3)
+    expect(joueur075Camo.querySelectorAll('[data-dot="lost"]')).toHaveLength(1)
     const jgtmSurb = screen.getByTestId(`emprise-sheet-line-${XUID.jgtm}-powerup_overshield`)
     expect(jgtmSurb.querySelectorAll('[data-dot="taken"]')).toHaveLength(2)
     const jgtmCamo = screen.getByTestId(`emprise-sheet-line-${XUID.jgtm}-powerup_camo`)
     expect(jgtmCamo.getAttribute('data-zero')).toBeNull()
-    const zero = screen.getByTestId(`emprise-sheet-${XUID.madina}`).querySelector('[data-zero="true"]')
+    const zero = screen.getByTestId(`emprise-sheet-${XUID.joueur_075}`).querySelector('[data-zero="true"]')
     expect(zero).not.toBeNull()
     expect(zero!.querySelectorAll('[data-dot]')).toHaveLength(0)
   })
@@ -233,7 +233,7 @@ describe('Répartition des prises dans l’escouade', () => {
     const ref = order(XUID.jgtm)
     // Neuf objets pris par l'équipe, moins les deux que seul le reste de l'équipe a pris.
     expect(ref).toHaveLength(7)
-    for (const id of [XUID.choco, XUID.madina]) expect(order(id)).toEqual(ref)
+    for (const id of [XUID.joueur_901, XUID.joueur_075]) expect(order(id)).toEqual(ref)
   })
 })
 

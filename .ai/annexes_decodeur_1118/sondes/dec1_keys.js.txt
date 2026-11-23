@@ -1,6 +1,6 @@
 const fs=require('fs'),zlib=require('zlib');
 const id=process.argv[2];
-const d=JSON.parse(zlib.gunzipSync(fs.readFileSync('c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
+const d=JSON.parse(zlib.gunzipSync(fs.readFileSync('<poste>/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
 console.log(Object.keys(d).join(','));
 console.log('coverage keys',Object.keys(d.coverage).join(','));
 console.log('decoder',JSON.stringify(d.coverage.decoder));

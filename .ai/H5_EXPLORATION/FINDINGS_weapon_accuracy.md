@@ -17,19 +17,19 @@ TotalShotsLanded` :
 
 | joueur | events (F/L) | carnage (F/L) | |
 |---|---|---|---|
-| KNeow1 | 725/182 | 725/182 | EXACT |
-| MsTada87 | 79/34 | 79/34 | EXACT |
-| Chocoboflor | 320/71 | 320/71 | EXACT |
+| joueur_579 | 725/182 | 725/182 | EXACT |
+| joueur_082 | 79/34 | 79/34 | EXACT |
+| joueur_165 | 320/71 | 320/71 | EXACT |
 | JGtm | 368/121 | 368/121 | EXACT |
-| Pancakeflips | 157/62 | 157/62 | EXACT |
-| Madman684844 | 307/139 | 307/139 | EXACT |
-| Treitor121 | 209/71 | 209/71 | EXACT |
-| Madina97294 | 179/86 | 179/86 | EXACT |
+| joueur_036 | 157/62 | 157/62 | EXACT |
+| joueur_711 | 307/139 | 307/139 | EXACT |
+| joueur_183 | 209/71 | 209/71 | EXACT |
+| joueur_117 | 179/86 | 179/86 | EXACT |
 
 **8/8 EXACT** → aucune fuite (les armes tenues à la mort/fin de partie émettent bien un
 WeaponDrop final). La reconstruction est complète, pas approximative.
 
-Détail par arme (KNeow1) : arme `2278207101` = 232 tirs / 76 touchés = **33 %** — identique
+Détail par arme (joueur_579) : arme `2278207101` = 232 tirs / 76 touchés = **33 %** — identique
 au `WeaponWithMostKills` du carnage (cohérence croisée). arme `2140505068` = 448/85 = 19 %.
 
 ## Ce qu'on obtient (par joueur, par arme, par match)

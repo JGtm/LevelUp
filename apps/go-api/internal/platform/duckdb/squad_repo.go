@@ -367,8 +367,8 @@ func (r *SquadRepo) LoadImpactEvents(ctx context.Context, matchIDs []string) ([]
 // (analysis.ImpactMatchesNeedingKVFallback — décision PAR GROUPE, jamais sur l'union) reçoit
 // des kill/death synthétisés depuis le journal des frags (Q32c, une lecture pour tous les
 // groupes qui en ont besoin) via analysis.SynthesizeKillEventsFromKVPairs, fusionnés et triés
-// par TimeMS. Évite que les builders Escouade (premier frag, intensité, matrice d'impact,
-// points par soirée, squad V1) restent vides en H5.
+// par TimeMS. Évite que les builders Escouade (premier frag, intensité, tableau d'impact par session,
+// squad V1) restent vides en H5.
 func (r *SquadRepo) LoadImpactEventsParGroupes(ctx context.Context, groupes [][]string) ([]domain.ImpactEventRow, error) {
 	matchIDs := unionDesGroupes(groupes)
 	if len(matchIDs) == 0 {

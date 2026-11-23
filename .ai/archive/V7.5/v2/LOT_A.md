@@ -212,7 +212,7 @@ go test ./internal/archlint/ -run TestRuntimeNEcritPasLeCatalogueVersionne
 ## Gates de la tâche A-I
 
 Tous joués en avant-plan, dans ce worktree, avec
-`GOCACHE=/c/Users/Guillaume/AppData/Local/go-build-v2-faits CGO_ENABLED=1` depuis `apps/go-api`.
+`GOCACHE=<poste>/AppData/Local/go-build-v2-faits CGO_ENABLED=1` depuis `apps/go-api`.
 
 | # | Commande | Dernière ligne |
 |---|---|---|
@@ -771,8 +771,8 @@ const acquireWriterDepot = 8 * time.Second  ->  20 * time.Second
 
 ## Gates des corrections (tous joués en avant-plan, dans ce worktree)
 
-`GOCACHE=/c/Users/Guillaume/AppData/Local/go-build-v2-faits`,
-`GOLANGCI_LINT_CACHE=/c/Users/Guillaume/AppData/Local/golangci-v2-faits`, `CGO_ENABLED=1`, depuis
+`GOCACHE=<poste>/AppData/Local/go-build-v2-faits`,
+`GOLANGCI_LINT_CACHE=<poste>/AppData/Local/golangci-v2-faits`, `CGO_ENABLED=1`, depuis
 `apps/go-api`.
 
 | # | Commande | Dernière ligne |

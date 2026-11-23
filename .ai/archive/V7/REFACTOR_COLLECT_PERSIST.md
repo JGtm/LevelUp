@@ -2,7 +2,7 @@
 
 **Statut** : DESIGN — à valider avant implémentation.
 **Date** : 2026-05-23.
-**Auteur** : claude + Guillaume.
+**Auteur** : claude + JGtm.
 **Branche cible** : `refactor/collect-persist` (à créer depuis `chore/post-stabilisation-debt`).
 
 ---
@@ -364,7 +364,7 @@ Match 2 → loadLatestLUSR() lit DB (inclut match 1) → compute cascade
 ### Scénario B : Backfill CLI
 
 ```
-1. CLI : ./bin/backfill --player Madina97294 --force
+1. CLI : ./bin/backfill --player joueur_117 --force
    ↓
 2. Phase Collect (identique au sync mais pour TOUS les matchs ou liste fournie)
    ↓
@@ -424,7 +424,7 @@ Match 2 → loadLatestLUSR() lit DB (inclut match 1) → compute cascade
 - [x] **3.4** Durée d'observation étendue : 4 cycles (3+4+5+6) × 4 joueurs = 16 syncs / 0 FATAL avec `LEVELUP_PERSIST_BATCH=1 LEVELUP_POSTSYNC_INSERT_ONLY=1`
 - [x] **3.5** Flip default à opt-out — ✅ LIVRÉ Phase 4.7 (commit pending) : 9 sites passés à `!= "0"` (default ON). Set `LEVELUP_PERSIST_BATCH=0` ou `LEVELUP_POSTSYNC_INSERT_ONLY=0` pour fallback legacy
 
-**Découverte critique 2026-05-24** : Phase 2 a refactor le path **INSERT per-match** (succès — 10 matchs persistés sans FATAL pour XxDaemonGamerxX). Mais le **post-sync compute** (LUSR cascade, sessions recalc, performance scores, friends recompute, dominance, engagement) faisait toujours des UPDATE concurrents sur `player_match_enrichment` + `match_skill_rank` → bug ART déclenché. **Résolu par Phase 4** (5 sites refactor batch INSERT-only via `PostSyncEnrichmentPersister` + `PostSyncLUSRPersister`, 2 sites déjà batchés laissés en l'état). Cf. `.ai/PLAN_PHASE4_POSTSYNC_REFACTOR.md`.
+**Découverte critique 2026-05-24** : Phase 2 a refactor le path **INSERT per-match** (succès — 10 matchs persistés sans FATAL pour joueur_291). Mais le **post-sync compute** (LUSR cascade, sessions recalc, performance scores, friends recompute, dominance, engagement) faisait toujours des UPDATE concurrents sur `player_match_enrichment` + `match_skill_rank` → bug ART déclenché. **Résolu par Phase 4** (5 sites refactor batch INSERT-only via `PostSyncEnrichmentPersister` + `PostSyncLUSRPersister`, 2 sites déjà batchés laissés en l'état). Cf. `.ai/PLAN_PHASE4_POSTSYNC_REFACTOR.md`.
 
 ### Phase 4 — Backfill CLI + scripts (~3h) ✅ LIVRÉ (scope révisé)
 
@@ -590,7 +590,7 @@ Avant de déclarer le refactor terminé :
 
 - Migration vers Postgres/SQLite : on garde DuckDB, juste on l'utilise correctement.
 - Refactor des reads : reste inchangé (DuckDB reste OLAP-friendly).
-- Auto-recovery LUSR Madina figé : suivra naturellement quand sync re-tournera proprement.
+- Auto-recovery LUSR joueur_075 figé : suivra naturellement quand sync re-tournera proprement.
 - medals_earned corruption résiduelle : rebuild one-shot avant le premier cycle post-refactor.
 
 ---

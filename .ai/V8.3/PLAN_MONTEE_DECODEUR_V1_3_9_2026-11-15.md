@@ -28,7 +28,7 @@ GOWORK local par `scripts/briques-workspace.sh` uniquement (jamais de `go.work`,
       décodeur (`internal/facts/fallback/registre_objectifs.go:302` porte `unSi(auDernierNumero)`, le code dit
       `unSi(tf.auDernierNumero)`). Correction acceptée par levelup-1f dans le commit de c2-manches (gel) ; gate rejoué en E2.)
       Sièges du roster de `4f77afc1` changés par le correctif des bots : vérifiés sur pièces par levelup-1f,
-      ATTENDU (sans les bots, Narotlcs prenait à tort la place 1 ; avec eux il ouvre son siège listé 26).
+      ATTENDU (sans les bots, joueur_1379 prenait à tort la place 1 ; avec eux il ouvre son siège listé 26).
       À dire dans les notes (E3) : places des arrivants corrigées quand des bots non épinglés sont déclarés.
 
 ## E2 — Gel et tag du décodeur
@@ -123,7 +123,7 @@ GOWORK local par `scripts/briques-workspace.sh` uniquement (jamais de `go.work`,
       La correction couvre les deux films, mesurée sur les 18 témoins.
     - `repli_emission_hors_domaine_jetee` sur bcb6d393, c75f33b8, 111fa685, 60ae07c4 et 396cfc92 : rangé sous le
       point 3, aucun FP, gains nets.
-    - Les deux vies de « Truly Elusive » rendues au bot (4f77afc1) : ce xuid est absent de match_participants. Gain.
+    - Les deux vies de « joueur_1301 » rendues au bot (4f77afc1) : ce xuid est absent de match_participants. Gain.
   - Accord du user relayé par levelup-d0 (« Oui ok je suis d'accord avec sa recommandation, mais ajouter au backlog
     d'investiguer sur ces écarts restants… ») : CONFIRMÉ par le user dans cette session le 2026-11-15 (« Oui ok »).
     Portée : les écarts classés « à accepter » ci-dessus ; les deux défauts (a521164d, 084a804d) restent à
@@ -168,7 +168,7 @@ GOWORK local par `scripts/briques-workspace.sh` uniquement (jamais de `go.work`,
   (manques 21 735 vers 850). Registre des replis d'avant inconnu : tout repli est jugé neuf. Le repli de bande vient du 118 ; l'émission hors
   domaine monte avec la lecture du tableau de tous les sièges (118), le repli existe depuis v8.1.0. PERTES du filet `replaydiff` : les leaves
   de couverture neuves (`coverage.clocks.*`, `scoreActions.*`, `lifeEnds.*`) classées échec passent de absent à N ; `roster.presence.toMax`
-  disparu (119, présence exacte) ; `seats.relaisBornes` en baisse ; `4f77afc1` : deux vies de « Truly Elusive » rendues au bot « 343
+  disparu (119, présence exacte) ; `seats.relaisBornes` en baisse ; `4f77afc1` : deux vies de « joueur_1301 » rendues au bot « 343
   Byrontron » (119 plus correctif des bots), `pickups.origin` 15 vers 14 sur `11de8353`. Aucune décision inscrite.
 - 2026-11-15, E2, gate LevelUp sous GOWORK : `go build`, `go vet` verts ; `go test ./...` : tout vert, `archlint` compris
   (`TestToutSiteDuRegistreExiste` vert), après ajout de `commande_*.bin.gz` à `binairesCouverts` ; vitest du rejeu 350 fichiers et

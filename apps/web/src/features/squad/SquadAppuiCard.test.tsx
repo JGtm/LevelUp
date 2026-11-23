@@ -33,11 +33,11 @@ const BLOC: SquadAssistPairs = {
   matches_measured: 8,
   matches_total: 10,
   total_assists: 56,
-  pairs: [paire('Madina', 'JGtm', 14, 3), paire('JGtm', 'Madina', 9)],
+  pairs: [paire('joueur_075', 'JGtm', 14, 3), paire('JGtm', 'joueur_075', 9)],
 }
 
-const ROSTER = ['JGtm', 'Madina']
-const COULEURS = { JGtm: '#2255cc', Madina: '#aa3322' }
+const ROSTER = ['JGtm', 'joueur_075']
+const COULEURS = { JGtm: '#2255cc', joueur_075: '#aa3322' }
 
 type Series = {
   type: string
@@ -68,19 +68,19 @@ describe('SquadAppuiCard', () => {
     renderWithProviders(<SquadAppuiCard block={BLOC} roster={ROSTER} colorByPlayer={COULEURS} />)
     const s = await sankey()
     expect(s.type).toBe('sankey')
-    expect(s.data.map((n) => n.name)).toEqual(['assistant:JGtm', 'assistant:Madina', 'finisher:JGtm', 'finisher:Madina'])
+    expect(s.data.map((n) => n.name)).toEqual(['assistant:JGtm', 'assistant:joueur_075', 'finisher:JGtm', 'finisher:joueur_075'])
     expect(s.data[0].itemStyle.color).toBe('#2255cc')
     expect(s.data[3].itemStyle.color).toBe('#aa3322')
-    const ruban = s.links.find((l) => l.source === 'assistant:Madina')!
+    const ruban = s.links.find((l) => l.source === 'assistant:joueur_075')!
     expect(ruban.lineStyle.color).toBe('#aa3322')
   })
 
   it('infobulle d’un ruban : voix active, part sur le TOTAL SERVEUR, puis « dont N… »', async () => {
     renderWithProviders(<SquadAppuiCard block={BLOC} roster={ROSTER} colorByPlayer={COULEURS} />)
-    const ruban = (await sankey()).links.find((l) => l.source === 'assistant:Madina')!
+    const ruban = (await sankey()).links.find((l) => l.source === 'assistant:joueur_075')!
     // 14 sur les 56 assistances de l'escouade : 25 %.
     expect(ruban.tip.replace(/\p{Zs}/gu, ' ')).toBe(
-      'Madina a assisté JGtm sur 14 frags (25 % des assistances de l&#39;escouade)<br/>dont 3 où l’assistant a fait plus de dégâts que le finisseur',
+      'joueur_075 a assisté JGtm sur 14 frags (25 % des assistances de l&#39;escouade)<br/>dont 3 où l’assistant a fait plus de dégâts que le finisseur',
     )
   })
 
@@ -96,9 +96,9 @@ describe('SquadAppuiCard', () => {
     renderWithProviders(<SquadAppuiCard block={BLOC} roster={ROSTER} colorByPlayer={COULEURS} />)
     expect(screen.getByText('Support')).toBeTruthy()
     expect(screen.getByTestId('assist-flow-headers').textContent).toContain('Assister: sets up the kill')
-    const ruban = (await sankey()).links.find((l) => l.source === 'assistant:Madina')!
+    const ruban = (await sankey()).links.find((l) => l.source === 'assistant:joueur_075')!
     expect(ruban.tip.replace(/\p{Zs}/gu, ' ')).toBe(
-      "Madina assisted JGtm on 14 kills (25% of the squad&#39;s assists)<br/>including 3 where the assister dealt more damage than the finisher",
+      "joueur_075 assisted JGtm on 14 kills (25% of the squad&#39;s assists)<br/>including 3 where the assister dealt more damage than the finisher",
     )
   })
 

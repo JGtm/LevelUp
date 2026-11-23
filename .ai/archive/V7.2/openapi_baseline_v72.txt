@@ -9,7 +9,7 @@ POST /_admin/progression/backfill/{player_slug}
   operationId: backfillProgression
   summary: Backfill progression V2 (Ascension) pour un joueur
   tags: diagnostics
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     response 200 desc=Diag pipeline progression V2 après backfill
       resp application/json -> $ref:ProgressionDiag
     response 404 desc=Ressource introuvable
@@ -19,7 +19,7 @@ GET /_diag/csr-coverage/{player_slug}
   operationId: getDiagCSRCoverage
   summary: Diag couverture CSR pour un joueur
   tags: diagnostics
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     response 200 desc=Couverture CSR
       resp application/json -> $ref:CSRCoverage
     response 404 desc=Ressource introuvable
@@ -29,7 +29,7 @@ GET /_diag/prestige/telemetry/{player_slug}
   operationId: getDiagPrestigeTelemetry
   summary: Diag agrégation télémétrie Prestige par origine du défi
   tags: diagnostics
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     response 200 desc=Agrégats télémétrie Prestige par origine
       resp application/json -> $ref:PrestigeTelemetryDiag
     response 404 desc=Ressource introuvable
@@ -39,7 +39,7 @@ GET /_diag/progression/{player_slug}
   operationId: getDiagProgression
   summary: Diag pipeline progression V2 (Ascension)
   tags: diagnostics
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     response 200 desc=État pipeline progression V2
       resp application/json -> $ref:ProgressionDiag
     response 404 desc=Ressource introuvable
@@ -785,7 +785,7 @@ GET /players/{player_slug}/commendations/totals
   operationId: getCommendationTotals
   summary: Totaux à vie des commendations natives (Halo 5)
   tags: career
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     response 200 desc=Totaux à vie des commendations natives, groupés par catégorie
       resp application/json -> $ref:NativeCommendationsTotalsResponse
     response 404 desc=Ressource introuvable
@@ -832,7 +832,7 @@ POST /players/{player_slug}/filters/match-ids
   operationId: filtersMatchIDs
   summary: Résoudre la liste des match_ids correspondant à un contexte de filtres
   tags: filters
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     requestBody required=true
       req application/json -> $ref:FilterContextInput
     response 200 desc=Liste des match_ids filtrés
@@ -845,7 +845,7 @@ POST /players/{player_slug}/filters/resolve
   operationId: resolveFilters
   summary: Résoudre le contexte de filtres
   tags: filters
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     requestBody required=true
       req application/json -> $ref:FilterContextInput
     response 200 desc=Contexte de filtres résolu
@@ -862,7 +862,7 @@ GET /players/{player_slug}/matches/{match_id}
   summary: Détail complet d'un match
   tags: match-view
     param match_id in=path required=true type=string desc=UUID du match Halo Infinite
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     response 200 desc=Détail du match
       resp application/json -> $ref:MatchViewResponse
     response 404 desc=Ressource introuvable
@@ -889,7 +889,7 @@ PATCH /players/{player_slug}/matches/{match_id}/exclusion
   summary: Marquer ou démarquer un match comme non pertinent
   tags: match-exclusion
     param match_id in=path required=true type=string desc=UUID du match Halo Infinite
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     requestBody required=true
       req application/json -> object
       req  node (root): type=object
@@ -959,7 +959,7 @@ PATCH /players/{player_slug}/media/likes
   operationId: patchMediaLike
   summary: Like / unlike d'un média
   tags: media
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     requestBody required=true
       req application/json -> $ref:MediaLikeRequest
     response 200 desc=État liked persisté côté backend
@@ -1045,7 +1045,7 @@ GET /players/{player_slug}/pages/achievements
   operationId: getAchievementsPage
   summary: Page Achievements Xbox du joueur
   tags: career
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     response 200 desc=Page Achievements
       resp application/json -> $ref:AchievementsPageResponse
     response 404 desc=Ressource introuvable
@@ -1057,7 +1057,7 @@ GET /players/{player_slug}/pages/career
   operationId: getCareerPage
   summary: Page Carrière complète
   tags: career
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     response 200 desc=Page Carrière
       resp application/json -> $ref:CareerPageResponse
     response 404 desc=Ressource introuvable
@@ -1069,7 +1069,7 @@ GET /players/{player_slug}/pages/career/csrs
   operationId: getCareerCSRs
   summary: Classements CSR par playlist (snapshots current / season / all-time)
   tags: career
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     param season in=query required=false type=string desc=Saison CSR à afficher (ex. "CsrSeason13-1"). Vide → saison courante.
     response 200 desc=Classements CSR par playlist
       resp application/json -> object
@@ -1097,7 +1097,7 @@ GET /players/{player_slug}/pages/career/encounters
   operationId: getCareerEncounters
   summary: Encounters du joueur
   tags: career
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     response 200 desc=Encounters
       resp application/json -> $ref:CareerEncountersResponse
     response 404 desc=Ressource introuvable
@@ -1110,7 +1110,7 @@ GET /players/{player_slug}/pages/career/highlight-matches
   summary: Matchs marquants — 15 best + 15 worst (format Explorer)
   tags: career
     param experience in=query required=false type=string enum=["all","ranked","unranked"]
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     param season_ids in=query required=false type=string desc=CSV des IDs de saison à filtrer (ex. "season6,season7")
     response 200 desc=Highlight matches
       resp application/json -> object
@@ -1140,7 +1140,7 @@ GET /players/{player_slug}/pages/career/rivals
   operationId: getCareerRivals
   summary: Top némésis + Top souffre-douleur
   tags: career
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     response 200 desc=Rivals
       resp application/json -> object
       resp  node (root): type=object
@@ -1170,7 +1170,7 @@ GET /players/{player_slug}/pages/career/top-encounters
   operationId: getCareerTopEncounters
   summary: Joueurs les plus croisés (hors amis)
   tags: career
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     response 200 desc=Top encounters
       resp application/json -> object
       resp  node (root): type=object
@@ -1186,7 +1186,7 @@ GET /players/{player_slug}/pages/career/top-matches
   operationId: getCareerTopMatches
   summary: Top matchs du joueur
   tags: career
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     response 200 desc=Top matchs
       resp application/json -> $ref:CareerTopMatchesResponse
     response 404 desc=Ressource introuvable
@@ -1198,7 +1198,7 @@ POST /players/{player_slug}/pages/citations
   operationId: postCitations
   summary: Citations (filtres en body)
   tags: career
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     response 200 desc=Citations calculées (Triple Kill, Clutch, etc.)
       resp application/json -> object
       resp  node (root): type=object
@@ -1209,7 +1209,7 @@ POST /players/{player_slug}/pages/commendations
   operationId: postCommendations
   summary: Commendations et médailles par catégorie
   tags: career
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     response 200 desc=Commendations et médailles par catégorie
       resp application/json -> object
       resp  node (root): type=object
@@ -1220,7 +1220,7 @@ POST /players/{player_slug}/pages/compare
   operationId: postComparePage
   summary: Comparaison joueur vs joueur (12 KPIs)
   tags: compare
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     requestBody required=true
       req application/json -> $ref:CompareRequest
     response 200 desc=Résultat de comparaison avec 12 KPIs
@@ -1234,7 +1234,7 @@ POST /players/{player_slug}/pages/explorer/matches-query
   operationId: queryExplorerMatches
   summary: Requête paginée des matchs Explorer
   tags: explorer
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     requestBody required=true
       req application/json -> $ref:ExplorerMatchesQueryRequest
     response 200 desc=Matchs Explorer
@@ -1250,7 +1250,7 @@ POST /players/{player_slug}/pages/explorer/player-query
   operationId: queryExplorerPlayer
   summary: Profil d'encounter avec un joueur cible
   tags: explorer
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     requestBody required=true
       req application/json -> $ref:ExplorerPlayerQueryRequest
     response 200 desc=Profil encounter
@@ -1266,7 +1266,7 @@ GET /players/{player_slug}/pages/home
   operationId: getHomePage
   summary: Page Accueil
   tags: home
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     response 200 desc=Page accueil (hero card, timeline, médias récents)
       resp application/json -> object
       resp  node (root): type=object desc=TODO Sprint 32 : schéma HomePageResponse complet
@@ -1279,7 +1279,7 @@ POST /players/{player_slug}/pages/last-match/resolve
   operationId: postLastMatchResolve
   summary: Résoudre le dernier match
   tags: explorer
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     response 200 desc=Dernier match résolu
       resp application/json -> object
       resp  node (root): type=object
@@ -1290,7 +1290,7 @@ GET /players/{player_slug}/pages/leaderboard
   operationId: getLeaderboardPage
   summary: Résumé CSR local du joueur courant
   tags: leaderboard
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     param playlist in=query required=false type=string desc=Filtrer par playlist
     param season in=query required=false type=string desc=Filtrer par saison
     response 200 desc=Classement des joueurs
@@ -1302,7 +1302,7 @@ GET /players/{player_slug}/pages/leaderboard/catalog
   operationId: getLeaderboardCatalog
   summary: Saisons + playlists disponibles pour les sélecteurs du classement CSR mondial
   tags: leaderboard
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     response 200 desc=Catalogue saisons + playlists ayant des snapshots
       resp application/json -> object
       resp  node (root): type=object
@@ -1321,7 +1321,7 @@ GET /players/{player_slug}/pages/match-history/export
   operationId: exportMatchHistory
   summary: Export CSV de l'historique
   tags: match-history
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     response 200 desc=Jeton d'export
       resp application/json -> $ref:FileTokenResponse
     response 400 desc=Requête invalide
@@ -1335,7 +1335,7 @@ POST /players/{player_slug}/pages/match-history/query
   operationId: queryMatchHistory
   summary: Requête paginée de l'historique des parties
   tags: match-history
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     requestBody required=true
       req application/json -> $ref:MatchHistoryQueryRequest
     response 200 desc=Historique paginé
@@ -1351,7 +1351,7 @@ POST /players/{player_slug}/pages/medals
   operationId: postMedals
   summary: Médailles (catalogue complet + compteur joueur)
   tags: career
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     response 200 desc=Catalogue complet des médailles du titre avec le compteur obtenu par le joueur (0 = jamais obtenue), regroupées par catégorie et super-section
       resp application/json -> $ref:MedalsPageResponse
     response 404 desc=Ressource introuvable
@@ -1361,7 +1361,7 @@ POST /players/{player_slug}/pages/media
   operationId: postMediaLibrary
   summary: Galerie médias (filtres en body)
   tags: media
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     requestBody required=false
       req application/json -> $ref:MediaPageRequest
     response 200 desc=Galerie médias paginée
@@ -1399,7 +1399,7 @@ GET /players/{player_slug}/pages/sessions
   operationId: getSessions
   summary: Sessions (Go-only — à réconcilier avec /pages/timeseries FastAPI au Sprint 32)
   tags: timeseries
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     response 200 desc=Liste des sessions avec stats agrégées
       resp application/json -> object
       resp  node (root): type=object desc=TODO Sprint 32 : aligner avec TimeseriesPageResponse FastAPI
@@ -1410,7 +1410,7 @@ POST /players/{player_slug}/pages/sessions/detail
   operationId: postSessionDetailPage
   summary: Détail d'une session avec suggestion de comparaison
   tags: timeseries
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     requestBody required=false
       req application/json -> object
       req  node (root): type=object desc=SessionPageRequest — session ciblée, session de comparaison et filtres optionnels
@@ -1426,7 +1426,7 @@ GET /players/{player_slug}/pages/squad
   operationId: getSquadPage
   summary: Escouade (GET legacy — voir aussi POST /pages/teammates)
   tags: teammates
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     response 200 desc=Analyse escouade / coéquipiers
       resp application/json -> object
       resp  node (root): type=object
@@ -1449,7 +1449,7 @@ POST /players/{player_slug}/pages/stats/query
   operationId: postStatsQuery
   summary: Séries temporelles (legacy — voir aussi POST /pages/timeseries)
   tags: timeseries
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     response 200 desc=Données séries temporelles (win/loss, précision, forme, objectif)
       resp application/json -> object
       resp  node (root): type=object
@@ -1460,7 +1460,7 @@ POST /players/{player_slug}/pages/synthesis
   operationId: postSynthesisPage
   summary: Synthèse globale (filtres en body)
   tags: synthesis
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     response 200 desc=Synthèse globale (heatmap, top semaines, comparaison KPIs)
       resp application/json -> object
       resp  node (root): type=object
@@ -1471,7 +1471,7 @@ POST /players/{player_slug}/pages/teammates
   operationId: postTeammatesPage
   summary: Analyse coéquipiers (filtres en body)
   tags: teammates
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     response 200 desc=Analyse coéquipiers avec statistiques
       resp application/json -> object
       resp  node (root): type=object
@@ -1482,7 +1482,7 @@ POST /players/{player_slug}/pages/timeseries
   operationId: postTimeseriesPage
   summary: Séries temporelles (filtres en body)
   tags: timeseries
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     response 200 desc=Données séries temporelles
       resp application/json -> object
       resp  node (root): type=object
@@ -1494,7 +1494,7 @@ GET /players/{player_slug}/patterns
   summary: Pattern Engine v3 — contextes, comportements, leviers calibrés
   tags: progression
     param n in=query required=false type=integer default=50 desc=Nombre de matchs récents à analyser (10 ≤ n ≤ 200, défaut 50).
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     response 200 desc=Rapport patterns du joueur (peut être vide si aucun match)
       resp application/json -> object
       resp  node (root): type=object
@@ -1541,7 +1541,7 @@ DELETE /profiles/{player_slug}/titles/{slug}/data
   operationId: purgeTitleData
   summary: Purger les données d'un titre pour un joueur
   tags: setup
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     param slug in=path required=true type=string desc=Slug du titre cible
     response 200 desc=Titre purgé
       resp application/json -> $ref:TitlePurgeOutputBody
@@ -1556,7 +1556,7 @@ PATCH /profiles/{player_slug}/titles/{slug}/sync
   operationId: setTitleSync
   summary: Activer ou mettre en pause un titre pour un joueur
   tags: setup
-    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+    param player_slug in=path required=true type=string desc=Slug du joueur (dérivé du gamertag, ex. "joueur_165")
     param slug in=path required=true type=string desc=Slug du titre cible (ex. halo_infinite, halo_5)
     requestBody required=true
       req application/json -> $ref:TitleSyncInputBody

@@ -1,5 +1,5 @@
 const fs=require('fs'),z=require('zlib');
-const d=JSON.parse(z.gunzipSync(fs.readFileSync('C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+process.argv[2]+'.json.gz')));
+const d=JSON.parse(z.gunzipSync(fs.readFileSync('<poste>/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+process.argv[2]+'.json.gz')));
 console.log(JSON.stringify(d.rules), JSON.stringify(d.flagReturnZone), d.durationMs);
 // dropped spans longer than flagReturnS
 const lim=(d.rules.flagReturnS||30);

@@ -4,7 +4,7 @@ Commit de référence `43a01721e` (le checkout principal est passé à `fe2106f4
 pendant l'enquête ; `ETAT_DE_L_ART_KILLWEAPON.md` vit désormais sous `.ai/V7.5/` ; les numéros de
 ligne du `thought_log.md` sont ceux de `fe2106f4b`). Lecture seule du dépôt principal. Une seule sonde Go (test `research`
 sur 3 fichiers de faits persistés, aucun film), sous verrou `voie.sh`, dans le worktree détaché
-`C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-inv-tirs_vehicules` (à retirer par le superviseur).
+`<poste>\Downloads\Scripts\LevelUp-wt-inv-tirs_vehicules` (à retirer par le superviseur).
 Scripts Node et journaux : `SP/sondes/tirs_vehicules/` (copie de la sonde Go incluse).
 
 Légende : **[M]** mesuré (fichier:ligne, sortie chiffrée) · **[D]** déduit · **[H]** hypothèse.
@@ -19,9 +19,9 @@ Horloge : `t = affiché_s × 10 + 227` ; frag `time_ms` → `t = (time_ms − or
 
 | Élément | Valeur | Source |
 |---|---|---|
-| Épisodes de G MONEY 2123 (filmIndex 2) dans un Ghost `5b80c406` | slot 514, t 311→1088 (affiché 0:08.4→1:26.1) ; slot 541, t 2064→2869 (3:03.7→4:24.2) ; `src: proximity`, sans siège | document + sonde **[M]** |
+| Épisodes de JOUEUR_374 (filmIndex 2) dans un Ghost `5b80c406` | slot 514, t 311→1088 (affiché 0:08.4→1:26.1) ; slot 541, t 2064→2869 (3:03.7→4:24.2) ; `src: proximity`, sans siège | document + sonde **[M]** |
 | Pont slot → index | index 2 → slots [514 532 537 541], liens directs par création de bipède | sonde **[M]** |
-| Frags de G MONEY au Ghost (`source_tag = f712c64a`, `veh_cv_ghost`) | t 395 (0:16.8), 623 (0:39.6), 650 (0:42.3), 2159 (3:13.2), 2228 (3:20.1), 2402 (3:37.5) — **tous dans un des deux épisodes** | `match_kill_events_latest` (copie) **[M]** |
+| Frags de JOUEUR_441 au Ghost (`source_tag = f712c64a`, `veh_cv_ghost`) | t 395 (0:16.8), 623 (0:39.6), 650 (0:42.3), 2159 (3:13.2), 2228 (3:20.1), 2402 (3:37.5) — **tous dans un des deux épisodes** | `match_kill_events_latest` (copie) **[M]** |
 | Événements de tir décodés (`FilmInputs.Fire`) | 1 063, **tous** d'arme personnelle (moitié basse `0x42C9679F`) ; **zéro** d'arme de véhicule, zéro identifiant décalé | sonde **[M]** |
 | Tirs de l'index 2 pendant ses épisodes (±1 s) | **0** (ses 116 tirs sont tous rattachés à pied, hors épisodes) | sonde **[M]** |
 | Tirs de l'index 2 dans les 2 s avant chacun des 6 frags au Ghost | **0 / 6** | sonde **[M]** |
@@ -113,7 +113,7 @@ ne peut rendre un tir qui n'est pas dans les entrées de l'assemblage.
   V3F §3.3) ; témoin décalé de ±60 s.
 - S3 si S1 et S2 sont négatifs : Ghidra (lecture seule) — chemin d'émission de
   `action_weapon_fire` pour un canon `lsnd` contre un canon `snd!`.
-- Gate de la sonde : un signal dont une occurrence précède chacun des 6 frags de G MONEY dans les
+- Gate de la sonde : un signal dont une occurrence précède chacun des 6 frags de JOUEUR_441 dans les
   2 s, absent au témoin décalé, et nul hors de ses épisodes.
 - Coût : deux décodages de film arène (minutes, RAM d'un film arène), aucune écriture d'artefact.
 
@@ -228,7 +228,7 @@ Aucun lot n'a jamais vérifié qu'un tir de Ghost existait dans un document rée
 
 **Gate sur DOCUMENTS RÉELS** (instruments : `kills_vs_tirs.mjs`, `tirs_enfants.mjs`,
 `sweep_w.mjs`, à porter en test `research` du paquet)
-- G1 `81c02726` : au moins un tir de Ghost publié dans les 2 s avant chacun des 6 frags de G MONEY
+- G1 `81c02726` : au moins un tir de Ghost publié dans les 2 s avant chacun des 6 frags de JOUEUR_441
   (0/6 aujourd'hui), zéro hors de ses épisodes, posé à ≤ 3 m du sprite.
 - G2 parc : frags de classe véhicule précédés d'un tir de l'arme du tueur ≥ 90 % par famille dont le
   signal est lu — Ghost 1/63, LAAG 0/31, Banshee 3/26, lance-grenades Falcon 9/32 aujourd'hui
@@ -252,7 +252,7 @@ Pour chaque frag dont la source de dégât est une arme de véhicule (faits `kil
 persistés), publier un tir synthétique à l'instant du frag, posé sur le véhicule du tueur, avec le
 style et le son de l'arme. Repli nommé et compté (`repli_tir_vehicule_par_frag`). Taille S, pas de
 re-décodage, montée de schéma et republication depuis les faits. Limite : 6 éclairs sur tout le
-match de G MONEY au lieu d'une rafale continue, jamais un tir raté. Utile en attendant A0/A1.
+match de JOUEUR_441 au lieu d'une rafale continue, jamais un tir raté. Utile en attendant A0/A1.
 
 **Recommandation** : option A. Lancer A0 dès l'accord de l'utilisateur. Sortir tout de suite la
 partie de A2/A3 qui ne demande pas de re-décodage (pose des tourelles, registre clé par tags
@@ -312,7 +312,7 @@ Seules les colonnes « tag », « observé » et « porteur » sont mesurées.
    documents contiennent des bots [D : tirs de bots].
 3. `ScanFireEvents` accepte les octets de tête `0xD2` = types 36 ET 37 (`weapon_overheat`). Le 37 ne tombe aujourd'hui que par la
    garde de taille, pas par choix.
-4. **Couverture des épisodes** [M] : 25 des 63 frags au Ghost ne sont couverts par aucun épisode du tueur (ex. Tupacamaru9556,
+4. **Couverture des épisodes** [M] : 25 des 63 frags au Ghost ne sont couverts par aucun épisode du tueur (ex. joueur_317,
    `4f77afc1`, 10 frags au Ghost t 8706-9393, aucun épisode publié).
 5. Deux commentaires faux : `vehicle_families.go:57-61` (« aucune tourelle enfant observée au parc ») et
    `vehicleShotSound.ts:42` / `vehicleShotFx.ts:49` (« c7d50912 ne départage pas LAAG / Gauss / roquettes »).

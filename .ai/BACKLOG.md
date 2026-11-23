@@ -58,14 +58,6 @@
 
 ---
 
-### [outillage] `scripts/disk-hygiene.ps1` : le contrôle « fusionné » des dossiers de travail vise une branche disparue
-
-**Relevé le 2026-11-18** (ménage de clôture de la refonte de la page du rejeu). Le script teste chaque dossier de travail contre `origin/feat/v75` (lignes 280 et 288), branche qui n'existe plus : la simulation s'arrête en erreur sur ce contrôle. À faire : viser la branche de version courante (ou la branche par défaut), sans nom en dur. Le ménage du 2026-11-18 a été fait à la main.
-
-**Effort : faible. Priorité basse.**
-
----
-
 ### [décodeur/rejeu] Libellés des médailles du rejeu : champ servi sans jumeau dans le document du décodeur
 
 **Relevé le 2026-11-18** (contrôle complet de la refonte de la page du rejeu). Le document de rejeu SERVI porte `medalLabels` (libellé par langue, description, image, rareté), posé à la requête ; le document STOCKÉ du décodeur n'a pas ce champ, alors que les libellés de véhicules y ont le leur, rempli de la même façon. Les deux garde-rails qui comparent les deux documents lisent donc une liste datée de champs « servis seuls » (`internal/testutil/replay_servis_seuls.go`). À une prochaine version du décodeur : y déclarer le champ, puis vider la liste. Aucun effet à l'écran.
@@ -150,80 +142,13 @@
 
 ### [outillage] disk-hygiene supprime les worktrees enregistrés sous C:/t et les clones git à commits non poussés
 
-**Relevé le 2026-11-22** par les deux sessions pilotes (fond Relief et backlog/décodeur de la 8.3.0). La tâche planifiée `LevelUp-disk-hygiene` (`scripts/disk-hygiene.ps1 -Apply`, journal `%LOCALAPPDATA%/levelup-disk-hygiene/disk-hygiene.log`) a supprimé le 2026-11-22 à 03:03 tous les sous-dossiers de `C:/t` inactifs depuis 72 h, y compris des worktrees git enregistrés (les branches et commits sont restés, le travail non commité est perdu) et un clone ordinaire du décodeur qui portait sept commits jamais poussés. La règle de protection ne couvre pas les worktrees sous `C:/t`. À corriger : épargner tout dossier qui est un worktree enregistré (`git worktree list`) ou un dépôt git avec des commits non poussés ou un arbre sale, et journaliser ce qui est épargné. En attendant, les sessions posent leurs worktrees hors de `C:/t` (`C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-<nom>`). **Reprise :** décision du user (corriger tout de suite ou plus tard).
-
----
-
-### [rejeu/cadres] Rangée de fiches et colonne qui oscillent au seuil de largeur
-
-**Relevé le 2026-11-18** (relecture finale de la refonte de la page du rejeu, constat P2-1, `C:/t/ui-revue-scratch/revue_finale.md`). Aucune marge entre « la rangée tient » et « elle ne tient plus ». Quand la rangée fait apparaître la barre de défilement, le corps rétrécit, la rangée se replie, la barre disparaît, la rangée revient. Cas relevé : 4 contre 4 au Cinéma ou au Plein cadre, corps entre 1286 et 1302 px environ, plan à son plancher de 360 px. Bande étroite, non reproduit à l'écran. Piste : une marge d'une vingtaine de pixels entre les deux sens, dans `useCardRowLayout`. **Effort : à estimer. Priorité basse.**
-
----
-
-### [rejeu/cadres] Plein écran du navigateur laissé actif après le retour au Standard
-
-**Relevé le 2026-11-18** (relecture finale de la refonte de la page du rejeu, constat P2-5). Depuis le Standard, bouton du plein écran du système (Plein cadre du geste et natif), puis touche F ou icône « Standard » : le cadre se referme, le plein écran natif reste, alors que `leaveFullFrame` doit l'éviter. Variante : plein écran refusé par le navigateur ou API absente, puis « Quitter » : `wantedRef` reste vrai, et le clic suivant sur le bouton ne fait rien. Piste : passer la sortie d'un Plein cadre du geste par `release`, quel que soit le chemin (`hooks/useReplayFullscreen.ts`). **Effort : à estimer. Priorité basse.**
-
----
-
-### [rejeu/fiche] La fenêtre de fiche relit tout le lobby à chaque changement de joueur
-
-**Relevé le 2026-11-18** (relecture finale de la refonte de la page du rejeu, constat P2-7). La clé de la fenêtre (`xuid:disposition`, `ui/frames/ReplayCinemaFrame.tsx`) remonte le composant à chaque changement de joueur : tirs, touches et dégâts du document sont relus à chaque clic, ce que l'en-tête de `playerInstantSources.ts` dit éviter. Coût seulement, aucun nombre faux. **Effort : à estimer. Priorité basse.**
-
----
-
-### [rejeu/fiche] Clé de liste par nom d'arme dans « Tirs et dégâts »
-
-**Relevé le 2026-11-18** (relecture finale de la refonte de la page du rejeu, constat P2-8). `ui/fiche/FicheTirs.tsx` prend le nom de l'arme comme clé React ; deux armes au même libellé donneraient deux lignes de même clé. Piste : une clé qui ne repose pas sur le libellé. **Effort : à estimer. Priorité basse.**
-
----
-
-### [rejeu] Soupçons de la relecture finale, non démontrés
-
-**Relevé le 2026-11-18** (relecture finale de la refonte de la page du rejeu, section 3 de `C:/t/ui-revue-scratch/revue_finale.md`). Aucun de ces huit soupçons n'a été reproduit : ils sont à vérifier à l'écran ou par un test avant toute correction.
-
-- `hooks/useResolvedTurns.ts` : `turnedBefore` survit à un changement de match quand le document est déjà en cache ; une carte entre 20 % et 25 % de gain s'ouvre tournée ou droite selon la précédente.
-- Horloge de la barre vide après une bascule Standard / Cinéma en pause, si la toile ne change pas de taille.
-- Auto pendant un export : la résolution lit la boîte de l'écran ; un redimensionnement pendant l'export peut retourner le plan.
-- `equipmentGestures.ts`, `gestureOwner` : lâcher daté à fin de vie + 2 alors que le slot est réattribué à fin de vie + 1 (voir aussi l'entrée « Équipements lâchés en mourant »).
-- Deux scores « à l'instant » pour un joueur : infobulle de la tuile (calque de score, sans garde) et fiche (points par action, gardée).
-- Barre d'une ligne sur écran étroit : les commandes fixes dépassent la largeur, la frise tombe à zéro.
-- `replay_medal_labels.go`, `medalLabelOf` : `Difficulty` prise à la première langue d'un parcours de carte (ordre non fixé).
-- `playerInstantStats.ts` : `respawns` compte une vie entièrement antérieure au début du match (la moyenne l'écarte).
-
-**Effort : à estimer après vérification. Priorité basse.**
-
----
-
-### [rejeu/fiche] Cinq cotes de l'ancien gabarit de fiche sans lecteur
-
-**Relevé le 2026-11-18** (relecture finale de la refonte de la page du rejeu). Constat antérieur, signalé le 2026-11-17 au nettoyage des anciennes fiches : `GABARIT_NORMAL` garde cinq valeurs qu'aucun chemin de production ne lit (largeur de cellule d'arme, épaisseurs de jauge, filigrane, nombre d'éclairs). Les retirer demande de scinder le type des gabarits en deux. **Effort : à estimer. Priorité basse.**
+**Relevé le 2026-11-22** par les deux sessions pilotes (fond Relief et backlog/décodeur de la 8.3.0). La tâche planifiée `LevelUp-disk-hygiene` (`scripts/disk-hygiene.ps1 -Apply`, journal `%LOCALAPPDATA%/levelup-disk-hygiene/disk-hygiene.log`) a supprimé le 2026-11-22 à 03:03 tous les sous-dossiers de `C:/t` inactifs depuis 72 h, y compris des worktrees git enregistrés (les branches et commits sont restés, le travail non commité est perdu) et un clone ordinaire du décodeur qui portait sept commits jamais poussés. La règle de protection ne couvre pas les worktrees sous `C:/t`. À corriger : épargner tout dossier qui est un worktree enregistré (`git worktree list`) ou un dépôt git avec des commits non poussés ou un arbre sale, et journaliser ce qui est épargné. En attendant, les sessions posent leurs worktrees hors de `C:/t` (`<poste>/Downloads/Scripts/LevelUp-wt-<nom>`). **Reprise :** décision du user (corriger tout de suite ou plus tard).
 
 ---
 
 ### [rejeu/maquette] Écarts avec les maquettes à juger à l'écran après livraison
 
-**Relevé le 2026-11-18** (relecture finale de la refonte de la page du rejeu, conformité aux maquettes non relue ligne à ligne). Points à juger à l'écran :
-
-- icônes de cadre dessinées sans maquette ;
-- boutons ronds, curseur de volume et cartouche de capture gardés dans la barre d'une ligne ;
-- pas de croix de déplacement dans la barre d'une ligne ;
-- fenêtre de fiche accrochée 8 px sous la fiche, et dont seul le bas défile ;
-- bloc arrondi commun à la carte et à la colonne du Standard non fait ;
-- infobulle de « Plan tourné » sans le gain en pour-cent ;
-- ligne choisie du fil marquée par un fond ;
-- tirs à la tête écrits « 3 · sur 5 mesurées » ;
-- F / M / A de la tête de fiche sans couleur ;
-- fond d'accent du bouton caméra quand un joueur est suivi ;
-- au Plein cadre, la rangée va d'un bord à l'autre.
-
-Ces points sont aussi dans l'artefact des vérifications du user. Aucun n'est un défaut constaté. **Effort : à estimer. Priorité basse.**
-
----
-
-### [tactique/orientation] L'onglet Tactique et « Occupation du terrain » ne suivent pas l'orientation « Auto » du rejeu
-
-**Relevé le 2026-11-18** (relecture finale de la refonte de la page du rejeu). Ces vues lisent le choix RETENU pour la carte ; une carte en Auto y reste droite alors que le rejeu peut la tourner. À trancher par le user. **Effort : à estimer. Priorité basse.**
+**Relevé le 2026-11-18, reformulé le 2026-11-23** (plan `.ai/PLAN_BACKLOG_2026-11-18.md`, Q.1 et Q.2 ; grille `.ai/annexes_refonte_ui_rejeu/conformite_maquettes.md`). Huit écarts sur onze sont réglés ou décidés (boutons carrés, capture sans cartouche, fenêtre de fiche sous le haut du plan, bloc unique du Standard, marges du Plein cadre, tirs à la tête sur le compteur du jeu ; le défilement entier de la fenêtre et le gain dans l'infobulle de « Plan tourné » sont écartés par le user). Restent trois points sans dessin, à faire juger par le user à l'écran : les pictogrammes et le marquage actif des icônes de cadre ; le curseur de volume gardé dans la barre d'une ligne (la maquette n'a qu'une icône) ; le fond d'accent du bouton caméra quand un joueur est suivi. Aucun n'est un défaut constaté. **Effort : faible. Priorité basse.**
 
 ---
 
@@ -235,111 +160,9 @@ Ces points sont aussi dans l'artefact des vérifications du user. Aucun n'est un
 
 ---
 
-### [rejeu] Point de vue du rejeu gardé d'un match à l'autre
-
-**Relevé le 2026-11-17** (refonte de la page du rejeu). Le choix du point de vue est un état de la page qui n'est pas remis à zéro quand on passe à un autre match : il persiste si le même joueur figure dans le match suivant, alors que rien ne doit être mémorisé d'un match à l'autre. **Effort : à estimer. Priorité basse.**
-
----
-
-### [rejeu/fiche] Fiche du joueur : « Suivre » un joueur et « Seul » sur un autre à la fois
-
-**Relevé le 2026-11-17.** Le modèle l'autorise depuis que la caméra « Suivre » ne dépend plus de la fiche ouverte : la caméra peut suivre un joueur que « Seul » n'affiche pas. À trancher par le user (interdire, ou laisser). **Complété le 2026-11-18** (relecture finale de la refonte de la page du rejeu, constat P2-4) : la combinaison est possible aujourd'hui. Menu caméra : « Suivre » X, puis fiche de Y, puis « Seul » : `followXuid` reste X, la carte ne dessine que Y et se cadre à chaque image sur X, qui n'est pas dessiné. Aucun test ne croise une action de fiche avec un suivi tiers. Piste du relecteur : « Seul » éteint le suivi d'un autre joueur (symétrique de Masquer). **Effort : à estimer. Priorité basse.**
-
----
-
-### [rejeu] Nom de grenade de repli écrit en français dans la logique
-
-**Relevé le 2026-11-17.** Quand un type de grenade n'a pas de nom au catalogue, le code écrit « rang N » en dur, dans une fonction de lecture, sans passer par les textes par langue. Visible dans les fiches et dans le bloc « À l'instant ». **Effort : à estimer. Priorité basse.**
-
----
-
-### [rejeu/médailles] Événements de médaille du contexte du match : trois champs servis sans lecteur
-
-**Relevé le 2026-11-17.** Depuis que le fil du rejeu lit ses médailles dans le document de rejeu, plus aucun code du site ne lit `medal_label`, `medal_description` ni `medal_image_url` des événements de type médaille servis par le contexte du rejeu et la page du match (`medal_name_id` reste lu ailleurs, par les tuiles de médailles). Le serveur les calcule encore à chaque requête. À retirer du serveur et du contrat de l'API, ou à leur rendre un lecteur. **Effort : à estimer. Priorité moyenne (règle : une donnée servie a un lecteur).**
-
----
-
-### [rejeu] Médailles du fil du rejeu pour un titre qui sert des planches d'images
-
-**Relevé le 2026-11-17.** Le fil dessine la médaille à partir de son image seule ; pour un titre dont les médailles viennent d'une planche (Halo 5), l'image est vide et le fil n'affiche que le nom, comme avant. La découpe de planche est servie dans le document mais le fil ne la lit pas. **Effort : à estimer. Priorité basse.**
-
----
-
-### [rejeu] Clé de requête du contexte du rejeu sans la langue
-
-**Relevé le 2026-11-17** (plan `.ai/PLAN_BACKLOG_2026-11-17.md`, section 1). `queryKeys.matchReplayContext` ne porte pas la langue alors que la réponse contient des libellés traduits. La refonte du rejeu retire les médailles de ce contexte. **Effort : à estimer. Priorité basse.**
-
----
-
-### [web/couches] Garde-rail des couches : périmètre et faux négatifs
-
-**Relevé le 2026-11-17** (plan `.ai/PLAN_BACKLOG_2026-11-17.md`, section 1). Le garde-rail ne balaie que `features/` (une quinzaine de fichiers de `components/` et `lib/` écoutent Échap ou le clic dehors à la main) et se contourne par des formes d'écoute qu'il ne reconnaît pas. **Effort : à estimer.**
-
----
-
-### [sécurité] Jetons : `haloTokensForDrain` prend le premier jeton valide
-
-**Relevé le 2026-11-17** (plan `.ai/PLAN_BACKLOG_2026-11-17.md`, section 1). `haloTokensForDrain` prend le premier jeton valide sans passer par la mise en commun, et son message d'erreur conseille de recapturer un jeton ; `refreshTokensFromDB` écrit aussi un conseil de recapture dans le journal. Contraire à l'ADR 0023. À corriger avant toute route ouverte aux joueurs sur l'hébergé. **Effort : à estimer.**
-
----
-
-### [rejeu] Régénération du bureau : fichier tactique d'un rejeu au film expiré
-
-**Relevé le 2026-11-17** (plan `.ai/PLAN_BACKLOG_2026-11-17.md`, section 1). La régénération du bureau ne reprend que les rejeux dont le film est encore à l'archive : un fichier tactique à l'ancien format resterait. Vide sur le poste, non vérifié en prod. **Effort : à estimer.**
-
----
-
-### [tests/durée] Paquet DuckDB : migrations neuves indirectes
-
-**Relevé le 2026-11-17** (plan `.ai/PLAN_BACKLOG_2026-11-17.md`, section 1). Huit ouvertures `GetOrOpen`, deux `ForTarget` avec `ApplySchema` et un `ExecScript` migrent encore à neuf sans être vus par le garde-rail, qui se contourne aussi par une valeur de fonction. **Effort : à estimer.**
-
----
-
-### [web/couleurs] Contrôle des couleurs : deux entrées mortes dans la liste des fichiers autorisés
-
-**Relevé le 2026-11-17** (plan `.ai/PLAN_BACKLOG_2026-11-17.md`, section 1). Deux entrées mortes dans la liste des fichiers autorisés : `features/home/rarity.ts`, `features/battlepass/rarity.ts`. **Effort : à estimer.**
-
----
-
 ### [données] Schéma d'une base joueur selon l'ordre de création
 
-**Relevé le 2026-11-17** (plan `.ai/PLAN_BACKLOG_2026-11-17.md`, section 1). « Schéma de synchronisation puis migrations » et « migrations seules » ne donnent pas la même base : 37 lignes d'écart mesurées (un défaut à 0 perdu, des `NOT NULL` en moins, `performance_score` en `FLOAT` ou `DOUBLE`). L'invariant existant ne couvre pas ce sens. **Effort : à estimer. Priorité moyenne.**
-
----
-
-### [données] Escouade : tous les comptes d'un coéquipier inconnus
-
-**Relevé le 2026-11-17** (plan `.ai/PLAN_BACKLOG_2026-11-17.md`, section 1). Le taux par minute servi est 0 au lieu de « inconnu », alors que les dégâts rendent « inconnu ». Le corriger change le contrat de l'API : décision du user attendue. **Effort : à estimer. Priorité basse.**
-
----
-
-### [fonds de carte] Limites du rempart contre les chemins du poste
-
-**Relevé le 2026-11-17** (plan `.ai/PLAN_BACKLOG_2026-11-17.md`, section 1). Un nom de dossier personnel peut rester dans des cas de bord (dossier avec points et espaces) ; le garde-rail ne voit ni un partage réseau ni les chemins Unix hors dossier personnel. **Effort : à estimer.**
-
----
-
-### [rejeu] Compteur des rejeux illisibles
-
-**Relevé le 2026-11-17** (plan `.ai/PLAN_BACKLOG_2026-11-17.md`, section 1). Un fichier tactique illisible y est compté et journalisé comme un rejeu illisible. **Effort : à estimer.**
-
----
-
-### [rejeu] Rejeu à la demande : restes de la relecture du 2026-11-17
-
-**Relevé le 2026-11-17** (plan `.ai/PLAN_BACKLOG_2026-11-17.md`, section 1). Restes de la relecture (aucun n'est grave) : garde des jetons en liste noire, contournable par un appel indirect ; demande reprise après redémarrage non revalidée ; nouvel essai après échec qui saute les contrôles d'état ; film laissé sur le disque après un échec de génération quand l'archive est désactivée ; capacité qui repose sur « développement = tout ce qui n'est pas hébergé » ; bouton affiché alors que l'action échouera ; jeton refusé qui n'invalide pas le cache. Et un point à MESURER : un clic juste après la fin d'un match, avant la publication du film, pourrait marquer le match « film absent » pour de bon (la synchronisation suit déjà la même règle). **Effort : à estimer.**
-
----
-
-### [web/couches] Accessibilité des menus
-
-**Relevé le 2026-11-17** (plan `.ai/PLAN_BACKLOG_2026-11-17.md`, section 1). Le sélecteur de réassociation d'un média n'écoute pas Échap ; les menus d'expérience et de vue n'annoncent pas leur état ouvert. **Effort : à estimer.**
-
----
-
-### [archi] `bootstrap_service.go` au-delà du seuil de taille
-
-**Relevé le 2026-11-17** (plan `.ai/PLAN_BACKLOG_2026-11-17.md`, section 1). `bootstrap_service.go` : 690 lignes, au-delà du seuil de 500, accru de 18 lignes par la capacité neuve. **Effort : à estimer. Priorité basse.**
+**Relevé le 2026-11-17, reformulé le 2026-11-23** (plan `.ai/PLAN_BACKLOG_2026-11-18.md`, piste S). Fait : test d'égalité dans les deux sens, 16 lignes d'écart avant, 11 colonnes alignées pour les bases neuves, exemption de `csr_pipeline_e2e` retirée. Restent cinq écarts de forme entre une base née de la synchronisation et une base née des migrations : `performance_score` en `FLOAT` contre `DOUBLE` (table et vue), défaut de `sync_meta.updated_at`, défaut `FALSE` de `is_with_friends` et de `is_excluded`. Les fermer demande de modifier une étape de migration déjà jouée en production ; ils sont nommés et datés dans le test de forme. Trois options écrites dans `.ai/annexes_backlog_1118/schema_joueur.md` ; le pilote retient « laisser ». À trancher par le user. **Effort : faible si « laisser ». Priorité basse.**
 
 ---
 
@@ -348,6 +171,17 @@ Ces points sont aussi dans l'artefact des vérifications du user. Aucun n'est un
 **Relevé le 2026-11-17** (plan `.ai/PLAN_BACKLOG_2026-11-17.md`, décision D-6). Points du chantier, chacun renvoyé à son entrée lorsqu'elle existe : verdict « lecture complète » du score faux en Assaut et en Grande bataille du build `HI_1_11_0` (voir « Actions de score : verdict « lecture complète » faux en BTB et en Assaut ») ; étape manquante de `replay-equiv` pour les joueurs du tableau (voir « `replay-equiv` ne compare ni les joueurs du tableau… ») ; arme d'une touche sur l'index brut (voir « Auteur d'un dégât lu sur l'index brut du film ») ; porteurs du drapeau faux en Grande bataille (voir « Porteurs du drapeau faux en grande bataille ») ; quatre compteurs nommés faux (voir « Écarts restants du gate du corpus ») ; lettres des zones (voir « Nommer les états des marqueurs d'objectifs ») ; commandes et gestes non publiés (voir « Commandes et gestes du joueur »). **Effort : à estimer.**
 
 ---
+
+### [décodeur/score] Points de bombe en Assaut : explosion reconnue, action sans nom
+
+**Relevé le 2026-11-23 (plan du décodeur v1.6.0, item A.4), mis au backlog à la demande du user.** Mesure sur 8 films d'Assaut :
+
+- L'explosion de la bombe (+200) se reconnaît dans le film : le compteur `bomb_detonations` monte dans la même émission, 22 fois sur 22. Mais rien dans le film ne donne le NOM de l'action de score : la publier obligerait à inventer un nom.
+- Un bonus de +10 tombe avec des messages de rang 349 (80 cas sur 85), sans texte, absents de la table des réponses de jeu, et sans compteur associé.
+- D'autres bonus (+25, +50, +60, +75, +150, +250) n'ont aucun motif net.
+- Même en publiant le +200, ces matchs resteraient « incomplets ».
+
+Pistes : lire l'arbre des actions du mode dans les fichiers du jeu (graphe du mode) pour nommer l'explosion et les bonus ; ou décider d'un nom publié pour l'explosion seule. Rien n'est publié dans la v1.6.0. Pièces : annexe du plan du décodeur v1.6.0, rapport du groupe « score » (hors dépôt à ce jour).
 
 ### [décodeur] Actions de score : verdict « lecture complète » faux en BTB et en Assaut
 
@@ -361,21 +195,9 @@ Ces points sont aussi dans l'artefact des vérifications du user. Aucun n'est un
 
 ---
 
-### [rejeu/horloge] Coup d'envoi estimé depuis l'API : décalé de l'horloge du film
-
-**Relevé le 2026-11-17** (suites de l'audit des versions 8.2.0 à 8.3.0, `.ai/PLAN_SUITES_AUDIT_2026-11-16.md`). Le coup d'envoi estimé depuis l'API est à 5,3 s de l'horloge du film en médiane (jusqu'à 155 s) ; celui lu dans le film est à 0,36 s. À étudier : prendre partout le coup d'envoi du film quand il existe. Mesure : `.ai/annexes_suites_audit/sources.md`. **Effort : à estimer.**
-
----
-
-### [rejeu] Barre de lecture en surimpression en Cinéma et en Plein cadre
-
-**Relevé le 2026-11-17** (idée du user pendant la refonte de la page du rejeu, `.ai/PLAN_REFONTE_UI_REJEU_2026-11-15.md`). Le user veut poser les contrôles de lecture et la frise sur le plan, comme un lecteur vidéo de téléphone, et les faire disparaître quand la souris ne bouge plus. Il doute lui-même de la disparition (« sur ordinateur on bouge pas mal la souris ») et pense qu'un repli ou un autre comportement serait mieux. Il relève aussi que les pistes (score, dominance, objectifs, médias) compliquent la chose. Proposition du pilote, non validée : en Plein cadre seulement, pendant la lecture, la barre d'une ligne se replie en une fine ligne de progression au bas du plan (rail, repères d'éliminations, bande de dominance) ; elle se déplie au survol du bas du plan, à toute touche et en pause ; le fil des éliminations posé sur le plan remonte quand elle est dépliée ; le Cinéma et le Standard gardent leur barre fixe. Gain attendu : une cinquantaine de pixels de hauteur pour le plan, là où la hauteur limite sa taille. **Condition de reprise :** une MAQUETTE validée par le user avant tout code (demande du user : « il me faudra une maquette ») ; à faire après la barre de lecture d'une ligne de la refonte (plan `.ai/PLAN_REFONTE_UI_REJEU_2026-11-15.md`, lot E). **Effort : à estimer. Priorité basse.**
-
----
-
 ### [divers] Test instable sous charge des suites de l'audit (2026-11-17)
 
-**Relevé le 2026-11-17** (suites de l'audit des versions 8.2.0 à 8.3.0, `.ai/PLAN_SUITES_AUDIT_2026-11-16.md`, section Découvertes). **Reformulée le 2026-11-17** : seul le point 1 reste. `TestBackfillRegistryNames_BaseTenueParUnAutreProcessus` (`apps/go-api/cmd/levelup`) échoue quand la machine est chargée et passe seul. Non reproduit en 96 passages parallèles le 2026-11-17, aucune attente bornée dans le code ; à reprendre s'il échoue de nouveau. Les points 2 à 6 (hook `go-vet` de lefthook, sidecar `sgh_interlock.json`, `zonesPuresDuCatalogue`, renvois `Q24LUSRHistory`, taux par minute de l'escouade) sont traités le 2026-11-17. **Effort : à estimer.**
+**Relevé le 2026-11-17** (suites de l'audit des versions 8.2.0 à 8.3.0, `.ai/PLAN_SUITES_AUDIT_2026-11-16.md`, section Découvertes). **Reformulée le 2026-11-23** (plan `.ai/PLAN_BACKLOG_2026-11-18.md`, K.4, diagnostic seul) : `TestBackfillRegistryNames_BaseTenueParUnAutreProcessus` (`apps/go-api/cmd/levelup`) échoue quand la machine est chargée et passe seul. Aucune course trouvée ; la sortie d'erreur du processus fils, qui était perdue, est maintenant branchée, la lecture du « prêt » a un délai explicite et la sortie du fils est jointe à l'échec. À reprendre s'il échoue de nouveau, avec cette sortie. **Effort : à estimer.**
 
 ---
 
@@ -399,7 +221,7 @@ Relevé le 2026-11-16 : `src/host/src/observer.rs` de OpenSpartan/cartographer (
 
 ### [décodeur] Commandes et gestes du joueur : notes de bas de page de la fiche du rejeu
 
-**Demande de l'utilisateur (2026-11-16), inspirée de la fiche d'OpenSpartan.** libfilmshell (décodeur de Dend, MIT, copie locale `C:\Users\Guillaume\Downloads\Scripts\libfilmshell`) lit et publie ce que notre décodeur ne publie pas : la direction et l'intensité des commandes de déplacement (avant/arrière et latéral, de -31 à 31 : `src/control.rs`, `src/model/state.rs`), les rechargements (événement weapon_reload), les visées (unit_zoom, niveau 0 à 2), les sprints (état 2 de la capacité du Spartan) et les sauts (`src/actions.rs`, `src/model/event.rs`). Le user les veut comme « notes de bas de page » de la fiche détaillée du rejeu (comptes de sprints, rechargements, visées, sauts ; part du temps en mouvement), pas comme statistiques mises en avant. Reprise dans notre décodeur (dépôt `JGtm/halo-infinite-film-decoder`) avec crédit à Dend, puis publication dans le document de rejeu. À confronter : notre ancienne conclusion « sprint non observable par la vitesse » contre la lecture de l'état de capacité de libfilmshell. L'interface est anticipée par le plan de refonte de la page du rejeu (8.3.0, décision D-24 du 2026-11-16) : la fiche réserve une section « En passant » sous « Totaux du match » ; ce chantier y ajoute la lecture et le rendu. **Reformulée le 2026-11-17.** Constat sur pièces : sprint, saut et visée sont déjà publiés ; les commandes de déplacement, le bouton de saut et les rechargements sont lus mais non publiés. Sort : entrée corrigée ; chantier décodeur (décision D-6 du plan). **Condition de reprise :** chantier décodeur après la refonte de la page du rejeu. **Effort : moyen (décodeur, document et fiche). Priorité basse.**
+**Demande de l'utilisateur (2026-11-16), inspirée de la fiche d'OpenSpartan.** libfilmshell (décodeur de Dend, MIT, copie locale `<poste>\Downloads\Scripts\libfilmshell`) lit et publie ce que notre décodeur ne publie pas : la direction et l'intensité des commandes de déplacement (avant/arrière et latéral, de -31 à 31 : `src/control.rs`, `src/model/state.rs`), les rechargements (événement weapon_reload), les visées (unit_zoom, niveau 0 à 2), les sprints (état 2 de la capacité du Spartan) et les sauts (`src/actions.rs`, `src/model/event.rs`). Le user les veut comme « notes de bas de page » de la fiche détaillée du rejeu (comptes de sprints, rechargements, visées, sauts ; part du temps en mouvement), pas comme statistiques mises en avant. Reprise dans notre décodeur (dépôt `JGtm/halo-infinite-film-decoder`) avec crédit à Dend, puis publication dans le document de rejeu. À confronter : notre ancienne conclusion « sprint non observable par la vitesse » contre la lecture de l'état de capacité de libfilmshell. L'interface est anticipée par le plan de refonte de la page du rejeu (8.3.0, décision D-24 du 2026-11-16) : la fiche réserve une section « En passant » sous « Totaux du match » ; ce chantier y ajoute la lecture et le rendu. **Reformulée le 2026-11-17.** Constat sur pièces : sprint, saut et visée sont déjà publiés ; les commandes de déplacement, le bouton de saut et les rechargements sont lus mais non publiés. Sort : entrée corrigée ; chantier décodeur (décision D-6 du plan). **Condition de reprise :** chantier décodeur après la refonte de la page du rejeu. **Effort : moyen (décodeur, document et fiche). Priorité basse.**
 
 ---
 
@@ -459,7 +281,7 @@ Règle de travail : pour chaque écart restant, trouver la cause dans le film (l
 
 ### [assets] Planches d'icônes de Dend : armes, grenades et équipements plus nets
 
-**Demande de l'utilisateur (2026-11-09).** Dend a les mêmes icônes d'armes que LevelUp, l'air plus nettes, réunies dans une seule image : `C:\Users\Guillaume\Downloads\feed.350c786f.png`. Une seconde planche, `C:\Users\Guillaume\Downloads\icons.18423eb2.png`, porte les images d'armes (netteté comparable à l'existant, à première vue) et surtout les icônes des grenades (de mauvaise qualité chez LevelUp) et des équipements (venues aujourd'hui d'images trouvées sur Internet). À instruire : comment découper ces planches et faire correspondre chaque icône à son arme ou équipement, si elles remplacent les images actuelles partout, et quelle est leur provenance (droit de les réutiliser, ou retrouver les mêmes images dans les fichiers du jeu). **Condition de reprise :** examen des deux planches. **Effort : à estimer après cet examen.**
+**Demande de l'utilisateur (2026-11-09).** Dend a les mêmes icônes d'armes que LevelUp, l'air plus nettes, réunies dans une seule image : `<poste>\Downloads\feed.350c786f.png`. Une seconde planche, `<poste>\Downloads\icons.18423eb2.png`, porte les images d'armes (netteté comparable à l'existant, à première vue) et surtout les icônes des grenades (de mauvaise qualité chez LevelUp) et des équipements (venues aujourd'hui d'images trouvées sur Internet). À instruire : comment découper ces planches et faire correspondre chaque icône à son arme ou équipement, si elles remplacent les images actuelles partout, et quelle est leur provenance (droit de les réutiliser, ou retrouver les mêmes images dans les fichiers du jeu). **Condition de reprise :** examen des deux planches. **Effort : à estimer après cet examen.**
 
 ---
 
@@ -658,6 +480,33 @@ Réglages Discord sans interrupteur web : relais du coach, rejeu prêt, reconnex
 
 | Date | Item |
 |------|------|
+| 2026-11-23 | **[outillage] `scripts/disk-hygiene.ps1` : contrôle « fusionné » vers une branche disparue** — traité (plan `.ai/PLAN_BACKLOG_2026-11-18.md`, K.3) : base résolue (amont de la branche courante, sinon branche par défaut du dépôt), paramètre `-BaseRef`, « base introuvable » journalisé sans arrêt. |
+| 2026-11-23 | **[rejeu/cadres] Rangée de fiches et colonne qui oscillent au seuil de largeur** — traité (plan du 2026-11-18, C.1) : marge de 24 px entre « la rangée tient » et « elle ne tient plus », même marge pour l'emplacement du score. |
+| 2026-11-23 | **[rejeu/cadres] Plein écran du navigateur laissé actif après le retour au Standard** — traité (plan du 2026-11-18, B.3) : la sortie d'un Plein cadre né du geste rend le plein écran natif par tous les chemins ; un plein écran refusé ou absent ne bloque plus le geste suivant. |
+| 2026-11-23 | **[rejeu/fiche] La fenêtre de fiche relit tout le lobby à chaque changement de joueur** — close sur mesure (plan du 2026-11-18, D.6) : la lecture des séries coûte 2,2 à 4,3 ms en médiane, 13,4 ms au pire, sous le seuil de 50 ms ; rien à corriger. |
+| 2026-11-23 | **[rejeu/fiche] Clé de liste par nom d'arme dans « Tirs et dégâts »** — traité (plan du 2026-11-18, D.2) : une ligne par nom d'arme, familles de même nom additionnées, clé de la première famille du groupe. |
+| 2026-11-23 | **[rejeu] Soupçons de la relecture finale, non démontrés** — les huit sont statués (plan du 2026-11-18) : orientation Auto dépendante du match précédent et pendant un export, démontrée et corrigée (C.2) ; horloge de la barre en pause, test qui passe (C.3) ; lâcher daté à fin de vie + 2, 0 cas sur 28 540 lâchers, non traité (D.5) ; deux scores à l'instant, un seul score (D.7) ; barre d'une ligne sur écran étroit (M.2) ; rareté d'une médaille à l'ordre des langues fixe (G.3) ; réapparitions comptant une vie d'avant le match (D.1). |
+| 2026-11-23 | **[rejeu/fiche] Cinq cotes de l'ancien gabarit de fiche sans lecteur** — traité (plan du 2026-11-18, D.4) : `GABARIT_NORMAL` retiré, une cote nommée pour le corps du bloc « À l'instant », garde-rail contre son retour. |
+| 2026-11-23 | **[tactique/orientation] La Tactique et « Occupation du terrain » ne suivent pas l'orientation « Auto » du rejeu** — traité (plan du 2026-11-18, C.4, décision D-3) : les deux vues appliquent l'Auto sur leur propre zone ; un choix retenu pour la carte prime. |
+| 2026-11-23 | **[rejeu] Point de vue du rejeu gardé d'un match à l'autre** — traité (plan du 2026-11-18, B.2) : le point de vue est rangé avec son match et repart de zéro. |
+| 2026-11-23 | **[rejeu/fiche] « Suivre » un joueur et « Seul » sur un autre à la fois** — traité (plan du 2026-11-18, B.1, décision D-2) : « Seul » éteint le suivi d'un autre joueur, et suivre un autre joueur lève « Seul ». |
+| 2026-11-23 | **[rejeu] Nom de grenade de repli écrit en français dans la logique** — traité (plan du 2026-11-18, D.3) : « rang N » passe par les dictionnaires, en français et en anglais. |
+| 2026-11-23 | **[rejeu/médailles] Événements de médaille du contexte du match : trois champs sans lecteur** — traité (plan du 2026-11-18, G.1, décision D-7) : `medal_label`, `medal_description`, `medal_image_url` et `medal_name_id` retirés, `MedalImageURL` retiré des trois adaptateurs de titre ; reste `medal_name`, voir la section du 2026-11-23. |
+| 2026-11-23 | **[rejeu] Médailles du fil du rejeu pour un titre à planches d'images** — traité (plan du 2026-11-18, A.3) : le fil et les pastilles dessinent une médaille depuis une découpe de planche, comme la fiche. |
+| 2026-11-23 | **[rejeu] Clé de requête du contexte du rejeu sans la langue** — traité (plan du 2026-11-18, H.4) : `queryKeys.matchReplayContext` porte la langue. |
+| 2026-11-23 | **[web/couches] Garde-rail des couches : périmètre et faux négatifs** — traité (plan du 2026-11-18, H.1 et H.2) : le garde-rail balaie `components/`, `lib/` et les `.ts` de `features/`, reconnaît un nom d'événement non littéral et `case 'Escape'` ; treize composants migrés vers le mécanisme commun, sept exemptions datées. |
+| 2026-11-23 | **[sécurité] Jetons : `haloTokensForDrain` prend le premier jeton valide** — traité (plan du 2026-11-18, E.1 et E.2) : le jeton vient de la source de lecture publique de la mise en commun ; sans compte consentant, erreur typée journalisée, sans conseil de recapture ; garde-rail dans `internal/api/wire`. |
+| 2026-11-23 | **[rejeu] Régénération du bureau : fichier tactique d'un rejeu au film expiré** — traité (plan du 2026-11-18, F.8, décision D-5) : la file reprojette, sans film, le fichier tactique périmé ; le contrôle de péremption ne lit que l'en-tête (0,25 s au lieu de 27 s pour 1 455 fichiers). |
+| 2026-11-23 | **[tests/durée] Paquet DuckDB : migrations neuves indirectes** — traité (plan du 2026-11-18, S.4) : les cinq sites qui partaient d'un fichier joueur absent reçoivent la base migrée copiée ; le garde-rail reconnaît `GetOrOpen` et une fonction de migration prise en valeur. |
+| 2026-11-23 | **[web/couleurs] Contrôle des couleurs : entrées mortes de la liste des fichiers autorisés** — traité (plan du 2026-11-18, K.1) : trois entrées retirées (et non deux), test « chaque chemin de la liste existe ». |
+| 2026-11-23 | **[données] Escouade : tous les comptes d'un coéquipier inconnus** — traité (plan du 2026-11-18, G.2, décision D-4) : les trois taux par minute sont facultatifs, « inconnu » sans match retenu. |
+| 2026-11-23 | **[fonds de carte] Limites du rempart contre les chemins du poste** — traité (plan du 2026-11-18, K.2) : racine d'installation connue retirée en plus du motif, dossiers à point et à espaces reconnus, garde-rail étendu aux partages réseau et aux chemins Unix hors dossier personnel. |
+| 2026-11-23 | **[rejeu] Compteur des rejeux illisibles** — traité (plan du 2026-11-18, G.4) : un fichier tactique illisible a son compteur et son message. |
+| 2026-11-23 | **[rejeu] Rejeu à la demande : restes de la relecture du 2026-11-17** — traité (plan du 2026-11-18, F.1 à F.7 et F.9) : garde des jetons en liste blanche, demande reprise revalidée, contrôles d'état avant un nouvel essai, film retiré après un échec définitif, capacité limitée au bureau et au développement non exposé, bouton absent quand le jeton demande une reconnexion, jeton refusé retenté avec un jeton frais ; verdict « film absent » de la synchronisation mesuré (0 match sur 251 vus moins de 5 minutes après leur fin) : défaut écarté, fenêtre de 5 minutes posée côté clic seulement. |
+| 2026-11-23 | **[web/couches] Accessibilité des menus** — traité (plan du 2026-11-18, H.3) : le sélecteur de média écoute Échap par le mécanisme commun ; les menus d'expérience et de vue annoncent leur état ouvert. |
+| 2026-11-23 | **[archi] `bootstrap_service.go` au-delà du seuil de taille** — traité (plan du 2026-11-18, K.5) : trois blocs déplacés sans renommage, fichier sous 500 lignes. |
+| 2026-11-23 | **[rejeu/horloge] Coup d'envoi estimé depuis l'API : décalé de l'horloge du film** — traité (plan du 2026-11-18, piste T, ADR 0050) : une définition, une résolution (film, puis estimation de l'API, puis inconnu), une écriture, une commande `levelup backfill-kickoff`. Reste à faire au premier démarrage de la version : le rattrapage du parc, voir `.ai/REGISTRE_REPORTS.md`. |
+| 2026-11-23 | **[rejeu] Barre de lecture en surimpression en Cinéma et en Plein cadre** — traité (plan du 2026-11-18, M.1 à M.3, choix B + C du user) : barre sur deux lignes quand la frise n'a plus sa largeur minimale, barre fine et translucide posée sur le plan au Plein cadre. Contrôle à l'écran du user dû avant `main`. |
 | 2026-11-17 | **[tests/durée] Paquet `internal/platform/duckdb` au-delà de son budget** — traité : base migrée copiée par test, 1 259 tests réussis, 2 sautés, 191 s ; garde-rail contre la migration neuve dans les tests. |
 | 2026-11-17 | **[tests/local] `internal/platform/duckdb` dépasse 300 s sous `-tags=integration` en local** — doublon de l'entrée « Paquet `internal/platform/duckdb` au-delà de son budget » (même paquet, même symptôme). |
 | 2026-11-17 | **[tactique/disque] Compresser les fichiers tactiques `rasters/*.json`** — traité : écrits et lus en `.json.gz` ; l'ancien `.json` n'est plus lu et est supprimé à la réécriture et par les purges. |
@@ -685,7 +534,7 @@ Réglages Discord sans interrupteur web : relais du coach, rejeu prêt, reconnex
 | 2026-11-01 | **[archi] Publication des briques : modules, README, tags** (plan `.ai/V8/PLAN_PUBLICATION_BRIQUES_2026-10-30.md`, PR #118 et #119 dans `release/v8.1.0`) : module `libs/haloapi` multi-jeu (`xblauth`, `infinite`, `halo5`, `xboxlive`, `haloapitest` ; clients Halo 5, UGC cartes, GameCMS et succès Xbox coupés en protocole / exploitation sans changement observable), README EN des trois briques, `example_test.go`, ADR 0043 ; tags `libs/{gamefiles,himap,haloapi}/v0.1.0` posés sur validation du user, `go get` vérifié hors dépôt. Reste : dépôts dédiés (entrée du backlog ci-dessus). |
 | 2026-10-29 | **[archi] Découplage des briques D1, D2, D3** (audit `.ai/V8/AUDIT_DECOUPLAGE_BRIQUES_2026-10-27.md`, ADR 0041 et 0042) : `libs/gamefiles` + `libs/himap` reliés par `go.work` (PR #111), décodeur de film en module `libs/film` (PR #113), API Halo séparée en protocole et exploitation (PR #114) ; suites (gates locaux, ratchets, robustesse `haloapi`) en PR #117. |
 | 2026-10-28 | **[i18n] N langues (ADR 0040)** : source unique `config/locales.toml`, manifests générés côté web et Go, libellés résolus par le serveur dans la langue de la requête, garde-rails des deux côtés ; fusionné dans `release/v8.1.0` avec la revue UI du 2026-10-28 (rangs déduits du code, défis reconnus dans une autre langue). |
-| 2026-10-18 | **[données] Indicateur « données de compétence » des 157 matchs synchronisés du 25 au 30 mai** (plan `.ai/archive/V7.5/PLAN_BACKLOG_2026-10-16.md`, après E10, sur décision du user) : la donnée était en base (MMR d'équipe présent ; joueurs suivis concernés : JGtm 137 matchs, Chocoboflor 87, Madina97294 75, XxDaemonGamerxX 10, joués de nov. 2021 à mai 2026), seul le bit skill (4) manquait. `levelup reset-bitmasks` serveur arrêté, base sauvegardée avant (`data/backups/avant_reset_bitmasks_2026-10-18/`) : 157 lignes `match_registry` et 1 302 lignes `match_participants`, dry-run rejoué = 0, `levelup healthcheck` tout OK. Les bases locales étant copiées vers le VPS à la release, rien à faire en prod. |
+| 2026-10-18 | **[données] Indicateur « données de compétence » des 157 matchs synchronisés du 25 au 30 mai** (plan `.ai/archive/V7.5/PLAN_BACKLOG_2026-10-16.md`, après E10, sur décision du user) : la donnée était en base (MMR d'équipe présent ; joueurs suivis concernés : JGtm 137 matchs, joueur_165 87, joueur_117 75, joueur_291 10, joués de nov. 2021 à mai 2026), seul le bit skill (4) manquait. `levelup reset-bitmasks` serveur arrêté, base sauvegardée avant (`data/backups/avant_reset_bitmasks_2026-10-18/`) : 157 lignes `match_registry` et 1 302 lignes `match_participants`, dry-run rejoué = 0, `levelup healthcheck` tout OK. Les bases locales étant copiées vers le VPS à la release, rien à faire en prod. |
 | 2026-10-18 | **[déploiement] Recalcul des dérivés Halo 5, LUSR v2 de tous les joueurs, séquence d'après déploiement** (plan `.ai/archive/V7.5/PLAN_BACKLOG_2026-10-16.md`, E9, branche `feat/backlog-2026-10-16`) : (1) `levelup backfill --title <slug>` est honoré par `--engagement-scores`, `--citations`, `--citations-recompute-all`, `--composite-only`, `--lusr` (v2), `--perf`, `--assists-model` et `--compare-formulas` (un pilote et une table de passes remplacent six paires de boucles recopiées ; `--all` prend les profils du titre, `--csr`/`--shared-csr` refusent un autre titre, migrations de la base DU titre) ; sur Halo 5 les passes de citations répondent « non supporte » par la capability `citations.engine`, sans rien ouvrir ; `POST /backfill/start` prend un champ `title` (404 si le joueur n'est pas suivi sur ce titre), construit le moteur et le provider shared DU titre (`config.SharedProviderForTitle`, aussi utilisé par le replay LUSR de l'admin, qui passait le provider d'Infinite à un joueur Halo 5). (2) `POST /settings/sessions/recalculate` recalculait CHAQUE profil sur les bases du titre par défaut (titre vide) : un profil Halo 5 n'était jamais recalculé ; corrigé par profil, test rouge avant. (3) « Dates de paliers » : source `cmd/backfill_milestone_dates` (hors image de prod, décision au runbook). (4) Runbook : section « Post-deploy recomputes (v7.5) » (R1 à R10 : 157 matchs, dérivés Halo 5, LUSR v2 des deux titres, séquence film, sessions, accords du pool, re-seed de la démo), commandes et routes exactes. Rien n'est exécuté : geste du user. |
 | 2026-10-18 | **[rejeu] Lot film : positions du coup fatal, score KOTH Lattice, Harvest, vies sans nom** (plan `.ai/archive/V7.5/PLAN_BACKLOG_2026-10-16.md`, E8, branche `feat/backlog-2026-10-16`) : (1) positions : la passe lit le journal fusionné par xuid (joueurs renommés), tient la dernière position dans la même vie, lit le siège du véhicule et place le tueur déjà mort à sa mort ; le contexte de mort lit la victime par la même lecture que `kill_positions` (source unique, tolérance de 0,5 m retirée) : tueurs sans position 1 476 -> 78 et victimes 1 028 -> 85 sur 233 films (22 535 frags), 2 contextes de mort sur 23 326 non placés contre 148 gagnés. (2) vies sans nom : 449 -> 15 sur les 36 films en cause (index des chunks hors table, chaîne de contradictions, corps de bot arrivé avant sa première déclaration), aucune vie nommée perdue sur les 2 660 films comparés. (3) score KOTH Lattice : une émission hors domaine (canal B non nul d'un slot d'équipe) remplaçait le point réel par 0 et le seuil de garde retenait un intervalle fusionné : `7de0b91d` rend 40 sans contradiction, `26602661` sans descente, 6 films changent de série, les autres KOTH inchangés. (4) Harvest : carte Forge, canevas `fo11_blank` prouvé par le level_id de la variante (426470249, unicité 1/1), catalogues à 85 cartes (bornes) et 131 (objectifs), `e449a696` et `99b8ba5c` cuisent (158 et 144 pistes, 0 vie sans nom). Révisions montées une fois : `objectives-2026-10-17`, `isolement-2026-10-17-positions`, schéma 99, `placement-2026-10-17`, `grammar-2026-10-18`, `killsource-2026-10-18`. Gate : `replay-corpus-gate` 19/19, 0 perte. Reste après la fusion (serveur arrêté, puis prod, le user prévenu) : `backfill-replay --only-existing`, `backfill-killsource`, usage-summary, `backfill-pad-tiers --force` ; contrôle visuel du user en lecture sur `7de0b91d` et `e449a696`. |
 | 2026-10-17 | **[ui] Indicateur « Analyse en cours » (tuile + vue match)** (maquette validée le 2026-10-16) : pastille sur l'image de carte de la tuile, emplacements en attente (frags assistés, citations, rejeu), bandeau dans la vue match ; état donné par le serveur, rechargement tant que l'analyse court (`components/ui/analysis-pending-*.tsx`, `match-card-analysis-pending.tsx`). Fusionné dans `feat/v75`, publié avec la v8.0.0. |
@@ -728,13 +577,89 @@ Réglages Discord sans interrupteur web : relais du coach, rejeu prêt, reconnex
 | 2026-07-17 | **[sécurité] BOLA acteur prestige clos** — 14 routes non-squad réconcilient l'acteur body/query avec la session (`authorizeActor`, 403 `player_forbidden`), garde-rail AST structurel anti-régression, tests 403+verts par endpoint. Commit `b8e97cb43`. Résiduel objet-level → item backlog. |
 | 2026-07-17 | **[coach/prestige] V2.1 + V3 livrés** — colonne `source` (challenge + prestige_telemetry, migration `prestige_add_source_columns_v1`), source renseignée aux 4 origines (coach/user/pilot_mode/preset), endpoint diag `GET /_diag/prestige/telemetry/{slug}` ; analyseur `cmd/prestige-tuning-analyze` (recommandations grammaire, seuils 30 %/50, validation manuelle) ; canal Discord webhook pour notifications coach (opt-in `discord_notify_coach`, OFF par défaut, best-effort). Commits `709bac9ad`, `7fa643699`, `02797d4cb`, `2f30e180d`. |
 
+## 2026-11-23 — Découvertes du plan du backlog des 17 et 18 novembre (notées, non traitées)
+
+Source : journal du plan `.ai/PLAN_BACKLOG_2026-11-18.md`, section « Découvertes ».
+
+- **Colonnes mortes du registre des matchs** : `t0_quality`, `film_match_start_ms` et `playable_duration_seconds` n'ont plus d'écrivain ni de lecteur depuis la piste du coup d'envoi (la dernière n'est ni lue ni écrite). DuckDB refuse `DROP COLUMN` sur une table à clé primaire et index : le retrait demande de reconstruire la table (recette de `internal/migration/append_only_rebuild.go`), à faire à la prochaine reconstruction. Priorité basse.
+- **Écriture concurrente du catalogue de cartes perdue** : `TestAddOverlayEntryConcurrentNePerdPasDEntree` (`internal/mapcatalog`) est instable (1 échec sur 10 passages, sur le code d'avant le plan). Quand le verrou d'écriture ne se pose pas à temps, le code force le passage et une écriture concurrente est perdue : c'est un défaut du code, pas seulement du test. Priorité moyenne.
+- **Scène du rejeu reconstruite à chaque rendu** : les hooks de calques de la page du rejeu rendent des objets non mémoïsés, donc la scène est reconstruite et la toile redessinée à chaque rendu. C'est aussi ce qui garde l'horloge de la barre écrite après une bascule de cadre en pause, par effet de bord. Coût de rendu probable, non mesuré.
+- **Quatre mesures de largeur** dans le rejeu : `useBodyWidth`, l'effet de taille de « Occupation du terrain », `useReplayViewport`, `useContentWidth`. La règle des trois copies appellerait à les réunir.
+- **Corps supprimés sans mort** : 128 corps supprimés appartiennent à un joueur qui a une vie ensuite (ni fin de manche, ni départ, ni bot) ; ils donnent une ligne « mort » non prouvée dans le fil. Cause non instruite (retour d'un joueur parti, réapparition forcée ?).
+- **Durée de l'API différente de « fin moins début »** : 437 matchs, de plus d'une seconde ; non instruit.
+- **Que font les notes quand le temps de jeu d'un joueur manque** : 600 s supposées pour la note de performance, poids et ordre des joueurs partis pour le LUSR (replis R11 à R14 de l'audit du coup d'envoi, `.ai/annexes_backlog_1118/coup_d_envoi.md`). Hors du système du coup d'envoi, validé comme tel par le user.
+- **Match posé « film absent » alors que son film est archivé** : un match de décembre 2023 (`58e6f72a`) porte le verdict alors que ses 33 morceaux de film sont à l'archive. À instruire (la mesure du plan écarte le défaut général : 0 match sur 251 vus moins de 5 minutes après leur fin).
+- **Rejeux dont le coup d'envoi tombe après la fin du match** : deux rejeux (`ed3b6497`, `dd29957c`, matchs de 21 et 24 s) publient un coup d'envoi hors de la fenêtre du match ; la résolution les refuse et les compte. À recouper avec le plan du décodeur (coup d'envoi lu sur l'horloge).
+- **Limite de la révision des notes** : une publication de rejeu qui change un temps de jeu de quelques secondes ne rejoue pas les notes (limite écrite dans l'ADR 0050).
+- **Avertissement journalisé à chaque mise en file** : sur une instance sans aucun compte consentant à la mise en commun, le refus de jeton est journalisé en avertissement à chaque mise en file d'un rejeu après synchronisation. Bruit de journal.
+- **`medal_name` des événements de médaille du contexte du match** : plus aucun lecteur de production, et le site ignore ces événements (il lit le document de rejeu). Retirer le champ, voire les événements de médaille du contexte ; l'ADR 0011 cite encore `MedalImageURL`.
+- **Base par défaut périmée d'un outil, dans la documentation des commandes** : `docs/COMMANDS.md` (vers la ligne 1736, et `docs/FR/COMMANDS.md` vers la ligne 1805) cite `origin/feat/v75` comme base par défaut de `replay-corpus-gate --reference=base`, branche qui n'existe plus.
+- **Test qui écrit un nom de fichier avec un octet nul** : les tests unitaires de `sync/replayartifacts` écrivent sous `<racine>/data/cache/replays/halo_5/` un fichier dont le nom porte un octet nul ; le renommage échoue sous Windows. Préexistant.
+- **Sections « rencontres » et « némésis » de l'onglet d'équipe** : leur contenu diffère entre deux exécutions du même code (ordre non déterministe), préexistant.
+- **`ReplayPage.row.test.tsx`** : 508 lignes, au-dessus du plafond de 500.
+- **Rattrapage du coup d'envoi qui boucle sur un rejeu illisible** (P2, à corriger avant le premier démarrage de la version 8.3.0 ; proposé au user avec la montée du décodeur v1.6.0) : un rejeu durablement illisible relance le rattrapage à chaque démarrage, sans issue, la révision de ce rejeu n'étant jamais rangée (`apps/go-api/internal/sync/kickoff/backfill.go`).
+- **Rattrapage du coup d'envoi trop lent** (P2, à corriger avant le premier démarrage de la version 8.3.0 ; proposé au user avec la montée du décodeur v1.6.0) : il décompresse et décode chaque rejeu en entier pour un seul champ, soit 27 s à chaud et 85 s à froid pour 1 455 fichiers, contre 0,25 s par la lecture d'en-tête déjà en place.
+- **`rosterLogic.ts` au-delà du seuil** (P2) : `apps/web/src/lib/replay/rosterLogic.ts` passe de 769 à 781 lignes, au-dessus du plafond de 500.
+- **Fichier de test du rejeu au-dessus du seuil** (P2) : déjà consigné plus haut (`ReplayPage.row.test.tsx`, 508 lignes) ; à traiter avec le point précédent.
+- **Course étroite entre le rattrapage du coup d'envoi et une publication de rejeu** (P3).
+- **Coup d'envoi « film » gardé non contrôlé contre la fenêtre du match** (P3).
+- **Compteur des coups d'envoi écrits incrémenté avant l'insertion** (P3) : le commentaire qui l'accompagne est faux.
+- **Garde-rail des jetons à préfixe de date figé sur l'année 2026** (P3).
+- **Libellé d'un garde-rail qui décrit l'ancien comportement** (P3).
+
 ## 2026-11-22 — Découvertes du décodeur v1.5.0, vague 2 (notées, non traitées)
 
-- **Tirs du BR75 sur un film de build ancien** : trois joueurs passent hors des 10 % de l'API après la lecture des tirs à tout rang ; des numéros de tir alternent entre deux unités en moins de 500 ms, cause non prouvée. Baisse acceptée par le user le 2026-11-22.
-- **Précision des armes à énergie** : le tireur d'un objet projectile est écrit dans l'état par défaut de sa création ; le garder permettrait d'ajouter les projectiles aux événements de tir. Matière du chantier de précision annoncé par le user.
 - **Décalage par match entre le film et le temps de jeu de l'API** : 35 s en médiane, commun aux partants d'un même match, sans lien avec le coup d'envoi ; inexpliqué.
 - **Lâchers 2 à 4 images après une mort** (4 cas du parc) : crédités au repreneur de la place ; une tolérance de temps serait une règle neuve.
 - **Accroupissement et glissade** : jamais annoncés par le film sur les versions récentes ; piste : le bit de valeur 1 de l'entrée de contrôle, à recouper avec la vitesse.
 - **Bouton de saut** : accord de 50 à 61 % sur les builds 1.9 à 1.11, 87 à 97 % ailleurs ; non publié. Sens des quatre booléens d'un rechargement inconnu.
 - **Score** : une Grande bataille où les points publiés dépassent le tableau reste « complète » à tort ; un film où le tableau cesse de monter dans les dernières secondes.
 - **Voisinage des pièces montées** : plus utilisé par aucune pièce des films mesurés ; à retirer si le parc régénéré le confirme.
+
+## 2026-11-22 — Découvertes du décodeur v1.5.0, recherches (notées, non traitées)
+
+- **Répliques des Spartans, son seul** : l'identifiant de son du film mène à un fichier de voix français du jeu installé (201 sur 201) ; aucun texte dans le jeu ; voix anglaise non installée ; aucun convertisseur du format audio sur la machine. À décider par le user : publier le son avec une étiquette de genre écrite à la main. Piste non explorée : deux fichiers compressés du jeu.
+- **Lettre des zones comme contrôle** : la lettre lue du marqueur égale le rang publié sur 231 zones sur 231 ; deux compteurs de couverture (lettres lues, lettres en accord) la garderaient comme contrôle. Lire le composant du marqueur qui arrête la lecture aux images-clés rendrait la lettre lisible partout.
+- **Zone au propriétaire de nom inconnu** (un film sur Recharge) : le rejeu retombe sur le vote.
+- **Arbre des actions décalé sur la version du jeu précédant `HI_1_11_0`** : 31 lectures concordantes, aucune contraire, égalité non testable (films à trames arrêtées) ; autres modes des anciennes versions probablement touchés, non mesurés.
+- **Grande bataille à drapeau des anciennes versions** : 34 films dont le groupe de scripts est absent de la table des réponses ; aucune action de score publiée.
+- **5 films de Grande bataille restés « incomplets »** après la correction du décalage, sans rang non confirmé ni manque : cause non cherchée. Un joueur reçoit un message d'élimination de trop sur un film.
+- **Drapeau, état « au socle » faux avant un portage juste** (16 portages) : porteur précédent hors des 8 premières places ou sur une place sans humain nommé (7) ; variante à un seul drapeau publiée avec deux drapeaux d'équipe (4) ; résidu (5). L'ouverture de la lecture au-delà de 8 joueurs en dépend.
+- **Courbe de score qui ne recule pas** : le jeu retire la pénalité de suicide ou de trahison ; la courbe publiée garde la plus longue suite non décroissante et perd ce recul quand la pénalité est le dernier mouvement du joueur.
+- **Tableau « Impact des coéquipiers » par session (revue du 2026-11-22, P2)** : (a) net par match faux sans signal si l'équipe alliée n'est pas lue (`teammates_squad_impact_sessions.go:30-45`, `squadimpact/sessions.go` `addMatch` : les matchs joués retombent sur les matchs avec rôle) — ne pas publier le bloc, raison journalisée ; (b) colonnes de match écrasées sur une longue session (`SessionMatrix.tsx:109-119`, largeur automatique) — largeur minimale par colonne de match, à juger à l'écran ; (c) sept ré-exports `SquadImpactSessions*` sans lecteur dans `lib/api/types.ts`, commentaire de `MatchesPlayed` incomplet.
+- **Victime d'une élimination appariée au plus proche** (relecture du décodeur v1.5.0) : deux éliminations du même joueur à une image d'écart peuvent échanger leurs victimes, sans compte d'ambiguïté. Correction proposée : victime absente et compteur quand une action a plusieurs candidats.
+- **Compteur des émissions jetées gonflé hors Drapeau** : la passe du verdict de mode lit la table du Drapeau sur tout film et verse ses rejets au compteur du document (0 → 1 952 sur un film d'un autre mode), sans effet sur les compteurs publiés. Correction proposée : un enregistreur à part pour cette passe.
+- **Table des réponses de jeu sans révision de couche** : une ligne ajoutée aux décalages de l'arbre ne rend aucun rejeu « à redécoder » sans montée du schéma.
+- **Répliques des Spartans : texte RETROUVÉ dans le jeu (2026-11-22, après la capture du « chatter » de Den fournie par le user)** : l'identifiant de son du film désigne un tag de son dont le corps porte, par variante, une clé de chaîne ; le texte est dans la RESSOURCE de la table de chaînes de la voix (18 langues, français et anglais présents), pas dans son corps. Sur 201 sons : 191 avec texte, 10 sans paroles ; le nombre de textes égale le nombre de variantes audio. Le film ne dit pas quelle variante a joué. Reste à établir : lecture structurée du tag de son (trouvé par balayage), noms des répliques (5 résolus sur les tables de vocalisation), lien position vers nom de lieu de la carte (volumes nommés de la variante de carte, non testé). Faisable pour une version suivante : événement publié par le décodeur, table des répliques côté LevelUp faite comme celle des sons d'armes. Crédit : méthode et table de textes de Den, OpenSpartan `libfilmshell` (MIT). Pièces : `dec-v150-recup/h5/chatter/`. Remplace l'entrée « son seul » plus haut.
+  - **Cadrage du user (2026-11-22)** : version suivante du décodeur (« on va y retoucher justement bientôt »). Les zones de lieu existent déjà dans LevelUp : rien à refaire pour le lieu. Nom court de la réplique : à traiter dans le décodeur, PAS repris dans LevelUp. Idées d'affichage à maquetter, non tranchées : (a) rejeu 2D, icône de son avec le texte écrit sur le joueur qui parle ; (b) rejeu 2D, icône de son et lecture du son sur ce joueur ; (c) comme Den, une des variantes au hasard dans le fil des éliminations, avec un filtre « Répliques ».
+- **Compteurs de zones sur d'anciens builds** (gate du corpus, 2026-11-22) : sur deux films de Total Control d'anciens builds, le composant nommé `zone_offensive_kills` est un octet signé qui avance de 32, pas un compteur ; les candidats restants (83 et 76) paraissent en partie faux. Sans effet à l'écran aujourd'hui : la garde d'effectif refuse tout, `objectives[]` est vide. À borner par build avant d'ouvrir la lecture au-delà de 8 joueurs.
+- **Coup d'envoi sur trois anciens builds** : environ 0,9 s plus tôt qu'avant, sous la tolérance d'une seconde, non vérifiable à l'API.
+- **Valeur de test non remesurée** (2026-11-23) : le test de l'ouvrier réel de la file de génération attend un coup d'envoi par cadence ; la valeur de la cadence de 100 ms n'a pas été remesurée après le passage à l'horloge du jeu (aucun test ne tourne à cette cadence).
+- **En-tête faux d'un outil** (2026-11-23) : l'en-tête de `apps/go-api/cmd/killsource/main.go` affirme que l'application n'utilise pas le décodeur.
+
+## Chantier « précision » (tirs, touches, précision par arme) — section dédiée
+
+Ouverte le 2026-11-22 à la demande du user (« mets ça dans une section dédiée pour pas qu'on confonde avec les autres
+travaux de type décodeur »). Le user a annoncé ce chantier le même jour, avec ses propres idées, à recueillir avant
+d'ouvrir un plan. Tout ce qui touche à la justesse des tirs, des touches et de la précision par arme se note ICI, pas
+dans les découvertes du décodeur. Les écarts que le gate du corpus accepte pour la v1.5.0 du décodeur renvoient à cette
+section : à la reprise, relire les décisions datées du 2026-11-22 de `config/replay_corpus.toml`.
+
+- **Tirs du BR75 sur un film de build ancien** : trois joueurs passent hors des 10 % de l'API après la lecture des tirs à tout rang ; des numéros de tir alternent entre deux unités en moins de 500 ms, cause non prouvée. Baisse acceptée par le user le 2026-11-22.
+- **Précision des armes à énergie** : le tireur d'un objet projectile est écrit dans l'état par défaut de sa création ; le garder permettrait d'ajouter les projectiles aux événements de tir. Matière du chantier de précision annoncé par le user.
+- **Copies des messages de tir de rang 1 et plus** : non mesurées (les rechargements de la même vue sont écrits deux fois dans 26 à 32 % des cas).
+- **Parts d'échec en hausse avec les tirs lus à tout rang** : visée absente (0,12 % → 0,23 % des tirs rattachés, un témoin en porte l'essentiel), projectile au tir ambigu (5,1 % → 6,0 %), tirs sans place sur 6 témoins, tirs embarqués sans trajet sur 2 témoins. À instruire avec le chantier « précision ».
+- **Baisse acceptée du BR75** (user, 2026-11-22 : « Oui on accepte, j'ai un autre chantier à prévoir avec des idées pour la précision ») : deux joueurs de moins à 10 % de l'API après la règle du numéro de tir en retard.
+- **Ancienne précision par film retirée de LevelUp** avec la montée du décodeur v1.5.0 : la table `match_weapon_hit_distance` reste au schéma sans écrivain ni lecteur ; la supprimer ou la réemployer se décide avec ce chantier.
+
+## Confidentialité du dépôt public (2026-11-23)
+
+Constat relevé à la relecture du plan du backlog ; non traité, hors de ce plan.
+
+- Les pseudos de joueurs figurent dans 228 fichiers du dépôt (3 182 lignes) : archives de `.ai/`, journaux de décisions, maquettes, 8 décisions d'architecture, 5 fichiers de tests web.
+- Le chemin du poste de travail figure dans 240 fichiers de la branche principale.
+- Ces contenus sont antérieurs au plan et déjà publics ; le plan n'en ajoute pas.
+- **Décidé le 2026-11-23** : les fichiers actuels sont anonymisés « au maximum en étant prudent » (documents faits en trois passes ; code, tests et configurations en cours). **L'historique git n'est pas purgé** : message du user du 2026-11-23, trop lourd pour un projet amateur (tous les numéros de commit changeraient, 61 étiquettes et 37 releases à repousser, tous les dossiers de travail à recréer, et les forks garderaient l'ancien historique). Ne pas reproposer cette purge sans demande du user. Ce qui reste donc visible dans l'historique : anciens contenus des fichiers, messages de commit, identités d'auteur.
+- Passes du code faites le 2026-11-23 (103 fichiers, puis l'identifiant du joueur source dans les deux manifestes de la démo). Restent, parce qu'ils servent : les fichiers d'attribution ; les chemins par défaut de cinq outils (`cmd/diag_weapons_v3`, `cmd/h5-metadata-fetch`, `cmd/probe-h5`, `scripts/check_syncmeta`, `scripts/audit_bp.sh`) et d'un test de repli ; `scripts/bench-pages.*` ; les outils Cheat Engine `tools/ce/filmdec_*.lua` ; deux motifs de `.gitignore` et deux lignes de `.gitleaks.toml` ; la référence ancienne des tests lue par la CI (`.ai/baselines/tests_pre_migration.jsonl`, chemins du poste et trois noms de tests) ; un pseudo de forme générique dans douze tests du rejeu.
+- À corriger à part : `seed-demo --emit-manifest` écrit dans le manifeste versionné l'identifiant réel du joueur source (champ `source_xuid`), que rien ne lit ; la prochaine émission le remettrait.
+- Règle pour la suite : ne rien ajouter de neuf (libellés neutres pour les joueurs, pas de prénom, pas de chemin du poste dans un fichier versionné ni dans un message de commit).

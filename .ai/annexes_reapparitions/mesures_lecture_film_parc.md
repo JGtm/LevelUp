@@ -33,7 +33,7 @@ cd C:\t\reapp-a8\apps\go-api
 go build -o <dossier-temporaire>\levelup.exe ./cmd/levelup
 
 set LEVELUP_REPO_ROOT=C:\t\reapp-a8
-set LEVELUP_DATA_DIR=C:\Users\Guillaume\Downloads\Scripts\LevelUp\data
+set LEVELUP_DATA_DIR=<poste>\Downloads\Scripts\LevelUp\data
 levelup.exe spawn-model evaluate --par-carte                                   # seuil de 8 matchs par carte (M-1 a M-4)
 levelup.exe spawn-model evaluate --sections m2,m3,m4 --matchs-min-carte 3      # familles clairsemees (Bases, Colline)
 ```
@@ -262,7 +262,7 @@ attentes longues.
 
 Les trois passes de la commande (bilan, M-1 à M-4 aux deux seuils) sont terminées avant l'incident ; seule la seconde
 exécution de la sonde est partielle. Vers 17 h 33 le 16 novembre, pendant cette exécution, le contenu de
-`C:\Users\Guillaume\Downloads\Scripts\LevelUp\data\` a disparu (dossier présent mais vide : plus de `cache`, `titles`,
+`<poste>\Downloads\Scripts\LevelUp\data\` a disparu (dossier présent mais vide : plus de `cache`, `titles`,
 `auth`, `desktop`, base partagée). Les lectures de la sonde ont alors échoué (745 artefacts « fichier introuvable »).
 Cette session n'écrit nulle part sous `data` (lecture seule : artefacts, une base ouverte par `OpenReadForQuery`) ; au
 moment du constat, deux commandes `git worktree remove --force` d'une autre session tournaient (sur `LevelUp-wt-deps`, puis

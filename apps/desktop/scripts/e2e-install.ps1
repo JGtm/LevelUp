@@ -102,7 +102,7 @@ function Fail([string]$text) { throw ('ECHEC : ' + $text) }
 # Nom de la tache planifiee d'une racine de donnees : schedtask.TaskNameFor (prefixe, puis 4 octets de SHA-256 du
 # chemin nettoye en minuscules, en hexadecimal).
 function Get-ExpectedTaskName([string]$Root) {
-    # Pas de GetFullPath : il developpe les noms courts 8.3 (GUILLA~1), que filepath.Clean de Go laisse tels quels.
+    # Pas de GetFullPath : il developpe les noms courts 8.3 (UTILIS~1), que filepath.Clean de Go laisse tels quels.
     $clean = $Root.Replace('/', '\').TrimEnd('\').ToLowerInvariant()
     $sha = [System.Security.Cryptography.SHA256]::Create()
     $bytes = $sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($clean))

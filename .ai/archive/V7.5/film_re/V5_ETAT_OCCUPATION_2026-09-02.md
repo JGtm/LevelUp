@@ -3,7 +3,7 @@
 > Execute le 2026-09-02/03 dans le worktree `LevelUp-wt-vehicules` (branche `wt/vehicules-tourelles`).
 > Aucun commit, aucun `git add`, aucune ecriture DuckDB. Mesures en AVANT-PLAN, `CGO_ENABLED=0`,
 > GOCACHE isole (`scratchpad/gocache_v5`), donnees reelles du checkout principal
-> (`C:/Users/Guillaume/Projects/LevelUp/data/cache`, LECTURE SEULE).
+> (`<poste>/Projects/LevelUp/data/cache`, LECTURE SEULE).
 > `internal/analysis/replay/` (production), `apps/web/`, `cmd/weapon-sounds/` : NON touches.
 
 ---

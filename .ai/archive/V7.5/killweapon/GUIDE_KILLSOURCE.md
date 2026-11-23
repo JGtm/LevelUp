@@ -28,7 +28,7 @@ une roquette tiree trop pres d un mur, un baril lance trop pres, une chute — *
 elle-meme une information**, et l outil la signale au lieu de trancher. Sur les quatre films de
 reference, 8 morts sont dans ce cas ; les 8 ont ete confirmees une par une en mode Theater.
 
-Exemple, dans les mots de l utilisateur : *<< le kill feed attribue le kill a HizaroMne4262 alors
+Exemple, dans les mots de l utilisateur : *<< le kill feed attribue le kill a joueur_719 alors
 que c est MOI qui me tue en tirant une roquette sur un mur >>*.
 
 **Il n existe volontairement aucune colonne << vrai tueur >> ni << arme corrigee >>.** Ce serait
@@ -55,7 +55,7 @@ ls ../../data/cache/film_chunks
 # Depuis apps/go-api. Le drapeau -cache est OBLIGATOIRE depuis ce worktree : il ne contient
 # pas les films, ils vivent dans le depot principal.
 go run ./cmd/killsource kills 000d5950 \
-  -cache c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache
+  -cache <poste>/Downloads/Scripts/LevelUp-go-migration/data/cache
 ```
 
 Un decodage prend **8 a 30 secondes** par film. Il ne touche ni la base, ni le reseau, ni les
@@ -109,7 +109,7 @@ go run ./cmd/killsource json fccc61cd > fccc61cd.json
 
 ```
 temps  victime        SOURCE DU DEGAT FATAL   nature  CREDIT DU JEU
-01:12  LORD PEINX13   M41 SPNKr               arme    aldusbroncus  <>
+01:12  JOUEUR_731   M41 SPNKr               arme    joueur_389  <>
 ```
 
 - **`<>`** = les deux verites divergent. La source appartenait a la victime, le jeu credite un

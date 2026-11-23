@@ -1,7 +1,7 @@
 #!/bin/bash
 # ks_cmp.sh : morts killsource base contre lot, appariees par (instant, victime) ; voie, tag, statut, credit.
-L=/c/Users/GUILLA~1/AppData/Local/Temp/claude/c--Users-Guillaume-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad/v2-integ
-J=/c/Users/GUILLA~1/AppData/Local/Temp/claude/c--Users-Guillaume-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad/rloc_ks/extraire.jq
+L=/c/Users/utilisateur/AppData/Local/Temp/claude/c--Users-poste-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad/v2-integ
+J=/c/Users/utilisateur/AppData/Local/Temp/claude/c--Users-poste-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad/rloc_ks/extraire.jq
 mkdir -p $L/ks_tsv
 echo -e "film\tidentique\tmorts_b\tmorts_n\tmarche_b\tscan_b\tmarche_n\tscan_n\tscan_vers_marche\tmarche_vers_scan\tautre_voie\ttag\tstatut\tcredit\tdisparues\tapparues\torigine_credit_concordant_b\torigine_credit_concordant_n\tout_of_roster_b\tout_of_roster_n"
 while IFS=$'\t' read -r id carte; do

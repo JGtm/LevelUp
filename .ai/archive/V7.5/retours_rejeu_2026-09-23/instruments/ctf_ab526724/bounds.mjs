@@ -1,6 +1,6 @@
 import fs from 'fs';
 for (const id of process.argv.slice(2)) {
-  const doc = JSON.parse(fs.readFileSync(`C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/${id}.json`, 'utf8'));
+  const doc = JSON.parse(fs.readFileSync(`C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/${id}.json`, 'utf8'));
   let mn = {x:1e9,y:1e9,z:1e9}, mx = {x:-1e9,y:-1e9,z:-1e9}; let n=0;
   const zs = [];
   for (const tr of doc.tracks) for (const p of tr.points) { n++; for (const k of ['x','y','z']) { if (p[k] == null) continue; mn[k]=Math.min(mn[k],p[k]); mx[k]=Math.max(mx[k],p[k]); } if (p.z!=null) zs.push(p.z); }

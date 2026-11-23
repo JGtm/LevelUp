@@ -98,8 +98,8 @@ func main() {
 	for _, p := range players {
 		probeLoadParticipantsForMatch(db, p, targetMatch)
 	}
-	// Affine pour Madina : essayer chunks plus petits pour identifier le seuil.
-	fmt.Println("\n══ Affinement : test du seuil chunk pour Madina ══")
+	// Affine pour joueur_075 : essayer chunks plus petits pour identifier le seuil.
+	fmt.Println("\n══ Affinement : test du seuil chunk pour joueur_075 ══")
 	for _, p := range players {
 		if p.gamertag != "Joueur90002" {
 			continue
@@ -107,7 +107,7 @@ func main() {
 		for _, chunkSize := range []int{50, 100, 200, 500, 1000} {
 			probeChunked(db, p, targetMatch, chunkSize)
 		}
-		// Test concat trick : "match_id || '' IN (?,?,...)" pour Madina
+		// Test concat trick : "match_id || '' IN (?,?,...)" pour joueur_075
 		probeChunkedConcat(db, p, targetMatch, 500)
 	}
 
@@ -221,7 +221,7 @@ func probeChunked(db *sql.DB, p playerData, targetMatch string, chunkSize int) {
 		}
 		rows.Close()
 	}
-	fmt.Printf("  Madina chunk=%-5d : visibles pour %s = %d %v\n", chunkSize, truncate(targetMatch, 12), visible, visibleX)
+	fmt.Printf("  joueur_075 chunk=%-5d : visibles pour %s = %d %v\n", chunkSize, truncate(targetMatch, 12), visible, visibleX)
 }
 
 // probeChunkedConcat utilise le trick "match_id || ”" pour défaire le pushdown.
@@ -257,7 +257,7 @@ func probeChunkedConcat(db *sql.DB, p playerData, targetMatch string, chunkSize 
 		}
 		rows.Close()
 	}
-	fmt.Printf("  Madina chunk=%-5d (concat trick) : visibles pour %s = %d\n", chunkSize, truncate(targetMatch, 12), visible)
+	fmt.Printf("  joueur_075 chunk=%-5d (concat trick) : visibles pour %s = %d\n", chunkSize, truncate(targetMatch, 12), visible)
 }
 
 // dumpRawXUIDs imprime le résultat d'une query SELECT xuid (simple) avec label.
@@ -420,10 +420,10 @@ func printMatchParticipantsKind(db *sql.DB) {
 		fmt.Printf("    total=%d\n", i)
 		rows14.Close()
 	}
-	// SELECT pour Madina seule, sur ce match : direct row inspection
+	// SELECT pour joueur_075 seule, sur ce match : direct row inspection
 	rowsM, _ := db.Query(`SELECT xuid, match_id, team_id, kills, kills_expected FROM match_participants WHERE xuid = '2623439693412443' AND match_id = '50cd2d8c-9feb-4b98-bc7c-e34aa8b1df7e'`)
 	if rowsM != nil {
-		fmt.Println("  SELECT direct (Madina, 50cd2d8c) :")
+		fmt.Println("  SELECT direct (joueur_075, 50cd2d8c) :")
 		for rowsM.Next() {
 			var x, mid string
 			var tid sql.NullInt64
@@ -434,10 +434,10 @@ func printMatchParticipantsKind(db *sql.DB) {
 		}
 		rowsM.Close()
 	}
-	// Liste tous les match_ids de Madina contenant '50cd2d8c' (en cas de typo/suffixe)
+	// Liste tous les match_ids de joueur_075 contenant '50cd2d8c' (en cas de typo/suffixe)
 	rowsL, _ := db.Query(`SELECT match_id FROM match_participants WHERE xuid = '2623439693412443' AND match_id LIKE '50cd2d8c%'`)
 	if rowsL != nil {
-		fmt.Println("  Madina match_ids LIKE '50cd2d8c%' :")
+		fmt.Println("  joueur_075 match_ids LIKE '50cd2d8c%' :")
 		for rowsL.Next() {
 			var m string
 			_ = rowsL.Scan(&m)
@@ -471,11 +471,11 @@ func printMatchParticipantsKind(db *sql.DB) {
 	cnt4 := db.QueryRow(`SELECT COUNT(*) FROM match_participants WHERE xuid = '2623439693412443'`)
 	var n4 int64
 	_ = cnt4.Scan(&n4)
-	fmt.Printf("  COUNT(*) WHERE xuid=Madina = %d\n", n4)
+	fmt.Printf("  COUNT(*) WHERE xuid=joueur_075 = %d\n", n4)
 	cnt5 := db.QueryRow(`SELECT COUNT(*) FROM match_participants WHERE xuid = '2623439693412443' AND match_id = '50cd2d8c-9feb-4b98-bc7c-e34aa8b1df7e'`)
 	var n5 int64
 	_ = cnt5.Scan(&n5)
-	fmt.Printf("  COUNT(*) (Madina, 50cd2d8c) = %d\n", n5)
+	fmt.Printf("  COUNT(*) (joueur_075, 50cd2d8c) = %d\n", n5)
 }
 
 // dumpParticipants imprime tous les participants d'un match (xuid, team_id, KE,

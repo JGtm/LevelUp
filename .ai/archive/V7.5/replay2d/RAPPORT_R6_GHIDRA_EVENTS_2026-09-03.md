@@ -2,7 +2,7 @@
 
 Date : 2026-09-03. Lot R6 du plan `PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03.md`. Rétro-ingénierie
 statique (décompilation, xrefs, lecture mémoire) sur le projet Ghidra existant `HI`
-(`C:\Users\Guillaume\Downloads\HI.gpr`, programme `HaloInfinite.exe`), + validation sur pièces
+(`<poste>\Downloads\HI.gpr`, programme `HaloInfinite.exe`), + validation sur pièces
 côté film. LECTURE SEULE des deux côtés : aucun débogueur, aucune écriture binaire, aucun DuckDB.
 Instruments (ce worktree, package `apps/go-api/internal/analysis/filmdec/`) :
 
@@ -279,14 +279,14 @@ fo13_frost, bits [15 15 17] — nom Forge indécidable, R3 §0.4) ; `a0c36016` :
 ### C.1 Instance Ghidra headless (PowerShell ; arrêtée en fin de lot)
 
 ```
-& "C:\Users\Guillaume\AppData\Local\Programs\Eclipse Adoptium\jdk-25.0.3.9-hotspot\bin\java.exe" `
+& "<poste>\AppData\Local\Programs\Eclipse Adoptium\jdk-25.0.3.9-hotspot\bin\java.exe" `
   -Xmx8g -Djava.system.class.loader=ghidra.GhidraClassLoader `
-  -Djava.io.tmpdir=C:\Users\Guillaume\AppData\Local\Temp `
+  -Djava.io.tmpdir=<poste>\AppData\Local\Temp `
   -Djdk.net.unixdomain.tmpdir=Q:\nexistepas `
   -Dfile.encoding=UTF8 -Xshare:off --enable-native-access=ALL-UNNAMED -Dlog4j.skipJansi=true `
-  -cp "C:\Users\Guillaume\Downloads\ghidra_12.1_PUBLIC\Ghidra\Framework\Utility\lib\Utility.jar" `
+  -cp "<poste>\Downloads\ghidra_12.1_PUBLIC\Ghidra\Framework\Utility\lib\Utility.jar" `
   ghidra.Ghidra com.xebyte.headless.GhidraMCPHeadlessServer `
-  --bind 127.0.0.1 --port 8089 --project C:\Users\Guillaume\Downloads\HI.gpr
+  --bind 127.0.0.1 --port 8089 --project <poste>\Downloads\HI.gpr
 # puis : POST /load_program_from_project  body {"path":"/HaloInfinite.exe"}
 # requetes : GET /decompile_function?address=0x140f04fb8 · /get_xrefs_to?address=... ·
 #            /read_memory?address=...&size=16 (plafond 16 o) · /search_byte_patterns?pattern=...

@@ -102,7 +102,7 @@ from src.data.sync.engine import DuckDBSyncEngine, SyncOptions
 
 engine = DuckDBSyncEngine(
     player_db_path="data/players/SpartanC/stats.duckdb",
-    xuid="2533274792546123",
+    xuid="2636875577701453",
     gamertag="SpartanC",
 )
 

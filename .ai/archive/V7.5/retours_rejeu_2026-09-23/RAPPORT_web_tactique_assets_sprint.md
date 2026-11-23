@@ -168,7 +168,7 @@ Le message de `b832320d4` s'ouvre sur « DECISION UTILISATEUR. » et porte « we
 
 ## 3.3 Trace de la demande — citations exactes
 
-Sources : transcript de la session du pilote `~/.claude/projects/c--Users-Guillaume-Downloads-Scripts-LevelUp-go-migration/589bf135-50d6-4973-92af-29e30f4aed99.jsonl` (heures UTC, heure locale = +2 h), messages tapés directement ET mis en file pendant un tour (`queued_command`, origine humaine) ; briefs du scratchpad `589bf135…/scratchpad/`. Recherche étendue aux 19 transcripts modifiés depuis le 2026-09-19 (messages directs et mis en file) : aucune autre session ne contient de message utilisateur sur les états de mouvement, hormis la question du 23/09 qui ouvre ce lot.
+Sources : transcript de la session du pilote `~/.claude/projects/c--Users-poste-Downloads-Scripts-LevelUp-go-migration/589bf135-50d6-4973-92af-29e30f4aed99.jsonl` (heures UTC, heure locale = +2 h), messages tapés directement ET mis en file pendant un tour (`queued_command`, origine humaine) ; briefs du scratchpad `589bf135…/scratchpad/`. Recherche étendue aux 19 transcripts modifiés depuis le 2026-09-19 (messages directs et mis en file) : aucune autre session ne contient de message utilisateur sur les états de mouvement, hormis la question du 23/09 qui ouvre ce lot.
 
 | quand (local) | qui → qui | citation exacte |
 |---|---|---|

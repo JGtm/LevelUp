@@ -41,7 +41,7 @@ func (c *countingSquadRepo) LoadImpactEventsParGroupes(ctx context.Context, grou
 }
 
 // pageCompleteFixture : le main (x_main) et un coéquipier suivi (Ally, x_ally) sur trois
-// matchs communs — assez pour que la matrice d'impact, le profil d'intensité (≥ 3 matchs),
+// matchs communs — assez pour que le tableau d'impact par session, le profil d'intensité (≥ 3 matchs),
 // les séries de performance (spree calculée depuis les events) et le premier frag rendent
 // chacun une section.
 func pageCompleteFixture() (*countingSquadRepo, *fakeSquadLoader) {
@@ -94,7 +94,7 @@ func servicePageComplete(repo *countingSquadRepo, loader *fakeSquadLoader) *Team
 		WithSquadLoader(loader)
 }
 
-// TestGetPage_LitLesEvenementsDImpactUneSeuleFois (L2.2 / D2.2) : matrice d'impact, profil
+// TestGetPage_LitLesEvenementsDImpactUneSeuleFois (L2.2 / D2.2) : tableau d'impact par session, profil
 // d'intensité, séries de performance et premier frag consomment UNE lecture Q32.
 func TestGetPage_LitLesEvenementsDImpactUneSeuleFois(t *testing.T) {
 	repo, loader := pageCompleteFixture()
@@ -104,9 +104,9 @@ func TestGetPage_LitLesEvenementsDImpactUneSeuleFois(t *testing.T) {
 		t.Fatalf("GetPage : %v", err)
 	}
 	// Les quatre consommateurs ont bien tourné — sinon « une lecture » ne prouverait rien.
-	if resp.ImpactMatrix == nil || resp.IntensityProfile == nil || len(resp.FirstBlood) == 0 {
-		t.Fatalf("sections attendues : matrice %v, intensité %v, premier frag %d",
-			resp.ImpactMatrix != nil, resp.IntensityProfile != nil, len(resp.FirstBlood))
+	if resp.SquadImpactSessions == nil || resp.IntensityProfile == nil || len(resp.FirstBlood) == 0 {
+		t.Fatalf("sections attendues : tableau d'impact %v, intensité %v, premier frag %d",
+			resp.SquadImpactSessions != nil, resp.IntensityProfile != nil, len(resp.FirstBlood))
 	}
 	spree := false
 	for _, pt := range resp.PerformanceSeries["Main"] {

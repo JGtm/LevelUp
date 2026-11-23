@@ -2,7 +2,7 @@
 
 > Étape 1 du plan `.ai/PLAN_POSITIONS_DE_FORCE_2026-09-20.md`. Branche `wt/power-positions`.
 > Outil : `apps/go-api/cmd/mappower-build`, paquet pur `apps/go-api/internal/analysis/powerpos`.
-> Données lues en SEULE lecture sur `C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration`
+> Données lues en SEULE lecture sur `<poste>/Downloads/Scripts/LevelUp-go-migration`
 > (`duckdb.OpenReadForQuery`, vues `_latest` uniquement, aucune écriture).
 >
 > Commandes exactes de la passe :

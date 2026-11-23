@@ -1,7 +1,7 @@
 # PLAN — Compteur « amis en jeu » : les amis sont les joueurs INSCRITS DANS L'APP
 
 > Écrit le 2026-08-25. Branche : `wt/amis-app` (worktree
-> `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-amis-app`, base `3cafdfbe8` =
+> `<poste>/Downloads/Scripts/LevelUp-wt-amis-app`, base `3cafdfbe8` =
 > origin/feat/v75). Contrat : skill `plan-execution` — statuts `[x]`/`[~]`/`[!]`,
 > aucune case vide, zéro fix hors périmètre (→ Découvertes), pas de `git add -A`,
 > pas de push, ni thought_log ni REGISTRE (superviseur).

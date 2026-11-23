@@ -284,9 +284,9 @@ Le résidu persisté dépend des coefs, les coefs dépendent des paces persisté
 - [x] Passe B : re-run identique (paces stables, résidus recalculés avec coefs/bins
       définitifs). 0 échec, 4246 matchs.
 - [x] Vérification chiffrée (Infinite, via `go run cmd/tmpdbq`) :
-      (a) JGtm/Madina/Chocoboflor PvP_unranked = 3 bins n=66 chacun (≥10) ; ranked
-      sous-peuplé (Madina n=4/4/5) persisté mais gaté au serving (n<10 → global) ;
-      (b) taux de rejets hors-AFK : JGtm 0 % / Madina 0.5 % / Chocoboflor 0 % (<5 % →
+      (a) JGtm/joueur_075/joueur_165 PvP_unranked = 3 bins n=66 chacun (≥10) ; ranked
+      sous-peuplé (joueur_075 n=4/4/5) persisté mais gaté au serving (n<10 → global) ;
+      (b) taux de rejets hors-AFK : JGtm 0 % / joueur_075 0.5 % / joueur_165 0 % (<5 % →
       seuil 0.75 conservé) ;
       (c) match témoin `bc918a5a` JGtm : PvP_unranked, meanLobby=2.902 → bin **chaotique**
       (coef 0.931, n=66) → `expected_basis=bin` ; `pace_attendu`=0.931×2.902=**2.70** ≠

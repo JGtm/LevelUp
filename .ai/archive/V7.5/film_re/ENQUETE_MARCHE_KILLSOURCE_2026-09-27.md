@@ -1,8 +1,8 @@
 # Enquête : bascule marche -> scan du killsource (2026-09-27)
 
-Worktree : `C:/Users/Guillaume/Projects/LevelUp-wt-equiv-j51` (détaché). Aucun commit, aucune base
+Worktree : `<poste>/Projects/LevelUp-wt-equiv-j51` (détaché). Aucun commit, aucune base
 ouverte. Mesure : `TestGoldenFilms -update` puis lecture des lignes `marche` / `scan` des goldens ;
-fixtures `C:/Users/Guillaume/Projects/LevelUp/data/cache/film_chunks` (lecture seule).
+fixtures `<poste>/Projects/LevelUp/data/cache/film_chunks` (lecture seule).
 
 ## Verdict en une phrase
 

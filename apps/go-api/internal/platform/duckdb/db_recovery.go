@@ -51,7 +51,7 @@ func IsInvalidatedError(err error) bool {
 // IsInvalidatedError (corruption/handle périmée) : ici la DB est saine, c'est
 // une contention inter-process (CLI backfill concurrent, 2e instance serveur,
 // hot-reload Air pas encore libéré). Permet aux callers d'émettre un message
-// actionnable au lieu d'un "open rw" opaque (cf. spartan_cron Madina 2026-05-31).
+// actionnable au lieu d'un "open rw" opaque (cf. spartan_cron joueur_075 2026-05-31).
 //
 // Le marqueur "File is already open in <exe> (PID N)" est ajouté par DuckDB
 // lui-même, EN et indépendant de la locale OS — MAIS seulement quand DuckDB

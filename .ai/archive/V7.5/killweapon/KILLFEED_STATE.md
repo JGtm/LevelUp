@@ -79,8 +79,8 @@ exacte (low-32) non dans ce champ — la famille suffit (but figé).
 **CHIFFRES (93 kills, 000d5950) :**
 - Kill feed chunk_27 = 93/93 (tueur/victime/temps). `medalType`=0 sur 93/93 ⇒ pas de méthode dans le kill event.
 - **Proxy littéral d'arme id64 (885 horodatés)** : présent fenêtre [-3s,+200ms] = 87/93 (94%), MAIS non-ambigu
-  (1 seule famille) = 24% seulement. **Kills narrés = 0/10 matchés.** Marteau IKE→JGtm (115.5/292.5/355.7/375.1s) :
-  AUCUN Gravity/Rushdown Hammer (0x841ac5e5) en ±1.5s. BR75 JGtm→Akatsuki (112.9/329.8s) : aucun BR75. Le proxy
+  (1 seule famille) = 24% seulement. **Kills narrés = 0/10 matchés.** Marteau JOUEUR_502→JGtm (115.5/292.5/355.7/375.1s) :
+  AUCUN Gravity/Rushdown Hammer (0x841ac5e5) en ±1.5s. BR75 JGtm→joueur_700 (112.9/329.8s) : aucun BR75. Le proxy
   capte les armes de TOUS les joueurs du Fiesta, pas celle du tueur ⇒ **réfuté empiriquement**.
 - **Record de dégât FUN_14080c1f8 : 0 signature littérale dans le flux delta.** `'weap'`(0x77656170) = 0 occ dans
   chunks 02-26 (byte ET bit-aligné) ; 19 `'weap'` + 319 `'obje'` UNIQUEMENT dans chunk_00 (schéma ECS). ⇒ le
@@ -117,8 +117,8 @@ MAIS les frames de KILL décodent ~toutes en **desync** (le walk biped casse pr�
 tail des frames de kill **inaccessible**. Le tail existe et porte des armes mais on ne peut pas l'atteindre aux kills.
 
 **CONCENTRATION STRICTE (Phase E) :** frame type-0 du kill ±100ms → 25/93 kills ont ≥1 famille, 12/93 unique.
-Narrés : **1 seule** occurrence correcte (Gravity Hammer 0x841ac5e5 @292490ms IKE→JGtm = coïncidence d'un
-spawn d'entité-arme), **0 BR75** sur les 2 kills JGtm→Akatsuki. ⇒ le high32 capté = NEW records d'entités-armes
+Narrés : **1 seule** occurrence correcte (Gravity Hammer 0x841ac5e5 @292490ms JOUEUR_502→JGtm = coïncidence d'un
+spawn d'entité-arme), **0 BR75** sur les 2 kills JGtm→joueur_700. ⇒ le high32 capté = NEW records d'entités-armes
 (pickup/spawn), PAS un record de dégât par kill.
 
 **RE COMPLÉMENTAIRE (HTTP :8089, reconfirme L1/L2) :** `FUN_14054d014` (init) construit `DAT_144e61d88` : memset
@@ -291,7 +291,7 @@ CE 12 kills. Les 2 autres pistes (dispatcher 0x02-0x3c ; dead-state +0x10) sont 
    actuel via **ts du paquet** (header +0x08 u64 LE) ⋈ chunk_27 = **33/93 kills** à ±300ms (ambigu, plusieurs joueurs tirent).
    **Piste pour lever l'ambiguïté** : le **global-id `+0x0c`** (R5+R32) pourrait encoder l'**entité-arme attaquante**
    (→ joueur) — à RE/cross-référencer (+ le préfixe R5). Sinon : dernier/densest tick de même famille avant chaque death.
-2. **Mêlée/grenade/terrain : 0 record d'arme** (Gravity Hammer = 0/519). Le kill marteau IKE→JGtm N'EST PAS attribuable
+2. **Mêlée/grenade/terrain : 0 record d'arme** (Gravity Hammer = 0/519). Le kill marteau JOUEUR_502→JGtm N'EST PAS attribuable
    par cette voie → path séparé via la **catégorie de mort du dead-state / chunk_27** (qui distingue déjà mêlée).
 
 ### ⇒ SOURCE-PAR-KILL : VERDICT NÉGATIF (workflow `w5v591zoz`, 2026-06-07) — la voie record-de-dégât ne suffit pas
@@ -301,7 +301,7 @@ CE 12 kills. Les 2 autres pistes (dispatcher 0x02-0x3c ; dead-state +0x10) sont 
   gate=0 dans 519/519. ⇒ seul lien record→kill = **proximité temporelle** (ts paquet ⋈ chunk_27) = **NON fiable** (Fiesta).
 - **(M1) chunk_27 ne classe pas la méthode.** Le bloc 60 o KILL/DEATH n'a aucun champ méthode (les 4 morts marteau de
   JGtm sont bit-identiques à ses morts à l'arme). Médailles b59 = partiel (44/93) + décode non-bijectif. ⇒ mêlée 2/93, grenade/terrain 0.
-- **VALIDATION NARRATION = 0/6.** BR75 JGtm→Akatsuki : non-résolu (noyé dans le bruit). Marteau IKE→JGtm : 3 non-résolus
+- **VALIDATION NARRATION = 0/6.** BR75 JGtm→joueur_700 : non-résolu (noyé dans le bruit). Marteau JOUEUR_502→JGtm : 3 non-résolus
   + 1 **FAUX POSITIF** « Stalker Rifle » (tick d'un AUTRE joueur dans la fenêtre). Couverture fiable réelle = **0**.
 - **CAUSE RACINE** : le record de dégât (519 ticks, famille EXACTE) ne contient ni tueur ni victime → l'appariement
   temporel attribue l'arme du mauvais joueur en Fiesta. **NE PAS productioniser cet appariement** (faux positifs prouvés).
@@ -341,7 +341,7 @@ mid-mobility), **i59** (tag==3 `FUN_142f25e90`), **i63** (count1>0) NON portées
 - [À FAIRE] **P-decode** : miroir Go de `FUN_14080c1f8` → lire `+0x08` (slot/cause), `+0x14` (famille R32), `+0x18`
   (source brute), + handles attaquant/victime du record (mapper TOUS les champs du 0x328).
 - [À FAIRE] **P-cross** : associer record↔kill (handle victime/attaquant OU ordre temporel) vs chunk_27 → `X·source·Y`.
-- [À FAIRE] **P-valid** : vs CE 12 kills + narration (marteau IKE→JGtm, BR75 JGtm→Akatsuki…) — critère ≥10/12, ≥1 mêlée +1 distance.
+- [À FAIRE] **P-valid** : vs CE 12 kills + narration (marteau JOUEUR_502→JGtm, BR75 JGtm→joueur_700…) — critère ≥10/12, ≥1 mêlée +1 distance.
 - [À FAIRE] **P-prod** : analysis→service→handler, append-only ART-safe, capability-gated, multi-titre PathResolver.
 - NB : le **walk biped bit-exact** (port i54/i59/i63) reste utile (fallback arme-équipée + dead-state) mais n'est
   PLUS le chemin principal — P-locate/P-decode du record de dégât ne dépend pas du walk biped.
@@ -438,7 +438,7 @@ Deux voies de décode (mêmes données au fond : l'arme = l'entité-arme que l'e
 3. **Bootstrap World depuis le film seul** (prod) : keyframe → slot→archétype (porter default-states NEW par archétype),
    ou ancrage minimal bipeds. Élimine le world_dump debugger. Scalable centaines de matchs.
 4. **Croiser** : par kill (chunk_27 : tueur slot + temps) → arme-famille tenue à t → `tueur · arme · victime`.
-5. **Valider** vs CE 12 kills + narration (IKE→JGtm marteau, JGtm→Akatsuki BR75, …) + medals_earned (armes).
+5. **Valider** vs CE 12 kills + narration (JOUEUR_502→JGtm marteau, JGtm→joueur_700 BR75, …) + medals_earned (armes).
 6. **Productioniser** : `internal/analysis` (pur) → `internal/service` → handler ; table append-only ART-safe ;
    capability-gated (pas slug en dur) ; multi-titres via PathResolver.
 

@@ -7,7 +7,7 @@
 > (endpoint jamais retiré — l'URL du code était fausse). Tracker §4 intégralement
 > statué. Branche `fix/auth-deviceflow-lots-ad`.
 >
-> Date de rédaction : 2026-07-11. Exécutant prévu : Opus. Superviseur : Guillaume.
+> Date de rédaction : 2026-07-11. Exécutant prévu : Opus. Superviseur : JGtm.
 > Origine : investigation du 2026-07-11 — wizard bloqué sur « Démarrage du Device Code Flow… »
 > au premier lancement sur un PC neuf. Cause racine tracée sur pièces (cf. §1).
 > Entrée thought_log associée : `[2026-07-11] Onboarding bloqué … SISU endpoint 404`.
@@ -72,7 +72,7 @@ sur le spinner « Démarrage du Device Code Flow… », indéfiniment.
 
 **Conclusions** :
 - **A** — L'endpoint natif Xbox `oauth20_connect/device` est retiré/déplacé côté Microsoft.
-  La panne est **globale** (tout onboarding SISU distribué), PAS spécifique au PC de Guillaume.
+  La panne est **globale** (tout onboarding SISU distribué), PAS spécifique au PC de JGtm.
 - **B** — Le chemin MSAL (`consumers/oauth2/v2.0/devicecode`) fonctionne. Le contournement
   local `auth_provider=msal` (déjà posé dans `app_settings.json`, gitignored) débloque
   l'onboarding sur cette machine après restart.
@@ -88,7 +88,7 @@ sur le spinner « Démarrage du Device Code Flow… », indéfiniment.
 
 ---
 
-## 2. DÉCISION PRODUIT REQUISE (à trancher avec Guillaume avant le lot C)
+## 2. DÉCISION PRODUIT REQUISE (à trancher avec JGtm avant le lot C)
 
 L'app est distribuée à des self-hosters qui ne peuvent pas tous enregistrer une app Azure —
 c'est la raison d'être historique de SISU (cf. commentaire
@@ -105,7 +105,7 @@ c'est la raison d'être historique de SISU (cf. commentaire
   tentative courante + log `legacy_source_used`-style. Robuste, mais garde le code SISU vivant.
 
 > Recommandation exécutant : **Option 3** (robustesse immédiate + préserve SISU si MS le
-> réactive) couplée à un ticket de recherche pour l'Option 1. À CONFIRMER par Guillaume —
+> réactive) couplée à un ticket de recherche pour l'Option 1. À CONFIRMER par JGtm —
 > ne pas coder le lot C avant décision.
 
 ---
@@ -126,7 +126,7 @@ Priorité haute : corrige le « spinner infini » quelle que soit la stratégie 
 - **Gate** : `make check-types` + `make test-web` verts.
 
 ### Lot B — Décision produit (§2)
-- Présenter §2 à Guillaume, acter l'option (1/2/3). Consigner la décision au Journal §5.
+- Présenter §2 à JGtm, acter l'option (1/2/3). Consigner la décision au Journal §5.
 - **Gate** : décision écrite + option retenue notée dans ce fichier.
 
 ### Lot C — Implémentation de la stratégie retenue (dépend du lot B)
@@ -175,7 +175,7 @@ Selon l'option :
       vérif navigateur `/login` (happy path + échec simulé).
 - [~] B1 — décision SANS OBJET : la prémisse « endpoint retiré » était fausse (cf. Journal
       2026-07-13) — l'endpoint natif existe, c'est l'URL du code qui n'a jamais été la bonne.
-      Option 1 exécutée de fait ; Options 2/3 sans objet. À confirmer par Guillaume (rayer D3
+      Option 1 exécutée de fait ; Options 2/3 sans objet. À confirmer par JGtm (rayer D3
       de l'ETAT consolidé).
 - [x] C1 — Option 1 de fait : `xboxDeviceCodeURL` corrigée `/oauth20_connect/device` →
       `oauth20_connect.srf` (vérif curl : .srf → 200 + device_code ; /device → 404 ;
@@ -184,7 +184,7 @@ Selon l'option :
       handleStartDeviceFlow (même commit).
 - [~] C3 — vérifié jusqu'à la page Microsoft « Se connecter » incluse (code généré,
       polling pending, page login.live.com rendue) — la complétion `authorized` exige les
-      identifiants Microsoft de l'utilisateur : à confirmer par Guillaume à sa reconnexion.
+      identifiants Microsoft de l'utilisateur : à confirmer par JGtm à sa reconnexion.
 - [x] C4 — gates du commit item 0 : go build/vet + tests handlers/auth + platform/auth
       verts ; lint --new-from-rev=origin/main 0 issue.
 - [x] D1 — garde-rail joignabilité endpoint device-code : test taggé `integration`

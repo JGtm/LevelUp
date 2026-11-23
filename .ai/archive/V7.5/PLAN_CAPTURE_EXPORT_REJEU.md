@@ -1,7 +1,7 @@
 # PLAN — Capture d'image et enregistrement vidéo du rejeu 2D
 
 > Date : 2026-08-26. Branche : `wt/rejeu-capture-image-video` (base `f4fcbfa72`, lignée v7.5).
-> Worktree dédié : `C:/Users/Guillaume/Projects/LevelUp-wt-capture-rejeu`.
+> Worktree dédié : `<poste>/Projects/LevelUp-wt-capture-rejeu`.
 > **Contrat d'exécution : skill `plan-execution`** (ordre strict, aucun report d'item
 > exécutable, chaque item statué `[x]` / `[~]` réf / `[!]` justifié, zéro fix hors
 > périmètre — les trouvailles vont dans la section « Découvertes »).

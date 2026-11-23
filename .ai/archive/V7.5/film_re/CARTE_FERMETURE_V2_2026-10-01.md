@@ -40,7 +40,7 @@
 - Corpus : les 19 témoins de `config/replay_corpus.toml` + `1c4c63c2` (20 films, 9 builds), un film à
   la fois, sentinelle `filmproc` à 4 Gio par film.
 - Commande (depuis `apps/go-api`, binaire construit par `go build -tags=research`) :
-  `cmd_fermeture -racine C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/film_chunks -films bcb6d393,fb1a1a72,d9781168,c75f33b8,bf15f7ab,51ebbc0f,084a804d,0797ce72,111fa685,e5adf7b2,60ae07c4,a349fea8,a521164d,11de8353,50247b26,bfecd02b,4f77afc1,396cfc92,f75e7053,1c4c63c2 -sortie <scratchpad>/carte_v2 -plafond-gib 4 -top 40 -mode v2`
+  `cmd_fermeture -racine <poste>/Downloads/Scripts/LevelUp/data/cache/film_chunks -films bcb6d393,fb1a1a72,d9781168,c75f33b8,bf15f7ab,51ebbc0f,084a804d,0797ce72,111fa685,e5adf7b2,60ae07c4,a349fea8,a521164d,11de8353,50247b26,bfecd02b,4f77afc1,396cfc92,f75e7053,1c4c63c2 -sortie <scratchpad>/carte_v2 -plafond-gib 4 -top 40 -mode v2`
 - Résultat : 20 films, 0 échec, 1 min 18 s, pics de 69 Mio (`bcb6d393`) à 321 Mio (`1c4c63c2`). Le
   pic inclut le second chargement du film AVEC son manifeste pour l'item 1.5.
 - Deux passes de contrôle, mêmes 20 films : (a) l'outil de la tête NON modifié (`-mode fermeture`,

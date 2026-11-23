@@ -3,7 +3,7 @@
 > Execute le 2026-09-01 dans le worktree `LevelUp-wt-vehicules`, HEAD de depart `7011bdaed`.
 > Aucun commit, aucun `git add`, aucune ecriture DuckDB. Toutes les mesures ont tourne en
 > avant-plan, `CGO_ENABLED=0`, GOCACHE isole (scratchpad), sur les donnees reelles du checkout
-> principal (`C:/Users/Guillaume/Projects/LevelUp/data`, lecture seule). Perimetre : les deux
+> principal (`<poste>/Projects/LevelUp/data`, lecture seule). Perimetre : les deux
 > restes OUVERTS de la ligne V1 (V1a/V1b deja livres). Coordination : trois autres agents
 > tournent ; ce lot n'ecrit QUE deux fichiers d'instrument neufs, sous garde d'environnement,
 > et ne touche aucun fichier de production.

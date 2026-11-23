@@ -3,7 +3,7 @@
 > Ecrit le 2026-08-28 par la session pilote, sur cartographie complete de l'existant medias
 > (agent d'exploration, faits fichier:ligne verifies). Contrat : skill `plan-execution`
 > (ordre strict, statuts [x]/[~]/[!], zero fix hors perimetre). Grille : skill `plan-review`.
-> Branche : `wt/lecteur-medias` (worktree `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-lecteur`,
+> Branche : `wt/lecteur-medias` (worktree `<poste>\Downloads\Scripts\LevelUp-wt-lecteur`,
 > base origin/feat/v75 @ f87b4bf29). 1 commit par lot. AUCUN merge/push sans decision pilote.
 > Solde le report « Medias du rejeu : la DONNEE » du REGISTRE_REPORTS.
 

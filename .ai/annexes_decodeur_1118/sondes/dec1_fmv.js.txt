@@ -1,5 +1,5 @@
 const fs=require('fs'),zlib=require('zlib');
-const dir='c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
+const dir='<poste>/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
 for(const id of ['2b10340d','e5adf7b2','6ceaf3b8','ac97753c','11de8353','51ebbc0f','bcb6d393','35b75a31','c75f33b8','9f57c612']){
  const d=JSON.parse(zlib.gunzipSync(fs.readFileSync(dir+id+'.json.gz')));
  console.log(id,d.coverage.decoder.build,'filmMajor',d.coverage.filmMajorVersion,'t0Film',JSON.stringify(d.coverage.t0Film),'fb', (d.coverage.fallbacks||[]).filter(f=>/statborg|emission|bande/.test(f.name)).map(f=>f.name+':'+f.hits).join(' '),'reg',d.coverage.decoder.registry&&d.coverage.decoder.registry.status);

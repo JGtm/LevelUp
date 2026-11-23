@@ -2,7 +2,7 @@
   - `__dirname` (vite.config.ts:28:25). Use `import.meta.dirname` instead
 Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.[39m
 
- RUN  v4.1.10 C:/Users/Guillaume/Projects/LevelUp-wt-zones-ti13-p2b/apps/web
+ RUN  v4.1.10 <poste>/Projects/LevelUp-wt-zones-ti13-p2b/apps/web
 
 
  Test Files  141 passed (141)

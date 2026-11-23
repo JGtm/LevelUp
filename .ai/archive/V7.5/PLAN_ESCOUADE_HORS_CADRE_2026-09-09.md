@@ -1,7 +1,7 @@
 # PLAN — Compte unique de la population escouade + bornage des pions hors cadre
 
 > Cree le 2026-09-09. Branche : `wt/escouade-hors-cadre`. Worktree :
-> `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-escouade-hors-cadre` (dedie, cf. regle
+> `<poste>/Downloads/Scripts/LevelUp-wt-escouade-hors-cadre` (dedie, cf. regle
 > memoire « worktree dedie obligatoire »). Base : `feat/v75` @ `19194fd31`.
 >
 > **Contrat d'execution : skill `plan-execution` fait foi.** Ordre strict, une etape a la
@@ -123,8 +123,8 @@ verifie a `git status`. Un ratchet qui ne peut pas echouer ne verrouille rien.
   MatchCountRoster)`, idem `ExcludedByExactComposition`, et `undefined:
   domain.CompositionExcludedMatch` (cf. A1.2, renommage). Test ajoute :
   `TestGetPage_ExactComposition_PublishesRosterCountAndExcludedMatches` + fixture
-  `newExactCompositionGapRepo` (session S1 : 1 match garde, 4 ecartes — Nilton410 seul,
-  passivemarquise seul, xuid sans gamertag resolu, Nilton410+passivemarquise ensemble).
+  `newExactCompositionGapRepo` (session S1 : 1 match garde, 4 ecartes — joueur_006 seul,
+  joueur_1027 seul, xuid sans gamertag resolu, joueur_006+joueur_1027 ensemble).
 - `[x]` A1.2 `internal/domain/teammates.go` : type `CompositionSessionEntry` (embarque
   `SessionLabelEntry`) + champs `match_count_roster` et `excluded_by_exact_composition` ;
   type `CompositionExcludedMatch` (`match_id`, `start_time`, `map_ui`, `extra_gamertags`).
@@ -254,8 +254,8 @@ concurrente sur `features/squad/i18n.ts`.
   `space-y-*`) sont deja les tokens/utilitaires neutres du depot, aucune couleur ajoutee.
 - `[~]` A3.5 Revue navigateur sur la session du 27/08 : **couvert par le superviseur, revue
   de vague** (consigne d'execution du lot 1.5 : « ne lance pas de navigateur »). La logique
-  est verrouillee par les tests A3.1 (contenu exact « Nilton410 était dans ton équipe » /
-  « Nilton410 et passivemarquise étaient dans ton équipe » couvert par
+  est verrouillee par les tests A3.1 (contenu exact « joueur_006 était dans ton équipe » /
+  « joueur_006 et joueur_1027 étaient dans ton équipe » couvert par
   `squadCompositionGapHint.test.tsx`), la revue visuelle reste a faire par le superviseur.
 
 **Gate A3 passe** (2026-09-09) : `make check-types` (tsc -b) 0 erreur ·

@@ -152,7 +152,7 @@ Constat :
   film. Un compte à rebours suit une mort ; une fin de manche replace les joueurs sans mort. C'est une
   lecture, pas une fenêtre de temps : la piste de l'entrée du backlog (publier « fin de manche » par vie)
   devient probablement inutile. À prouver par 3.1.
-- Méthode de Den (libfilmshell, copie locale `C:\Users\Guillaume\Downloads\Scripts\libfilmshell`, lue le
+- Méthode de Den (libfilmshell, copie locale `<poste>\Downloads\Scripts\libfilmshell`, lue le
   2026-11-15, son code = témoin, tables reprises avec crédit) : `src/motion.rs:135-141` et `src/lives.rs:698-701`.
   Une vie se termine par une mort quand son joueur **lâche la commande du corps** (`unit-control`) ; une vie
   qu'une nouvelle manche termine est **supprimée** sans lâcher de commande ; la fin du match lâche toutes les

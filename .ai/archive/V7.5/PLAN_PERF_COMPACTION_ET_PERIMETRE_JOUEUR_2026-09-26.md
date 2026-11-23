@@ -40,7 +40,7 @@ Décisions :
   PAS de cache de lecture (décision utilisateur : le cache ne sert qu'aux visites répétées, la
   première ouverture après chaque sync paie le prix plein, et son invalidation est une source
   d'erreurs).
-- **Branche** : `feat/perf-perimetre` (worktree `C:\Users\Guillaume\Projects\LevelUp-wt-perf-perimetre`),
+- **Branche** : `feat/perf-perimetre` (worktree `<poste>\Projects\LevelUp-wt-perf-perimetre`),
   à la suite du lot A — même chantier, pas encore fusionné. Fusion dans `feat/v75` : sur signal
   de l'utilisateur seulement (consigne du 2026-09-26).
 - **Agents** : Opus au plus, type `opus-high` pour l'exécution (C touche aux invariants anti-ART,
@@ -206,7 +206,7 @@ Journal C (2026-09-26, exécuteur Opus, worktree `LevelUp-wt-perf-perimetre`, ba
 - **C.1 — inventaire, écrit avant tout code.** Sources : `duckdb_views()` de COPIES (lecture
   seule, CLI 1.5.4) de chaque base de chaque titre — partagée HI (copie du 2026-09-26 14:07) et H5,
   `shared_pve`, `shared_social` HI et H5, `metadata` HI et H5 (aucune vue `_latest`), bases joueur
-  HI (JGtm, Madina97294, Chocoboflor, XxDaemonGamerxX) et H5 (JGtm, Madina97294) ; lecteurs bruts
+  HI (JGtm, joueur_117, joueur_165, joueur_291) et H5 (JGtm, joueur_117) ; lecteurs bruts
   grepés sur `internal/` ET `cmd/` (FROM / JOIN, littéraux de nom de table, SQL construit par
   concaténation), hors commentaires. Les 20 vues `_latest` de la base partagée ont le MÊME SQL sur
   HI et H5 (diff vide).
@@ -344,16 +344,16 @@ Journal C (2026-09-26, exécuteur Opus, worktree `LevelUp-wt-perf-perimetre`, ba
   intouchée (dernier tiré 3 953 800, `max(id)` 3 953 799). Fichier : 1 264,3 Mio -> 1 215,0 Mio
   (compaction seule) -> 350,8 Mio (`--rewrite-file`). Chronos (2 threads / 512 Mo, machine
   partagée, deux tours, avant -> après compaction ; le fichier réécrit donne les mêmes ordres) :
-  Carrière rencontres Q26 JGtm 1 829-1 870 -> 267-275 ms, Madina97294 1 622-1 909 -> 364-422,
-  Chocoboflor 2 171-2 449 -> 238-263, XxDaemonGamerxX 1 829-2 131 -> 277-293, Nuzzles 2 192-2 349
-  -> 609-761 ; rivaux Q27 JGtm 3 066-3 806 -> 343-425, Madina 3 727-3 906 -> 381-486, Chocoboflor
-  3 513-4 277 -> 411-418, Xx 3 391-3 685 -> 282-439, Nuzzles 3 306-3 935 -> 604-642 ; Relations
-  Q28 JGtm 1 916-2 428 -> 374-462, Madina 2 463-2 894 -> 479-505, Chocoboflor 1 846-2 077 ->
-  372-383, Xx 1 770-1 942 -> 164-277, Nuzzles 3 309-3 688 -> 1 597-1 688 ; vue match Q23b (médiane
-  de 11 matchs) JGtm 1 909-2 466 -> 236-296, Nuzzles 1 922-2 159 -> 230-242 ; Tactique
-  `MortsParCarte` JGtm 2 696-2 933 -> 397-499, Madina 3 506-3 569 -> 355-493, Chocoboflor 3 025-3 252
-  -> 601-641, Xx 2 899-3 017 -> 346-492, Nuzzles 3 715-4 972 -> 451-517 ; repli de localisation du
-  lot A (pas 1 seul, 2 973 xuids de Nuzzles) 192-252 -> 61-90 ms, mêmes 2 matchs candidats ; Q12
+  Carrière rencontres Q26 JGtm 1 829-1 870 -> 267-275 ms, joueur_117 1 622-1 909 -> 364-422,
+  joueur_165 2 171-2 449 -> 238-263, joueur_291 1 829-2 131 -> 277-293, joueur_074 2 192-2 349
+  -> 609-761 ; rivaux Q27 JGtm 3 066-3 806 -> 343-425, joueur_075 3 727-3 906 -> 381-486, joueur_165
+  3 513-4 277 -> 411-418, Xx 3 391-3 685 -> 282-439, joueur_074 3 306-3 935 -> 604-642 ; Relations
+  Q28 JGtm 1 916-2 428 -> 374-462, joueur_075 2 463-2 894 -> 479-505, joueur_165 1 846-2 077 ->
+  372-383, Xx 1 770-1 942 -> 164-277, joueur_074 3 309-3 688 -> 1 597-1 688 ; vue match Q23b (médiane
+  de 11 matchs) JGtm 1 909-2 466 -> 236-296, joueur_074 1 922-2 159 -> 230-242 ; Tactique
+  `MortsParCarte` JGtm 2 696-2 933 -> 397-499, joueur_075 3 506-3 569 -> 355-493, joueur_165 3 025-3 252
+  -> 601-641, Xx 2 899-3 017 -> 346-492, joueur_074 3 715-4 972 -> 451-517 ; repli de localisation du
+  lot A (pas 1 seul, 2 973 xuids de joueur_074) 192-252 -> 61-90 ms, mêmes 2 matchs candidats ; Q12
   des 23 matchs à repli de JGtm, en alternance avant / après (trois tours chacun) : médiane
   13-24 -> 13-15 ms, max 133-292 -> 39-78 ms.
 - **C.7 — mutations** (chacune appliquée, test rouge, fichier restauré, `cmp` identique) :
@@ -552,7 +552,7 @@ Décisions :
   Rivaux : UNE lecture de l'agrégat, les deux classements (morts subies, frags infligés) triés en
   Go. Aucun cache.
 - DB.3 **Parité stricte** : lignes, compteurs, noms et ordre servis identiques avant / après sur
-  les cinq joueurs suivis (JGtm, Madina97294, Chocoboflor, XxDaemonGamerxX, Nuzzles) ; ex aequo
+  les cinq joueurs suivis (JGtm, joueur_117, joueur_165, joueur_291, joueur_074) ; ex aequo
   comparés en ensembles là où l'ordre n'était pas total (dette connue, non traitée).
 - DB.4 **Garde-rails** : chaque lecture traitée entre dans un test de fenêtres bornées par
   EXPLAIN ANALYZE (même helper `exigerFenetresBornees`) : rouge si la fenêtre voit plus que les
@@ -564,7 +564,7 @@ Décisions :
 Items :
 - [x] B.0 re-mesure des cibles sur la copie compactée (DB.1), liste traitée écrite ici — Journal B,
       « B.0 » : traitées Q26, Q27, Q28 (non scopé), `MortsParCarte` ; `[~]` Q28 scopé et Accueil
-      (arme favorite) ; `[!]` (DB.5) Synthèse `weapon_records` et l'annuaire de Relations de Nuzzles
+      (arme favorite) ; `[!]` (DB.5) Synthèse `weapon_records` et l'annuaire de Relations de joueur_074
 - [x] B.1 Carrière : rencontres et rivaux bornés, rivaux en une lecture ; parité ; chrono —
       `f81a8a09c` (`career_repo_encounters.go`, `career_repo_rivals.go`, `perimetre_liste.go`) ;
       Journal B
@@ -604,44 +604,44 @@ Journal B (2026-09-27, exécuteur Opus, worktree `LevelUp-wt-perf-perimetre`, ba
   vrais lecteurs, sections de durée relevées ; deux tours, min-max ; machine moins chargée qu'en
   C.5). Règle de décision : une cible est TRAITÉE si au moins un des cinq joueurs dépasse 300 ms
   aux deux tours.
-  - Carrière rencontres (`GetTopEncountersGlobal`, Q26 + annuaire) : JGtm 217-281 ms, Madina97294
-    228-336, Chocoboflor 160-178, XxDaemonGamerxX 142-145, Nuzzles 435-513 (Q26 214-279, annuaire
+  - Carrière rencontres (`GetTopEncountersGlobal`, Q26 + annuaire) : JGtm 217-281 ms, joueur_117
+    228-336, joueur_165 160-178, joueur_291 142-145, joueur_074 435-513 (Q26 214-279, annuaire
     220-233) -> **TRAITÉE** (B.1).
-  - Carrière rivaux (`GetRivals`, Q27 lu deux fois + annuaire) : JGtm 287-461, Madina 291-451,
-    Chocoboflor 249-296, Xx 233-273, Nuzzles 333-375 -> **TRAITÉE** (B.1).
+  - Carrière rivaux (`GetRivals`, Q27 lu deux fois + annuaire) : JGtm 287-461, joueur_075 291-451,
+    joueur_165 249-296, Xx 233-273, joueur_074 333-375 -> **TRAITÉE** (B.1).
   - Relations Q28 non scopé (`GetRelations(nil)`) : JGtm 299-373 (Q28 165-240, annuaire 133),
-    Madina 376-417 (Q28 210-245, annuaire 165-172), Chocoboflor 213-229, Xx 134-136, Nuzzles
+    joueur_075 376-417 (Q28 210-245, annuaire 165-172), joueur_165 213-229, Xx 134-136, joueur_074
     982-1 030 (Q28 230-254, **annuaire 752-775**) -> **TRAITÉE** (B.2) pour la fenêtre du
-    kill-feed de Q28 ; l'annuaire de Nuzzles n'est PAS une fenêtre sur tout l'historique (ses
+    kill-feed de Q28 ; l'annuaire de joueur_074 n'est PAS une fenêtre sur tout l'historique (ses
     lectures sont des tables et des fenêtres déjà bornées par liste, lot A) : DB.5, découverte au §6.
   - Relations Q28 scopé (30 derniers matchs) : 42-59 ms pour les cinq -> `[~]` : la variante
     scopée lie déjà la liste en constantes sous la fenêtre du kill-feed (`kv.match_id IN (…)`).
   - Tactique `MortsParCarte`, appelée comme par la page (liste blanche = tous les matchs du
-    joueur) : JGtm 301-386, Madina 331-343, Chocoboflor 273-278, Xx 229-246, Nuzzles 318-326 ;
+    joueur) : JGtm 301-386, joueur_075 331-343, joueur_165 273-278, Xx 229-246, joueur_074 318-326 ;
     liste de 30 matchs : 225-396 ; sans liste : 224-572 -> **TRAITÉE** (B.3) : la liste n'est
     posée que sur `match_registry`, les deux fenêtres (positions, journal) voient toute la table.
   - Accueil : la seule fenêtre `_latest` du film sur tout l'historique est l'arme favorite
-    (`LoadFavoriteWeapon`, source de dégât) : JGtm 119-189, Madina 103-124, Chocoboflor 99-118,
-    Xx 98-103, Nuzzles 100-102 -> `[~]` résolu par C ; l'historique canonique de la page
-    (`PlayerMatchesRepo.Load`, bases joueur copiées, Nuzzles sans base) : 43-214 ms, pas une
+    (`LoadFavoriteWeapon`, source de dégât) : JGtm 119-189, joueur_075 103-124, joueur_165 99-118,
+    Xx 98-103, joueur_074 100-102 -> `[~]` résolu par C ; l'historique canonique de la page
+    (`PlayerMatchesRepo.Load`, bases joueur copiées, joueur_074 sans base) : 43-214 ms, pas une
     fenêtre. La page entière (1,6 s pour 310 Ko en septembre) ne se re-mesure pas sans serveur
     (interdit) : §6.
   - Synthèse `weapon_records` (`LoadWeaponRange`, liste = tous les matchs du joueur) : JGtm
-    335-665, Madina 269-299, Chocoboflor 177-182, Xx 49-62, Nuzzles 665-677 -> `[!]` DB.5 : ses
+    335-665, joueur_075 269-299, joueur_165 177-182, Xx 49-62, joueur_074 665-677 -> `[!]` DB.5 : ses
     fenêtres sont DÉJÀ bornées à la liste, profil JSON de la requête relevé sur la copie
     (fenêtres vues : JGtm 102 235 kill-feed / 96 633 positions = exactement les lignes de ses
-    matchs, Nuzzles 272 132 / 19 978) ; le coût est le volume des matchs du joueur, pas une
+    matchs, joueur_074 272 132 / 19 978) ; le coût est le volume des matchs du joueur, pas une
     fenêtre sur tout l'historique.
   - Coût de la liste elle-même (lecture du kill-feed d'un joueur, `COUNT(*)`, deux tours) : sans
     liste 109-167 ms (fenêtre de 412 216 lignes) ; liste de ses matchs en constantes : JGtm 66-292
-    (102 235 lignes vues), Madina 48-55, Chocoboflor 35-39, Xx 16-18, **Nuzzles 155-173** (7 190
+    (102 235 lignes vues), joueur_075 48-55, joueur_165 35-39, Xx 16-18, **joueur_074 155-173** (7 190
     matchs, 272 132 lignes vues : la liste coûte plus que la fenêtre entière, déjà écrit à l'ADR
     0036 pour les longues listes). Le mécanisme DB.2 reste celui du plan ; sa FORME de liaison est tranchée en B.1.
 - **B.1 à B.3 — mécanisme** (`f81a8a09c`). Chaque lecture traitée lit d'abord la liste (les
   matchs du joueur, `QMatchsDuJoueurTpl`, Campagne exclue ; ou la liste blanche de la page pour
   `MortsParCarte` et Q28 scopé), la lie sous CHAQUE vue `_latest` qu'elle lit, puis passe la même
   liste à son annuaire (une lecture de la liste par appel ; l'annuaire la relisait déjà).
-  FORME DE LIAISON, décidée sur mesure : un premier jet en `IN (?, ?, …)` faisait RÉGRESSER Nuzzles
+  FORME DE LIAISON, décidée sur mesure : un premier jet en `IN (?, ?, …)` faisait RÉGRESSER joueur_074
   (Q26 615-729 -> 726-809 ms, Q28 1 543-1 586 -> 1 548-1 788, `MortsParCarte` 492-598 -> 613-743,
   trois tours alternés) ; sonde sur la lecture du kill-feed d'un joueur (trois tours) : 7 190
   paramètres en `IN` 304-341 ms, la même liste en littéraux 196-220, en UN paramètre `VARCHAR[]`
@@ -673,16 +673,16 @@ Journal B (2026-09-27, exécuteur Opus, worktree `LevelUp-wt-perf-perimetre`, ba
   joueurs dans 63 matchs de Campagne ne comptent plus (test `…CampagneHorsDeLaListe`).
 - **Chronos** (copie compactée, 2 threads / 512 Mo, lecteur complet avec annuaire, trois tours
   ALTERNÉS avant / après, machine chargée, min-max) : Q26 JGtm 282-301 -> 169-287 ms (cinq tours :
-  228-295 -> 164-187), Madina 324-395 -> 193-267, Chocoboflor 180-298 -> 100-107, Xx 144-161 ->
-  42-46, Nuzzles 497-575 -> 533-712 (cinq tours : médiane 519 -> 579 ; requête seule, quatre tours
-  alternés : 328-530 -> 317-638, neutre au bruit près) ; Q27 JGtm 460-465 -> 133-247, Madina
-  371-500 -> 122-163, Chocoboflor 303-380 -> 75-90, Xx 235-257 -> 25-30, Nuzzles 388-457 -> 306-354 ;
-  Q28 JGtm 371-421 -> 253-437 (cinq tours : 302-391 -> 233-272), Madina 409-451 -> 308-333,
-  Chocoboflor 242-392 -> 150-168, Xx 139-168 -> 43-44, Nuzzles 1 097-1 296 -> 1 144-1 224 (cinq
+  228-295 -> 164-187), joueur_075 324-395 -> 193-267, joueur_165 180-298 -> 100-107, Xx 144-161 ->
+  42-46, joueur_074 497-575 -> 533-712 (cinq tours : médiane 519 -> 579 ; requête seule, quatre tours
+  alternés : 328-530 -> 317-638, neutre au bruit près) ; Q27 JGtm 460-465 -> 133-247, joueur_075
+  371-500 -> 122-163, joueur_165 303-380 -> 75-90, Xx 235-257 -> 25-30, joueur_074 388-457 -> 306-354 ;
+  Q28 JGtm 371-421 -> 253-437 (cinq tours : 302-391 -> 233-272), joueur_075 409-451 -> 308-333,
+  joueur_165 242-392 -> 150-168, Xx 139-168 -> 43-44, joueur_074 1 097-1 296 -> 1 144-1 224 (cinq
   tours : médiane 1 061 -> 1 158 ; l'annuaire en fait 0,8-0,9 s) ; Q28 scopé 30 matchs 43-128 ->
-  31-55 ; `MortsParCarte` liste complète JGtm 371-622 -> 227-383, Madina 351-507 -> 162-241,
-  Chocoboflor 308-471 -> 115-150, Xx 269-283 -> 28-35, Nuzzles 356-588 -> 238-260 ; liste de 30
-  matchs 237-480 -> 23-53 pour les cinq. Nuzzles : sa liste (7 190 matchs) couvre 66 % des lignes
+  31-55 ; `MortsParCarte` liste complète JGtm 371-622 -> 227-383, joueur_075 351-507 -> 162-241,
+  joueur_165 308-471 -> 115-150, Xx 269-283 -> 28-35, joueur_074 356-588 -> 238-260 ; liste de 30
+  matchs 237-480 -> 23-53 pour les cinq. joueur_074 : sa liste (7 190 matchs) couvre 66 % des lignes
   du kill-feed, la borne n'y gagne presque rien sur Q26 / Q28.
 - **B.5 — garde-rails** (`f81a8a09c`, suite par défaut) : `career_repo_fenetres_test.go` —
   `TestLecturesHistorique_FenetresBorneesAuxMatchsDuJoueur` (quatre matchs du joueur parmi dix :
@@ -740,7 +740,7 @@ Journal B (2026-09-27, exécuteur Opus, worktree `LevelUp-wt-perf-perimetre`, ba
   (`clauseListeMatchs`, `clauseListeParJointure`, `argListe`) y ajoute l'argument, jamais nil.
   Annuaire : xuids et match_id filtrés sur des tables en semi-jointure, match_id de la jambe
   kill-feed (quatre jambes, dont deux vues `_latest`) en constante, xuids de la localisation dépliés
-  dans `cherches`. Chaque requête de l'annuaire porte désormais 1 à 5 arguments (Nuzzles, Relations :
+  dans `cherches`. Chaque requête de l'annuaire porte désormais 1 à 5 arguments (joueur_074, Relations :
   14 900, 10 163 et 17 741 avant). Gabarits : source unique conservée (`gamertagKillFeedSQL`
   inchangée, `analysis/identity.go` non modifié : DDL de `v_gamertag_lookup` identique à l'octet),
   entrée `identity_annuaire.go` de l'allowlist de localisation inchangée et toujours valide (le
@@ -764,11 +764,11 @@ Journal B (2026-09-27, exécuteur Opus, worktree `LevelUp-wt-perf-perimetre`, ba
   par match, contrat « absent si non nommé » tenu, repli de localisation exercé) ; Relations Q28
   historique et 30 matchs (12 289 lignes), heatmap Q29 (1 265).
   **Chronos** (copie compactée, 2 threads / 512 Mo, trois tours ALTERNÉS avant / après, min-max) :
-  Relations Nuzzles Q28 1 118-1 339 -> 551-839 ms (annuaire 731-912 -> 256-286), heatmap 294-340 ->
+  Relations joueur_074 Q28 1 118-1 339 -> 551-839 ms (annuaire 731-912 -> 256-286), heatmap 294-340 ->
   179-199 (annuaire 200-238 -> 96-105) ; JGtm Q28 205-249 -> 196-222 (annuaire 80-98 -> 47-49),
   heatmap 74-109 -> 90-91 ; Escouade JGtm (composition de 579 matchs) Q29 50-65 -> 42-54, Q32
   314-702 -> 192-257, Q32b 103-106 -> 46-62 ; vue match, médianes sur 21 matchs (le dernier + 20 au
-  hasard) : Nuzzles Q12 56-65 -> 50-61, Q21 1 -> 1, Q23 72-84 -> 64-83, `ResolveGamertags` 0 -> 0 ;
+  hasard) : joueur_074 Q12 56-65 -> 50-61, Q21 1 -> 1, Q23 72-84 -> 64-83, `ResolveGamertags` 0 -> 0 ;
   JGtm Q12 14-17 -> 19-21, Q21 9-10 -> 13-14, Q23 38-47 -> 48-51, `ResolveGamertags` 4-5 -> 8. COÛT
   FIXE NOMMÉ : sur une petite liste (8 xuids, alias et participants de toute la base), `IN` 3,3 ms,
   semi-jointure 6,9 ms, constante 8,1 ms (médianes de 15) — l'`IN` court pousse son filtre dans le
@@ -798,9 +798,9 @@ Journal B (2026-09-27, exécuteur Opus, worktree `LevelUp-wt-perf-perimetre`, ba
   (b) `platform/duckdb/fanout_repo.go` porte deux semi-jointures `?::VARCHAR[]` écrites à la main,
   antérieures au helper, consignées dans le ratchet, non migrées. (c) Base NON compactée (copie du
   2026-09-26, kill-feed d'un joueur, deux tours) : fenêtre entière 2,75-3,56 s ; liste en constante
-  (forme de B.1-B.3) Nuzzles 1,16-1,61 s, JGtm 1,54-2,23 s ; en `IN` Nuzzles 0,68-0,97 s, JGtm
+  (forme de B.1-B.3) joueur_074 1,16-1,61 s, JGtm 1,54-2,23 s ; en `IN` joueur_074 0,68-0,97 s, JGtm
   1,64-2,07 s — la borne reste un gain avant la compaction, mais l'`IN` y bat la constante pour
-  Nuzzles : l'ordre des gains s'inverse selon l'état de la base (mesuré sur copie compactée, B.1).
+  joueur_074 : l'ordre des gains s'inverse selon l'état de la base (mesuré sur copie compactée, B.1).
   (d) Coût fixe de la liste liée sur une liste courte (+3 à +5 ms par lecture de la vue match de
   JGtm, cf. chronos) : un choix de forme selon la taille de la liste le supprimerait, au prix d'un
   seuil ; non fait.
@@ -856,7 +856,7 @@ case non statuée de l'étape courante (C, puis B, puis F).
   (`TestCompaction_AucuneMutationDeLigne`). (6) Halo 5 : `kill_positions` porte une passe
   synthétique `legacy-<match>` par match, et sa vue écarte 2 606 doublons (297 963 brutes /
   295 357 servies) À L'INTÉRIEUR de ces passes — la compaction les garde (DC.2), rien à gagner
-  sur cette table. (7) Après compaction, la liste Relations de Nuzzles reste à 1,4-1,7 s (les
+  sur cette table. (7) Après compaction, la liste Relations de joueur_074 reste à 1,4-1,7 s (les
   autres joueurs 0,16-0,62 s) : le coût restant n'est pas celui des passes — à mesurer en B.0.
   (8) Après `COPY FROM DATABASE`, `duckdb_sequences().last_value` affiche la PROCHAINE valeur
   (et non la dernière tirée) dans le fichier neuf ; `nextval` continue juste, aucun code ne lit
@@ -879,11 +879,11 @@ case non statuée de l'étape courante (C, puis B, puis F).
   de plateforme que le garde-rail n'autorise pas (le renommer, ou l'inscrire dans
   `goosSuffixAllowed` avec sa justification). Fichier de la compaction : non touché (brief).
   (12) L'annuaire en portée base (lot A) lie ses listes en `IN (?, …)` : pour les Relations de
-  Nuzzles, 14 900, 10 163 et 17 741 paramètres (alias/participants, matchs des restants,
+  joueur_074, 14 900, 10 163 et 17 741 paramètres (alias/participants, matchs des restants,
   kill-feed), 0,8-0,9 s des 1,1-1,3 s de la lecture — la même cause que celle mesurée en B.1 (la
   liaison de milliers de paramètres, pas le filtre) ; `clauseListeMatchs` s'y appliquerait. Non
   traité (DB.5 : ce ne sont pas des fenêtres sur tout l'historique). Idem, à moindre échelle, pour
-  l'annuaire de Q26 (7 210 et 7 192 paramètres, ~0,25 s chez Nuzzles). (13) Les autres lectures
+  l'annuaire de Q26 (7 210 et 7 192 paramètres, ~0,25 s chez joueur_074). (13) Les autres lectures
   tactiques (`KillEvents`, `MortsAvecContexte`, `KillPositions`, l'univers) lient la liste blanche
   en `IN` jusqu'à trois fois (et `clausePerimetre` sur `mr.match_id`) : à liste longue (onglet
   Tactique sans filtre, 7 190 matchs), des dizaines de milliers de paramètres. Non mesuré, non
@@ -892,7 +892,7 @@ case non statuée de l'étape courante (C, puis B, puis F).
   favorite 0,10-0,19 s, historique canonique 0,04-0,21 s) : si la page reste lente, la cause est
   ailleurs (taille de la réponse, lectures joueur ou sociales, concurrence). Synthèse
   `weapon_records` : 0,05-0,68 s, fenêtres déjà bornées ; le coût suit le volume des matchs du
-  joueur (Nuzzles, JGtm). À décider avec l'utilisateur (un cache est exclu par décision). (15)
+  joueur (joueur_074, JGtm). À décider avec l'utilisateur (un cache est exclu par décision). (15)
   Halo 5 : la liste des matchs du joueur exclut la Campagne, les jambes kill-feed de Q26 / Q27 /
   Q28 ne l'excluaient pas — 118 morts entre deux joueurs dans 63 matchs de Campagne de la copie H5
   sortent des rivaux et des frags échangés (écart voulu par DB.2, figé par
@@ -917,7 +917,7 @@ case non statuée de l'étape courante (C, puis B, puis F).
   (`9b9ae4062`). Étape B close (B.0 à B.6), revue sans constat ; écart assumé : Campagne Halo 5 hors
   des frags échangés. F.1 et F.3 faits ; restent F.2 (compaction locale, avec l'utilisateur), F.4,
   F.5 (sur son signal). Proposé à l'utilisateur, non lancé : lier aussi les listes de l'annuaire des
-  noms en un paramètre tableau (découverte (12) : 0,8-0,9 s des Relations de Nuzzles).
+  noms en un paramètre tableau (découverte (12) : 0,8-0,9 s des Relations de joueur_074).
 - 2026-09-27 (CI de la branche, run 36338338660) : tous les jobs verts — dont Go Build + Test ubuntu
   (variante POSIX de la réécriture prouvée) et Coverage + Baseline — sauf Go Lint : 3 goconst sur des
   sites de production de `games/halo_infinite/migrations` (`kill_positions`, `decode_pass`), dont

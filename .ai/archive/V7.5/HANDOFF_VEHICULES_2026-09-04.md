@@ -1,7 +1,7 @@
 # HANDOFF — Chantier VÉHICULES ET TOURELLES (v7.5)
 
 > Écrit le 2026-09-04. Branche `wt/vehicules-tourelles`, worktree
-> `C:\Users\Guillaume\Projects\LevelUp-wt-vehicules`. 21 commits depuis `feat/v75`.
+> `<poste>\Projects\LevelUp-wt-vehicules`. 21 commits depuis `feat/v75`.
 > **JAMAIS POUSSÉE : aucun run CI n'a jamais tourné sur ce chantier.**
 > Rapports détaillés : `.ai/V7.5/film_re/` (62 fichiers). Journal : `.ai/thought_log.md`.
 
@@ -88,12 +88,12 @@ chantier. `make gate-push` local n'a pas non plus été joué en clôture.
 
 ## 4. Où tester
 
-L'app tourne (ou se relance) depuis **`C:\Users\Guillaume\Projects\LevelUp-wt-capture-rejeu`**,
+L'app tourne (ou se relance) depuis **`<poste>\Projects\LevelUp-wt-capture-rejeu`**,
 qui détient `feat/v75` (mergée en avance rapide, en local uniquement) et **contient les données**.
 Le worktree du chantier n'a pas de base joueur : ne pas essayer d'y lancer l'app.
 
 ```
-cd C:\Users\Guillaume\Projects\LevelUp-wt-capture-rejeu
+cd <poste>\Projects\LevelUp-wt-capture-rejeu
 make dev
 ```
 Puis `http://localhost:5173/t/halo_infinite/players/JGtm/matches/0d76e8f1/replay`

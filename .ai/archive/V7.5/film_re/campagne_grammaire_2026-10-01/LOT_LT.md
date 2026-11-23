@@ -273,7 +273,7 @@ publiée pour le pilote ; L2 n'est pas intégré ici.
 
 ## 7. Gates (sorties exactes)
 
-Depuis `apps/go-api` du worktree, `GOCACHE=C:/Users/Guillaume/AppData/Local/go-build-cg2-lt`.
+Depuis `apps/go-api` du worktree, `GOCACHE=<poste>/AppData/Local/go-build-cg2-lt`.
 
 | Gate | Sortie |
 |---|---|

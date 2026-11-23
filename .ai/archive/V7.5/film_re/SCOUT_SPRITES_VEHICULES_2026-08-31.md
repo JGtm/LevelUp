@@ -2,7 +2,7 @@
 
 > Écrit le 2026-08-31, worktree `LevelUp-wt-vehicules` (branche `wt/vehicules-tourelles`),
 > en réponse au lot S2 de `.ai/V7.5/PLAN_VEHICULES_TOURELLES.md`. Méthode : lecture de code
-> (worktree + `C:\Users\Guillaume\Projects\LevelUp` en lecture seule), inspection de PNG déjà
+> (worktree + `<poste>\Projects\LevelUp` en lecture seule), inspection de PNG déjà
 > extraits (pixels lus par script .NET/PowerShell, aucun Go compilé), recherche web. Aucun
 > commit, aucun `go build`/`go run`.
 >
@@ -186,7 +186,7 @@ par un éclairage de Lambert, lumière fixe et oblique » (commentaire d'en-têt
 Ce n'est pas un plan — c'est un code qui tourne, et sa sortie est déjà committée :
 
 **`data/titles/halo_infinite/reference/map_backgrounds/catalyst.png`** (dans le checkout
-principal `C:\Users\Guillaume\Projects\LevelUp`, lu en lecture seule — commit `9b8f6cca3`,
+principal `<poste>\Projects\LevelUp`, lu en lecture seule — commit `9b8f6cca3`,
 « les fonds de carte deviennent des ASSETS — 21 cartes figées, calage publié »). Ouvert et
 inspecté pendant ce scout : le rendu est net, détaillé (arêtes architecturales, ombrage
 cohérent, structure en diamant reconnaissable), produit par CE pipeline exact
@@ -274,7 +274,7 @@ constat que cette voie demande une main humaine à la manette, contrairement à 
 Des modèles existent, au moins pour le Warthog : `sketchfab.com/3d-models/halo-warthog-
 26ae487ff8b44d02b3583f9bfa92dddc` (Julian Rijken) — confirmé **CC-BY** (réutilisable avec
 attribution), fan-made (pas extrait du jeu), 19,8k triangles, publié 2020
-(`WebFetch` du 2026-08-31). D'autres résultats Sketchfab (pinto36, Hakuru15, TAC3D) ne sont pas
+(`WebFetch` du 2026-08-31). D'autres résultats Sketchfab (pinto36, joueur_180, TAC3D) ne sont pas
 vérifiés individuellement — licences potentiellement hétérogènes (Sketchfab autorise aussi des
 licences « Standard » non réutilisables), et surtout **la plupart des modèles trouvés sont
 génériques ou d'un autre jeu Halo** (Reach, 3), pas garantis fidèles au design Infinite.

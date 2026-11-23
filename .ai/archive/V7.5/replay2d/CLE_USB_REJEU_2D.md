@@ -105,7 +105,7 @@ de retrait du garde local, qui exige une confrontation sur deux cartes différen
   eux, impossible de produire les bornes ou la structure d'une **nouvelle** carte. C'est la
   seule vraie dépendance qui reste, et elle pèse sur tout le lot « toutes les cartes ».
 - **L'historique Git.** Attention, piège : le `.git` de `LevelUp-go-migration` n'est **pas** un
-  dépôt, c'est un **fichier pointeur** vers `C:/Users/Guillaume/Downloads/Scripts/LevelUp/.git`,
+  dépôt, c'est un **fichier pointeur** vers `<poste>/Downloads/Scripts/LevelUp/.git`,
   lui-même **shallow** (greffe `2eb6811b`, 831 Mo d'objets). Un simple `cp` du dossier ne
   donnera rien d'utilisable. Sur le nouveau PC : cloner depuis GitHub, et recréer les worktrees.
 - **Les fichiers non versionnés qu'un clone ne rendra PAS** — c'est le vrai risque, et c'est
@@ -245,7 +245,7 @@ composants. **Il est écrit maintenant** : `filmdec_deser_table.lua`, à la raci
    film** : au menu, le registre vaut 0.
 2. Cheat Engine → ouvrir `HaloInfinite.exe` → *Show Cheat Table Lua Script* → coller le script
    → Execute.
-3. Sortie : `C:\Users\Guillaume\Downloads\deser_table.tsv`. **La copier sur la clé.**
+3. Sortie : `<poste>\Downloads\deser_table.tsv`. **La copier sur la clé.**
 
 Le script lit uniquement de la mémoire — aucun hook, aucune cave, aucune interception. Il
 imprime un contrôle à vérifier : l'archétype 35 doit rendre **64** composants. Si ce compte ne

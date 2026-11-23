@@ -156,11 +156,11 @@ plusieurs heures — hors de toute duree de match. Le controle est gratuit et il
 ### 4.1 ZONES (Strongholds `696a9d7c`) — ETABLI, trois chaines independantes
 
 **Chaine 1 — l'ancre terrain.** Le tout premier evenement de mode du match tombe a
-**t = 48,90 s, equipe 0, FlyGuy8773**. Le relevé terrain, ecrit a l'oeil le 2026-07-31 **avant**
-tout decodage, dit : « **0:48 — flyguy8773 capture la base B** ». L'acteur ET la seconde
+**t = 48,90 s, equipe 0, joueur_780**. Le relevé terrain, ecrit a l'oeil le 2026-07-31 **avant**
+tout decodage, dit : « **0:48 — joueur_780 capture la base B** ». L'acteur ET la seconde
 concordent. Second point : le relevé note « 1:30 — une equipe controle les trois bases » ; le
 decodage porte une **rafale de quatre evenements d'equipe 0** a t = 89,29 / 89,96 s
-(Otti1614, SunburntMonk740, NeonKnight3166, FlyGuy8773), soit 1:29-1:30.
+(joueur_657, joueur_115, NeonKnight3166, joueur_780), soit 1:29-1:30.
 
 **Chaine 2 — le compte total.** 77 evenements de mode decodes du film ;
 `SUM(zone_captures + zone_secures)` de l'API sur les 8 joueurs = **77**.
@@ -172,7 +172,7 @@ decodage porte une **rafale de quatre evenements d'equipe 0** a t = 89,29 / 89,9
 | `zone_captures + zone_secures` API | 16 | 10 | 10 | 10 | 9 | 9 | 7 | 6 |
 
 et les deux joueurs dont le gamertag est resolu par ailleurs tombent nominativement :
-NeonKnight3166 = 16 (xuid 2535458126310341 : 10 + 6) et JGtm = 9 (xuid 2533274823110022 :
+NeonKnight3166 = 16 (xuid 2728249988014663 : 10 + 6) et JGtm = 9 (xuid 2533274823110022 :
 7 + 2). **8 joueurs sur 8, a l'unite.**
 
 **Controle negatif** : le Slayer porte 0 evenement de mode et 0 statistique de zone.
@@ -186,14 +186,14 @@ film, aucune jointure DB necessaire). `VERBOSE=1 cmd/tmp_modeticks` sort la time
 Extrait verifie sur `696a9d7c` — le premier evenement du match et la rafale des trois bases :
 
 ```
-t=  48.90s  equipe 0  FlyGuy8773          <- releve terrain : « 0:48 flyguy8773 capture la base B »
-t=  53.56s  equipe 1  Madina97294
-t=  53.56s  equipe 1  AG x GibsoN Zz
-t=  72.94s  equipe 0  FlyGuy8773
-t=  89.29s  equipe 0  Otti1614
-t=  89.29s  equipe 0  SunburntMonk740
+t=  48.90s  equipe 0  joueur_780          <- releve terrain : « 0:48 joueur_780 capture la base B »
+t=  53.56s  equipe 1  joueur_117
+t=  53.56s  equipe 1  joueur_1305
+t=  72.94s  equipe 0  joueur_780
+t=  89.29s  equipe 0  joueur_657
+t=  89.29s  equipe 0  joueur_115
 t=  89.96s  equipe 0  NeonKnight3166      <- releve terrain : « 1:30 trois bases »
-t=  89.96s  equipe 0  FlyGuy8773
+t=  89.96s  equipe 0  joueur_780
 ```
 
 L horloge du footer et le `start_ms` du manifeste sont sur la MEME base : les evenements sont
@@ -1111,11 +1111,11 @@ des chemins qui n'ont rien en commun (bursts a 6 tiers du footer d'un cote, comp
 l'archetype 6 dans les paquets delta de l'autre) :
 
 ```
-140.072  OBJ    capture         2535469190789936
+140.072  OBJ    capture         2547408409520575
 140.073  SCORE  equipe slot 8  -> 1
 186.218  OBJ    capture         2533274823110022
 186.219  SCORE  equipe slot 8  -> 2
-473.211  OBJ    capture         2533274858283686
+473.211  OBJ    capture         2623439693412443
 473.212  SCORE  equipe slot 8  -> 3
 ```
 
@@ -1127,10 +1127,10 @@ Le releve a ete ecrit a l'oeil le 2026-07-31, **avant** tout decodage de score.
 
 | releve terrain | ce que rend le decodage |
 |---|---|
-| 0:48 — flyguy8773 capture la base B | `zone_capture` a **48,901 s** |
+| 0:48 — joueur_780 capture la base B | `zone_capture` a **48,901 s** |
 | 1:30 — une equipe controle les trois bases, **21 pour l'autre** | rafale de 4 captures a 89,29/89,96 s ; **slot 8 = 21** a t=90 s |
 | 3:10 — **score 69 - 30** | a t=190 s : **slot 6 = 69, slot 8 = 30** |
-| 5:34 — controle des trois bases par l'equipe de flyguy8773 | slot 6 a 1 pt/s sans interruption, slot 8 gele |
+| 5:34 — controle des trois bases par l'equipe de joueur_780 | slot 6 a 1 pt/s sans interruption, slot 8 gele |
 
 Le recit se lit d'un bloc : premiere capture a 48,9 s (equipe 0) ; l'equipe 1 prend deux zones a
 53,556 s et **commence a marquer 1 s plus tard, a 54,552 s** ; elle plafonne a 21 quand
@@ -1239,13 +1239,13 @@ candidat toujours loin derriere (0 a 4) :
 
 | slot | 10 | 12 | 14 | 16 | 18 | 20 | 22 | 24 |
 |---|---|---|---|---|---|---|---|---|
-| joueur | FlyGuy8773 | SunburntMonk740 | AG x GibsoN Zz | Destruk2107 | Otti1614 | Madina97294 | JGtm | NeonKnight3166 |
+| joueur | joueur_780 | joueur_115 | joueur_1305 | joueur_379 | joueur_657 | joueur_117 | JGtm | NeonKnight3166 |
 | frags expliques | 6/8 | 14/15 | 15/15 | 8/9 | 14/15 | 14/15 | 8/9 | 16/16 |
 
 La meme operation avec les evenements d'objectif attribue a chaque slot un **xuid**, ce qui
 referme le pont gamertag <-> xuid **sans aucune jointure en base**. Les deux voies se
 confirment sur les deux joueurs dont l'identite etait etablie ailleurs (§4.1) :
-slot 24 -> NeonKnight3166 -> xuid `2535458126310341` (16 evenements) et
+slot 24 -> NeonKnight3166 -> xuid `2728249988014663` (16 evenements) et
 slot 22 -> JGtm -> `2533274823110022` (9 evenements).
 
 **Consequence** : toutes les courbes par joueur deviennent nominatives.
@@ -1384,9 +1384,9 @@ exact et sans arbitrage :
 
 ```
     60.324  JGtm                +100  killed_player
-    60.324  Chocoboflor          +50  kill_assist
+    60.324  joueur_165          +50  kill_assist
     69.866  JGtm                 +25  l'un de : flag_returned, flag_stolen, runner_stopped
-   141.388  Madina97294          +10  flag_taken
+   141.388  joueur_117          +10  flag_taken
 ```
 
 Les 44 evenements non nommes le sont pour une raison **lisible et non pour un echec** :
@@ -1608,8 +1608,8 @@ Confrontation des comptes decodes a `personal_score_awards`, sur les joueurs sui
 
 | mode | film | resultat |
 |---|---|---|
-| zones | `696a9d7c` | slot 22 = JGtm **4/4** · slot 20 = Madina97294 **4/4** (zero inclus) |
-| CTF | `1bc77d2e` | JGtm, Chocoboflor, Madina97294 — **exact sur tout sauf `flag_taken`** |
+| zones | `696a9d7c` | slot 22 = JGtm **4/4** · slot 20 = joueur_117 **4/4** (zero inclus) |
+| CTF | `1bc77d2e` | JGtm, joueur_165, joueur_117 — **exact sur tout sauf `flag_taken`** |
 | CTF | 6 films (recette `cmd/tmp_namedcheck`) | **EXACT partout**, un seul ecart : `flag_taken` |
 
 Controle d'ensemble sur les HUIT joueurs, qui ne depend d'aucune correspondance
@@ -1628,7 +1628,7 @@ pire ecart +5, **zero contre-exemple**.
 
 L'explication vient de l'utilisateur et elle colle a la mesure : ramasser le drapeau au sol
 pendant sa course se compte a chaque fois, mais ne se **recompense** pas a chaque fois.
-Madina97294, qui joue en lancant et rattrapant le drapeau, est a 16 contre 4 ; JGtm, qui
+joueur_117, qui joue en lancant et rattrapant le drapeau, est a 16 contre 4 ; JGtm, qui
 prefere l'attraper et courir, est a 3 contre 1.
 
 C'est le meme precedent qu'en §16.4 (Total Control : facteur 32) — **le film est plus fin
@@ -1867,9 +1867,9 @@ les deux cas.
 | film | joueur | detail | comp 1 B |
 |---|---|---|---|
 | `d2b74083` | JGtm | 6x100 + 1x50 + 8x25 + 1x100 | **950** |
-| `d2b74083` | Madina97294 | 8x100 + 2x50 + 2x25 + 1x100 | **1 050** |
+| `d2b74083` | joueur_117 | 8x100 + 2x50 + 2x25 + 1x100 | **1 050** |
 | `cae8471d` | JGtm | 10x100 + 5x50 + 13x25 + 2x100 | **1 775** |
-| `cae8471d` | Madina97294 | 14x100 + 5x50 + 6x25 + 1x100 | **1 900** |
+| `cae8471d` | joueur_117 | 14x100 + 5x50 + 6x25 + 1x100 | **1 900** |
 
 Quatre egalites exactes : les slots sont les bons, et `hill_control` = 25 pts,
 `hill_scored` = 100 pts sont confirmes.
@@ -1915,7 +1915,7 @@ mis au compte d'un « film plus fin que l'API ». **C'etait une erreur de nom, p
 finesse.**
 
 L'oracle a huit joueurs porte une colonne `flag_grabs`, et les valeurs de `comp 22 A` en sont
-la copie exacte, slot par slot : **16 pour Madina97294** la ou la recompense `flag_taken`
+la copie exacte, slot par slot : **16 pour joueur_117** la ou la recompense `flag_taken`
 dit 4, 13 pour un autre joueur, 3 pour JGtm. Le binaire disait la meme chose depuis le
 debut : `CtfStats_FlagGrabs` (§19.2).
 
@@ -1923,7 +1923,7 @@ debut : `CtfStats_FlagGrabs` (§19.2).
 **STATISTIQUES**, pas les **RECOMPENSES DE SCORE** que le serveur en derive. Pour la plupart
 les deux coincident numeriquement (`flag_returns` / `flag_returned`), ce qui masquait la
 confusion. Ramasser le drapeau au sol se COMPTE a chaque fois mais ne se RECOMPENSE pas a
-chaque fois — d'ou l'ecart, et l'explication de l'utilisateur (« Madina lance et ramasse le
+chaque fois — d'ou l'ecart, et l'explication de l'utilisateur (« joueur_075 lance et ramasse le
 drapeau pendant sa course ») etait la bonne des le depart.
 
 **Consequence de code** : les constantes du paquet passent de `Award*` a `Stat*` et portent

@@ -91,14 +91,14 @@ même faute que manquer une hauteur ») reste valide et est renforcé pour Stree
 
 ### 2.3 Recharge — `sgh_blueprint`
 
-Fils lus : « Breaking Recharge Setups » (11 votes, réponses de `TiberiusAudley`, `supalaser`,
+Fils lus : « Breaking Recharge Setups » (11 votes, réponses de `TiberiusAudley`, `joueur_1510`,
 `Chugstar`, `Stockasaurus_Rex`, `ParappaGotBars`) ; « Help with power positions » (généraliste,
 mais une citation Recharge précise) ; « Recharge Map Callouts » (WIP, 19 commentaires,
 corrobore le vocabulaire sans ajouter de position).
 
 Citations retenues :
 
-- `supalaser` : *« C plat has a good cross into whirlpool and batteries when combined with
+- `joueur_1510` : *« C plat has a good cross into whirlpool and batteries when combined with
   bottom control bridge. You can also use it to look into attic which can combine great with
   top and bottom control »* → **`Platform` : PROMU forte** (raison : hauteur + lignes de vue,
   explicite sur 3 cibles à vue : Whirlpool Dam, Batteries, Attic).
@@ -254,7 +254,7 @@ Citations (5 intervenants distincts, dont `TiberiusAudley` encore) :
 - `who_likes_chicken` : *« rotate from grey 1 to grey 2 when someone's pushing grey 3 »*
 - `DeathByReach` : *« Controlling snipe and quantum are a must. The little window over A that
   can see a lot of the map is really good. Dancing around the pillar in B is a must. »*
-- `ProperFormatt` : *« the sniper spawn/grav lift area is the most powerful part of the map to
+- `joueur_1266` : *« the sniper spawn/grav lift area is the most powerful part of the map to
   control. You have the height advantage of Nest and the repulsor spawns by the grav lift...
   The high ledge at A is a powerful spot »*
 - `JJSpleen` : *« Hold snipe and os bridge if you can. »*

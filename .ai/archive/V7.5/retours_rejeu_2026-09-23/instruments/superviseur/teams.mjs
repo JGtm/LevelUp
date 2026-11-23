@@ -1,6 +1,6 @@
 import fs from 'fs';
 const id = process.argv[2];
-const doc = JSON.parse(fs.readFileSync(`C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/${id}.json`, 'utf8'));
+const doc = JSON.parse(fs.readFileSync(`C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/${id}.json`, 'utf8'));
 const fmt = (t) => { const s = t * doc.frameIntervalMs / 1000; return `${Math.floor(s/60)}:${(s%60).toFixed(1).padStart(4,'0')}`; };
 console.log('originMs', doc.originMs, 't0FilmMs', doc.t0FilmMs, 'frames', doc.frameCount);
 console.log('roster', JSON.stringify(doc.roster, null, 0));

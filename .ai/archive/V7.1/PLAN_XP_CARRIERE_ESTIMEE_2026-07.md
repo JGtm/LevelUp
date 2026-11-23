@@ -65,15 +65,15 @@ propres). Aucun flag OFF : la feature part active.
       `[[career_xp_eras]]` : `{from="", to="2025-11-18", multiplier=1.0}` +
       `{from="2025-11-18", to="", multiplier=2.0}` + commentaire source Operation: Infinite.
 - [!] B0.2 Invérifiable localement : les snapshots `career_progression` des 3 joueurs
-      suivis démarrent tous en 2026-02/03 (JGtm min recorded_at 2026-02-18 ; Madina et
-      Chocoboflor 2026-03-07) — donc AUCUNE fenêtre pré-18/11/2025 en base. Toutes les
+      suivis démarrent tous en 2026-02/03 (JGtm min recorded_at 2026-02-18 ; joueur_075 et
+      joueur_165 2026-03-07) — donc AUCUNE fenêtre pré-18/11/2025 en base. Toutes les
       fenêtres mesurées sont post-doublement (×2). Le ×1 pré-18/11 repose sur la source
       officielle seule (annonce + patch notes Operation: Infinite). Issue acceptée par le
       plan, non bloquante.
 - [x] B0.3 Matchs invisibles quantifiés (parquets staging du 23/07, diag_parquet_q).
       Méthode : fenêtres entre transitions distinctes de `xp_total` ; « invisible » =
       Σ Δxp_total des fenêtres à 0 match connu (participation en base) / Σ Δxp_total total.
-      Résultats : **JGtm 0,37 % · Chocoboflor 3,07 % · Madina97294 5,83 %** — tous < 10 %
+      Résultats : **JGtm 0,37 % · joueur_165 3,07 % · joueur_117 5,83 %** — tous < 10 %
       → PAS de chantier « audit sync PvE/Firefight » déclenché. Détail en « Découvertes ».
 - [x] B0.4 Borne d'éra retenue (2025-11-18 00:00 UTC, from inclusif / to exclusif) et
       résultats B0.3 documentés ci-dessus + section « Découvertes ».
@@ -167,7 +167,7 @@ dans `features/` ; vérification visuelle du graphe (JGtm). **[!] Gate supervise
       consigné plan §Découvertes + thought_log.
 - [~] B3.2 Paires propres (méthode gardes 6 min → ici transitions d'xp distinctes = un
       match) rejouées avec la formule finale : 86/87 = **98,9 % à ±1 %** (JGtm 96,6 %,
-      Madina 100 %, Chocoboflor 100 %) ≥ 90 % requis. Couvert par B0.3.
+      joueur_075 100 %, joueur_165 100 %) ≥ 90 % requis. Couvert par B0.3.
 - [!] B3.3 Revue visuelle utilisateur (gate HUMAIN) + entrée thought_log de clôture :
       déférée au superviseur/utilisateur après passage des gates go/front. Entrée
       thought_log de calibration B0 déjà posée ; clôture finale à ajouter au merge.
@@ -202,16 +202,16 @@ Snapshots `career_progression` par joueur suivi (fenêtre couverte en base) :
 | Joueur | xuid | rows | Δxp distincts | min recorded_at | max recorded_at |
 |---|---|---|---|---|---|
 | JGtm | 2533274823110022 | 1680 | 57 | 2026-02-18 | 2026-07-22 |
-| Madina97294 | 2533274858283686 | 796 | 40 | 2026-03-07 | 2026-07-22 |
-| Chocoboflor | 2535469190789936 | 805 | 47 | 2026-03-07 | 2026-07-16 |
+| joueur_117 | 2623439693412443 | 796 | 40 | 2026-03-07 | 2026-07-22 |
+| joueur_165 | 2547408409520575 | 805 | 47 | 2026-03-07 | 2026-07-16 |
 
 **B0.3 — part d'XP « invisible » (fenêtres à 0 match connu / Σ Δxp_total)** :
 
 | Joueur | n fenêtres (Δxp) | Σ Δxp_total | Δxp invisible | % invisible |
 |---|---|---|---|---|
 | JGtm | 56 | 823 460 | 3 020 | **0,37 %** |
-| Chocoboflor | 45 | 325 970 | 10 000 | **3,07 %** |
-| Madina97294 | 39 | 557 210 | 32 500 | **5,83 %** |
+| joueur_165 | 45 | 325 970 | 10 000 | **3,07 %** |
+| joueur_117 | 39 | 557 210 | 32 500 | **5,83 %** |
 
 Tous < 10 % → seuil de décision non franchi, PAS de chantier audit sync PvE/Firefight
 (aucun match Firefight en base pour ces 3 joueurs sur la période : `ff_only_dxp` = 0).
@@ -222,8 +222,8 @@ méthode « une transition d'xp = un match PvP en base », miroir des paires gar
 | Joueur | n fenêtres 1-match | à ±1 % | à ±5 % | ratio médian |
 |---|---|---|---|---|
 | JGtm | 29 | 28 (96,6 %) | 28 (96,6 %) | 1,0000 |
-| Madina97294 | 28 | 28 (100 %) | 28 (100 %) | 1,0000 |
-| Chocoboflor | 30 | 30 (100 %) | 30 (100 %) | 1,0000 |
+| joueur_117 | 28 | 28 (100 %) | 28 (100 %) | 1,0000 |
+| joueur_165 | 30 | 30 (100 %) | 30 (100 %) | 1,0000 |
 | **Total** | **87** | **86 (98,9 %)** | **86 (98,9 %)** | **1,0000** |
 
 → Validation ±5 % : **PASS** pour les 3 joueurs (bien au-delà du seuil ; et 98,9 % à ±1 %,

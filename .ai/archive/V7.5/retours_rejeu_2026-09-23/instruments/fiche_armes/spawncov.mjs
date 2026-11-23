@@ -1,5 +1,5 @@
 import fs from 'fs';
-const DIR = 'C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
+const DIR = 'C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
 const files = fs.readdirSync(DIR).filter(f => /^[0-9a-f]{8}\.json$/.test(f)).sort();
 const rows = [];
 let tot = { lives:0, restated:0, wcDecoded:0, eqSpawned:0, docs:0 };

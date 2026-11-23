@@ -136,7 +136,7 @@ func queryAnyBotMatchIDs(ctx context.Context, sharedDB *sql.DB, xuid string) ([]
 // Le CASE dans le SUM écarte les bots `joined_in_progress=TRUE` dont le
 // time_played représente moins de botLateJoinIgnoreRatio du match —
 // typiquement un humain qui quitte près de la fin et est remplacé par un bot
-// pour quelques secondes (cf. cas Madina/615b3ebc, bot 6s sur 390s).
+// pour quelques secondes (cf. cas joueur_075/615b3ebc, bot 6s sur 390s).
 func querySignificantBotMatchIDs(ctx context.Context, sharedDB *sql.DB, xuid string) ([]string, error) {
 	rows, err := sharedDB.QueryContext(ctx, `
 		WITH bot_presence AS (

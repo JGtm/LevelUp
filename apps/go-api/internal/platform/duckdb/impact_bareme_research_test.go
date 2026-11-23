@@ -2,7 +2,7 @@
 
 package duckdb
 
-// impact_bareme_research_test.go — TÉMOIN DU BARÈME de la matrice d'impact de l'Escouade : les
+// impact_bareme_research_test.go — TÉMOIN DU BARÈME du tableau d'impact de l'Escouade : les
 // points par match et par joueur d'une escouade, sous le barème en vigueur (squadimpact.Weight) et
 // sous un barème candidat (table `baremeCandidat` ci-dessous), avec le rôle « Os de verre ».
 //

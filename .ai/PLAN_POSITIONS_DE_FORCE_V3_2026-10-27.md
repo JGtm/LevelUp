@@ -33,7 +33,7 @@ septembre (échelle fausse, confusion par le niveau des joueurs, corpus de bons 
    ne mesure que la densité des zones.
 3. La carte des positions est **reproductible** : deux moitiés de matchs tirées au sort
    (graine écrite) donnent des classements corrélés (Spearman ≥ 0,6 sur les candidats retenus).
-4. Le résultat **tient sans Nuzzles** : rappel sur les cartes de validation avec ses matchs
+4. Le résultat **tient sans joueur_074** : rappel sur les cartes de validation avec ses matchs
    retirés ≥ rappel complet − 0,15.
 
 Un échec n'est pas un réglage à reprendre : c'est un NO-GO écrit, avec diagnostic par zone.
@@ -61,14 +61,14 @@ Joueurs à élargir (décision user du 27/10) :
 
 | Joueur | Matchs dans la sauvegarde | CSR médian / max | Ce qui manque |
 |---|---|---|---|
-| calloussss | 325 (15 en 2025, 0 avant) | 1 686 / 1 805 | tout l'historique avant 2025 ; tous ses films (purgés le 26/10) |
-| Brooks SVP | 425 (10 en 2025, 0 avant) | 1 464 / 1 548 | idem |
-| Nuzzles | 7 274 | 1 502 / 1 756 | ses films (0 en local, 11 au VPS) ; ~5 500 de ses matchs n'ont jamais eu de positions |
+| joueur_386 | 325 (15 en 2025, 0 avant) | 1 686 / 1 805 | tout l'historique avant 2025 ; tous ses films (purgés le 26/10) |
+| joueur_272 | 425 (10 en 2025, 0 avant) | 1 464 / 1 548 | idem |
+| joueur_074 | 7 274 | 1 502 / 1 756 | ses films (0 en local, 11 au VPS) ; ~5 500 de ses matchs n'ont jamais eu de positions |
 
 ## Décisions tranchées
 
 **D1 — Données isolées.** Toute lecture et toute écriture de la recherche se font dans
-`C:\Users\Guillaume\Downloads\Scripts\LevelUp-recherche-positions\` (arborescence `data/`
+`<poste>\Downloads\Scripts\LevelUp-recherche-positions\` (arborescence `data/`
 miroir). Le `data/` de la copie principale, le serveur local et le VPS ne sont jamais écrits ni
 ouverts en écriture par ce chantier. Le VPS n'est pas une source : aucune copie de sa base.
 
@@ -155,7 +155,7 @@ Aucune CLI ne liste puis n'insère l'historique d'un joueur non suivi sans profi
 
 - **A. Instance de recherche (RECOMMANDÉE).** Le dossier de recherche devient une instance
   LevelUp complète et isolée : `LEVELUP_REPO_ROOT` pointé dessus, son propre `db_profiles.json`
-  avec Nuzzles, calloussss, Brooks SVP (et JGtm, porteur du jeton). On n'utilise QUE des CLI
+  avec joueur_074, joueur_386, joueur_272 (et JGtm, porteur du jeton). On n'utilise QUE des CLI
   existantes et testées (`sync-full`, `archive-films`, `backfill-killsource`, `backfill-replay`),
   aucun code d'acquisition neuf. La règle « aucun sync sans profil suivi » (ADR 0035) porte sur
   l'instance de l'appli : ici, les profils sont déclarés, dans une instance qui n'est servie à
@@ -237,7 +237,7 @@ trois mesures et le contrôle 1.4.
       par mois sur les matchs classés du réservoir (`diag_film_avail`).
 - [ ] 2.2 Décodabilité par build : sur 3 films téléchargés par build rencontré, part de kills
       positionnés obtenue ; un build sous 90 % est exclu de la mesure (seuil écrit ici).
-- [ ] 2.3 Historique complet de calloussss et Brooks SVP : nombre de matchs par année et par
+- [ ] 2.3 Historique complet de joueur_386 et joueur_272 : nombre de matchs par année et par
       playlist classée, sans rien écrire (`probe-world-stats --depth-pages` lit l'historique
       d'un compte sans profil et n'écrit pas de match).
 - [ ] 2.4 Chiffrage : films à télécharger par priorité (P1 classés cartes à oracle lobby
@@ -250,8 +250,8 @@ un report.
 
 ### Étape 3 — Acquisition par paquets (lourd, sur accord par paquet)
 
-- [ ] 3.1 Historiques : `levelup sync-full` pour calloussss, Brooks SVP (historique depuis
-      2023, D11) et Nuzzles (rattrapage depuis le 25/10) dans l'instance de recherche ;
+- [ ] 3.1 Historiques : `levelup sync-full` pour joueur_386, joueur_272 (historique depuis
+      2023, D11) et joueur_074 (rattrapage depuis le 25/10) dans l'instance de recherche ;
       registre, participants avec attentes et CSR de tout le lobby viennent avec.
 - [ ] 3.1b Compteur disque de la recherche (films + rejeux) relevé à chaque paquet ; arrêt et
       demande à l'utilisateur dès 100 Go (D12).
@@ -294,7 +294,7 @@ mesure ; planches par carte.
 ### Étape 6 — Verdict (moyen)
 
 - [ ] 6.1 Verdict v3 contre l'oracle v2, critères 1 à 4, cartes de validation seules.
-- [ ] 6.2 Contrôles : témoin géographique, moitiés de matchs, « sans Nuzzles », lobbys Onyx
+- [ ] 6.2 Contrôles : témoin géographique, moitiés de matchs, « sans joueur_074 », lobbys Onyx
       seuls.
 - [ ] 6.3 Diagnostic de chaque forte manquée et de chaque faux positif, nommés.
 - [ ] 6.4 Verdict v1/v2 rejoués à l'identique (non-régression des preuves de septembre).
@@ -316,7 +316,7 @@ Gate 6 : `go test -tags research -run VerdictV3 ./cmd/mappower-build/` PASS ; do
 |---|---|---|
 | Films anciens non servis ou sur builds mal couverts | corpus 2021-2023 inaccessible | sondes de l'étape 2, exclusion par build chiffrée |
 | Versions de carte successives (`map_version_id`) | positions décalées entre versions | contrôle par version comme pour Live Fire - Ranked ; une version décalée est séparée |
-| Un joueur domine le corpus | carte de ses habitudes | critère 4 « sans Nuzzles » ; élargissement calloussss / Brooks |
+| Un joueur domine le corpus | carte de ses habitudes | critère 4 « sans joueur_074 » ; élargissement joueur_386 / Brooks |
 | Positions de dissuasion (peu disputées) | invisibles au duel | signal d'occupation (D5 b) |
 | Oracle mince (28 fortes, cartes à 2 fortes) | verdict fragile | règle « indéterminé » de la v2 conservée ; pas de densification de l'oracle dans ce plan |
 | Pic mémoire de décodage / cuisson | poste saturé | D8, paquets mesurés ; jamais en même temps qu'une cuisson de la copie principale |

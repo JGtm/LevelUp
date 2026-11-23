@@ -120,7 +120,7 @@ go run ./cmd/backfill-world-player-stats -token-gamertag JGtm -season all -all-t
 Notes : `-season all` = toutes les saisons (csrseason3-1 → active) — idempotent (append-only,
 _latest gagne) ; la saison COURANTE est aussi re-couverte (inoffensif, le cron la gère aussi.
 Étape 2 : `-all-tokens` OBLIGATOIRE pour le pool (sinon single-token) ; ~3 comptes ont un RT
-périmé (XxDaemonGamerxX/Chocoboflor/Madina97294 — `invalid_grant`, NE PAS re-capturer, ADR 0023),
+périmé (joueur_291/joueur_165/joueur_117 — `invalid_grant`, NE PAS re-capturer, ADR 0023),
 le pool tourne sur 7 comptes valides ; Ctrl-C = arrêt propre + reprise via checkpoint
 `data/world_backfill_checkpoint.json` (relancer la MÊME commande). Durée étape 2 = plusieurs
 heures (deep fetch × ~276 joueurs × ~14 saisons) — lancer en heures creuses. `season_catalog`

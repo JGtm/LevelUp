@@ -10,7 +10,6 @@
  */
 import type { Palette } from '../semantic-tokens'
 import { ENCOUNTER_BADGE_COLORS } from './_encounterColors'
-import { IMPACT_GREEN_RED } from './_impactRoleColors'
 import { MAP_MARKER_OUTLINE } from './_mapMarkerOutline'
 
 export const defaultPalette: Palette = {
@@ -120,8 +119,6 @@ export const defaultPalette: Palette = {
   // (set sombre distinct AA-blanc, palette-invariant — cf. _encounterColors.ts)
   ...ENCOUNTER_BADGE_COLORS,
 
-  // ── Rôles d'impact — vert / rouge, rampe claire (cf. _impactRoleColors.ts) ──
-  ...IMPACT_GREEN_RED.light,
 
   // ── Classes de frags — famille dédiée (2026-08-29) ─────────────────────────
   // Valeurs = EXACTEMENT celles que résolvaient les anciens tokens empruntés

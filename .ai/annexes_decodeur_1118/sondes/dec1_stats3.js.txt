@@ -1,6 +1,6 @@
 const fs=require('fs'),zlib=require('zlib');
 const id=process.argv[2];
-const d=JSON.parse(zlib.gunzipSync(fs.readFileSync('c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
+const d=JSON.parse(zlib.gunzipSync(fs.readFileSync('<poste>/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
 const last=s=>{ if(!s) return null; const t=s.total||[]; if(t.length) return t[t.length-1].v; const r=(s.rounds||[]); const x=r.map(q=>q.points.length?q.points[q.points.length-1].v:0); return 'R'+x.join('/')};
 console.log(id,d.coverage.decoder.build,'group',d.coverage.scoreActions&&d.coverage.scoreActions.group,'score cov',JSON.stringify(d.coverage.score), 'roster',d.roster.length,'players',d.scoreTimeline.players.length);
 const medalCount={};

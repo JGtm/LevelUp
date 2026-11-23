@@ -1,7 +1,7 @@
 # Spec — barre de lecture du rejeu (planche 2a, Claude Design)
 
 > Copie de travail du memo d'implementation remis par la session Claude Design le
-> 2026-08-28 (source : C:\Users\Guillaume\Downloads\LECTEUR.md), annotee des DECISIONS
+> 2026-08-28 (source : <poste>\Downloads\LECTEUR.md), annotee des DECISIONS
 > UTILISATEUR prises au lancement du chantier. Les fichiers de code produits par la session
 > design n'ont PAS pu etre recuperes (workspace distant en lecture seule) : cette spec + la
 > grammaire visuelle du depot font foi, le gate visuel utilisateur tranche en fin de lot.

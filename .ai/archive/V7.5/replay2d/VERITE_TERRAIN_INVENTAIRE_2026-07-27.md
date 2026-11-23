@@ -24,16 +24,16 @@ par un chemin indépendant. Il n'y a donc aucun décalage à corriger avant d'ex
 
 | joueur | grenades | capacité | arme en main | chargeur | réserve |
 |---|---|---|---|---|---|
-| aldusbroncus | **Dynamo × 2** | propulseur (dash), 5 utilisations | Cremator | 6 | 6 |
+| joueur_389 | **Dynamo × 2** | propulseur (dash), 5 utilisations | Cremator | 6 | 6 |
 | JGtm | **Frag × 2** | propulseur (dash), 5 utilisations | lance-roquettes | 2 | 2 |
-| LORD PEINX13 | **Spike × 2** | capteur de menace, 4 utilisations | déchiqueteur | 8 | 16 |
-| IKE ILYA | **Plasma × 2** | grappin, 5 utilisations | MA40 | 25 | 75 |
-| whiteknight2519 | **Dynamo × 2** | grappin, 5 utilisations | Hydra | 6 | 6 |
-| VitaminA1688 | **Frag × 2** | propulseur (dash), 5 utilisations | Bulldog | 12 | 12 |
-| Akatsuki fire17 | **Dynamo × 2** | mur portatif, 1 utilisation | déchiqueteur | 8 | 16 |
-| JAVIERLOLITO54 | **Plasma × 2** | grappin, 5 utilisations | marteau | charge 100 % | — |
+| JOUEUR_731 | **Spike × 2** | capteur de menace, 4 utilisations | déchiqueteur | 8 | 16 |
+| JOUEUR_417 | **Plasma × 2** | grappin, 5 utilisations | MA40 | 25 | 75 |
+| joueur_283 | **Dynamo × 2** | grappin, 5 utilisations | Hydra | 6 | 6 |
+| joueur_362 | **Frag × 2** | propulseur (dash), 5 utilisations | Bulldog | 12 | 12 |
+| joueur_700 fire17 | **Dynamo × 2** | mur portatif, 1 utilisation | déchiqueteur | 8 | 16 |
+| JOUEUR_364 | **Plasma × 2** | grappin, 5 utilisations | marteau | charge 100 % | — |
 
-Observation complémentaire : à 00:45 `aldusbroncus` est mort, et **son compteur de dash est passé
+Observation complémentaire : à 00:45 `joueur_389` est mort, et **son compteur de dash est passé
 de 5 à 4**.
 
 ## CE QUE CE RELEVÉ PERMET, ET CE QU'IL NE PERMET PAS

@@ -401,7 +401,7 @@ certains — deux, sur onze films.
 ## 10. Instruments et commandes rejouables
 
 Les quatre instruments sont deposes dans le checkout qui porte la pile d'equipement —
-`C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-lecture-equipement/apps/go-api/internal/analysis/filmdec/`
+`<poste>/Downloads/Scripts/LevelUp-wt-lecture-equipement/apps/go-api/internal/analysis/filmdec/`
 — en `*_research_test.go` NON COMMITES, gardes par variables d'environnement, sautes par
 defaut (CI comprise), `CGO_ENABLED=0`, `LockProcessDecode` tenu pendant chaque decodage,
 `WorldObjectPrecision` pose depuis le layout du film et restaure en sortie (le piege consigne
@@ -417,7 +417,7 @@ par R8), aucune ecriture, aucune DuckDB, aucun code de production touche. `gofmt
 
 Chemins : `<F>` = `<repo>/data/cache/film_chunks`, `<A>` = `<repo>/data/cache/replays/halo_infinite`,
 `<B>` = `<repo>/data/titles/halo_infinite/reference/map_quant_bounds.json`
-(ici `<repo>` = `C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration`).
+(ici `<repo>` = `<poste>/Downloads/Scripts/LevelUp-go-migration`).
 
 ```
 # depuis apps/go-api — le journal de l'ancre

@@ -15,7 +15,7 @@ import (
 
 const (
 	toolJ, toolC   = "JGtm", "Joueur90001"
-	toolXJ, toolXC = "x_jgtm", "x_choco"
+	toolXJ, toolXC = "x_jgtm", "x_joueur_901"
 	keyToolFrag    = "hinf_" + "frag_grenade"
 	// Clés Halo 5 nommées plutôt qu'écrites en clair dans les littéraux de ligne : le détecteur
 	// de secrets prend « WeaponKey: "..." » pour une clé d'API (même parade que

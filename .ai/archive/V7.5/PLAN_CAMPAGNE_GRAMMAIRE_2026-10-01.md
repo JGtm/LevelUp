@@ -36,9 +36,9 @@ intermédiaire (attend J12) ; le retrait des replis nuls (attend la vague J11.4)
 d'artefact, tout backfill, toute base DuckDB.
 
 **Branche / worktree** : `feat/campagne-grammaire`, worktree
-`C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-campagne-grammaire`, base `feat/v75` = `69564ef7d`.
+`<poste>/Downloads/Scripts/LevelUp-wt-campagne-grammaire`, base `feat/v75` = `69564ef7d`.
 Pas de jonction : les films se lisent EN PLACE depuis le checkout principal
-(`C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/film_chunks`, `film_manifests`), en lecture
+(`<poste>/Downloads/Scripts/LevelUp/data/cache/film_chunks`, `film_manifests`), en lecture
 seule.
 
 ## 1. Règles opérationnelles
@@ -2082,7 +2082,7 @@ ayant laissé les deux sessions trancher ; GO daté de l utilisateur requis comm
   - `81c02726` : +3 580 / 0. La fenêtre de la 3e montée passe de 181 à 218 paquets fermés sur 222.
   - Pertes : `1c4c63c2` (HI_1_10_0) +358 / −12, avec 342 gains contredits ; sur HI_1_10_0, le gain
     est factice.
-- Ce qui n'est **pas** mesuré : que la 3e montée de G MONEY soit publiée (cela demande une cuisson,
+- Ce qui n'est **pas** mesuré : que la 3e montée de JOUEUR_441 soit publiée (cela demande une cuisson,
   avec l'accord de l'utilisateur).
 - Preuve Ghidra : `i35` `FUN_141076f68` + `FUN_143206f24` (écrivain `FUN_142f0570c` / `FUN_1432070d0`) ;
   `i34` `FUN_140f44104` + `FUN_143206e48` / `FUN_143206d34` ; `i21` `0x1407f0678` ; `i31` `FUN_142f02a48`
@@ -2529,7 +2529,7 @@ en fin de section.
     - l'étape 1.2 migre une marche qui contient déjà L1.
 - **D-VEH — TRANCHÉE le 2026-10-02 (§3 : oui, tous ; `ti=43` en vague 1, `ti=40` et l'octet
   `+0x818` en vague 1 dès que leurs prérequis sont levés)**. Historique de la question (ANALYSE
-  §7 (6)) : les blocs véhicules (`ti=43` de G MONEY, l'octet
+  §7 (6)) : les blocs véhicules (`ti=43` de JOUEUR_441, l'octet
   `+0x818`, les composants `ti=40`) entrent-ils dans la campagne ? T6 et T7 sont instruits, et L2 et
   L4 supposaient la décision prise.
 - **D2 — TRANCHÉE le 2026-10-02 (§3 : fermetures factices EXCLUES ; fermé = reste nul ET aucun

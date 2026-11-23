@@ -6,14 +6,14 @@ Replay du shadow runner sur tout l'historique LUSR-éligible des joueurs ci-dess
 
 | Joueur | XUID | Cible | Groupe le plus joué | μ (skill latent) | σ (incertitude) | Tier inféré | exp |
 |---|---|---|---|---:|---:|---|---:|
-| Madina97294 | 2533274858283686 | fin Platine / début Diamant (joueur fort) | btb | 23.98 | 2.68 | Gold | 491 |
-| Chocoboflor | 2535469190789936 | milieu/bas Or (joueur moyen) | arena_slayer | 31.27 | 1.97 | Platinum | 229 |
+| joueur_117 | 2623439693412443 | fin Platine / début Diamant (joueur fort) | btb | 23.98 | 2.68 | Gold | 491 |
+| joueur_165 | 2547408409520575 | milieu/bas Or (joueur moyen) | arena_slayer | 31.27 | 1.97 | Platinum | 229 |
 | JGtm | 2533274823110022 | milieu/bas Or (joueur moyen) | arena_slayer | 28.25 | 1.81 | Platinum | 310 |
-| XxDaemonGamerxX | 2533274833178266 | Bronze (joueur faible) | arena_slayer | 18.06 | 4.74 | Silver | 23 |
+| joueur_291 | 2558964982616721 | Bronze (joueur faible) | arena_slayer | 18.06 | 4.74 | Silver | 23 |
 
 ## Détail par joueur × groupe
 
-### Madina97294 (cible : fin Platine / début Diamant (joueur fort))
+### joueur_117 (cible : fin Platine / début Diamant (joueur fort))
 
 | Groupe | μ | σ | Tier inféré | exp |
 |---|---:|---:|---|---:|
@@ -22,7 +22,7 @@ Replay du shadow runner sur tout l'historique LUSR-éligible des joueurs ci-dess
 | btb | 23.98 | 2.68 | Gold | 491 |
 | chaos | 30.13 | 5.48 | Platinum | 19 |
 
-### Chocoboflor (cible : milieu/bas Or (joueur moyen))
+### joueur_165 (cible : milieu/bas Or (joueur moyen))
 
 | Groupe | μ | σ | Tier inféré | exp |
 |---|---:|---:|---|---:|
@@ -40,7 +40,7 @@ Replay du shadow runner sur tout l'historique LUSR-éligible des joueurs ci-dess
 | btb | 28.12 | 7.88 | Platinum | 5 |
 | chaos | 26.70 | 2.20 | Gold | 233 |
 
-### XxDaemonGamerxX (cible : Bronze (joueur faible))
+### joueur_291 (cible : Bronze (joueur faible))
 
 | Groupe | μ | σ | Tier inféré | exp |
 |---|---:|---:|---|---:|

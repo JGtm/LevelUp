@@ -91,8 +91,8 @@ func (m *mockMediaService) DeleteMedia(_ context.Context, req domain.MediaDelete
 
 func newMediaRouter(factory handlers.ServiceFactory[port.MediaService]) *chi.Mux {
 	r := chi.NewRouter()
-	// Audience : la page et un co-membre de groupe (Madina).
-	h := handlers.NewMediaHandler(factory, nil, "").WithMediaAudience(staticAudience(testPlayerSlug, "Madina"))
+	// Audience : la page et un co-membre de groupe (joueur_075).
+	h := handlers.NewMediaHandler(factory, nil, "").WithMediaAudience(staticAudience(testPlayerSlug, "joueur_075"))
 	r.Route("/players/{player_slug}", func(r chi.Router) {
 		h.Mount(r) // 5 routes JSON migrées Huma (pages/media, likes, match-candidates, associate, authors)
 	})
@@ -148,11 +148,11 @@ func TestMediaHandler_ServiceError(t *testing.T) {
 
 // TestMediaHandler_Authors_OK couvre le fix du bug "Aucun auteur disponible" :
 // l'endpoint retourne les auteurs fournis par le service (source DB), incl. un
-// auteur tiers (Madina) avec is_self=false. Sans WithAuthorsContext câblé, le
+// auteur tiers (joueur_075) avec is_self=false. Sans WithAuthorsContext câblé, le
 // gamertag d'affichage retombe sur le player_slug.
 func TestMediaHandler_Authors_OK(t *testing.T) {
 	mock := &mockMediaService{authors: []domain.MediaAuthor{
-		{PlayerSlug: "Madina", IsSelf: false, MediaCount: 3},
+		{PlayerSlug: "joueur_075", IsSelf: false, MediaCount: 3},
 		{PlayerSlug: testPlayerSlug, IsSelf: true, MediaCount: 5},
 	}}
 	factory := func(_ context.Context, slug string) (port.MediaService, error) {
@@ -176,20 +176,20 @@ func TestMediaHandler_Authors_OK(t *testing.T) {
 	if len(resp.Authors) != 2 {
 		t.Fatalf("got %d authors, want 2", len(resp.Authors))
 	}
-	var madina *domain.MediaAuthor
+	var joueur075 *domain.MediaAuthor
 	for i := range resp.Authors {
-		if resp.Authors[i].PlayerSlug == "Madina" {
-			madina = &resp.Authors[i]
+		if resp.Authors[i].PlayerSlug == "joueur_075" {
+			joueur075 = &resp.Authors[i]
 		}
 	}
-	if madina == nil {
-		t.Fatal("Madina absent de la liste d'auteurs (bug 'Aucun auteur disponible')")
+	if joueur075 == nil {
+		t.Fatal("joueur_075 absent de la liste d'auteurs (bug 'Aucun auteur disponible')")
 	}
-	if madina.IsSelf {
-		t.Error("Madina ne devrait pas être is_self")
+	if joueur075.IsSelf {
+		t.Error("joueur_075 ne devrait pas être is_self")
 	}
-	if madina.Gamertag != "Madina" {
-		t.Errorf("gamertag fallback = %q, want Madina (= player_slug sans WithAuthorsContext)", madina.Gamertag)
+	if joueur075.Gamertag != "joueur_075" {
+		t.Errorf("gamertag fallback = %q, want joueur_075 (= player_slug sans WithAuthorsContext)", joueur075.Gamertag)
 	}
 }
 

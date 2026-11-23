@@ -1,4 +1,4 @@
-2026/08/18 03:03:56 INFO faits du match charges path=C:\Users\Guillaume\Projects\LevelUp-wt-score-film\.ai\V7.5\replay2d\registre_film\lotA_faits\24dbb67d.json match=24dbb67d-a7d8-4359-b319-bdf13959178d joueurs=8 variante=Ranked:Oddball
+2026/08/18 03:03:56 INFO faits du match charges path=<poste>\Projects\LevelUp-wt-score-film\.ai\V7.5\replay2d\registre_film\lotA_faits\24dbb67d.json match=24dbb67d-a7d8-4359-b319-bdf13959178d joueurs=8 variante=Ranked:Oddball
 2026/08/18 03:03:57 INFO replaybuild: actions d'objectif identifiees match_id=24dbb67d-a7d8-4359-b319-bdf13959178d famille=skull nommees=0 identifiees=0 slotsApparies=0
 2026/08/18 03:03:57 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=7307582345129211936 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1068
 2026/08/18 03:04:28 INFO capacites : lectures d i48 recordsDelta=163012 masqueAvecI48=13 lues=13 illisibles=0 sansIdentite=5
@@ -14,4 +14,4 @@
 2026/08/18 03:05:59 INFO rejeu : episodes d'equipement actif viesPubliees=97 viesCamo=4 episodesCamo=7 viesSurbouclier=0 episodesSurbouclier=0
 2026/08/18 03:05:59 INFO rejeu : palette de capacites palette="non classee" lectures=8 rangsNommes=0
 2026/08/18 03:05:59 INFO rejeu : couverture par calque tirsRattaches=844 tirsDisponibles=926 tirsSansSlot=75 tirsAmbigus=7 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=137 grenadesDisponibles=137 verdictTirs=nominal verdictGrenades=nominal verdictPont=nominal
-2026/08/18 03:05:59 INFO artefact rejeu écrit path=C:\Users\Guillaume\Projects\LevelUp-wt-score-film\data\cache\replays\halo_infinite\24dbb67d.json tracks=97 module=sgh_blueprint bytes=1516263 match=24dbb67d-a7d8-4359-b319-bdf13959178d title=halo_infinite
+2026/08/18 03:05:59 INFO artefact rejeu écrit path=<poste>\Projects\LevelUp-wt-score-film\data\cache\replays\halo_infinite\24dbb67d.json tracks=97 module=sgh_blueprint bytes=1516263 match=24dbb67d-a7d8-4359-b319-bdf13959178d title=halo_infinite

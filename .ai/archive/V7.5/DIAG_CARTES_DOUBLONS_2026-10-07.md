@@ -17,7 +17,7 @@ Seul `map_name` diffère (même `map_id`, même `map_version_id`). Base : 9 216 
 67 cartes à plusieurs noms ; 34 rangées NULL ; 1 338 rangées `map_name = map_id`.
 JGtm : 103 vignettes pour 77 cartes (23 en double dont 3 en triple, 26 fantômes) ; 25 matchs NULL
 (joués 23/04-05/05/2026, inscrits 06/05 14:49) + 6 matchs nom = id (10/06/2026).
-Autres profils : Madina97294 140/114, Chocoboflor 93/68, Nuzzles 233/213 (1 053 matchs touchés).
+Autres profils : joueur_117 140/114, joueur_165 93/68, joueur_074 233/213 (1 053 matchs touchés).
 
 ## 3. Causes
 
@@ -28,7 +28,7 @@ Seul écrivain : `persist/shared_persister.go:155` ; sans nom API, `sync/transfo
   nom = id, pas NULL.
 - **B (09-10/06, 7 rangées)** : chemin V2 sans enrichissement du nom (`sync/engine_v2bridge.go:87-91`),
   corrigé le 13/06 (`3c8a005c4`).
-- **C (Nuzzles 16/09, 1 331 rangées)** : `levelup sync-full` via pool ; `cmd/levelup/pool_engine.go:90`
+- **C (joueur_074 16/09, 1 331 rangées)** : `levelup sync-full` via pool ; `cmd/levelup/pool_engine.go:90`
   (`newPooledEngine`) sans `.WithAssetNameResolution(pool)` (seul `scheduler/auto_sync_engine.go:125`
   le branche). 1 332/1 332 rangées nom = id écrites avant la traduction, 5 848/5 848 nommées après.
 - **Défaut commun** : `ResolveUnresolvedAssetNames` remplit `asset_translations` mais ne réécrit

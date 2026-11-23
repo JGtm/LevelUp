@@ -900,12 +900,12 @@ film d'Assaut du corpus), lu dans l'artefact cuit :
 
 | xuid | carriersKilled |
 |---|---|
-| `2535446563676950` | **2** |
-| `2533274974091007` | **1** |
-| `2533274796620553` | 0 |
-| `2535419279251362` | 0 |
-| `2535470127489792` | 0 |
-| `2535470823750470` | 0 |
+| `2667774381241558` | **2** |
+| `2573225322239947` | **1** |
+| `2699643407830755` | 0 |
+| `2718388560365789` | 0 |
+| `2745944050550218` | 0 |
+| `2806693292111299` | 0 |
 
 Les quatre zéros sont des zéros **MESURÉS**, plus des `NULL` : `coverage.killsRead` vaut `true`.
 Dénominateur : **58 couples** fournis, **0 écarté** (aucun `tueur non résolu`, aucune `victime
@@ -1514,7 +1514,7 @@ la baseline exacte, **0 sur un fichier touché**) · `lint:fields` **EXIT_FIELDS
   pont injecté pour de vrai dans `attachBombStats` fait tomber le test, son retrait le repasse).
 
   **MESURE** : `9f57c612`, `killsRead: true`, 58 couples, 0 écarté, **3 porteurs tués**
-  (2535446563676950 → 2, 2533274974091007 → 1, quatre joueurs à zéro MESURÉ) — recoupés par
+  (2667774381241558 → 2, 2573225322239947 → 1, quatre joueurs à zéro MESURÉ) — recoupés par
   `periodsByDeath = 3`, un compte issu d'un autre canal. Détail au §5 « G.6 ».
 
   **REGISTRE** : la ligne `bomb_carriers_killed` est CLOSE, datée, avec sa mesure ; son motif

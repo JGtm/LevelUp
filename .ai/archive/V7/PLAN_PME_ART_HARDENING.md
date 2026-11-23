@@ -57,7 +57,7 @@ Règle à documenter (persist/doc.go) : « colonne bidirectionnelle (is_with_fri
 
 ## Migration (BLOCKER : transactionnelle, PAS le template skill_rank)
 
-Le template `steps_player_append_only_match_skill_rank.go` fait DROP/RENAME/ADD PK **sans transaction ni garde row-count** → sur PME (table NON re-dérivable, grosses DB Madina 1183/JGtm 942), un SIGTERM deploy entre DROP et RENAME = **perte totale irrécupérable** (red-team défaut migration #2, BLOCKER).
+Le template `steps_player_append_only_match_skill_rank.go` fait DROP/RENAME/ADD PK **sans transaction ni garde row-count** → sur PME (table NON re-dérivable, grosses DB joueur_075 1183/JGtm 942), un SIGTERM deploy entre DROP et RENAME = **perte totale irrécupérable** (red-team défaut migration #2, BLOCKER).
 
 → Calquer sur **`RebuildPlayerMatchEnrichmentART`** (steps_player_rebuild_match_enrichment.go:76-112) ET sur `media_files_drop_filepath_unique_v1` (déjà livré ce cycle) : `BeginTx` → DROP IF EXISTS __appendonly → CTAS (id seq + colonnes + stage + written_at) → garde `rebuilt==before` → DROP+RENAME+ADD PK(id) dans la TX → Commit. Defer Rollback. ADD DEFAULT/CREATE VIEW/indexes hors TX (idempotents). recoverOrphan en tête.
 
@@ -89,7 +89,7 @@ Le template `steps_player_append_only_match_skill_rank.go` fait DROP/RENAME/ADD 
 - `no_art_patterns_test.go` : AJOUTER `player_match_enrichment` à `tablesProtegees` (active le scan ON CONFLICT) ; RETIRER de `criticalMatchTables`.
 - **NOUVEAU garde-rail** : interdire tout `UPDATE player_match_enrichment SET` / `DELETE FROM player_match_enrichment` ET tout `FROM/JOIN player_match_enrichment` (brut, hors `_latest`) dans le hot path (modèle drift-detector / TestNoJSONRouteBypassesHuma). Indispensable : les UPDATE nus row-by-row (engagement_score_repo) ne sont PAS couverts par le garde actuel (forme VALUES seule).
 - Tests : (1) **merge-on-read central** — 3 versions partielles disjointes d'un match (perf seul / session seul / engagement seul) → `_latest` reconstitue les 3 + reset booléen (exclude TRUE puis FALSE → FALSE) + reset engagement_score (valeur puis NULL → NULL). (2) **JOIN fan-out** — squad perf_avg/games_together inchangés malgré N versions. (3) **idempotence delta** — 2 post-sync sans changement ⇒ 0 INSERT. (4) **idempotence migration** + garde anti-perte. (5) **rebuild post-migration** ne recrée pas PK(match_id).
-- **Perf (BLOCKER mou)** : `EXPLAIN ANALYZE` la vue sur copie Madina/JGtm AVANT de figer. Prévoir **compaction périodique** (réutiliser RebuildPlayerMatchEnrichmentART comme compacteur : CTAS `_latest` → 1 ligne/match) ; matérialiser la vue si bench mauvais.
+- **Perf (BLOCKER mou)** : `EXPLAIN ANALYZE` la vue sur copie joueur_075/JGtm AVANT de figer. Prévoir **compaction périodique** (réutiliser RebuildPlayerMatchEnrichmentART comme compacteur : CTAS `_latest` → 1 ligne/match) ; matérialiser la vue si bench mauvais.
 
 ## Roadmap (POC-first, 2 PRs)
 
@@ -98,7 +98,7 @@ Le template `steps_player_append_only_match_skill_rank.go` fait DROP/RENAME/ADD 
 2. Convertir UN cluster chaud isolé = **engagement** (engagement.go + engagement_score_repo.go SaveEngagementScore → INSERT partiel stage='engagement') + ses 3 readers (LoadPlayerHistory/HasEngagementScore/LoadRatioSamples → `_latest`).
 3. Laisser les autres writers en UPDATE résiduel TEMPORAIREMENT (sans PK match_id ni index ART muté, ils ne déclenchent plus #23046 — palier sûr).
 4. Test merge-on-read + EXPLAIN sur copie DB.
-5. **Critère de succès** : `engagement-coefs --all --with-scores --force` ×3 sans crash sur copie Madina/JGtm.
+5. **Critère de succès** : `engagement-coefs --all --with-scores --force` ×3 sans crash sur copie joueur_075/JGtm.
 
 **PR2 = reste des writers/readers** (sessions, friends, perf, dominance, bot, exclusion, psa, teammates) par lots, même pattern. + garde-rail strict + compaction.
 
@@ -161,4 +161,4 @@ Tout `FROM/JOIN player_match_enrichment` qui attend 1 ligne/match → `player_ma
 - no_art_patterns_test.go : player_match_enrichment → tablesProtegees (retirer de criticalMatchTables) + nouveau garde interdisant UPDATE/FROM brut.
 
 ### Validation finale
-go test ./... vert + critère `engagement-coefs --all --with-scores --force` ×3 sans crash sur copie Madina/JGtm + EXPLAIN de la vue.
+go test ./... vert + critère `engagement-coefs --all --with-scores --force` ×3 sans crash sur copie joueur_075/JGtm + EXPLAIN de la vue.

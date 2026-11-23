@@ -1,6 +1,6 @@
 import fs from 'fs';
 const id = process.argv[2];
-const doc = JSON.parse(fs.readFileSync(`C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/${id}.json`, 'utf8'));
+const doc = JSON.parse(fs.readFileSync(`C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/${id}.json`, 'utf8'));
 const lo = +process.argv[3], hi = +process.argv[4];
 const inR = (t) => t >= lo && t <= hi;
 console.log('--- loadouts'); for (const e of doc.loadouts) if (inR(e.t)) console.log(JSON.stringify(e));

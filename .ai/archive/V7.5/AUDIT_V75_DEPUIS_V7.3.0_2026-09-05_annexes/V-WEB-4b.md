@@ -1,6 +1,6 @@
 # Vérification adverse V-WEB-4b
 
-Cadre : dépôt `C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration`, branche `feat/v75`.
+Cadre : dépôt `<poste>/Downloads/Scripts/LevelUp-go-migration`, branche `feat/v75`.
 Le tip réel au moment de la vérification est `081871f09` (2026-09-05 22:07) et non `736ccf3c3`,
 mais `git diff --stat 736ccf3c3..HEAD` sur les 11 fichiers audités (ci.yml, lefthook.yml,
 vite.config.ts, playwright.config.ts, zoneStatesPaint.ts, canvasInk.ts + guard,

@@ -9,7 +9,7 @@
 
 ## 1. Symptôme observé
 
-Sur l'interface web, page `/players/<slug>/ascension` (composant [AscensionPage](../apps/web/src/features/ascension/AscensionPage.tsx)), pour les 4 joueurs configurés (JGtm, Chocoboflor, Madina97294, XxDaemonGamerxX) :
+Sur l'interface web, page `/players/<slug>/ascension` (composant [AscensionPage](../apps/web/src/features/ascension/AscensionPage.tsx)), pour les 4 joueurs configurés (JGtm, joueur_165, joueur_117, joueur_291) :
 
 ```
 Ascension
@@ -35,10 +35,10 @@ Les 3 endpoints HTTP renvoient des collections vides pour tous les joueurs :
 GET /api/v1/players/JGtm/milestones        → {"items":[]}
 GET /api/v1/players/JGtm/streaks           → {"items":[]}
 GET /api/v1/players/JGtm/records           → {"personal_bests":[],"history":[]}
-GET /api/v1/players/Chocoboflor/milestones → {"items":[]}
-GET /api/v1/players/Chocoboflor/streaks    → {"items":[]}
-GET /api/v1/players/Chocoboflor/records    → {"personal_bests":[],"history":[]}
-(idem Madina97294, XxDaemonGamerxX)
+GET /api/v1/players/joueur_165/milestones → {"items":[]}
+GET /api/v1/players/joueur_165/streaks    → {"items":[]}
+GET /api/v1/players/joueur_165/records    → {"personal_bests":[],"history":[]}
+(idem joueur_117, joueur_291)
 ```
 
 Les handlers ([handlers/progression.go](../apps/go-api/internal/api/handlers/progression.go)) sont en place, mountés correctement, retournent juste des tables vides. Le problème est en amont : **rien n'écrit dans les tables `streak`, `record_history`, `player_records`, `milestone_catalog`, `milestone_earned`**.
@@ -356,7 +356,7 @@ Exposer une méthode `WithPostSyncHook(...)` sur `AutoSyncScheduler` analogue à
 ### Vérifier l'état des endpoints
 
 ```bash
-for slug in JGtm Chocoboflor Madina97294 XxDaemonGamerxX; do
+for slug in JGtm joueur_165 joueur_117 joueur_291; do
   echo "=== $slug ==="
   curl -s http://localhost:8000/api/v1/players/$slug/milestones | head -c 200; echo
   curl -s http://localhost:8000/api/v1/players/$slug/streaks    | head -c 200; echo

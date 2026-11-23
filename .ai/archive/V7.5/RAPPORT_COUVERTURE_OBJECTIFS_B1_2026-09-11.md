@@ -76,7 +76,7 @@ d'un bloc, et elle est **re-verifiee** sur `parc0` (cuit au HEAD, donc item 1 in
 
 | grandeur | avant l'item 1 | apres |
 |---|---|---|
-| `43716616` / 2533274978052136 | 0,0 s | **61,2 s** (oracle 62,3 ; exige >= 55) |
+| `43716616` / 2733226566552357 | 0,0 s | **61,2 s** (oracle 62,3 ; exige >= 55) |
 | `43716616` `coverage.skullCarries.noBridge` | 2 | **0** |
 | crane, 4 films Oddball | 1 036,7 s / 1 249,0 s (0,830) | **1 113,0 s (0,891)** |
 | joueurs au-dessus de leur oracle | 0 | **0** |
@@ -180,7 +180,7 @@ p25 1,016, p75 1,088, max 61,2 (l'unique cas nomme ci-dessous).
 | nombre de periodes | >= 197 | **469** | `[x]` |
 | aucun joueur ne perd du temps qu'il avait a l'oracle | 0 nouveau joueur sous 0,8 | **2 avant, LES MEMES 2 apres** | `[x]` |
 | `closedByObject` cesse d'etre 0 | != 0 | **20 / 50 / 15** sur `16ea3668` / `b8a44fe8` / `58864b3c` | `[x]` |
-| `16ea3668` / 2535417044536883 | <= 1,5 s | **55,1 s** (56,7 s avant) | `[!]` non tenu |
+| `16ea3668` / 2659168014067630 | <= 1,5 s | **55,1 s** (56,7 s avant) | `[!]` non tenu |
 
 Grandeurs complementaires, qui disent l'ampleur reelle du gain :
 
@@ -193,7 +193,7 @@ Grandeurs complementaires, qui disent l'ampleur reelle du gain :
 **Pourquoi le gate n'est pas atteint, et ce n'est pas une opinion.** Le residu de 275,7 s est
 concentre : 9 joueurs sur 73 portent 9 depassements de plus de 5 s, et deux films en font 209 s
 (`b8a44fe8` +150,8 s, `16ea3668` +58,0 s). Le cas nomme au gate — `16ea3668` /
-2535417044536883, un unique span de 56,7 s pour 0,9 s a l'oracle — passe a 55,1 s parce
+2659168014067630, un unique span de 56,7 s pour 0,9 s a l'oracle — passe a 55,1 s parce
 qu'**aucune vie libre ne nait aux pieds de ce porteur pendant son portage** : le canal de
 l'objet n'a rien a dire de ce lacher-la. Sa cause est ailleurs, et elle est instruite au §8
 (decouverte D1) : rien ne ferme un portage sur la prise d'un AUTRE joueur du MEME drapeau, alors
@@ -338,9 +338,9 @@ L'export du 2026-09-10 22:30 (`oracle_vague6_participants.tsv`) porte `kills`, `
 
 | film | `assists` publiees | feuille de match | ratio | joueur en cause | son pas maximal |
 |---|---|---|---|---|---|
-| `16ea3668` | 9 513 | **31** | 306,9 | 2535469190789936 | 9 482 |
-| `8bc6074f` | 15 648 | **38** | 411,8 | 2535449383340628 | 15 610 |
-| `f8efc5ca` | 15 645 | **37** | 422,8 | 2535469190789936 | 15 608 |
+| `16ea3668` | 9 513 | **31** | 306,9 | 2547408409520575 | 9 482 |
+| `8bc6074f` | 15 648 | **38** | 411,8 | 2700529065230693 | 15 610 |
+| `f8efc5ca` | 15 645 | **37** | 422,8 | 2547408409520575 | 15 608 |
 
 **40 806 pulses pour 106 assistances reelles**, portees par UN joueur par film. On borne donc,
 et l'oracle dit de combien.
@@ -373,9 +373,9 @@ population dite saine ne l'etait pas.
 
 | grandeur | avant | apres | exige |
 |---|---|---|---|
-| `a0c36016` `flag_capture_assists` / 2535427927026623 | 84 (oracle 0) | **0** | 0 |
-| `cde26226` `flag_steals` / 2535469190789936 | 65 (oracle 1) | **1** | 1 |
-| `4f77afc1` `flag_grabs` / 2533274818676576 | 64 (oracle 0) | **0** | — (film par ailleurs tu par l'item 5) |
+| `a0c36016` `flag_capture_assists` / 2548036979862261 | 84 (oracle 0) | **0** | 0 |
+| `cde26226` `flag_steals` / 2547408409520575 | 65 (oracle 1) | **1** | 1 |
+| `4f77afc1` `flag_grabs` / 2573321465012002 | 64 (oracle 0) | **0** | — (film par ailleurs tu par l'item 5) |
 | `cde26226`, les 7 autres voleurs | 4/1/1/2/2/1/5 | **inchanges**, tous a 1,000 | ne bougent pas |
 | `16ea3668` `assists` | 9 513 | **31** = feuille | — |
 | `8bc6074f` `assists` | 15 648 | **38** = feuille | — |
@@ -452,11 +452,11 @@ superviseur (instruction du lot), et il demande le parc reel.
   (`nextOpeningOfSlot`). Or le drapeau passe de main a main sans toucher le sol, et le calque le
   sait deja : `coverage.flagCarries.dropsWithheld` compte exactement ces fins retenues (14 sur
   `16ea3668`, 40 sur `b8a44fe8` avant l'item 3). C'est la cause du residu de 275,7 s de l'item 3,
-  et notamment du cas nomme au gate (`16ea3668` / 2535417044536883, 55,1 s pour 0,9 s) : aucune
+  et notamment du cas nomme au gate (`16ea3668` / 2659168014067630, 55,1 s pour 0,9 s) : aucune
   vie libre ne nait pendant son portage parce que l'objet n'a jamais ete libre.
   *Gain estimable* : les 9 joueurs a plus de 5 s d'ecart, soit l'essentiel des 275,7 s.
-- **D2 — `4ecdf3e7` perd toujours deux joueurs**, et ce n'est pas ce lot : 2533274877168586
-  (4,1 s a l'oracle, 0 publiee, 0 periode) et 2535469190789936 (3,9 s pour 14,3 s). Les DEUX
+- **D2 — `4ecdf3e7` perd toujours deux joueurs**, et ce n'est pas ce lot : 2595499236340293
+  (4,1 s a l'oracle, 0 publiee, 0 periode) et 2547408409520575 (3,9 s pour 14,3 s). Les DEUX
   etaient deja dans cet etat avant le lot, aux memes valeurs a la decimale. Deja consigne a
   l'audit §12.4 pour le premier ; le second est neuf.
 - **D3 — `a4083bd2` declare toujours 3 manches pour 1 a son fil de score.** Ses trois manches

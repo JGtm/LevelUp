@@ -1,6 +1,6 @@
 import fs from 'fs';
 const id = process.argv[2];
-const doc = JSON.parse(fs.readFileSync(`C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/${id}.json`, 'utf8'));
+const doc = JSON.parse(fs.readFileSync(`C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/${id}.json`, 'utf8'));
 const cases = JSON.parse(process.argv[3]); // [[slot, frame, famHex]]
 for (const [slot, f, fam] of cases) {
   const tr = doc.tracks.find(t => t.slot === slot);

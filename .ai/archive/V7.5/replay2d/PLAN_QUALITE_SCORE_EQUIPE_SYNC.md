@@ -158,7 +158,7 @@ fichier ajouté à sa racine) ; `go test ./internal/sync/... -count=1` ok sur le
 
 - DuckDB : lecture SEULE, via `OpenReadForQuery` / CLI existants (`cmd/diag_q`) — le serveur
   air local peut tenir les DB en RW ; ne jamais ouvrir en RW, ne jamais forcer OpenReadOnly.
-- Les données vivent dans le dépôt PRINCIPAL (`c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/`) ;
+- Les données vivent dans le dépôt PRINCIPAL (`<poste>/Downloads/Scripts/LevelUp-go-migration/data/`) ;
   le worktree n'a pas de `data/`.
 - Commandes `go` : UNE à la fois (jamais en parallèle), avec un GOCACHE PRIVÉ au lot
   (`$env:GOCACHE` vers un dossier dédié) — le cache partagé se corrompt sous concurrence.
@@ -174,7 +174,7 @@ Détail et justification dans `RAPPORT_QUALITE_SCORE_EQUIPE.md` §Découvertes. 
 1. 11 des 80 lignes fausses ne s'expliquent pas par les ticks de zone : 7 inversions exactes
    des deux camps (6 Oddball + 1 BTB:Sentry Defense), 1 inversion + ticks, 2 One Flag CTF à
    2 au lieu de 3, et `f395b462` (Attrition) à **1 950** contre 0 à l'API. Toutes du lot
-   2026-02-14, 10/11 par `first_sync_by = Madina97294`. Mécanisme non identifié.
+   2026-02-14, 10/11 par `first_sync_by = joueur_117`. Mécanisme non identifié.
 2. `match_participants.team_id` est SAIN sur ces mêmes matchs (les `Outcome` par camp
    concordent avec l'API) : l'inversion ne touche que les deux colonnes de score.
 3. Aucun contrôle de vraisemblance à l'écriture du registre (1 950 passe le `SMALLINT`).

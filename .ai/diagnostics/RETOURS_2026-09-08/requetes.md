@@ -81,11 +81,11 @@ jq -r '[.tracks[]? | select(.xuid != null)
        | map(select(.t0 <= 900)) | sort_by(.t0)' $REP/8bc6074f.json
 
 # Les deux joueurs intervertis, vie par vie
-jq -r '[.tracks[]? | select(.xuid=="2535469190789936" or .xuid=="2535452521259564")
+jq -r '[.tracks[]? | select(.xuid=="2547408409520575" or .xuid=="2658276600435201")
         | {xuid, slot, t0:(.points[0].t), x0:(.points[0].x), endFrame}] | sort_by(.t0)' \
   $REP/8bc6074f.json
-# 2535452521259564 StevenW5318 (t1) : slot 516 @ x=-22.51  puis slot 525 @ x=+13.74
-# 2535469190789936 Chocoboflor  (t0) : slot 518 @ x=+22.62  puis slot 526 @ x=-13.09
+# 2658276600435201 joueur_571 (t1) : slot 516 @ x=-22.51  puis slot 525 @ x=+13.74
+# 2547408409520575 joueur_165  (t0) : slot 518 @ x=+22.62  puis slot 526 @ x=-13.09
 # -> vies 1 et 2 du mauvais cote, vie 3 correcte. Bascule vers l'image ~874.
 ```
 

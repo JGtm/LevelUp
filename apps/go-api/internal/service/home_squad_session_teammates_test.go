@@ -93,7 +93,7 @@ func TestEnrichSquadSessionsTeammates_AssignsCoreFriends(t *testing.T) {
 	loader := &mockMainTeamLoader{byMatch: map[string][]domain.AllyParticipant{
 		// Session A (m1,m2) : Alice+Bob dans les deux ; Random non-ami ; Me = joueur principal.
 		"m1": {{MatchID: "m1", XUID: "main", Gamertag: "Me"}, {MatchID: "m1", XUID: "xa", Gamertag: "Alice"}, {MatchID: "m1", XUID: "xb", Gamertag: "Bob"}},
-		"m2": {{MatchID: "m2", XUID: "xa", Gamertag: "Alice"}, {MatchID: "m2", XUID: "xb", Gamertag: "Bob"}, {MatchID: "m2", XUID: "xr", Gamertag: "Random"}},
+		"m2": {{MatchID: "m2", XUID: "xa", Gamertag: "Alice"}, {MatchID: "m2", XUID: "xb", Gamertag: "Bob"}, {MatchID: "m2", XUID: "xr", Gamertag: "joueur_367"}},
 		// Session B (m3) : Carol.
 		"m3": {{MatchID: "m3", XUID: "xc", Gamertag: "Carol"}},
 	}}

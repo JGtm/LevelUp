@@ -19,7 +19,6 @@
  */
 import type { Palette } from '../semantic-tokens'
 import { ENCOUNTER_BADGE_COLORS } from './_encounterColors'
-import { IMPACT_BLUE_VERMILLION } from './_impactRoleColors'
 import { MAP_MARKER_OUTLINE } from './_mapMarkerOutline'
 
 // Échantillons Cividis aux positions t = 0.00, 0.10, 0.25, 0.40, 0.50, 0.60, 0.75, 0.90, 1.00
@@ -173,8 +172,6 @@ export const cividisPalette: Palette = {
   //  labels disambiguent pour les daltoniens)
   ...ENCOUNTER_BADGE_COLORS,
 
-  // ── Rôles d'impact — bleu / vermillon, rampe claire (cf. _impactRoleColors.ts)
-  ...IMPACT_BLUE_VERMILLION.light,
 
   // ── Classes de frags — famille dédiée (2026-08-29) ─────────────────────────
   // AVANT cette famille : lourde ≡ capacité spartan (#00224E) et épaule ≡

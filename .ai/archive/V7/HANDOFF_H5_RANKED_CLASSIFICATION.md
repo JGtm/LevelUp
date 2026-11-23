@@ -1,6 +1,6 @@
 # HANDOFF — Classification classé/non-classé (+ mode/PvE) Halo 5
 
-> **Créé** : 2026-06-20. **Branche** : `feat/multititre-peripherie` (worktree `c:/Users/Guillaume/Downloads/Scripts/levelup-multititre`).
+> **Créé** : 2026-06-20. **Branche** : `feat/multititre-peripherie` (worktree `<poste>/Downloads/Scripts/levelup-multititre`).
 > **À reprendre** : pendant l'activation Halo 5 (1b), quand on aura la **data autoritative**.
 > Lié : `.ai/HANDOFF_MULTITITRE_ACTIVATION.md`, mémoire `reference_ranked_playlists_source`, `reference_openspartan_import_isranked_false`.
 

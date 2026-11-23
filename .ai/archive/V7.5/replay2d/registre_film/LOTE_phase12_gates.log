@@ -11,7 +11,7 @@ EXIT_TEST_UNIT=0
 
 # Regeneration du fixture d entrees depuis le film de reference (REPLAY_FILM_DIR absolu vers
 # le cache du principal, lecture seule) : le fixture porte desormais PitchRaw.
-REPLAY_FILM_DIR=C:/Users/Guillaume/Projects/LevelUp/data/cache/film_chunks/000d5950 go test -count=1 ./internal/analysis/replay/ -run GoldenInputsRegenerate -update
+REPLAY_FILM_DIR=<poste>/Projects/LevelUp/data/cache/film_chunks/000d5950 go test -count=1 ./internal/analysis/replay/ -run GoldenInputsRegenerate -update
 EXIT_FIXTURE=0   # 128,0 s ; 171 826 positions ; 789 960 -> 882 458 octets compresses
 
 # Regeneration de la sortie figee

@@ -643,7 +643,7 @@ Demande user : re-chiffrer grenade/mêlée + fournir des kills à vérifier en T
 - **KILLS SANS KILL-EVENT (ABSENT)** = kills chunk_27 dont la paire (tueur,victime) n'a AUCUN kill-event
   décodable (déf. « vraiment introuvable » de runGap au niveau paire). Fournis à l'utilisateur avec date+map+
   timecode (horloge jeu chunk_27 = timeline Theater) pour diagnostic manuel de ce qu'on rate. Ex : 034200db
-  Chocoboflor→snip3r971 @00:49 (Detachment, Arena:CTF, 2026-03-03) ; 00761d27 Alex43LUFC→EddySuperman @04:55
+  joueur_165→joueur_1024 @00:49 (Detachment, Arena:CTF, 2026-03-03) ; 00761d27 joueur_1202→joueur_1177 @04:55
   (Bazaar, Arena:VIP, 2026-02-03).
 - Outils ajoutés (branche RE) : `verifkills <film>` (cmd/tmp_kwval/verifkills.go) + `cmd/tmp_datemap` (film_id→
   date/map/mode, DuckDB read-only). Temps kill = horloge JEU chunk_27 (KVPair.TimeMS→mm:ss).
@@ -653,8 +653,8 @@ Demande user : re-chiffrer grenade/mêlée + fournir des kills à vérifier en T
 Vérification manuelle en Theater des kills fournis §7ter.13. Vérité-terrain précieuse (falsifie mes claims) :
 
 - **GRENADE PAS crédible (CORRECTION de §7ter.13)** : sur 0393fd30, **3/4 des "grenade" détectées sont FAUSSES** :
-  Madina→Loxias @04:59 = MÊLÉE (killfeed) ; ShGunslinger→Chocoboflor @06:39 = SNIPER headshot ; Rovrum→Loxias
-  @06:40 = MÊLÉE ; seule ReaperQueen→Madina @05:02 = vraie grenade (frag ; on disait Plasma). CAUSE : la
+  joueur_075→joueur_1019 @04:59 = MÊLÉE (killfeed) ; joueur_1025→joueur_165 @06:39 = SNIPER headshot ; joueur_1041→joueur_1019
+  @06:40 = MÊLÉE ; seule joueur_1020→joueur_075 @05:02 = vraie grenade (frag ; on disait Plasma). CAUSE : la
   corrélation grenade (lanceur==tueur, fenêtre 3s) attrape des kills où le lanceur a tué par AUTRE chose près du
   lancer. Il manque la contrainte « le dégât FATAL == la grenade ».
 - **LEÇON UNIFICATRICE** : grenade ET mêlée doivent passer par le **same-clock DAMAGE-SOURCE** (fatal 0xd2,
@@ -667,7 +667,7 @@ Vérification manuelle en Theater des kills fournis §7ter.13. Vérité-terrain 
   PISTE RE : décoder les records de dégât continu/électrique.
 - **MÊLÉE** confirmée non fiable : mêlées apparaissent aussi en "absent" (kill-event mêlée non décodable, ex
   @03:44 Forbidden corps-à-corps SPNKr-en-main) et mal classées en grenade.
-- **FIREARM gap** : Chocoboflor→snip3r971 @00:49 (Detachment) = MA40 normal, absent → un kill firearm banal
+- **FIREARM gap** : joueur_165→joueur_1024 @00:49 (Detachment) = MA40 normal, absent → un kill firearm banal
   raté (dans les ~16% de trous — pas seulement les cas exotiques).
 - **PROVENANCE** : 0215fe6b (Dynasty) n'existe PAS sous JGtm → le cache `film_chunks` contient les films de TOUS
   les joueurs suivis, pas que JGtm. Vérif Theater future : ne fournir QUE des matchs où JGtm a joué.
@@ -680,7 +680,7 @@ Suite à la vérif Theater (§7ter.14) : diagnostic `dmgfam <film>` (histogramme
   BR75 (390), VK78 Commando (51), S7 Sniper (28). **AUCUNE grenade, AUCUNE mêlée.**
 - **Implication** : le same-clock damage-source (validé 94% firearm) NE PEUT PAS attribuer grenade/mêlée — leur
   dégât n'est pas dans 0xd2. Pour un kill grenade/mêlée, SC donne le dernier FIREARM du tueur (FAUX) ou rien.
-- **Précision importante** : le S7 Sniper EST dans 0xd2 → le kill sniper (ShGunslinger→Chocoboflor @06:39) est
+- **Précision importante** : le S7 Sniper EST dans 0xd2 → le kill sniper (joueur_1025→joueur_165 @06:39) est
   géré correctement par le SC firearm ; la mis-attribution "grenade" vue en Theater venait de l'heuristique
   grenade-event `scanEvents` (proximité de lancer 0x4c0c00), PAS du same-clock 0xd2. Deux chemins distincts.
 - **PROCHAINE PISTE (chantier RE)** : trouver + décoder les records de dégât NON-firearm (explosion grenade,
@@ -751,8 +751,8 @@ puis router. Adresses clés : FUN_140b90844 (enum), FUN_142bb2ab4 (icône), FUN_
   (2) dans `allRawKE` (killfeed.go ~193), calculer `f2 := int(bitsAt(pl,b3,32))` ET
   `assist, b4 := keReadOpt(pl, b3+33)` puis `f5 := int(bitsAt(pl,b4,32))`, et les SET dans le pipeKill ;
   (3) mettre à jour la construction positionnelle pipeline_decode.go:106 (ajouter f5) ; (4) re-run `killtype`
-  0393fd30 et regarder si **field5** (R32b, +0x14) DISCRIMINE : mêlée (@04:59 Madina->Loxias, @06:40
-  Rovrum->Loxias) attendu = valeur enum DamageReportingModifier (3=SilentMelee) ou un tag mêlée, vs firearm=0.
+  0393fd30 et regarder si **field5** (R32b, +0x14) DISCRIMINE : mêlée (@04:59 joueur_075->joueur_1019, @06:40
+  joueur_1041->joueur_1019) attendu = valeur enum DamageReportingModifier (3=SilentMelee) ou un tag mêlée, vs firearm=0.
   Si field5 discrimine → c'est LE discriminateur, router par ça. Si f2 ET f5 sont constants/0 → le type n'est
   PAS dans le wire du kill-event (il est calculé runtime dans le KillInfo depuis le record de dégât) = revoir.
 - OBS annexe confirmée : `classifyAug` (heuristique scanEvents) mislabel les mêlées 0393fd30 en GRENADE → à
@@ -896,8 +896,8 @@ Résultat workflow complet : `tasks/w2dm8nkpd.output` + journal.
 
 **ADDENDUM POV (indice user décisif, 2026-07-12)** : « en mode cinéma seul le POV affiche le kill-feed ». Vérifié :
 la queue n'est présente que sur ~15 kills / 111 candidats bruts (9b191a7f). Les kills à **queue valide**
-(`dmgSrc&0xffff!=0 && modifier<=9`) se concentrent sur **xSONNYX117** : 6× comme tueur + 4× comme victime =
-**10/15** → xSONNYX117 est le **POV** du film 9b191a7f (pas JGtm, d'où queue vide sur les kills de JGtm). Les
+(`dmgSrc&0xffff!=0 && modifier<=9`) se concentrent sur **joueur_1002** : 6× comme tueur + 4× comme victime =
+**10/15** → joueur_1002 est le **POV** du film 9b191a7f (pas JGtm, d'où queue vide sur les kills de JGtm). Les
 catégories sortent COHÉRENTES : mod=1 Headshot, mod=5 AttachedDamage (grenade collée), mod=4 CollisionDamage
 (splatter), mod=6/7/9 (WeakSpot/ChainedProjectile/VehicleTransfer). **CONSÉQUENCE PRODUIT** : la queue
 (arme+catégorie exactes, déterministe) couvre les kills du POV du film. Chaque joueur tracké a ses propres films
@@ -1180,7 +1180,7 @@ kill-event n'est plus un verrou : chaine avant >= 3 = 132/133.
 
 **Note d'outillage** : un agent concurrent ecrivait `rosetta*.go` dans `cmd/tmp_kwval` pendant la session
 (fichiers incomplets, build casse). Contournement : build depuis une copie a liste blanche figee
-(`/c/Users/GUILLA~1/AppData/Local/Temp/claude/cwbuild.sh` -> `cmd/tmp_cwrun`, supprime apres build).
+(`<poste>/AppData/Local/Temp/claude/cwbuild.sh` -> `cmd/tmp_cwrun`, supprime apres build).
 
 ### 7ter.24ter L'ASSIST est DECODABLE et VALIDE contre l API (independant du probleme d arme)
 
@@ -1188,7 +1188,7 @@ kill-event n'est plus un verrou : chaine avant >= 3 = 132/133.
 > est append-only : le texte ci-dessous n est PAS reecrit, il est signale. Ce qui est faux :
 > (1) le << 31 decodes contre 30 API >> comptait les faux positifs d un pipeline qui decodait 99
 > kills pour 87 morts reelles — la lecture nettoyee donne **22 pour 30** ; (2) l ancre par joueur
-> (<< RaiiZeNBack 3 = 3 >>) portait sur un AUTRE JOUEUR que celui qu elle nomme : le xuid cite est
+> (<< joueur_1033 3 = 3 >>) portait sur un AUTRE JOUEUR que celui qu elle nomme : le xuid cite est
 > aujourd hui resolu vers un autre gamertag par la bijection courante ; (3) la grammaire annoncee
 > ici a l ORDRE DES DEUX PREMIERS CHAMPS INVERSE (c est victime puis tueur) et ses deux blocs R32
 > sont des PARTS DE DEGATS, cf. `7ter.75`. Le rejet appele ici << assistant == tueur >> portait en
@@ -1203,7 +1203,7 @@ donc aucune auto-confirmation possible.
 
 **MESURE (film 9b191a7f)** : 31 assists decodes exploitables (6 rejetes car assist==tueur, 1 hors roster) vs
 **30 au total selon l API** — ecart de 1. Par joueur, correspondances exactes verifiees : **JGtm 1 decode = 1 API**
-(xuid 2533274823110022) et **RaiiZeNBack 3 = 3 API** (xuid 2533274987493081, 22 kills). La forme de la
+(xuid 2533274823110022) et **joueur_1033 3 = 3 API** (xuid 2718270975167800, 22 kills). La forme de la
 distribution concorde (decode : 11, 7, 4, 3, 3, 2, 1 ; API : 9, 6, 5, 3, 3, 3, 1 ; 7 joueurs avec assists de
 part et d autre). Les ecarts par joueur restants s expliquent par la CARTE DES JOUEURS (recouvrement roster
 68/87 = 78%) et par les 12 kills decodes en trop (99 decodes pour 87 reels), pas par la lecture du champ.
@@ -1234,10 +1234,10 @@ honnete.
 
 **Sur b955bf2a, solveRoster etait CASSE** (30%) : c est la cause directe du fait que seuls 3 des 11 kills de
 JGtm apparaissaient dans `killtype`. Avec `roster2`, les profils tombent juste : JGtm **K 11 decodes vs 11 feed**,
-Chocoboflor 10 vs 10, XPronex 10 vs 10, The5thGenGuru 2 vs 2, Madina 20 vs 21, ScheistyB 9 vs 10, dave126 9 vs 8.
+joueur_165 10 vs 10, XPronex 10 vs 10, joueur_1042 2 vs 2, joueur_075 20 vs 21, joueur_1035 9 vs 10, joueur_1049 9 vs 8.
 Sur 9b191a7f, `roster2` est legerement en dessous sur la metrique de recouvrement (64% vs 69%) — attendu,
 puisque `solveRoster` optimise precisement cette metrique — mais ses profils sont tres coherents (JGtm K 14 vs 15,
-xSONNYX117 21 vs 22, Chocoboflor 5 vs 5, Duke748biposto 10 vs 10, LockeH2 7 vs 6) et son 14 correspond
+joueur_1002 21 vs 22, joueur_165 5 vs 5, joueur_1420 10 vs 10, LockeH2 7 vs 6) et son 14 correspond
 exactement au nombre de kills de la verite terrain Theater de JGtm.
 
 **A FAIRE** : basculer les modes consommateurs (killtype, assistdump, weaponfeed, fatalfeed) sur `roster2`, ou
@@ -1834,10 +1834,10 @@ Super Fiesta:Slayer sur Cliffhanger, 2026-03-08 — **JGtm y a joue**).
 
 | temps | decode (categorie) | REEL (verif Theater) | verdict |
 |---|---|---|---|
-| 00:35 IKE ILYA -> LORD PEINX13 | 0 = None | **Disruptor** (tir normal) | **JUSTE** |
-| 00:44 Akatsuki fire17 -> JGtm  | 0 = None | **Empaleur** (variante Skewer, tir normal) | **JUSTE** |
-| 02:08 JAVIERLOLITO540 -> whiteknight2519 | 5 = AttachedDamage | **Needler** | **JUSTE** |
-| 02:09 whiteknight2519 -> JAVIERLOLITO540 | 5 = AttachedDamage | **Needler** | **JUSTE** |
+| 00:35 JOUEUR_417 -> JOUEUR_731 | 0 = None | **Disruptor** (tir normal) | **JUSTE** |
+| 00:44 joueur_700 fire17 -> JGtm  | 0 = None | **Empaleur** (variante Skewer, tir normal) | **JUSTE** |
+| 02:08 JOUEUR_156 -> joueur_283 | 5 = AttachedDamage | **Needler** | **JUSTE** |
+| 02:09 joueur_283 -> JOUEUR_156 | 5 = AttachedDamage | **Needler** | **JUSTE** |
 
 **4/4.** C est la PREMIERE validation positive du chantier contre une verite terrain non circulaire.
 
@@ -1854,10 +1854,10 @@ Toute lecture future de l enum doit utiliser le sens LARGE. Les autres valeurs s
 9b191a7f, film SANS oracle Rosette. Ces 4 lignes sont sur **000d5950**, le film qui a l oracle complet
 (54 785 positions bit). C est donc le jeu d essai ideal pour attaquer l ARME :
 ```
-000d5950  00:35  IKE ILYA -> LORD PEINX13          = Disruptor          (variante Super Fiesta)
-000d5950  00:44  Akatsuki fire17 -> JGtm           = Empaleur           (variante de Skewer)
-000d5950  02:08  JAVIERLOLITO540 -> whiteknight2519 = Needler           (supercombinaison)
-000d5950  02:09  whiteknight2519 -> JAVIERLOLITO540 = Needler           (supercombinaison)
+000d5950  00:35  JOUEUR_417 -> JOUEUR_731          = Disruptor          (variante Super Fiesta)
+000d5950  00:44  joueur_700 fire17 -> JGtm           = Empaleur           (variante de Skewer)
+000d5950  02:08  JOUEUR_156 -> joueur_283 = Needler           (supercombinaison)
+000d5950  02:09  joueur_283 -> JOUEUR_156 = Needler           (supercombinaison)
 ```
 NB : le mode est **Super Fiesta**, donc TOUTES les armes du match sont des VARIANTES — ce qui est un test
 exigeant et utile pour le champ « variante » de l id 64 bits (`[famille 32b][variante 32b]`, suffixe standard
@@ -1898,13 +1898,13 @@ categorie dans l enum), **zero dechet**. Couverture : **55/93 = 59.1%** des mort
 **55/58 = 94.8%**. La bijection indice-de-monde -> joueur est obtenue par ENUMERATION EXHAUSTIVE des 8! = 40 320
 permutations, avec les rivales publiees pour exclure l ajustement : **meilleure 55, 2e 36, 10e 32, MEDIANE 1**.
 ```
-0=whiteknight2519  1=JAVIERLOLITO540  2=JGtm  3=LORD PEINX13
-4=IKE ILYA         5=Akatsuki fire17  6=aldusbroncus  7=VitaminA1688
+0=joueur_283  1=JOUEUR_156  2=JGtm  3=JOUEUR_731
+4=JOUEUR_417         5=joueur_700 fire17  6=joueur_389  7=joueur_362
 ```
 Les 3 seuls echecs sont dans les 20 dernieres secondes. La structure MIROIR de 02:08 est reproduite, ainsi que
 la 1re mort du feed (00:35) et 00:44. **Recoupement avec la verite terrain user de 7ter.33bis : 00:35 = LORD
-PEINX13 tue par IKE ILYA, 00:44 = JGtm tue par Akatsuki fire17, 02:08 = whiteknight2519 tue par
-JAVIERLOLITO540 — les trois concordent exactement avec le kill-feed.**
+JOUEUR_564 tue par JOUEUR_417, 00:44 = JGtm tue par joueur_700 fire17, 02:08 = joueur_283 tue par
+JOUEUR_156 — les trois concordent exactement avec le kill-feed.**
 
 **(6) CORRECTION DE 7ter.33 : le tag +0x00 n est PAS constant.** Le `6ae4a160` recurrent etait un artefact
 d une marche ancree fausse. Sur les 58 morts il prend **~25 valeurs distinctes** et **il CO-VARIE avec la
@@ -1916,18 +1916,18 @@ Le second tag (+0x4c) est desormais extrait systematiquement (jamais fait avant)
 **(7) HYPOTHESE FORTE ET FALSIFIABLE — tag+0x00 = l ARME.** Croisement avec la verite terrain Theater
 (7ter.33bis) et la bijection du (5) :
 ```
-00:35  LORD PEINX13 <- IKE ILYA            tag0 = eea85c26   REEL = Disruptor
-00:44  JGtm <- Akatsuki fire17             tag0 = 130c4b61   REEL = Empaleur (variante Skewer)
-02:08  whiteknight2519 <- JAVIERLOLITO540  tag0 = 4a555df8   REEL = Needler
-02:08  JAVIERLOLITO540 <- whiteknight2519  tag0 = 4a555df8   REEL = Needler
+00:35  JOUEUR_731 <- JOUEUR_417            tag0 = eea85c26   REEL = Disruptor
+00:44  JGtm <- joueur_700 fire17             tag0 = 130c4b61   REEL = Empaleur (variante Skewer)
+02:08  joueur_283 <- JOUEUR_156  tag0 = 4a555df8   REEL = Needler
+02:08  JOUEUR_156 <- joueur_283  tag0 = 4a555df8   REEL = Needler
 ```
 Le meme tag revient sur d autres morts, ce qui donne des **PREDICTIONS TESTABLES en Theater** :
 ```
-03:08  Akatsuki fire17 <- VitaminA1688   tag0 = eea85c26  ->  PREDICTION : Disruptor
-04:26  JGtm <- aldusbroncus              tag0 = 130c4b61  ->  PREDICTION : Empaleur
-06:19  IKE ILYA <- LORD PEINX13          tag0 = 4a555df8  ->  PREDICTION : Needler
-07:59  aldusbroncus <- VitaminA1688      tag0 = 4a555df8  ->  PREDICTION : Needler
-08:03  IKE ILYA <- VitaminA1688          tag0 = 4a555df8  ->  PREDICTION : Needler
+03:08  joueur_700 fire17 <- joueur_362   tag0 = eea85c26  ->  PREDICTION : Disruptor
+04:26  JGtm <- joueur_389              tag0 = 130c4b61  ->  PREDICTION : Empaleur
+06:19  JOUEUR_417 <- JOUEUR_731          tag0 = 4a555df8  ->  PREDICTION : Needler
+07:59  joueur_389 <- joueur_362      tag0 = 4a555df8  ->  PREDICTION : Needler
+08:03  JOUEUR_417 <- joueur_362          tag0 = 4a555df8  ->  PREDICTION : Needler
 ```
 NB : `AttachedDamage` porte DEUX tags distincts (`4a555df8` x5 et `0000d627` x1 a 05:44) — coherent avec
 « Needler » et « grenade collante » qui sont deux effets differents partageant la meme categorie.
@@ -1941,17 +1941,17 @@ l utilisateur dans le mode Theater : **5/5 CONFIRMEES**. Avec les 4 ancres de 7t
 
 ```
 ANCRES (7ter.33bis)                                   tag+0x00     REEL         verdict
-00:35  LORD PEINX13   <- IKE ILYA                     eea85c26     Disruptor    JUSTE
-00:44  JGtm           <- Akatsuki fire17              130c4b61     Empaleur     JUSTE
-02:08  whiteknight2519<- JAVIERLOLITO540              4a555df8     Needler      JUSTE
-02:08  JAVIERLOLITO540<- whiteknight2519              4a555df8     Needler      JUSTE
+00:35  JOUEUR_731   <- JOUEUR_417                     eea85c26     Disruptor    JUSTE
+00:44  JGtm           <- joueur_700 fire17              130c4b61     Empaleur     JUSTE
+02:08  joueur_283<- JOUEUR_156              4a555df8     Needler      JUSTE
+02:08  JOUEUR_156<- joueur_283              4a555df8     Needler      JUSTE
 
 PREDICTIONS (7ter.34), posees AVANT verification         tag+0x00     PREDIT      verdict
-03:08  Akatsuki fire17 <- VitaminA1688                eea85c26     Disruptor    CONFIRMEE
-04:26  JGtm            <- aldusbroncus                130c4b61     Empaleur     CONFIRMEE
-06:19  IKE ILYA        <- LORD PEINX13                4a555df8     Needler      CONFIRMEE
-07:59  aldusbroncus    <- VitaminA1688                4a555df8     Needler      CONFIRMEE
-08:03  IKE ILYA        <- VitaminA1688                4a555df8     Needler      CONFIRMEE
+03:08  joueur_700 fire17 <- joueur_362                eea85c26     Disruptor    CONFIRMEE
+04:26  JGtm            <- joueur_389                130c4b61     Empaleur     CONFIRMEE
+06:19  JOUEUR_417        <- JOUEUR_731                4a555df8     Needler      CONFIRMEE
+07:59  joueur_389    <- joueur_362                4a555df8     Needler      CONFIRMEE
+08:03  JOUEUR_417        <- joueur_362                4a555df8     Needler      CONFIRMEE
 ```
 Protocole non circulaire : les predictions ont ete ECRITES ET COMMITEES (commit 64a641740) **avant** que
 l utilisateur ne regarde le film. Detail corroborant : a 03:08 l utilisateur rapporte un **duel au Disruptor
@@ -2097,7 +2097,7 @@ Ces verdicts complètent §4 (impasses de la session déterministe juillet). Tou
 | Scans de localisation du kill-event (pattern / offset / signature) | TOUS NÉGATIFS : `killevtscan` (run max 7 = bruit), `killevttime` (201 candidats/kill, grammaire 5-bit trop permissive), `xuidcluster` (type-9 = 1 xuid/event, 0 cluster), signature `'weap'` (0 occ hors chunk_00 = id RÉSOLU au replay, pas un littéral) | `KILLFEED_DEATH_RECAP_FIELDS_RE` §7 |
 | Table de dispatch d'events par xref statique (reader plat `tbl[type].deser`) | N'EXISTE PAS : dispatch schéma-récursif runtime, table jamais chargée par instruction ; déser dégât/kill = DATA-only (0 caller statique). => passer par la trace CE + le locator, jamais le xref | `KILLFEED_STATE` §0sexies |
 
-**Rappel positif** : held-weapon carry-forward MARCHE pour la MÊLÉE (marteau 4/4, IKE->JGtm), et grenade est
+**Rappel positif** : held-weapon carry-forward MARCHE pour la MÊLÉE (marteau 4/4, JOUEUR_502->JGtm), et grenade est
 attribuable (lanceur connu). Seule l'arme à FEU par kill via events reste bridée (capture éparse).
 
 ---
@@ -2223,7 +2223,7 @@ sans aucune ancre d'arme : un paquet type-0 avec `bit1==1` et `R(7)@bit2 == 36` 
   {0,2,4,6,8,10,12,14} a 97.8%. Validation INDEPENDANTE (mode `dmgowner`, croisement avec le roster) :
 
         2 JGtm            BR75:52  Fuel Rod SPNKr:33  Disruptor:15
-        3 RaiiZeNBack     BR75:271 MA40 AR:232 Needler:101 Fuel Rod:9 Plasma Pistol:6 Heatwave:4
+        3 joueur_1033     BR75:271 MA40 AR:232 Needler:101 Fuel Rod:9 Plasma Pistol:6 Heatwave:4
 
   JGtm n'a QUE ses 3 armes de la verite terrain (Fuel Rod / Disruptor / BR75) — le champ est le bon.
 
@@ -2810,8 +2810,8 @@ decodes, 58 credibles (slot dans [512,610], victime/tueur <= 7, categorie dans l
 est obtenue par enumeration EXHAUSTIVE des 8! = 40 320 permutations, avec publication des rivales :
 ```
 MEILLEURE bijection : 55/58 = 94.8%     2e = 36     10e = 32     MEDIANE = 1
-0=whiteknight2519 1=JAVIERLOLITO540 2=JGtm 3=LORD PEINX13 4=IKE ILYA 5=Akatsuki fire17
-6=aldusbroncus 7=VitaminA1688
+0=joueur_283 1=JOUEUR_156 2=JGtm 3=JOUEUR_731 4=JOUEUR_417 5=joueur_700 fire17
+6=joueur_389 7=joueur_362
 COUVERTURE : morts du kill-feed retrouvees = 55/93 = 59.1%
 ```
 L'ecart 55 vs 36 (2e) vs 1 (mediane) exclut l'ajustement. Les 3 echecs sont tous dans les 20
@@ -3023,23 +3023,23 @@ dead-states Mort=1                    ...        95 | BIPEDES CREDIBLES 59 | att
 gate (b) couples justes               n/a        56/59 = 94.9%  (2e bijection 39, 10e 32, MEDIANE 1)
 ```
 Bijection obtenue par enumeration exhaustive des 8! permutations :
-`0=RaiiZeNBack 1=Madina97294 2=JGtm 3=xSONNYX117 4=BlackGamer7089 5=Chocoboflor 6=LockeH2 YT 7=Duke748biposto`.
+`0=joueur_1033 1=joueur_117 2=JGtm 3=joueur_1002 4=joueur_051 5=joueur_165 6=joueur_1269 7=joueur_1420`.
 Le chantier n est donc plus mono-film.
 
 **(3) GATE (c) — CONFRONTATION AUX 14 KILLS DE JGtm VERIFIES EN THEATER.**
 10 des 14 sont atteints. Table complete (tueur = indice 2 = JGtm) :
 ```
 temps  victime decodee -> joueur       tag+0x00    ARME REELLE (Theater)     verdict
-00:50  0 = RaiiZeNBack                 5eaa815c    Fuel Rod SPNKr            OK
-01:27  4 = BlackGamer7089              5eaa815c    Fuel Rod                  OK
-01:41  3 = xSONNYX117                  5eaa815c    Fuel Rod                  OK
-02:49  7 = Duke748biposto              da3b5ba4    GRENADE FRAG              OK (tag DISTINCT)
-03:03  0 = RaiiZeNBack                 7e6a7461    Disruptor                 OK (tag DISTINCT)
-03:55  0 = RaiiZeNBack                 daa03c35    MELEE                     OK (tag DISTINCT)
-04:07  4 = BlackGamer7089              5eaa815c    Fuel Rod                  OK
-04:31  3 = xSONNYX117                  5eaa815c    Fuel Rod                  OK
-05:44  3 = xSONNYX117                  5eaa815c    Fuel Rod                  OK
-09:43  0 = RaiiZeNBack                 5eaa815c    Fuel Rod                  OK
+00:50  0 = joueur_1033                 5eaa815c    Fuel Rod SPNKr            OK
+01:27  4 = joueur_051              5eaa815c    Fuel Rod                  OK
+01:41  3 = joueur_1002                  5eaa815c    Fuel Rod                  OK
+02:49  7 = joueur_1420              da3b5ba4    GRENADE FRAG              OK (tag DISTINCT)
+03:03  0 = joueur_1033                 7e6a7461    Disruptor                 OK (tag DISTINCT)
+03:55  0 = joueur_1033                 daa03c35    MELEE                     OK (tag DISTINCT)
+04:07  4 = joueur_051              5eaa815c    Fuel Rod                  OK
+04:31  3 = joueur_1002                  5eaa815c    Fuel Rod                  OK
+05:44  3 = joueur_1002                  5eaa815c    Fuel Rod                  OK
+09:43  0 = joueur_1033                 5eaa815c    Fuel Rod                  OK
 non atteints : 01:00 (Fuel Rod), 03:41 (BR75), 04:50 (Fuel Rod), 05:12 (Fuel Rod)
 ```
 **Les 10 victimes decodees sont les 10 victimes reelles** (10/10). **Les 7 kills au Fuel Rod portent TOUS
@@ -3073,7 +3073,7 @@ Le pouvoir discriminant est le resultat, pas le taux brut : **un seul parametre 
 **(6) PREDICTION FALSIFIABLE POSEE AVANT VERIFICATION (a soumettre au mode Theater).**
 `daa03c35` = MELEE, etabli sur 9b191a7f @03:55. Ce tag apparait EXACTEMENT UNE FOIS sur 000d5950 :
 ```
-000d5950  07:57  LORD PEINX13 -> JAVIERLOLITO540   tag0 = daa03c35   PREDICTION : KILL A LA MELEE
+000d5950  07:57  JOUEUR_731 -> JOUEUR_156   tag0 = daa03c35   PREDICTION : KILL A LA MELEE
 ```
 Si la verification Theater confirme, la table de nommage est etablie CROSS-FILM sur un 4e point
 independant. Si elle infirme, l identite << un tag = une arme >> tombe pour les armes non-firearm.
@@ -3100,9 +3100,9 @@ ev.exe tagscan obs [9b]                         # les tags observes existent-ils
 La prediction posee et COMMITEE en 7ter.37 (6) avant toute verification est **CONFIRMEE par
 l utilisateur en mode Theater** :
 ```
-000d5950  07:57  LORD PEINX13 -> JAVIERLOLITO540   tag0 = daa03c35   PREDIT : MELEE   -> CONFIRME
+000d5950  07:57  JOUEUR_731 -> JOUEUR_156   tag0 = daa03c35   PREDIT : MELEE   -> CONFIRME
 ```
-Le tag avait ete etabli sur un film DIFFERENT (`9b191a7f` @03:55, JGtm -> RaiiZeNBack) et n apparait
+Le tag avait ete etabli sur un film DIFFERENT (`9b191a7f` @03:55, JGtm -> joueur_1033) et n apparait
 qu UNE SEULE FOIS dans tout `000d5950`. Aucun ajustement de parametre n a ete fait entre les deux.
 
 **CE QUE CETTE CONFIRMATION ETABLIT — trois choses distinctes.**
@@ -3214,7 +3214,7 @@ eea85c26 (Disruptor) 4/4 None             coherent
   tourne a `off=-10` quand l optimum de 9b est `-5` (A/B mesure : 56 contre 57 morts atteintes), et (b)/(c)
   n utilisent pas cet offset (fenetre +-2.5 s).
 - *Ecart kill-feed / verite terrain* : le feed autoritatif attribue **15** kills a JGtm sur 9b191a7f, pas
-  14. L extra est `08:31 JGtm -> xSONNYX117`, absent de la liste Theater. A trancher avec l utilisateur.
+  14. L extra est `08:31 JGtm -> joueur_1002`, absent de la liste Theater. A trancher avec l utilisateur.
 
 **(7) LE GATE N EST PAS FRANCHI DANS L ORDRE — et c est declare.** `(a)` echoue sur les deux films (77/93
 et 59/87) ; `(b)` et `(c)` ont ete evalues quand meme, explicitement << en corroboration >>. Ce n est donc
@@ -3225,11 +3225,11 @@ de reference. L annonce correcte est : *le decodage de l arme est etabli ; la co
 MORTS de JGtm dans `9b191a7f` (verifiables en Theater depuis sa propre vue) et testent la table de nommage
 sur des points qui n ont servi a rien :
 ```
-9b191a7f  02:28  Duke748biposto -> JGtm   tag daa03c35   PREDIT : MELEE
-9b191a7f  03:02  RaiiZeNBack    -> JGtm   tag daa03c35   PREDIT : MELEE
-9b191a7f  03:16  xSONNYX117     -> JGtm   tag 0000b29c   PREDIT : arme de PRECISION (headshot), et
-9b191a7f  06:18  RaiiZeNBack    -> JGtm   tag 0000b29c   PREDIT : la MEME arme qu a 03:16 et 06:36
-9b191a7f  06:36  xSONNYX117     -> JGtm   tag 0000b29c   PREDIT : idem
+9b191a7f  02:28  joueur_1420 -> JGtm   tag daa03c35   PREDIT : MELEE
+9b191a7f  03:02  joueur_1033    -> JGtm   tag daa03c35   PREDIT : MELEE
+9b191a7f  03:16  joueur_1002     -> JGtm   tag 0000b29c   PREDIT : arme de PRECISION (headshot), et
+9b191a7f  06:18  joueur_1033    -> JGtm   tag 0000b29c   PREDIT : la MEME arme qu a 03:16 et 06:36
+9b191a7f  06:36  joueur_1002     -> JGtm   tag 0000b29c   PREDIT : idem
 ```
 Condition de falsification : si `02:28` ou `03:02` n est pas une melee, l identite tag -> arme tombe pour
 les non-firearm (que 7ter.37bis venait d etablir). Si les trois `0000b29c` ne sont pas la meme arme,
@@ -3400,33 +3400,33 @@ variante du catalogue et le `wcfg` sont deux espaces differents ; le rapprocheme
 
 **(7) PREDICTIONS FALSIFIABLES, POSEES AVANT TOUTE VERIFICATION.** Elles portent sur des kills qui
 n ont servi a rien (aucun n a participe a la construction de la chaine ni a la partition `hlmt`).
-Film 000d5950 — bijection `0=whiteknight2519 1=JAVIERLOLITO540 2=JGtm 3=LORD PEINX13 4=IKE ILYA
-5=Akatsuki fire17 6=aldusbroncus 7=VitaminA1688` ; film 9b191a7f — bijection de 7ter.37.
+Film 000d5950 — bijection `0=joueur_283 1=JOUEUR_156 2=JGtm 3=JOUEUR_731 4=JOUEUR_417
+5=joueur_700 fire17 6=joueur_389 7=joueur_362` ; film 9b191a7f — bijection de 7ter.37.
 ```
 A. KILLS DE JGtm dans 000d5950 (vue directe en Theater)
-   01:44  -> JAVIERLOLITO540    CQS48 Bulldog (variante)
-   01:52  -> Akatsuki fire17    CQS48 Bulldog (variante)
-   03:12  -> aldusbroncus       Sentinel Beam (variante)
-   03:50  -> IKE ILYA           Sentinel Beam (variante)   [HeadshotMultiplier]
-   04:18  -> IKE ILYA           Sentinel Beam (variante)
-   05:29  -> Akatsuki fire17    BR75 (variante)            [Headshot]
-   07:28  -> IKE ILYA           MA40 AR (variante)
+   01:44  -> JOUEUR_156    CQS48 Bulldog (variante)
+   01:52  -> joueur_700 fire17    CQS48 Bulldog (variante)
+   03:12  -> joueur_389       Sentinel Beam (variante)
+   03:50  -> JOUEUR_417           Sentinel Beam (variante)   [HeadshotMultiplier]
+   04:18  -> JOUEUR_417           Sentinel Beam (variante)
+   05:29  -> joueur_700 fire17    BR75 (variante)            [Headshot]
+   07:28  -> JOUEUR_417           MA40 AR (variante)
 B. MORTS DE JGtm dans 000d5950
-   02:36  <- aldusbroncus       S7 Sniper                  [Headshot]
-   05:08  <- Akatsuki fire17    S7 Sniper                  [Headshot]
+   02:36  <- joueur_389       S7 Sniper                  [Headshot]
+   05:08  <- joueur_700 fire17    S7 Sniper                  [Headshot]
    04:52 / 05:37 / 05:55        Gravity Hammer (marteau antigravite)
-   06:15  <- IKE ILYA           M41 SPNKr (lance-roquettes)
+   06:15  <- JOUEUR_417           M41 SPNKr (lance-roquettes)
    06:31 / 07:01                Mangler
-   07:47  <- JAVIERLOLITO540    Gravity Hammer
+   07:47  <- JOUEUR_156    Gravity Hammer
 C. NON-ARMES — les cas qui font tomber la table s ils sont faux
-   000d5950 05:05  VitaminA1688 -> JAVIERLOLITO540   ASSASSINAT AU GRAVITY HAMMER (tag 45975ea4)
-   000d5950 05:44  aldusbroncus -> LORD PEINX13      GRENADE COLLANTE (plasma/spike), tag 0000d627
-   000d5950 08:22  IKE ILYA     -> whiteknight2519   MORT SANS ARME : chute / environnement (00403594)
+   000d5950 05:05  joueur_362 -> JOUEUR_156   ASSASSINAT AU GRAVITY HAMMER (tag 45975ea4)
+   000d5950 05:44  joueur_389 -> JOUEUR_731      GRENADE COLLANTE (plasma/spike), tag 0000d627
+   000d5950 08:22  JOUEUR_417     -> joueur_283   MORT SANS ARME : chute / environnement (00403594)
    9b191a7f 09:59                                    idem, mort sans arme (tag 00403594)
-   000d5950 03:58  JAVIERLOLITO540 -> VitaminA1688   MELEE (tag 2ff92041, 2e effet de melee)
+   000d5950 03:58  JOUEUR_156 -> joueur_362   MELEE (tag 2ff92041, 2e effet de melee)
    9b191a7f 02:36 / 03:06 / 06:09 / 08:55            MELEE (tag 2ff92041)
-   9b191a7f 04:49  xSONNYX117 -> Madina97294         NEEDLER (tag 0000d57f, AttachedDamage)
-   9b191a7f 02:56  RaiiZeNBack -> LockeH2 YT         FUEL ROD SPNKr (tag d7314bef)
+   9b191a7f 04:49  joueur_1002 -> joueur_117         NEEDLER (tag 0000d57f, AttachedDamage)
+   9b191a7f 02:56  joueur_1033 -> joueur_1269         FUEL ROD SPNKr (tag d7314bef)
 D. PRECISION DES PREDICTIONS EN ATTENTE DE 7ter.38
    9b191a7f 03:16 / 06:18 / 06:36 (morts de JGtm)    l arme de precision est un BR75
 ```
@@ -3825,30 +3825,30 @@ quatre, ce qui est coherent avec le biais temporel ci-dessus. L annonce correcte
 **le decodage de l arme est etabli, et son NOMMAGE l est aussi ; la COUVERTURE ne l est pas.**
 
 **(8) PREDICTIONS FALSIFIABLES POSEES PAR LA VERIFICATION, AVANT TOUTE REPONSE.**
-Bijections : `000d5950` 0=whiteknight2519 1=JAVIERLOLITO540 2=JGtm 3=LORD PEINX13 4=IKE ILYA
-5=Akatsuki fire17 6=aldusbroncus 7=VitaminA1688 ; `9b191a7f` bijection de 7ter.37.
+Bijections : `000d5950` 0=joueur_283 1=JOUEUR_156 2=JGtm 3=JOUEUR_731 4=JOUEUR_417
+5=joueur_700 fire17 6=joueur_389 7=joueur_362 ; `9b191a7f` bijection de 7ter.37.
 ```
 P1 — KILLS EXISTANT UNIQUEMENT GRACE AU CHANTIER 7ter.40 (n ont servi a rien)
-  000d5950 00:58  IKE ILYA        -> whiteknight2519   M41 SPNKr
-  000d5950 01:08  IKE ILYA        -> VitaminA1688      M41 SPNKr
-  000d5950 04:57  JAVIERLOLITO540 -> whiteknight2519   DISRUPTOR   [tag 7fe3cedc]
-  000d5950 05:27  IKE ILYA        -> VitaminA1688      Gravity Hammer
-  000d5950 06:34  whiteknight2519 -> JAVIERLOLITO540   Sentinel Beam
-  000d5950 06:57  VitaminA1688    -> aldusbroncus      Sentinel Beam [HeadshotMultiplier]
-  9b191a7f 06:27  xSONNYX117      -> Madina97294       MA40 AR
-  9b191a7f 07:31  Duke748biposto  -> Madina97294       BR75 [Headshot]
-  9b191a7f 08:18  RaiiZeNBack     -> Madina97294       BR75 [Headshot]
+  000d5950 00:58  JOUEUR_417        -> joueur_283   M41 SPNKr
+  000d5950 01:08  JOUEUR_417        -> joueur_362      M41 SPNKr
+  000d5950 04:57  JOUEUR_156 -> joueur_283   DISRUPTOR   [tag 7fe3cedc]
+  000d5950 05:27  JOUEUR_417        -> joueur_362      Gravity Hammer
+  000d5950 06:34  joueur_283 -> JOUEUR_156   Sentinel Beam
+  000d5950 06:57  joueur_362    -> joueur_389      Sentinel Beam [HeadshotMultiplier]
+  9b191a7f 06:27  joueur_1002      -> joueur_117       MA40 AR
+  9b191a7f 07:31  joueur_1420  -> joueur_117       BR75 [Headshot]
+  9b191a7f 08:18  joueur_1033     -> joueur_117       BR75 [Headshot]
 P2 — LE TEST DECISIF << le tag n est pas un proxy de tueur >>
-  9b191a7f 07:14  xSONNYX117 -> Madina97294  tag 5eaa815c  PREDIT : FUEL ROD SPNKr
+  9b191a7f 07:14  joueur_1002 -> joueur_117  tag 5eaa815c  PREDIT : FUEL ROD SPNKr
   (les 8 autres occurrences de ce tag sont des kills de JGtm)
 P3 — L ARBITRATION `gggl` CONTRE `weap`, non declaree
-  000d5950 05:44  aldusbroncus -> LORD PEINX13  tag 0000d627, cat AttachedDamage
+  000d5950 05:44  joueur_389 -> JOUEUR_731  tag 0000d627, cat AttachedDamage
     lecture A (precedence gggl) : GRENADE COLLANTE   lecture B (chaine weap) : PLASMA PISTOL
 P4 — LES RANGS `gggl` NON NOMMES
-  000d5950 07:00  IKE ILYA    -> LORD PEINX13  tag c8681ecf (rang 6)  PREDIT : GRENADE
-  9b191a7f 08:39  RaiiZeNBack -> Madina97294   tag 59255106 (rang 4)  PREDIT : GRENADE
+  000d5950 07:00  JOUEUR_417    -> JOUEUR_731  tag c8681ecf (rang 6)  PREDIT : GRENADE
+  9b191a7f 08:39  joueur_1033 -> joueur_117   tag 59255106 (rang 4)  PREDIT : GRENADE
 P5 — LE SEUL TAG NON RESOLU
-  000d5950 02:21  Akatsuki fire17 -> VitaminA1688  tag 5e389b5d
+  000d5950 02:21  joueur_700 fire17 -> joueur_362  tag 5e389b5d
   PREDIT : une arme ABSENTE du catalogue (weap 2e4faab6 / e9e7ff79, hlmt 95b23ee5)
 P6 — LE 15e KILL CONTESTE
   9b191a7f 08:31  decode victime=2 tueur=2 MAIS tag 5eaa815c = FUEL ROD
@@ -4015,10 +4015,10 @@ bloqueur n1 annonce en 7ter.40 (10) n est pas universel, il etait propre aux deu
 
 **(4) LE ROSTER EST RESOLU SANS AMBIGUITE SUR LES DEUX FILMS.**
 ```
-78919882  0=JGtm 1=Chocoboflor 2=Zeus Herd 3=Senor Pepper 4=skaiwoka 5=Only1kenobi1701
-          6=IZindle 7=MassimilianoAR                  89 vs 56 (x1.59), mediane 1
-fccc61cd  0=JGtm 1=LADY95SOPH 2=LORD83DAN 3=HizaroMne4262 4=topgunx10 5=Just1nBurn3y
-          6=FireKoreT7 7=Madina97294                  82 vs 60 (x1.37), mediane 1
+78919882  0=JGtm 1=joueur_165 2=joueur_1534 3=joueur_1040 4=joueur_1037 5=joueur_1038
+          6=joueur_1014 7=joueur_1039                  89 vs 56 (x1.59), mediane 1
+fccc61cd  0=JGtm 1=JOUEUR_1031 2=JOUEUR_1032 3=joueur_719 4=joueur_1015 5=joueur_593
+          6=joueur_1022 7=joueur_117                  82 vs 60 (x1.37), mediane 1
 ```
 Enumeration exhaustive des 8! = 40 320 permutations. La mediane a 1 dit que le score est du bruit
 pour une permutation quelconque. **Reserve a dire** : le 2e n est pas negligeable (56 et 60) parce
@@ -4058,10 +4058,10 @@ c. LE BOT. fccc61cd compte 97 kills pour 96 morts au feed, et 8 gamertags seulem
    l API declare NEUF participants dont un bot `bid(7.0)` credite de 1 kill / 2 morts. Le decodeur
    produit EXACTEMENT trois dead-states biped portant un indice 8 (hors roster, donc exclus des
    gates) :
-      06:29  indice 2 (LORD83DAN) tue l indice 8   Gravity Hammer
-             -> le feed a bien un KILL de LORD83DAN a 06:29 SANS mort en face
-      08:49  l indice 8 tue l indice 3 (HizaroMne4262)  Shock Rifle [Headshot]
-             -> le feed a bien une MORT de HizaroMne4262 a 08:49 SANS kill en face
+      06:29  indice 2 (JOUEUR_1032) tue l indice 8   Gravity Hammer
+             -> le feed a bien un KILL de JOUEUR_1032 a 06:29 SANS mort en face
+      08:49  l indice 8 tue l indice 3 (joueur_719)  Shock Rifle [Headshot]
+             -> le feed a bien une MORT de joueur_719 a 08:49 SANS kill en face
       09:33  indice 2 tue l indice 8   DEGAT GLOBAL (chute/environnement)
              -> apres la derniere ligne du feed (09:26) : hors match
    Soit 1 kill et 2 morts pour l indice 8 : **la ligne exacte du bot dans l API**. Trois orphelins
@@ -4122,7 +4122,7 @@ JGtm sur le Fiesta.
   texte d `evtl` et la table de noms. **Il ne DECODE rien** — deliberement, pour qu aucune logique
   ne soit dupliquee et qu aucune divergence silencieuse avec la passe de reference ne soit possible.
   Controle : il retrouve exactement le 89/99 et le 82/95 d `evtl`.
-- **PIEGE : UN GAMERTAG CONTIENT DES ESPACES** (<< Zeus Herd >>, << Senor Pepper >>). Decouper la
+- **PIEGE : UN GAMERTAG CONTIENT DES ESPACES** (<< joueur_1534 >>, << joueur_1040 >>). Decouper la
   ligne `bijection indice -> joueur` sur les blancs perd la moitie des noms et fait tomber
   l appariement de **89 a 47 sur 99** sans aucun message d erreur. Tout parseur de roster doit
   decouper sur les marqueurs `<chiffre>=`. Corrige.
@@ -4185,8 +4185,8 @@ d un join decale est d environ 3%.
 enumerees par un scoreur independant retrouvent la meilleure bijection a l identique sur les
 deux films. La reserve de 7ter.42 (<< une transposition de deux joueurs qui ne se tuent jamais
 preserve la quasi-totalite des couples >>) est FAUSSE sur ses deux moities : les joueurs
-echanges se tuent (5 couples au feed pour Senor Pepper <-> skaiwoka, 2 pour LORD83DAN <->
-topgunx10), et la transposition perd 37% puis 27% des couples. Le mecanisme reel est mesure :
+echanges se tuent (5 couples au feed pour joueur_1040 <-> joueur_1037, 2 pour JOUEUR_1032 <->
+joueur_1015), et la transposition perd 37% puis 27% des couples. Le mecanisme reel est mesure :
 le score du rang 2 vaut EXACTEMENT le plancher mecanique, soit les couples justes n impliquant
 aucun des deux joueurs echanges — 89-33 = 56 et 82-22 = 60, valeurs exactes des rangs 2. La
 transposition recupere donc 0 des 33 couples contestes et 0 des 22. L ecart discriminant n est
@@ -4235,17 +4235,17 @@ tranchees en mode Theater. Protocole : le decodeur avait publie ses etiquettes A
 
 ```
 #  film      temps  ligne                                 ETIQUETTE PUBLIEE          REPONSE THEATER              verdict
-1  78919882  09:35  JGtm -> Zeus Herd                     M41 SPNKr                  lance-roquettes M41 SPNKr    JUSTE
-          +  09:44  JGtm -> IZindle                       (meme tag d468178e)        idem                         JUSTE
-          +  09:54  JGtm -> Only1kenobi1701               (meme tag d468178e)        idem                         JUSTE
-2  78919882  02:35  Only1kenobi1701 -> JGtm               GRENADE gggl rang 6        GRENADE PLASMA collante      JUSTE
+1  78919882  09:35  JGtm -> joueur_1534                     M41 SPNKr                  lance-roquettes M41 SPNKr    JUSTE
+          +  09:44  JGtm -> joueur_1014                       (meme tag d468178e)        idem                         JUSTE
+          +  09:54  JGtm -> joueur_1038               (meme tag d468178e)        idem                         JUSTE
+2  78919882  02:35  joueur_1038 -> JGtm               GRENADE gggl rang 6        GRENADE PLASMA collante      JUSTE
                                                           [REPONSE CORRIGEE EN 7ter.47ter : c est une grenade
                                                            a POINTES (Spike). L etiquette << GRENADE >> restait
                                                            juste ; c est la reference qui s est trompee.]
                                                           cat. AttachedDamage        (collante : confirme)
-3  fccc61cd  03:16  JGtm -> Just1nBurn3y                  NON RESOLU (0d203522)      BARIL EXPLOSIF               ABSTENTION JUSTE
-4  fccc61cd  02:09  HizaroMne4262 -> JGtm                 NON RESOLU (00426796)      projectile de GUNGOOSE       ABSTENTION JUSTE
-5  fccc61cd  04:53  HizaroMne4262 -> FireKoreT7           Disruptor / Shock Rifle /  DISRUPTOR, effet             JUSTE
+3  fccc61cd  03:16  JGtm -> joueur_593                  NON RESOLU (0d203522)      BARIL EXPLOSIF               ABSTENTION JUSTE
+4  fccc61cd  02:09  joueur_719 -> JGtm                 NON RESOLU (00426796)      projectile de GUNGOOSE       ABSTENTION JUSTE
+5  fccc61cd  04:53  joueur_719 -> joueur_1022           Disruptor / Shock Rifle /  DISRUPTOR, effet             JUSTE
                                                           Shock Rifle (Ranked)       << reaction en chaine >>     (leve)
                                                           cat. ChainedProjectile
 ```
@@ -4275,7 +4275,7 @@ ou par proximite temporelle se serait trompee ; celle-ci rend la source, comme l
 COROLLAIRE MESURABLE : `0d203522` et `5e389b5d` remontent au MEME couple de weap
 (`2e4faab6` / `e9e7ff79`, classe `hlmt 95b23ee5`) — c est donc la classe des objets explosifs de
 decor. Corroboration independante : `5e389b5d` produit un AUTO-KILL sur fccc61cd
-(`08:38 LORD83DAN -> LORD83DAN`), ce qu un baril explosif fait typiquement et qu une arme de poing
+(`08:38 JOUEUR_1032 -> JOUEUR_1032`), ce qu un baril explosif fait typiquement et qu une arme de poing
 ne fait pas. La prediction P5 de 7ter.41 (<< une arme ABSENTE du catalogue >>) est donc confirmee,
 et precisee : ce n est pas une arme du tout.
 
@@ -4540,24 +4540,24 @@ DETERMINISME : `xname` et `xctl` rejoues rendent des sorties byte-identiques.
 AUCUNE ne tombe sur une ligne marquee `>>` ou `**` : les 5 tags vises ne concernent aucun kill
 ni aucune mort de JGtm. Elles restent verifiables, le POV de JGtm affichant le kill-feed global.
 ```
-P1  78919882  05:53, 06:08, 06:32 (Senor Pepper -> MassimilianoAR) et 07:56 (MassimilianoAR ->
-    Zeus Herd), tag f712c64a : ARME MONTEE SUR UN VEHICULE, classe `fixed`, chassis 0000d3dc
+P1  78919882  05:53, 06:08, 06:32 (joueur_1040 -> joueur_1039) et 07:56 (joueur_1039 ->
+    joueur_1534), tag f712c64a : ARME MONTEE SUR UN VEHICULE, classe `fixed`, chassis 0000d3dc
     (5 configurations d arme declarees pour ce chassis).
     FALSIFIEE SI le tueur est a pied avec une arme tenue en main sur l une de ces 4 morts.
-P2  78919882  02:54 et 10:31 (MassimilianoAR -> IZindle), 10:33 (MassimilianoAR -> Zeus Herd),
+P2  78919882  02:54 et 10:31 (joueur_1039 -> joueur_1014), 10:33 (joueur_1039 -> joueur_1534),
     tag 003f582d : ARME DE TOURELLE, classe `turret`, declaree par les vehi 003f00c7 et
     b857fb95, et c est un MATERIEL DIFFERENT de celui de P1.
     FALSIFIEE SI c est une arme tenue, ou si c est le meme materiel qu en P1.
-P3  fccc61cd  00:45 (LORD83DAN -> Madina97294) et 04:29 (topgunx10 -> HizaroMne4262), tag
+P3  fccc61cd  00:45 (JOUEUR_1032 -> joueur_117) et 04:29 (joueur_1015 -> joueur_719), tag
     5e389b5d : le MEME objet explosif de decor que le baril de 03:16, tue cette fois par la
     DESTRUCTION de l objet et non par l objet porte.
     FALSIFIEE SI l une des deux n est pas due a un objet explosif de decor.
-P4  78919882  01:27 (Only1kenobi1701 -> MassimilianoAR), tag 59255106 : GRENADE A CHOC
+P4  78919882  01:27 (joueur_1038 -> joueur_1039), tag 59255106 : GRENADE A CHOC
     (electrique), et non une frag, une plasma ou une collante. Au catalogue, la seule grenade
     a choc est la Dynamo Grenade.
     FALSIFIEE SI c est une grenade d un autre type.
-P5  fccc61cd  05:37 (Just1nBurn3y -> Madina97294, categorie AttachedDamage) et 02:34
-    (HizaroMne4262 -> Madina97294), tags 0000d627 et 00404748 : ce sont deux effets d une MEME
+P5  fccc61cd  05:37 (joueur_593 -> joueur_117, categorie AttachedDamage) et 02:34
+    (joueur_719 -> joueur_117), tags 0000d627 et 00404748 : ce sont deux effets d une MEME
     source, et c est une GRENADE (type 1), pas un Plasma Pistol.
     FALSIFIEE SI l une des deux est un tir de Plasma Pistol, auquel cas la precedence `gggl`
     de `labelOf` est fausse et le tag doit etre publie comme effet plasma partage.
@@ -4670,7 +4670,7 @@ ne mesure rien.
 (fccc61cd 08:38). La CLASSE est pre-connue ; seule la nuance << detruit sur place contre porte
 en main >> reste informative — et c est le seul test de R-EFFET, qui ne change aucune reponse
 et n a jamais ete confronte. Point non releve par 7ter.45 : `0d203522` a une SECONDE occurrence
-sur l AUTRE film (78919882 06:19 Chocoboflor -> IZindle), donc sur une AUTRE CARTE. C est le
+sur l AUTRE film (78919882 06:19 joueur_165 -> joueur_1014), donc sur une AUTRE CARTE. C est le
 seul test cross-carte disponible, et il est gratuit.
 
 (10) DEUX RESULTATS NEUFS SUR LES GRENADES.
@@ -5035,7 +5035,7 @@ lignes ; table des 60 tags byte-identique avant et apres l extraction). Aucun co
 la reponse, et les cas limites sont enumeres — c est la lecon de 7ter.47 (3).**
 
 ```
-P1  78919882  02:35  Only1kenobi1701 -> JGtm, tag 119861b4, `gggl` entree 3/4,
+P1  78919882  02:35  joueur_1038 -> JGtm, tag 119861b4, `gggl` entree 3/4,
     explosion `kineticbanished`.  C EST LA PREDICTION DECISIVE DE L AXE 1.
     CHOIX BINAIRE : (A) l objet colle sur JGtm est un engin BANNIS — metal rouge-orange,
     pointes / dents visibles, detonation seche qui PLANTE des pointes ;
@@ -5052,8 +5052,8 @@ P1  78919882  02:35  Only1kenobi1701 -> JGtm, tag 119861b4, `gggl` entree 3/4,
     SI la camera de mort ne montre jamais l objet (seulement le souffle) : NON DECIDABLE.
     A consigner comme tel, surtout pas comme une confirmation.
 
-P2  fccc61cd  04:29 (topgunx10 -> HizaroMne4262, tag 5e389b5d, etat 2/5, explosion `plasma`)
-    CONTRE  fccc61cd 03:16 (JGtm -> Just1nBurn3y, tag 0d203522, etat 1/5, `kineticunsc`).
+P2  fccc61cd  04:29 (joueur_1015 -> joueur_719, tag 5e389b5d, etat 2/5, explosion `plasma`)
+    CONTRE  fccc61cd 03:16 (JGtm -> joueur_593, tag 0d203522, etat 1/5, `kineticunsc`).
     C EST LA PREDICTION DECISIVE DE L AXE 2, et elle est COMPARATIVE.
     CHOIX BINAIRE : (A) ce sont DEUX PIECES DE DECOR DIFFERENTES (silhouette voisine, couleur
     et explosion differentes) ; (B) c est LE MEME objet, declenche de deux facons.
@@ -5070,7 +5070,7 @@ P2  fccc61cd  04:29 (topgunx10 -> HizaroMne4262, tag 5e389b5d, etat 2/5, explosi
     nommage par la banque d explosion qui est FAUX. C est une falsification PARTIELLE, pas
     totale, et les deux verdicts doivent etre notes separement.
 
-P3  fccc61cd  02:34  HizaroMne4262 -> Madina97294, tag 00404748, `gggl` entree 1/4,
+P3  fccc61cd  02:34  joueur_719 -> joueur_117, tag 00404748, `gggl` entree 1/4,
     categorie film `None`.  Teste si une ENTREE regroupe bien plusieurs `jpt!` d UNE grenade :
     05:37 (0000d627, deja ferme en Theater comme PLASMA) est un AUTRE tag de la MEME entree.
     CHOIX BINAIRE : (A) c est la meme grenade qu a 05:37 (plasma) ; (B) c est une autre.
@@ -5082,7 +5082,7 @@ P3  fccc61cd  02:34  HizaroMne4262 -> Madina97294, tag 00404748, `gggl` entree 1
     et non par le tag ; si elle tombe, c est la lecture du champ de categorie qui est en
     cause, pas le nommage de l entree. Deux verdicts distincts, ne pas les fusionner.
 
-P4  78919882  06:19  Chocoboflor -> IZindle, tag 0d203522 — LE MEME TAG qu a fccc61cd 03:16,
+P4  78919882  06:19  joueur_165 -> joueur_1014, tag 0d203522 — LE MEME TAG qu a fccc61cd 03:16,
     sur une AUTRE CARTE (High Ground contre Launch Site). Sous le modele re-derive, le tag
     nomme un OBJET DE BAC A SABLE GLOBAL, pas une entite propre a un niveau.
     APPUI DEJA MESURE, SANS UTILISATEUR : les deux modeles jumeaux et leurs 4 `weap` sont
@@ -5130,7 +5130,7 @@ Sorties : `.ai/V7.5/dumps/rd_table_4films.txt`, `.ai/V7.5/dumps/rd_pont_sonore_c
 ### 7ter.47ter LE DECODEUR CORRIGE LA VERITE TERRAIN — l entree 3 de `gggl` est la grenade a POINTES (2026-07-26)
 
 **CORRECTION D UNE ENTREE DE VERITE TERRAIN.** 7ter.44 (4) enregistrait, pour
-`78919882 02:35 Only1kenobi1701 -> JGtm` (tag `119861b4`), la reponse Theater
+`78919882 02:35 joueur_1038 -> JGtm` (tag `119861b4`), la reponse Theater
 << GRENADE PLASMA collante >>. **Elle etait FAUSSE.** Apres re-examen a la demande du decodeur,
 l utilisateur corrige : *<< c est une grenade directionnelle (Spike Grenade) qui m a tue, j avais
 mal regarde >>*. Les deux grenades collent, et se confondent a l oeil.
@@ -5349,8 +5349,8 @@ d archive, pas une question. Reste P2, dont la branche (B) nomme le mauvais adve
 
 ```
 Q1  film fccc61cd (Super Fiesta, Launch Site) — COMPARATIVE, LA PLUS DISCRIMINANTE.
-    03:16  JGtm -> Just1nBurn3y      tag 0d203522   etat 1   explosion `kineticunsc`
-    04:29  topgunx10 -> HizaroMne4262 tag 5e389b5d  etat 2   explosion `plasma`
+    03:16  JGtm -> joueur_593      tag 0d203522   etat 1   explosion `kineticunsc`
+    04:29  joueur_1015 -> joueur_719 tag 5e389b5d  etat 2   explosion `plasma`
     CHOIX BINAIRE, en regardant UNIQUEMENT L OBJET AVANT QU IL N EXPLOSE :
       (A) DEUX ACCESSOIRES DIFFERENTS (silhouette et/ou couleur differentes)
       (B) LE MEME ACCESSOIRE aux deux moments
@@ -5372,7 +5372,7 @@ Q1  film fccc61cd (Super Fiesta, Launch Site) — COMPARATIVE, LA PLUS DISCRIMIN
     et c est le NOMMAGE par la banque d explosion qui est faux.
 
 Q2  film fccc61cd, 03:16 — INDEPENDANTE DE Q1, et elle coute une seule observation.
-    AVEC QUELLE ARME JGtm fait-il exploser l objet que tenait Just1nBurn3y ?
+    AVEC QUELLE ARME JGtm fait-il exploser l objet que tenait joueur_593 ?
       (A) une arme balistique UNSC (MA40, BR75, Sidekick, Bandit, Commando...)
       (B) une arme plasma / choc / hardlight (Plasma Pistol, Disruptor, Pulse Carbine,
           Ravager, Sentinel Beam, Heatwave...)
@@ -5828,8 +5828,8 @@ je le dis plutot que de forcer**, le catalogue de medailles a ete lu depuis l ex
 **(B3) KONG EST LA, HORODATEE, AVEC SON JOUEUR.** `MedalType = 101` -> `Kong`
 (`medal_name_id 3546244406`), **6 occurrences** :
 ```
-000d5950 02:21 Akatsuki fire17 | 78919882 06:19 et 09:18 Chocoboflor | 78919882 09:40 Only1kenobi1701
-fccc61cd 00:45 LORD83DAN       | fccc61cd 04:29 topgunx10
+000d5950 02:21 joueur_700 fire17 | 78919882 06:19 et 09:18 joueur_165 | 78919882 09:40 joueur_1038
+fccc61cd 00:45 JOUEUR_1032       | fccc61cd 04:29 joueur_1015
 ```
 
 **(B4) L EN-TETE DU FILM PORTE LA TABLE DES MEDAILLES.** `chunk_00` (1 973 120 o, identique en
@@ -6146,8 +6146,8 @@ explosif LANCE, et l axe LANCE / DETRUIT de R-EFFET recoit ici sa premiere corro
 >>*. La seconde moitie est **FAUSSE**, et elle est contredite par des lignes deja au journal :
 ```
 tag 0d203522
-  78919882 06:19  Chocoboflor -> IZindle       medaille KONG presente   =>  objet LANCE
-  fccc61cd 03:16  JGtm -> Just1nBurn3y         PAS de Kong ; verite terrain 7ter.44 :
+  78919882 06:19  joueur_165 -> joueur_1014       medaille KONG presente   =>  objet LANCE
+  fccc61cd 03:16  JGtm -> joueur_593         PAS de Kong ; verite terrain 7ter.44 :
                                                << il portait un baril et en TIRANT dessus avec
                                                   mon fusil traqueur, ca l a tue >>  =>  TIRE
 ```
@@ -6296,12 +6296,12 @@ medaille Kong comme ancre.** Un des quatre points d'appui n'est pas une observat
 **R2 — l'axe LANCE / DETRUIT : deja refute en 7ter.52bis, ici CONFIRME par mesure independante,
 et la derniere echappatoire est fermee.** Mode `gvkong`, une ligne par occurrence :
 ```
-000d5950 02:21 Akatsuki fire17  -> VitaminA1688    | kills du porteur a +-2.5 s = 1 | 5e389b5d
-78919882 06:19 Chocoboflor      -> IZindle         | kills du porteur a +-2.5 s = 1 | 0d203522
-78919882 09:18 Chocoboflor      -> IZindle         | kills du porteur a +-2.5 s = 1 | non atteinte
-78919882 09:40 Only1kenobi1701  -> MassimilianoAR  | kills du porteur a +-2.5 s = 1 | non atteinte
-fccc61cd 00:45 LORD83DAN        -> Madina97294     | kills du porteur a +-2.5 s = 1 | 5e389b5d
-fccc61cd 04:29 topgunx10        -> HizaroMne4262   | kills du porteur a +-2.5 s = 1 | 5e389b5d
+000d5950 02:21 joueur_700 fire17  -> joueur_362    | kills du porteur a +-2.5 s = 1 | 5e389b5d
+78919882 06:19 joueur_165      -> joueur_1014         | kills du porteur a +-2.5 s = 1 | 0d203522
+78919882 09:18 joueur_165      -> joueur_1014         | kills du porteur a +-2.5 s = 1 | non atteinte
+78919882 09:40 joueur_1038  -> joueur_1039  | kills du porteur a +-2.5 s = 1 | non atteinte
+fccc61cd 00:45 JOUEUR_1032        -> joueur_117     | kills du porteur a +-2.5 s = 1 | 5e389b5d
+fccc61cd 04:29 joueur_1015        -> joueur_719   | kills du porteur a +-2.5 s = 1 | 5e389b5d
 ```
 **Chaque Kong a EXACTEMENT UN kill candidat dans la fenetre** : l'objection << medaille mal
 apparie dans un multikill >> tombe. Le tag `0d203522` porte donc une medaille Kong (objet LANCE)
@@ -6365,8 +6365,8 @@ SONDE C   JUSTE, et c'est le resultat de la journee. Le correctif est etendu aux
 **BILAN TERRAIN INCHANGE** : 23 confrontations Theater, zero etiquette publiee fausse.
 
 **(8) LA SEULE LIGNE DOUTEUSE A SOUMETTRE.** High Ground, Quick Play, 2026-07-23 21:14, film
-`78919882`. **A 06:19, le kill de Chocoboflor sur IZindle : l'objet explosif a-t-il ete LANCE, ou
-TIRE DESSUS alors que IZindle le portait ?** (meme question a 09:18, meme couple.) Ce kill porte la
+`78919882`. **A 06:19, le kill de joueur_165 sur joueur_1014 : l'objet explosif a-t-il ete LANCE, ou
+TIRE DESSUS alors que joueur_1014 le portait ?** (meme question a 09:18, meme couple.) Ce kill porte la
 medaille Kong ET le tag `0d203522`, celui que 7ter.44 avait ferme en Theater comme << il portait un
 baril, j'ai tire dessus >>. LANCE => la refutation de l'axe est definitive ; TIRE DESSUS => c'est
 le maillon medaille -> kill qu'il faut rouvrir, malgre un unique candidat dans la fenetre.
@@ -6392,9 +6392,9 @@ agent. Toutes les mesures ci-dessus ont ete faites sur un binaire construit d'un
 
 **LA REPONSE.** Question unique de 7ter.53 (5), tranchee en Theater :
 ```
-78919882  06:19  Chocoboflor -> IZindle   tag 0d203522   medaille KONG
+78919882  06:19  joueur_165 -> joueur_1014   tag 0d203522   medaille KONG
   reponse : << c est bien un LANCER d un baril CINETIQUE >>
-fccc61cd  03:16  JGtm -> Just1nBurn3y     tag 0d203522   pas de Kong
+fccc61cd  03:16  JGtm -> joueur_593     tag 0d203522   pas de Kong
   reponse (7ter.44) : << il portait un baril et en TIRANT dessus avec mon fusil traqueur >>
 ```
 **Le meme tag couvre les deux gestes. L axe LANCE / DETRUIT est mort, definitivement**, et sur la
@@ -6448,7 +6448,7 @@ elle, valable en general).
 
 **QUESTION UNIQUE POSEE A L UTILISATEUR** (film `fccc61cd`, 24 juillet 19h40, Launch Site, Super
 Fiesta:Slayer) :
-> A **03:16**, le baril que Just1nBurn3y portait en main etait-il **le meme accessoire** que celui
+> A **03:16**, le baril que joueur_593 portait en main etait-il **le meme accessoire** que celui
 > lance a 06:19 sur High Ground (cinetique), ou un accessoire **visuellement different** ?
 > Autrement dit : y a-t-il plusieurs barils explosifs distincts dans le jeu (un cinetique UNSC et
 > un autre), et lequel etait la ?
@@ -7551,17 +7551,17 @@ Deux familles nettes, et aucune n est du bruit uniforme :
 QUATRE non atteints avec leur arme reelle. Le scan les recupere tous les quatre :
 ```
 temps  ligne du feed                   tag du scan   NOM (table 7ter.39)   THEATER (7ter.37)
-01:00  JGtm -> xSONNYX117              5eaa815c      Fuel Rod SPNKr        Fuel Rod    JUSTE
-03:41  JGtm -> Duke748biposto          0000b29c      precision BR75/Bandit BR75        JUSTE
+01:00  JGtm -> joueur_1002              5eaa815c      Fuel Rod SPNKr        Fuel Rod    JUSTE
+03:41  JGtm -> joueur_1420          0000b29c      precision BR75/Bandit BR75        JUSTE
        (categorie decodee = 1 Headshot, a un AUTRE offset comp+0x0c)
-04:50  JGtm -> RaiiZeNBack             5eaa815c      Fuel Rod SPNKr        Fuel Rod    JUSTE
-05:12  JGtm -> Duke748biposto          5eaa815c      Fuel Rod SPNKr        Fuel Rod    JUSTE
+04:50  JGtm -> joueur_1033             5eaa815c      Fuel Rod SPNKr        Fuel Rod    JUSTE
+05:12  JGtm -> joueur_1420          5eaa815c      Fuel Rod SPNKr        Fuel Rod    JUSTE
 ```
 **4/4.** Ces quatre lignes n ont servi a RIEN dans la construction du scan (ni le catalogue
 `jpt!`, ni les quatre tests, ni la bijection ne les ont jamais vues), et la reponse etait
 publiee au journal depuis 7ter.37. Face a la baseline triviale << toujours Fuel Rod SPNKr >>
 (10/14 = 71.4 %), la lecture par tag vaut desormais **14/14 = 100 %**.
-Le 15e kill conteste (`08:31 JGtm -> xSONNYX117`, present au feed, absent de la liste Theater)
+Le 15e kill conteste (`08:31 JGtm -> joueur_1002`, present au feed, absent de la liste Theater)
 est lui aussi decode, en `5eaa815c` (Fuel Rod). Il ne tranche rien, mais il ne contredit rien.
 
 ### (C8) NON-REGRESSION SUR LA VERITE TERRAIN : 25 / 25 IDENTIQUES, ZERO CONTRADICTION
@@ -7589,15 +7589,15 @@ valeurs seulement sont neuves pour leur film : `0c64b43f` (78919882), `7fe3cedc`
 mais deja produit par la marche sur 000d5950 et deja au journal) et `8c1a1ef4` (fccc61cd, une
 occurrence, aucune anterieure au journal). **`8c1a1ef4` est le SEUL tag reellement inedit
 introduit par ce chantier** : non contredit, mais non corrobore — a soumettre au mode Theater
-avant d en publier un nom (`fccc61cd 08:55 Madina97294 -> LADY95SOPH`, categorie 2).
+avant d en publier un nom (`fccc61cd 08:55 joueur_117 -> JOUEUR_1031`, categorie 2).
 
 ### (C9) LE RESIDU : 9 MORTS, ET ELLES SONT NOMMEES
 
 ```
-000d5950  1   01:12 aldusbroncus -> LORD PEINX13
-9b191a7f  3   08:31 xSONNYX117 -> JGtm | 09:05 JGtm -> Chocoboflor | 09:13 xSONNYX117 -> Madina97294
-78919882  2   01:44 MassimilianoAR -> Senor Pepper | 09:18 IZindle -> Chocoboflor
-fccc61cd  3   01:25 HizaroMne4262 -> JGtm | 03:37 topgunx10 -> HizaroMne4262 | 08:38 JGtm -> LORD83DAN
+000d5950  1   01:12 joueur_389 -> JOUEUR_731
+9b191a7f  3   08:31 joueur_1002 -> JGtm | 09:05 JGtm -> joueur_165 | 09:13 joueur_1002 -> joueur_117
+78919882  2   01:44 joueur_1039 -> joueur_1040 | 09:18 joueur_1014 -> joueur_165
+fccc61cd  3   01:25 joueur_719 -> JGtm | 03:37 joueur_1015 -> joueur_719 | 08:38 JGtm -> JOUEUR_1032
 ```
 **8 des 9 portent, DANS LEUR FENETRE, un candidat dont la VICTIME est la bonne et dont le champ
 TUEUR vaut la victime elle-meme.** Une seule (`9b191a7f 09:05`) n a strictement rien.
@@ -8090,18 +8090,18 @@ catalogue et par le decalage du bloc victime/tueur/categorie ; le reste n est qu
 **CINQ SUR CINQ EN THEATER.** Les 5 morts non atteintes des deux films RECENTS ont ete soumises a
 l utilisateur avec, pour chacune, ce que dit le kill-feed CONTRE ce que dit le dead-state. Reponses :
 ```
-fccc61cd 01:25  feed : HizaroMne4262 tue JGtm   |  dead-state : JGtm -> JGtm, M41 SPNKr
-   << tout a fait exact, le kill feed attribue le kill a HizaroMne4262 alors que c est MOI qui me
+fccc61cd 01:25  feed : joueur_719 tue JGtm   |  dead-state : JGtm -> JGtm, M41 SPNKr
+   << tout a fait exact, le kill feed attribue le kill a joueur_719 alors que c est MOI qui me
       tue en tirant une roquette sur un mur (maladresse) >>                          CONFIRME
-fccc61cd 03:37  feed : topgunx10 tue HizaroMne4262 | dead-state : HizaroMne4262 -> lui-meme, Ravager
+fccc61cd 03:37  feed : joueur_1015 tue joueur_719 | dead-state : joueur_719 -> lui-meme, Ravager
    << un peu plus confus comme bataille mais ca m a l air exact aussi >>             CONFIRME
-fccc61cd 08:38  feed : JGtm tue LORD83DAN       |  dead-state : LORD83DAN -> lui-meme, baril lance
+fccc61cd 08:38  feed : JGtm tue JOUEUR_1032       |  dead-state : JOUEUR_1032 -> lui-meme, baril lance
    << tout a fait exact >>                                                           CONFIRME
-78919882 01:44  feed : MassimilianoAR tue Senor Pepper | dead-state : Senor Pepper -> lui-meme
-   << Senor Pepper a tire trop pres au roquette et a tue Massimiliano EN MEME TEMPS que lui-meme
+78919882 01:44  feed : joueur_1039 tue joueur_1040 | dead-state : joueur_1040 -> lui-meme
+   << joueur_1040 a tire trop pres au roquette et a tue Massimiliano EN MEME TEMPS que lui-meme
       avec l explosion >>                                                            CONFIRME
-78919882 09:18  feed : IZindle tue Chocoboflor  |  dead-state : Chocoboflor -> lui-meme
-   << meme chose avec le baril, c est Chocoboflor qui lance trop pres >>              CONFIRME
+78919882 09:18  feed : joueur_1014 tue joueur_165  |  dead-state : joueur_165 -> lui-meme
+   << meme chose avec le baril, c est joueur_165 qui lance trop pres >>              CONFIRME
 ```
 
 **CE QUE CELA ETABLIT, ET C EST PLUS QU UN GAIN DE COUVERTURE.**
@@ -8155,8 +8155,8 @@ feed), concordance prealable (25 confrontations), et contradiction posee comme Q
 non atteintes ont ete soumises. Trois confirment le motif auto-inflige (8/8 desormais). **La
 quatrieme dit tout autre chose :**
 ```
-9b191a7f 09:05   notre feed reconstruit : << JGtm tue Chocoboflor >>   scan : AUCUN candidat
-   reponse : << alors la c est bizarre, Chocoboflor ne meurt pas a ce moment-la.
+9b191a7f 09:05   notre feed reconstruit : << JGtm tue joueur_165 >>   scan : AUCUN candidat
+   reponse : << alors la c est bizarre, joueur_165 ne meurt pas a ce moment-la.
                Par contre je tue un BOT, 343 Aloysius, au Fuel Rod SPNKr >>
 ```
 
@@ -8169,7 +8169,7 @@ mesuree et chacun de ses maillons est deja au journal :
 3. `feedPairs` reconstruit un couple quand un horodatage ne porte QU UN event kill :
    il va alors chercher la victime chez le voisin suivant qui ne porte qu un death    [7ter.52 A2]
 4. => le kill de JGtm sur le bot est un kill ORPHELIN ; l appariement lui colle la
-   victime du voisin, Chocoboflor, qui n est pas morte a cet instant.
+   victime du voisin, joueur_165, qui n est pas morte a cet instant.
 ```
 **Ce couple est une FABRICATION de notre heuristique, pas une ligne du jeu.** 7ter.52 (A2) avait
 deja mesure 64 couples reconstruits par voisinage sur 372, dont 5 non atteints — **celui-ci en est
@@ -8635,7 +8635,7 @@ construction quand la couverture est complete. `TagOutOfCatalogueScan` est publi
 alertes**, et un test le verrouille.
 
 **PIEGE ATTRAPE EN COURS DE MESURE** : sans exclusion du couple FANTOME, la sonde rend **6** sur
-`9b191a7f` — six candidats hors catalogue tombant sur `09:05 JGtm -> Chocoboflor`, le couple que
+`9b191a7f` — six candidats hors catalogue tombant sur `09:05 JGtm -> joueur_165`, le couple que
 7ter.66 a etabli comme FABRIQUE. Alerter sur une mort qui n existe pas aurait ete exactement la
 faute que 7ter.66 avait corrigee. Le fantome est desormais compte comme couvert.
 
@@ -9359,7 +9359,7 @@ assistant) est le piege et qu il ne doit exister qu a un seul endroit.
 #### (1) CE QUE 7ter.24ter PUBLIAIT, ET POURQUOI LES DEUX CHIFFRES SONT FAUX
 
 Elle publiait : << **31 assists decodes contre 30 API** >> et, comme ancre par joueur,
-<< **RaiiZeNBack 3 = 3** >> (plus << JGtm 1 = 1 >>), sur `9b191a7f`.
+<< **joueur_1033 3 = 3** >> (plus << JGtm 1 = 1 >>), sur `9b191a7f`.
 
 **LE 31 COMPTAIT DES FAUX POSITIFS.** Le pipeline de l epoque decodait **99 kills pour 87 morts
 reelles** — la section le dit elle-meme (<< les 12 kills decodes en trop >>) sans en tirer la
@@ -9547,11 +9547,11 @@ fccc61cd              1                         0
 Et les deux cas sont **le MEME enregistrement lu DEUX FOIS**, a deux positions de bit distantes de
 **15**, dans le MEME paquet, au MEME instant, champs **identiques** :
 ```
-9b191a7f  t=101657  victime=xSONNYX117  feed=JGtm   chunk 6  pidx 204
-   [0] bit=365 chain=12  v=3 k=2 a=5(Chocoboflor)  kPct=77  aPct=22
-   [1] bit=380 chain=12  v=3 k=2 a=5(Chocoboflor)  kPct=77  aPct=22
+9b191a7f  t=101657  victime=joueur_1002  feed=JGtm   chunk 6  pidx 204
+   [0] bit=365 chain=12  v=3 k=2 a=5(joueur_165)  kPct=77  aPct=22
+   [1] bit=380 chain=12  v=3 k=2 a=5(joueur_165)  kPct=77  aPct=22
 
-fccc61cd  t=529644  victime=JGtm  feed=LADY95SOPH   chunk 27  pidx 1152
+fccc61cd  t=529644  victime=JGtm  feed=JOUEUR_1031   chunk 27  pidx 1152
    [0] bit=99  chain=12  v=0 k=1 a=-1  kPct=100  aPct=20
    [1] bit=114 chain=12  v=0 k=1 a=-1  kPct=100  aPct=20
 ```
@@ -9579,14 +9579,14 @@ structurellement credibles (chaine 12 **et** parts de degats dans une plage plau
 sont des faux de la porte chaine-3, avec des parts a neuf chiffres). **Les trois ont le BOT comme
 TUEUR** — et le bot de `9b191a7f`, `bid(39.0)`, a exactement **3 kills a l API** :
 ```
-ms=346875  v=1(Madina97294)  k=8(343 Aloysius [bot])  a=3(xSONNYX117)     kPct=66  aPct=33  (somme 99)
-ms=483679  v=2(JGtm)         k=8(343 Aloysius [bot])  a=0(RaiiZeNBack)    kPct=1   aPct=76
-ms=504984  v=5(Chocoboflor)  k=8(343 Aloysius [bot])  a=-1                kPct=100 aPct=70  (constante du film)
+ms=346875  v=1(joueur_117)  k=8(343 Aloysius [bot])  a=3(joueur_1002)     kPct=66  aPct=33  (somme 99)
+ms=483679  v=2(JGtm)         k=8(343 Aloysius [bot])  a=0(joueur_1033)    kPct=1   aPct=76
+ms=504984  v=5(joueur_165)  k=8(343 Aloysius [bot])  a=-1                kPct=100 aPct=70  (constante du film)
 ```
 Aucun des trois ne s attache, et la cause est **structurelle** : le chunk HIGHLIGHT est HUMAIN-SEUL
 (7ter.59), donc une mort infligee **PAR** un bot ne produit **aucune paire** au kill-feed. Verifie
 sur le fil : a `346875` les deux seules morts publiees a moins de 3 s sont d autres couples
-(`344860 xSONNYX117/JGtm`, `346080 LockeH2 YT/RaiiZeNBack`) ; a `483679` et `504984`, **aucune mort
+(`344860 joueur_1002/JGtm`, `346080 joueur_1269/joueur_1033`) ; a `483679` et `504984`, **aucune mort
 publiee ni aucune paire de feed a plus ou moins 3 s**.
 
 **DEUX ASSISTANCES REELLES SONT DONC LUES DANS LE FILM ET PERDUES A LA PUBLICATION.**
@@ -9703,13 +9703,13 @@ Le recouvrement est complet, mort par mort, avec un decalage de 4 a 6 ms entre l
 et celui du paquet portant le kill-event :
 
 ```
-9b191a7f  feed t=346881 (05:46) Madina97294    <- kill-event ms=346875 chunk18 pidx822 bit305 chain=12
-                                                  v=1 k=8 a=3(xSONNYX117)   kPct=66  aPct=33
+9b191a7f  feed t=346881 (05:46) joueur_117    <- kill-event ms=346875 chunk18 pidx822 bit305 chain=12
+                                                  v=1 k=8 a=3(joueur_1002)   kPct=66  aPct=33
 9b191a7f  feed t=483683 (08:03) JGtm           <- kill-event ms=483679 chunk25 pidx436 bit58  chain=12
-                                                  v=2 k=8 a=0(RaiiZeNBack)  kPct=1   aPct=76
-9b191a7f  feed t=504988 (08:24) Chocoboflor    <- kill-event ms=504984 chunk26 pidx592 bit622 chain=12
+                                                  v=2 k=8 a=0(joueur_1033)  kPct=1   aPct=76
+9b191a7f  feed t=504988 (08:24) joueur_165    <- kill-event ms=504984 chunk26 pidx592 bit622 chain=12
                                                   v=5 k=8 a=-1              kPct=100 aPct=70
-fccc61cd  feed t=529280 (08:49) HizaroMne4262  <- kill-event ms=529275 chunk27 pidx1108 bit499 chain=12
+fccc61cd  feed t=529280 (08:49) joueur_719  <- kill-event ms=529275 chunk27 pidx1108 bit499 chain=12
                                                   v=3 k=8 a=-1              kPct=99  aPct=20
 ```
 **4 appariees sur 4.** Les trois de `9b191a7f` sont les memes que celles de 7ter.77, au bit pres.
@@ -9788,16 +9788,16 @@ explicite du lot, et ces deux films n ont aucun bot, donc aucune ligne neuve.
 La reserve arithmetique de `9b191a7f` **reste ouverte, mais elle change de nature** : le plafond
 honnete vaut toujours 27 (24 nommes + 3 morts DU bot sans kill-event trouve), sauf qu il n est
 plus atteint par des lignes qu on renonce a publier. L ecart de 3 se localise en clair :
-Chocoboflor 6 pour 9, Madina97294 3 pour 5, Duke748biposto 2 pour 3.
+joueur_165 6 pour 9, joueur_117 3 pour 5, joueur_1420 2 pour 3.
 
 #### (5) UNE COHERENCE INTERNE QUE PERSONNE N A CHERCHEE, ET C EST LA MEILLEURE JAMBE DU LOT
 
 Les quatre lignes publiees, avec leur categorie (lue a `comp+0x0c`, **INDEPENDANTE du tag**) :
 ```
-9b191a7f 05:46  Madina97294    1f11df6b  VK78 Commando  Headshot        assist=xSONNYX117   66/33
-9b191a7f 08:03  JGtm           ec919da5  Needler        None            assist=RaiiZeNBack   1/76
-9b191a7f 08:24  Chocoboflor    0000d57f  Needler        AttachedDamage  assist=AUCUN        100/-
-fccc61cd 08:49  HizaroMne4262  0ff7b934  Shock Rifle    Headshot        assist=AUCUN         99/-
+9b191a7f 05:46  joueur_117    1f11df6b  VK78 Commando  Headshot        assist=joueur_1002   66/33
+9b191a7f 08:03  JGtm           ec919da5  Needler        None            assist=joueur_1033   1/76
+9b191a7f 08:24  joueur_165    0000d57f  Needler        AttachedDamage  assist=AUCUN        100/-
+fccc61cd 08:49  joueur_719  0ff7b934  Shock Rifle    Headshot        assist=AUCUN         99/-
 ```
 **DEUX TAGS DIFFERENTS NOMMENT UN NEEDLER, ET LEURS CATEGORIES SONT CELLES DE SES DEUX EFFETS** :
 `ec919da5` sort `None` (aiguilles ordinaires) et `0000d57f` sort **`AttachedDamage`** — soit
@@ -16007,7 +16007,7 @@ publiee a l utilisateur :
 ```
 
 En BTB (`marge 0`), une ligne se lit donc << a 12:03.392, quelqu un a tue quelqu un au Wraith >>,
-jamais << MiniScotsMin a tue nerdpuncher >>. En Arena/Community a marge positive, les deux noms
+jamais << joueur_728 a tue joueur_427 >>. En Arena/Community a marge positive, les deux noms
 sont publiables — c est la porte `LineByLinePublishable`, et elle est deja ecrite dans le paquet.
 
 #### (5) LES CHIFFRES DES TROIS FILMS, ET LA LISTE RENDUE
@@ -16031,13 +16031,13 @@ Detail des 7 lignes du film de controle (les seules du chantier ou tueur ET vict
 publiables ligne par ligne) :
 
 ```
-  02:54.810  MassimilianoAR -> IZindle         tourelle UNSC (AMBIGU 3 banques)  HeadshotMultiplier
-  05:53.788  Senor Pepper   -> MassimilianoAR  Ghost                             None
-  06:08.520  Senor Pepper   -> MassimilianoAR  Ghost                             None
-  06:32.111  Senor Pepper   -> MassimilianoAR  Ghost                             HeadshotMultiplier
-  07:56.193  MassimilianoAR -> Zeus Herd       Ghost                             HeadshotMultiplier
-  10:31.083  MassimilianoAR -> IZindle         tourelle UNSC (AMBIGU 3 banques)  HeadshotMultiplier
-  10:33.670  MassimilianoAR -> Zeus Herd       tourelle UNSC (AMBIGU 3 banques)  None
+  02:54.810  joueur_1039 -> joueur_1014         tourelle UNSC (AMBIGU 3 banques)  HeadshotMultiplier
+  05:53.788  joueur_1040   -> joueur_1039  Ghost                             None
+  06:08.520  joueur_1040   -> joueur_1039  Ghost                             None
+  06:32.111  joueur_1040   -> joueur_1039  Ghost                             HeadshotMultiplier
+  07:56.193  joueur_1039 -> joueur_1534       Ghost                             HeadshotMultiplier
+  10:31.083  joueur_1039 -> joueur_1014         tourelle UNSC (AMBIGU 3 banques)  HeadshotMultiplier
+  10:33.670  joueur_1039 -> joueur_1534       tourelle UNSC (AMBIGU 3 banques)  None
 ```
 
 La sequence est coherente comme RECIT (un Ghost qui tue trois fois le meme joueur, puis ce joueur
@@ -16793,8 +16793,8 @@ Le brief craignait que nos mesures par joueur comparent le joueur A du film au j
 
 ```
   cmd/tmp_rcunite gt 000d5950   (ancrage STRICT, film-seul, unique = true)
-    0 whiteknight2519   1 JAVIERLOLITO540   2 JGtm            3 LORD PEINX13
-    4 IKE ILYA          5 Akatsuki fire17   6 aldusbroncus    7 VitaminA1688
+    0 joueur_283   1 JOUEUR_156   2 JGtm            3 JOUEUR_731
+    4 JOUEUR_417          5 joueur_700 fire17   6 joueur_389    7 joueur_362
 ```
 
 **C est, indice par indice, la table publiee par le worktree voisin** — huit sur huit, par une
@@ -16887,8 +16887,8 @@ encore `xuid -> indice` depuis un ordre de base. C est l objet du lot `rc.perm` 
 >
 > **RESERVATION** — en-tete pose AVANT toute mesure (regle 10 de l index §1). Lot `rc.perm`.
 > Questions, dans cet ordre : (1) `weaponv3.ResolveBest` / `resolveFilmPlayerIndices` rendent-ils
-> sur `000d5950` la table publiee par le worktree voisin (`0 whiteknight2519 · 1 JAVIERLOLITO540 ·
-> 2 JGtm · 3 LORD PEINX13 · 4 IKE ILYA · 5 Akatsuki fire17 · 6 aldusbroncus · 7 VitaminA1688`) ;
+> sur `000d5950` la table publiee par le worktree voisin (`0 joueur_283 · 1 JOUEUR_156 ·
+> 2 JGtm · 3 JOUEUR_731 · 4 JOUEUR_417 · 5 joueur_700 fire17 · 6 joueur_389 · 7 joueur_362`) ;
 > (2) laquelle de nos mesures par joueur passe par un ORDRE DE ROSTER plutot que par une
 > resolution film-seule ; (3) re-mesure d une quantite avec et sans permutation appliquee ;
 > (4) balayage des sites de code qui construisent encore xuid -> indice depuis un ordre de base.
@@ -16928,14 +16928,14 @@ jointure aucune table ne serait NOMMABLE et la confrontation serait impossible.
 
 ```
 indice   VOISIN (000d5950)   R0 ordre base     R1 production     R2 ResolveBest    R3 strict
-  0      whiteknight2519     LORD PEINX13      whiteknight2519   COLLISION 8/8     whiteknight2519
-  1      JAVIERLOLITO540     whiteknight2519   JAVIERLOLITO540   (vide)            JAVIERLOLITO540
+  0      joueur_283     JOUEUR_731      joueur_283   COLLISION 8/8     joueur_283
+  1      JOUEUR_156     joueur_283   JOUEUR_156   (vide)            JOUEUR_156
   2      JGtm                JGtm              JGtm              (vide)            JGtm
-  3      LORD PEINX13        VitaminA1688      LORD PEINX13      (vide)            LORD PEINX13
-  4      IKE ILYA            JAVIERLOLITO540   IKE ILYA          (vide)            IKE ILYA
-  5      Akatsuki fire17     aldusbroncus      Akatsuki fire17   (vide)            Akatsuki fire17
-  6      aldusbroncus        IKE ILYA          aldusbroncus      (vide)            aldusbroncus
-  7      VitaminA1688        Akatsuki fire17   VitaminA1688      (vide)            VitaminA1688
+  3      JOUEUR_731        joueur_362      JOUEUR_731      (vide)            JOUEUR_731
+  4      JOUEUR_417            JOUEUR_156   JOUEUR_417          (vide)            JOUEUR_417
+  5      joueur_700 fire17     joueur_389      joueur_700 fire17   (vide)            joueur_700 fire17
+  6      joueur_389        JOUEUR_417          joueur_389      (vide)            joueur_389
+  7      joueur_362        joueur_700 fire17   joueur_362      (vide)            joueur_362
 --------------------------------------------------------------------------------------------
 accord avec le voisin        1 / 8             8 / 8             0 / 8             8 / 8
 BIJECTION (8 indices sur 8)  OUI               OUI               NON (1 indice)    OUI
@@ -17471,12 +17471,12 @@ cran** : la table `shared.xuid_aliases` resout **les huit** gamertags des deux f
 l accord est exact **joueur par joueur** :
 
 ```
-  78919882   API : JGtm 19 ; Senor Pepper 16 ; Only1kenobi1701 15 ; Chocoboflor 14 ;
-                   skaiwoka 10 ; IZindle 9 ; Zeus Herd 9 ; MassimilianoAR 7
-             DEC : JGtm 19 ; Senor Pepper 16 ; Only1kenobi1701 15 ; Chocoboflor 14 ;
-                   skaiwoka 10 ; Zeus Herd 9 ; IZindle 9 ; MassimilianoAR 7        -> 8 / 8
-  fccc61cd   API : HizaroMne4262 16 ; FireKoreT7 15 ; Madina97294 15 ; Just1nBurn3y 14 ;
-                   JGtm 13 ; LADY95SOPH 11 ; LORD83DAN 7 ; topgunx10 6
+  78919882   API : JGtm 19 ; joueur_1040 16 ; joueur_1038 15 ; joueur_165 14 ;
+                   joueur_1037 10 ; joueur_1014 9 ; joueur_1534 9 ; joueur_1039 7
+             DEC : JGtm 19 ; joueur_1040 16 ; joueur_1038 15 ; joueur_165 14 ;
+                   joueur_1037 10 ; joueur_1534 9 ; joueur_1014 9 ; joueur_1039 7        -> 8 / 8
+  fccc61cd   API : joueur_719 16 ; joueur_1022 15 ; joueur_117 15 ; joueur_593 14 ;
+                   JGtm 13 ; JOUEUR_1031 11 ; JOUEUR_1032 7 ; joueur_1015 6
              DEC : idem, plus `343 PardonMy [bot]` a 1 (absent de l API : les bots n ont pas
                    d xuid)                                                         -> 8 / 8
 ```
@@ -17492,8 +17492,8 @@ d arme.
 resout 9 des 36 participants :
 
 ```
-  MiniScotsMin  54 / 48     Shiloh0209 34 / 31   Tupacamaru9556 24 / 19   DUGValidus      19 / 19
-  Madina97294   16 / 14     JGtm       10 / 10   SKR DRAAK       9 /  9   BLADERUNNER3141  4 /  4
+  joueur_728  54 / 48     joueur_580 34 / 31   joueur_317 24 / 19   joueur_811      19 / 19
+  joueur_117   16 / 14     JGtm       10 / 10   JOUEUR_409       9 /  9   JOUEUR_136  4 /  4
 ```
 
 **Quatre egalites exactes sur huit, et le decode n est JAMAIS AU-DESSUS de l API** — le deficit BTB
@@ -17705,8 +17705,8 @@ chiffres de 7ter.98 (4), reproduits sans exception** : n = 138 ; precision API m
 **0.3591**, `porteurs/touches` **0.8127**, `r(port/touches, p)` **-0.0134**. Tous identiques.
 
 **Bijection sur `000d5950`** — `tmp_rcref gt 000d5950`, ancrage strict film-seul, `unique = true` :
-`0 whiteknight2519 · 1 JAVIERLOLITO540 · 2 JGtm · 3 LORD PEINX13 · 4 IKE ILYA ·
-5 Akatsuki fire17 · 6 aldusbroncus · 7 VitaminA1688`. **Huit indices distincts sur huit** (le
+`0 joueur_283 · 1 JOUEUR_156 · 2 JGtm · 3 JOUEUR_731 · 4 JOUEUR_417 ·
+5 joueur_700 fire17 · 6 joueur_389 · 7 joueur_362`. **Huit indices distincts sur huit** (le
 controle de bijection impose par le brief de `rc.perm` passe), et c est la table du voisin, par une
 **quatrieme chaine**.
 
@@ -18089,11 +18089,11 @@ Les deux tags relus dans le catalogue embarque et dans la sortie de `tmp_vklist 
   28907150  VEHICULE  VALIDE  ARME DE VEHICULE (vehi 0000254b +1, sb_010_veh_un_pelican,
                               classe fixed) [effet hlmt 2de351bd]
             deux lignes, film 4f77afc1, voie credit-concordant/marche
-            02:19.035  Rabbitzo3 -> XN3RDXD3VILX      08:29.356  Rabbitzo3 -> Jermoe Jr
+            02:19.035  joueur_582 -> JOUEUR_390      08:29.356  joueur_582 -> joueur_430
   77a61ef5  VEHICULE  VALIDE  ARME DE VEHICULE (vehi f4c45d71, sb_010_veh_un_falconlmgturret,
                               classe turret) [effet proj 1af3aee3]
             une ligne, film 4f77afc1, voie credit-concordant/marche
-            03:40.856  JGtm -> Shiloh0209
+            03:40.856  JGtm -> joueur_580
 ```
 
 **CE QUI EST MESURE** : les deux tags sont au catalogue avec le statut `VALIDE`, chacun pend a au
@@ -18108,7 +18108,7 @@ seule chose qui trancherait est la confrontation Theater sur les trois instants 
 reste due. Le Pelican est reexamine par la meme voie et **avec la meme retenue** : il apparait en
 BTB comme vaisseau de depose, la carte `Flood Gulch` est de creation communautaire (palette
 d objets choisie par l auteur), et les deux lignes sont creditees au **meme joueur**
-(`Rabbitzo3`), a plus de six minutes d intervalle — rien la-dedans ne le rend implausible, et rien
+(`joueur_582`), a plus de six minutes d intervalle — rien la-dedans ne le rend implausible, et rien
 ne le prouve non plus. **Statut des deux : `[NON VERIFIE]`, et non plus << implausible >>.**
 
 #### (3) LE RECOMPTE — `[MESURE]`
@@ -18192,15 +18192,15 @@ gelee (`opts = nil`) :
   alertes de sante 0       LIGNE PAR LIGNE PUBLIABLE : true
   classes : ARME 77 · VEHICULE 7 · MELEE 8 · GRENADE 3 · OBJET_EXPLOSIF 4 · INCONNU 0
 
-  02:54.810  MassimilianoAR -> IZindle         sans nom (tourelle UNSC : Gauss OU mitrailleuse OU
+  02:54.810  joueur_1039 -> joueur_1014         sans nom (tourelle UNSC : Gauss OU mitrailleuse OU
                                                lance-roquettes)          tag 003f582d  tir a la tete
-  05:53.788  Senor Pepper   -> MassimilianoAR  Ghost                     tag f712c64a
-  06:08.520  Senor Pepper   -> MassimilianoAR  Ghost                     tag f712c64a
-  06:32.111  Senor Pepper   -> MassimilianoAR  Ghost                     tag f712c64a  tir a la tete
-  07:56.193  MassimilianoAR -> Zeus Herd       Ghost                     tag f712c64a  tir a la tete
-  10:31.083  MassimilianoAR -> IZindle         sans nom (tourelle UNSC : Gauss OU mitrailleuse OU
+  05:53.788  joueur_1040   -> joueur_1039  Ghost                     tag f712c64a
+  06:08.520  joueur_1040   -> joueur_1039  Ghost                     tag f712c64a
+  06:32.111  joueur_1040   -> joueur_1039  Ghost                     tag f712c64a  tir a la tete
+  07:56.193  joueur_1039 -> joueur_1534       Ghost                     tag f712c64a  tir a la tete
+  10:31.083  joueur_1039 -> joueur_1014         sans nom (tourelle UNSC : Gauss OU mitrailleuse OU
                                                lance-roquettes)          tag 003f582d  tir a la tete
-  10:33.670  MassimilianoAR -> Zeus Herd       sans nom (tourelle UNSC : Gauss OU mitrailleuse OU
+  10:33.670  joueur_1039 -> joueur_1534       sans nom (tourelle UNSC : Gauss OU mitrailleuse OU
                                                lance-roquettes)          tag 003f582d
 ```
 
@@ -18280,10 +18280,10 @@ $ vl.exe 4f77afc1          # les 55 lignes, marge 0, les 14 tags distincts
 
 **(1) LE CAS.** Film `78919882` (Community:Slayer, High Ground, 2026-07-23 21:14), a **10:38** :
 
-    decode : JGtm tue par Senor Pepper · S7 Sniper · assistant Only1kenobi1701 · parts 1/61
+    decode : JGtm tue par joueur_1040 · S7 Sniper · assistant joueur_1038 · parts 1/61
 
 RELEVE THEATER DE L UTILISATEUR, verbatim : *<< il y a eu un duel au corps a corps entre JGtm et
-Only1kenobi1701, et Senor Pepper a fini JGtm d un tir de sniper dans la tete >>*.
+joueur_1038, et joueur_1040 a fini JGtm d un tir de sniper dans la tete >>*.
 
 **(2) CE QUE CELA VALIDE, ET C EST QUATRE CHOSES A LA FOIS.** L ORDRE des deux parts (l assistant
 tres au-dessus du credite) ; l ECART (1 contre 61, pas 45 contre 55) ; l ARME du coup fatal ;

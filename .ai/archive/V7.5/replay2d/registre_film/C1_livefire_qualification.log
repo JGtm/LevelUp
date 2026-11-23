@@ -29,7 +29,7 @@ ok  	levelup/go-api/internal/analysis/replay	69.907s
 
 # Controle standard du catalogue (TestControleBornesFilms) sur les 2 films :
 === RUN   TestControleBornesFilms
-    map_quant_control_test.go:66: CONTRÔLE : 2 couples (film, carte) · catalogue C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-catalogues/data/titles/halo_infinite/reference/map_quant_bounds.json · 79 cartes catalogué(es)
+    map_quant_control_test.go:66: CONTRÔLE : 2 couples (film, carte) · catalogue <poste>/Downloads/Scripts/LevelUp-wt-catalogues/data/titles/halo_infinite/reference/map_quant_bounds.json · 79 cartes catalogué(es)
     map_quant_control_test.go:105: Live Fire                              attendu [13 12 11] · accord 1/1 · illisible 0 · lectures [13 12 11]x1 -> ACCORD
     map_quant_control_test.go:105: Live Fire - Ranked                     attendu [13 12 11] · accord 1/1 · illisible 0 · lectures [13 12 11]x1 -> ACCORD
     map_quant_control_test.go:105: TOTAL : 2 couples · 2 cartes · 2 vertes · accord 2 · désaccord 0 · illisible 0

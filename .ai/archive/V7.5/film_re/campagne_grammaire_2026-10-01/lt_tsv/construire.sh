@@ -1,6 +1,6 @@
 #!/bin/bash
 # construire.sh <base|neuf> : binaires de la base 80d2acd20 (git archive, sans worktree) ou de l arbre du lot.
-source /c/Users/GUILLA~1/AppData/Local/Temp/claude/c--Users-Guillaume-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad/v2-LT/env.sh
+source /c/Users/utilisateur/AppData/Local/Temp/claude/c--Users-poste-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad/v2-LT/env.sh
 set -e
 mkdir -p $L/bin/$1
 if [ $1 = base ]; then

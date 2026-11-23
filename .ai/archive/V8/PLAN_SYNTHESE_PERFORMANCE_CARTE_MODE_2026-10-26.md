@@ -159,7 +159,7 @@ principal = `match_participants` du titre joint à `match_registry` ; score =
   par carte H5 est donc par `map_id`. `PairMode` est nil pour H5 (`halo_5/mapping.go`) : la liste
   « Par mode » de la Synthèse est vide pour ce titre, seule « Par carte » est concernée.
 
-| | Halo Infinite (JGtm) | Halo 5 (Chocoboflor) |
+| | Halo Infinite (JGtm) | Halo 5 (joueur_165) |
 |---|---|---|
 | Matchs | 1 182 | 1 855 |
 | Avec score | 1 082 (91,5 %) | 1 661 (89,5 %) |

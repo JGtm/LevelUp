@@ -159,7 +159,7 @@ fx       = "plasma"
 tint     = "plasma_hot"
 sound    = "vehicle_shot_ghost_1"
 mount    = { aim = "fixed", ax = 0.0, ay = -0.464 }
-proof    = "tag declare par les chassis du Ghost ecrits dans les films (5b80c406, 0000d3dc, 9af9e693) ; 2 barillets x 3,75/s, type de prediction 1, debit 0 (lu dans le tag, 2026-09-24) ; 81c02726 : 10 rafales de G MONEY posees sur les Ghost 769 et 771, 0 hors monture ; le son est le rendu V3F du « Weapon Fire Sound » de 00015435 (manifeste V3 rev12) ; configurations multijoueur c2a1a279 (meme cadence), 6a9c28a2 et d1d1aa79 non distinguees par le film ; ancre mesuree sur ghost.png le 2026-10-05 (bouche des canons jumeles, ay -0,464, ax +-0,15 : une ancre dans l axe)"
+proof    = "tag declare par les chassis du Ghost ecrits dans les films (5b80c406, 0000d3dc, 9af9e693) ; 2 barillets x 3,75/s, type de prediction 1, debit 0 (lu dans le tag, 2026-09-24) ; 81c02726 : 10 rafales de JOUEUR_441 posees sur les Ghost 769 et 771, 0 hors monture ; le son est le rendu V3F du « Weapon Fire Sound » de 00015435 (manifeste V3 rev12) ; configurations multijoueur c2a1a279 (meme cadence), 6a9c28a2 et d1d1aa79 non distinguees par le film ; ancre mesuree sur ghost.png le 2026-10-05 (bouche des canons jumeles, ay -0,464, ax +-0,15 : une ancre dans l axe)"
 decision = "tir continu rendu comme Theater, cadence du tag (utilisateur, 2026-09-24) ; teinte ROUGE plasma_hot (Q6)"
 
 [[weapons]]
@@ -183,7 +183,7 @@ fx       = "plasma"
 tint     = "plasma_hot"
 sound    = "vehicle_shot_chopper_1"
 mount    = { aim = "fixed", ax = 0.0, ay = -0.475 }
-proof    = "tag declare par les chassis du Chopper (3d4a8a5a, 002ba902) ; 2 barillets x 2,0/s, type 1, debit 0 ; 8a485699 : une rafale de KyleT1848 posee sur le Chopper 780 ; la configuration multijoueur 7d7d2ebf tire 2 x 4,0/s — le film ne dit pas laquelle est montee (question ouverte) ; son V3F de b40e9618 ; ancre mesuree sur chopper.png le 2026-10-05 (bouche des canons, ay -0,475, ax +-0,10 : une ancre dans l axe)"
+proof    = "tag declare par les chassis du Chopper (3d4a8a5a, 002ba902) ; 2 barillets x 2,0/s, type 1, debit 0 ; 8a485699 : une rafale de joueur_1001 posee sur le Chopper 780 ; la configuration multijoueur 7d7d2ebf tire 2 x 4,0/s — le film ne dit pas laquelle est montee (question ouverte) ; son V3F de b40e9618 ; ancre mesuree sur chopper.png le 2026-10-05 (bouche des canons, ay -0,475, ax +-0,10 : une ancre dans l axe)"
 decision = "teinte ROUGE plasma_hot, forme plasma (Q8)"
 
 [[weapons]]
@@ -196,7 +196,7 @@ tint     = "kinetic"
 sound    = "vehicle_shot_wasp_lmg_1"
 loop     = "vehicle_shot_wasp_lmg_loop"
 mount    = { aim = "fixed", ax = 0.0, ay = -0.44 }
-proof    = "tag declare par le chassis du Wasp (b65b3b4a), avec les missiles 11725DC4 ; 1 barillet x 10/s, type 1, debit 0 ; 8a485699 : deux rafales de xmatt3434x posees sur le Wasp 782 ; sons rendus V3E de l evenement 5baca8ee : BOUCLE 3P de 8 s tenue pendant le tir, COUP 3P en queue (livres au lot M6.1) ; ancre des missiles (meme pointe avant, 2026-10-21)"
+proof    = "tag declare par le chassis du Wasp (b65b3b4a), avec les missiles 11725DC4 ; 1 barillet x 10/s, type 1, debit 0 ; 8a485699 : deux rafales de joueur_1089 posees sur le Wasp 782 ; sons rendus V3E de l evenement 5baca8ee : BOUCLE 3P de 8 s tenue pendant le tir, COUP 3P en queue (livres au lot M6.1) ; ancre des missiles (meme pointe avant, 2026-10-21)"
 decision = "LMG de la Wasp = le mode continu (Q11, 2026-09-23 nuit) ; sons designes a l oreille (utilisateur, 2026-09-24)"
 
 [[weapons]]

@@ -57,8 +57,8 @@ Dépendance de build : CGO (`apps/go-api/internal/ooz`, décompression Kraken/Oo
 
 | Outil | Chemin constaté | Rôle |
 |---|---|---|
-| `vgmstream-cli.exe` (r2117) | `C:\Users\Guillaume\Desktop\Halo Infinite - Sons armes\_outils\vgmstream\vgmstream-cli.exe` | **Seul décodeur** du Vorbis Wwise custom (`fmt = 0xFFFF`). Testé directement par moi : voir §6. |
-| `ffmpeg` (8.1.2) | `C:\Users\Guillaume\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-8.1.2-full_build\bin\ffmpeg.exe` (winget) | **Ne décode PAS** le Vorbis Wwise (confirmé deux fois dans `RE_BANQUES_SONORES_NOMMEES_2026-08-26.md` §7 : rend `unknown codec`). Sert uniquement à la mesure de crête et à l'égalisation finale (LUFS/dBTP). |
+| `vgmstream-cli.exe` (r2117) | `<poste>\Desktop\Halo Infinite - Sons armes\_outils\vgmstream\vgmstream-cli.exe` | **Seul décodeur** du Vorbis Wwise custom (`fmt = 0xFFFF`). Testé directement par moi : voir §6. |
+| `ffmpeg` (8.1.2) | `<poste>\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-8.1.2-full_build\bin\ffmpeg.exe` (winget) | **Ne décode PAS** le Vorbis Wwise (confirmé deux fois dans `RE_BANQUES_SONORES_NOMMEES_2026-08-26.md` §7 : rend `unknown codec`). Sert uniquement à la mesure de crête et à l'égalisation finale (LUFS/dBTP). |
 | Scripts Python hors dépôt | `Desktop/Halo Infinite - Sons armes/_outils/*.py` (`akpk_unpack.py`, `conv_lot.py`, `coups_lot.py`, `manifeste2.py`, `livraison.py`, `reinjecte.py`) | Non exécutés par moi (contrainte de ce scout : « pas de Python »). Documentés dans `RECETTE_SONS_ARMES.md` §1-§7 comme le chemin **habituel** pour l'étape `.pck → .wem` et l'assemblage final. |
 
 ### 1.4 Découverte : la chaîne `.pck → .wem` n'a pas besoin de Python

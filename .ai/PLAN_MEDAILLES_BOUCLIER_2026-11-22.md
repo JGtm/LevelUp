@@ -2,7 +2,7 @@
 
 Ouvert le 2026-11-22. Contrat d'exécution : skill `plan-execution` + complément `levelup-plan`.
 Branche : `feat/medailles-bouclier` (depuis `origin/release/v8.3.0`), worktree
-`C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-medailles`. Intégration : `release/v8.3.0`.
+`<poste>/Downloads/Scripts/LevelUp-wt-medailles`. Intégration : `release/v8.3.0`.
 
 ## Objectif
 
@@ -28,7 +28,7 @@ bougent avec la tête de lecture.
   même vie. Au plus une recharge par bris. Un respawn n'est jamais une recharge.
 - **D-4 Cible difficile** : médaille custom neuve `9000000002`, une médaille par recharge complète
   (D-3). Nom FR « Cible difficile » (nom officiel FR de Halo 5), EN « Hard Target ». Image :
-  `C:/Users/Guillaume/Downloads/HI_Hard_Target.png`, copiée en
+  `<poste>/Downloads/HI_Hard_Target.png`, copiée en
   `static/medals/halo_infinite/9000000002.png`. Catégorie : celle du Vengeur.
 - **D-5 Différentiel** (fiche du rejeu seulement) = recharges − bris, à l'instant et au total.
 - **D-6 Os de verre** : rôle de la matrice d'impact, **−0,5 point**. Attribué par match au membre de
@@ -211,21 +211,21 @@ commandes sont en tête de chaque fichier.
 
 ### 0.3 Barème (escouade de JGtm, 643 matchs)
 
-Coéquipiers retenus (le plus de matchs dans l'équipe de JGtm) : Madina97294 (618), Chocoboflor (496),
-XxDaemonGamerxX (39). Population : les 643 matchs où JGtm partage son équipe avec au moins un des
+Coéquipiers retenus (le plus de matchs dans l'équipe de JGtm) : joueur_117 (618), joueur_165 (496),
+joueur_291 (39). Population : les 643 matchs où JGtm partage son équipe avec au moins un des
 trois ; 618 ont une mesure de bouclier (rejeu local), donc D-6 est calculé. Points par match = total
 des points du joueur divisé par ses matchs dans la population.
 
 | Joueur | Matchs | Ancien barème | D-7 seul | D-6 + D-7 | Os de verre reçus |
 |---|---|---|---|---|---|
 | JGtm | 643 | −0,736 | −0,378 | −0,519 | 182 |
-| Madina97294 | 618 | +0,330 | +0,700 | +0,535 | 204 |
-| Chocoboflor | 496 | −0,501 | −0,150 | −0,215 | 64 |
-| XxDaemonGamerxX | 39 | −1,410 | −0,897 | −0,936 | 3 |
+| joueur_117 | 618 | +0,330 | +0,700 | +0,535 | 204 |
+| joueur_165 | 496 | −0,501 | −0,150 | −0,215 | 64 |
+| joueur_291 | 39 | −1,410 | −0,897 | −0,936 | 3 |
 
 Sur les 38 matchs où les quatre jouent ensemble (ancien / D-7 seul / D-6 + D-7) : JGtm −0,882 /
-−0,500 / −0,724 ; Madina97294 +0,105 / +0,434 / +0,289 ; Chocoboflor −0,461 / −0,211 / −0,276 ;
-XxDaemonGamerxX −1,368 / −0,868 / −0,908.
+−0,500 / −0,724 ; joueur_117 +0,105 / +0,434 / +0,289 ; joueur_165 −0,461 / −0,211 / −0,276 ;
+joueur_291 −1,368 / −0,868 / −0,908.
 
 Os de verre tombe sur un membre de l'escouade dans 453 des 618 matchs mesurés, sur un allié hors
 escouade dans 164 (le rôle se décide sur l'équipe alliée complète, comme les autres rôles), et n'est
@@ -427,7 +427,7 @@ le worktree.
 - 2026-11-22 : piste C fusionnée (`da64d02f26` C.1, `e9b59a7b0d` C.2). Champ servi `shieldCycles` (xuid -> `{breaks, recharges}` en ms sur l'axe du document, origine non retranchée) ; bots servis sous la clé `bot:<nom>` du roster (règle « les bots comptent partout »). Gate de la piste : `go test` service/api/replayshield/archlint/contracttest verts, vitest `match-replay` 5802 verts, typecheck, lint, couleurs, imports croisés et knip verts ; test du service relancé par le pilote après gofmt : vert.
 - 2026-11-22 : B.1 close. `squadimpact` : clé `glass_jaw` (−0,5), Première victime / Touriste / Kamikaze à −0,5 (D-7). `stackOrder` suit la règle écrite (pertes de la plus forte à la plus faible, maquette à barème égal) : Boulet, Faux-frère, Voleur (−1, qui passe devant les trois à −0,5), Première victime, Touriste, Kamikaze, Os de verre. `roleOrder` (colonnes de la matrice) n'a pas de règle écrite au-delà de « canonique » : Os de verre est placé après Voleur, avant Bourreau (choix du lot, à redire si la maquette en veut un autre). Attribution D-6 dans `squadimpact.GlassJaw` (pur) : parmi l'équipe alliée complète, le plus de bris, puis moins de recharges, puis xuid croissant ; aucun rôle sans mesure (`MatchInput.Shields` vide) ni sans bris allié ; `RolesOfMatch` l'émet avant le Voleur. Lecture : port `SquadRepository.LoadMatchShields` (à côté de `LoadSquadKillLog`), Q32f sur `match_usage_players_latest` seule, lignes dont les deux colonnes sont NULL écartées (un match est mesuré dès qu'une ligne porte une valeur), dégradation journalisée en (nil, nil) ; lue UNE fois pour tous les matchs dans `rolesDesMatchs` (`teammates_squad_impact_shields.go`), donc par le même chemin pour la matrice et les points par soirée (même map de rôles, `BuildHistory`). Tests : purs (`roles_test.go`), service avec port simulé (parité matrice / soirée, match non mesuré, lecture en échec), repo sur DuckDB mémoire au schéma livré (`squad_repo_shields_test.go`).
 - 2026-11-22 : B.2 close. Serveur : `impact.badge.glass_jaw` (fr « Os de verre », en « Glass Jaw ») dans `impact.toml`, porté par le badge de `RolesOfMatch`. Web : libellés fr/en (matrice et historique), infobulle au format des autres (nom puis une phrase) : fr « Allié dont le bouclier a été brisé le plus souvent dans le match (−0,5). », en « Teammate whose shield was broken most often in the match (−0.5). » ; les infobulles des autres rôles n'écrivent pas leur poids, seule celle d'Os de verre le porte (demande du pilote). Icône : « Bone » Fluent Emoji Flat (MIT, `assets/Bone/Flat/bone_flat.svg` de `microsoft/fluentui-emoji`) en `fluent-flat/glass_jaw.svg`, branchée dans `BadgeIcon.tsx`. Textes du barème : aide du graphe par soirée (« Première victime, Touriste, Kamikaze et Os de verre partagent une couleur, Faux-frère et Voleur une autre »), barème et légende calculés depuis le barème servi ; la légende réunissait les pertes par nuance seule et annonçait un seul barème : elle réunit désormais par nuance ET barème. Voleur (−1) passe sur la nuance `impact-loss-2` (celle de Faux-frère) pour que la rampe reste ordonnée par barème (−2, −1,5 et −1, −0,5) sans nouveau jeton ; commentaires de rampe mis à jour. Aucun autre texte de barème dans `MatchImpactBadgesBar`, `profile.toml` ni la page Synergies (rôles narratifs sans poids).
-- 2026-11-22 : B.3 close. Instrument 0.3 rejoué (table de barème candidat vidée, poids d'Os de verre lu dans `squadimpact.Weight`, attribution recalculée aussi par `squadimpact.RolesOfMatch` : 0 écart sur les 643 matchs). Valeurs obtenues, identiques à l'étape 0 : points par match (D-7 seul / D-6 + D-7) JGtm −0,378 / −0,519, Madina97294 +0,700 / +0,535, Chocoboflor −0,150 / −0,215, XxDaemonGamerxX −0,897 / −0,936 ; les quatre ensemble (38 matchs) −0,500 / −0,724, +0,434 / +0,289, −0,211 / −0,276, −0,868 / −0,908 ; Os de verre 182, 204, 64 et 3 reçus, 453 sur l'escouade et 164 sur un allié hors escouade sur 618 matchs mesurés. Aucun écart.
+- 2026-11-22 : B.3 close. Instrument 0.3 rejoué (table de barème candidat vidée, poids d'Os de verre lu dans `squadimpact.Weight`, attribution recalculée aussi par `squadimpact.RolesOfMatch` : 0 écart sur les 643 matchs). Valeurs obtenues, identiques à l'étape 0 : points par match (D-7 seul / D-6 + D-7) JGtm −0,378 / −0,519, joueur_117 +0,700 / +0,535, joueur_165 −0,150 / −0,215, joueur_291 −0,897 / −0,936 ; les quatre ensemble (38 matchs) −0,500 / −0,724, +0,434 / +0,289, −0,211 / −0,276, −0,868 / −0,908 ; Os de verre 182, 204, 64 et 3 reçus, 453 sur l'escouade et 164 sur un allié hors escouade sur 618 matchs mesurés. Aucun écart.
 - 2026-11-22 : revue adversariale, P0 corrigé. Le schéma partagé reconstruit pour le lecteur « snapshot d'abord » (`ops.reconstruireSchemaShared`) n'avait pas `v_medals_earned` : la vue du match (Q14, Q27) échouait en Catalog Error dès qu'un snapshot existait. Le cut exporte désormais `match_usage_players` et `match_usage_films` (tables REQUISES comme les résumés du journal : un snapshot coupé avant est refusé, lecture live jusqu'au prochain cut) ; la lecture pose leurs vues `_latest` (`migration.ApplyMatchUsageLatestViews`, DDL unique, aussi appelée par la dernière migration du résumé) puis `migration.ApplyMedalsEarnedView`. Contrat de schéma du snapshot élargi aux deux tables, leurs vues et `v_medals_earned`. Test `TestSnapshot_ServeLesMedaillesDuFilm` : Vengeur hérité 7 + dérivation (2 vengeances, 3 recharges), Q14 lu sur le snapshot rend Cible difficile 3, Vengeur 2, autre médaille, comme le live ; rouge (Catalog Error) sans la pose de la vue. Fixtures de lecture de snapshot : `medals_earned` au schéma livré (colonnes `medal_name_id`, `count`) et résumé d'usage par `migration.EnsureMatchUsageSummary`.
 - 2026-11-22 : revue adversariale, P1 corrigé (ADR 0036 I2). Test `TestMedailles_LecturesBornees_FenetresBornees` (`platform/duckdb/medals_earned_fenetres_test.go`) : dix matchs à deux passes de résumé d'usage, Q14 et Q27 sur un match, Q26h, `GetMedalCountsForMatches`, `GetTopMedalsForMatches`, `LoadMedalsForMatchesByXUID` sur deux matchs ; rouge sur la vue d'origine pour les cinq (fenêtre à 20 lignes pour 4 passes demandées). Deux causes : le `NOT EXISTS` corrélé et la jointure de `match_usage_players_latest` (une égalité traverse la jointure vers la fenêtre du film, une liste non). Vue réécrite (`shared_medals_earned_view_v1`, jamais livrée donc modifiée en place) : les branches dérivées partent de `match_usage_films_latest` et sortent son `match_id` ; « un Vengeur dérivé existe » se décide par une fenêtre `PARTITION BY match_id` sur l'union (`kind` raw / legacy / derived, `QUALIFY`), même résultat prouvé par les tests de la vue (migration, citations, snapshot). Aucun lecteur n'a eu à changer : tous liaient déjà leurs matchs en constantes. `sync.loadMedalsForMatch` lit sur `*sql.DB` sans passer par `platform/duckdb` (même forme `match_id = ?` que Q14, non testée par fenêtre). `Q36aMedalTotals` (`medals_repo.go`, `citations_repo.go`) = lecture de tout l'historique, rangée comme telle dans l'ADR 0036 (pas dans la table des fenêtres non bornées, réservée aux lectures bornées). ADR 0036 (EN) : règle de forme d'une vue qui joint une vue `_latest`, garde-rail dans la liste et la table de I2. P2 de la revue au backlog (une entrée).
 - 2026-11-22 : clôture. Z.1 : `npx vitest run` complet 1402 fichiers / 15263 tests verts, `go test -tags=integration -p 1 ./...` sans échec, `go vet` vert, typecheck vert, `make gate-push` vert (lint 0 constat, `replay-equiv` 20 identiques ; il exige `LEVELUP_REPO_ROOT` et `LEVELUP_IDENTITES_ORIGINALES` du dépôt principal depuis un worktree, et un second passage du lint à cache chaud). Z.2 : revue Fable, P0 (snapshot) et P1 (fenêtres I2) corrigés, P2 au backlog. Z.3 : `backfill-usage-summary` local, 1455 écrits, 0 échec, 4 min 50 ; bris 127 493 et recharges 29 889 = étape 0 ; base sauvegardée avant dans `data/backups/shared_matches_v2.avant-medailles-2026-11-22.duckdb`. Z.4 : fusion dans `release/v8.3.0`.

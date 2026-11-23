@@ -1,6 +1,6 @@
 import fs from 'fs';
 const id = process.argv[2]; const slot = +process.argv[3];
-const doc = JSON.parse(fs.readFileSync(`C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/${id}.json`, 'utf8'));
+const doc = JSON.parse(fs.readFileSync(`C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/${id}.json`, 'utf8'));
 const tr = doc.tracks.find(t => t.slot === slot);
 console.log('track', slot, 'start', tr.startFrame, 'end', tr.endFrame);
 for (const k of ['loadouts','inventory','weaponChanges','pickups','padPickups']) for (const e of (doc[k]||[])) if (e.slot === slot || (k==='padPickups' && e.xuid === tr.xuid)) console.log(k, JSON.stringify(e));

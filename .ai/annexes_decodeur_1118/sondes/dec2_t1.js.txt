@@ -1,3 +1,3 @@
 const fs=require('fs'),z=require('zlib');
-const d=JSON.parse(z.gunzipSync(fs.readFileSync('C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+process.argv[2]+'.json.gz')));
+const d=JSON.parse(z.gunzipSync(fs.readFileSync('<poste>/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+process.argv[2]+'.json.gz')));
 const tur=d.vehicles.filter(v=>v.part==='turret'); console.log('vehicles',d.vehicles.length,'turrets',tur.length, JSON.stringify(tur[0]).slice(0,500));

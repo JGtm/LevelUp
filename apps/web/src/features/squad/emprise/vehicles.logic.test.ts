@@ -85,7 +85,7 @@ describe('grille match par match', () => {
     expect(warthog).toMatchObject({ kind: 'value', us: 3, them: 1 })
     expect(warthog.kind === 'value' && warthog.who).toEqual([
       { xuid: 'x-jgtm', taken: 2 },
-      { xuid: 'x-choco', taken: 1 },
+      { xuid: 'x-joueur_901', taken: 1 },
     ])
   })
 })

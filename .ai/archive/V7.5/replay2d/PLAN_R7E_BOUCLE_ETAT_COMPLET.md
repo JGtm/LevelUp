@@ -4,7 +4,7 @@
 > 0,85 % — 5 records sur 591) et de `PLAN_R7C_ENCODAGE_DRAPEAU_IMAGE_CLE.md` (la portee
 > `DAT_144e61ea0` existe ; allumee elle ANNULE l'atterrissage : la position d'image-cle est
 > QUANTIFIEE aux largeurs de carte, 102/57/62 bits).
-> Worktree `C:/Users/Guillaume/Projects/LevelUp-wt-kfloop`, branche `wt/kf-boucle-etat-complet`,
+> Worktree `<poste>/Projects/LevelUp-wt-kfloop`, branche `wt/kf-boucle-etat-complet`,
 > base `wt/kf-ecrivain-vtable` = `9341e166a` (R3+R5+R6+R7-a/b/d).
 > Execution sous le contrat du skill `plan-execution`.
 
@@ -101,13 +101,13 @@ lu sur une ligne `EXIT_*=0`.
 ## 7. Contrat — NON NEGOCIABLE
 
 1. Ghidra **LECTURE SEULE** : aucun rename, aucun script, aucune analyse relancee.
-2. Rien hors du worktree n'est ecrit. `C:/Users/Guillaume/Projects/LevelUp` et les autres
+2. Rien hors du worktree n'est ecrit. `<poste>/Projects/LevelUp` et les autres
    `LevelUp-wt-*` sont en LECTURE SEULE (le corpus de films y est LU, jamais ecrit).
 3. Fichiers PARTAGES du decodeur modifies **uniquement** sur preuve bit-exacte ET
    non-regression delta verte (20 paquets, killsource golden).
 4. Aucune bosse de `SchemaVersion`, aucune ecriture DuckDB, aucun rendu, aucune string UI,
    **aucune publication a l'artefact**, aucun balayage de masse (3 films, pas 951).
-5. `GOCACHE=C:/Users/Guillaume/Projects/LevelUp-wt-kfloop/.gocache`, **une seule commande `go`
+5. `GOCACHE=<poste>/Projects/LevelUp-wt-kfloop/.gocache`, **une seule commande `go`
    a la fois**, `CGO_ENABLED=0`.
 6. Bascules globales restaurees en `defer` ; `LockProcessDecode` tenu pour tout le test.
 7. Pas de Python, pas d'emoji, seuils 500 L / 80 L / 5 parametres respectes.

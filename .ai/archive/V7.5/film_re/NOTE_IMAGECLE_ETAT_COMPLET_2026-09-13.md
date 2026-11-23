@@ -472,7 +472,7 @@ reste verte. Les chemins sont **en style Windows** (`C:/...`) : un chemin de sty
 
 ```bash
 cd apps/go-api
-C="C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks"
+C="<poste>/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks"
 F="000d5950 00162144 00502e52 0014603f 02784ce1 00ba2e1c"
 L=""; for f in $F; do L="$L;$C/$f"; done; L="${L#;}"
 

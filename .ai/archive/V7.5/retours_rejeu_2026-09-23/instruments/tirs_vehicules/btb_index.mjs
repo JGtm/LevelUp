@@ -1,6 +1,6 @@
 // Tirs publies par joueur (filmIndex) : les index >= 16 recoivent-ils des tirs ?
 import fs from 'fs';
-const dir = 'C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
+const dir = 'C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
 const files = fs.readdirSync(dir).filter(f => f.endsWith('.json') && !f.includes('derived'));
 let tot = {lo:0, hi:0, docs:0};
 for (const f of files) {

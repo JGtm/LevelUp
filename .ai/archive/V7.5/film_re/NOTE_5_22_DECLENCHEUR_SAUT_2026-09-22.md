@@ -1,7 +1,7 @@
-# NOTE 5.22 — LE DECLENCHEUR DU SAUT, PAR LE TEMOIN Madina97294 (2026-09-22)
+# NOTE 5.22 — LE DECLENCHEUR DU SAUT, PAR LE TEMOIN joueur_117 (2026-09-22)
 
-> Film `bfecd02b`, carte `snowbound`, build `HI_1_13_0`. Temoin : **Madina97294**, xuid
-> 2533274858283686, **slot 523**, vie repliquee en continu de 80,032 s a 159,996 s d horloge
+> Film `bfecd02b`, carte `snowbound`, build `HI_1_13_0`. Temoin : **joueur_117**, xuid
+> 2623439693412443, **slot 523**, vie repliquee en continu de 80,032 s a 159,996 s d horloge
 > film. Verdict Theater de l utilisateur du 2026-09-22 : sept sauts entre 1:19 et 1:41 de barre.
 >
 > Instruments : `internal/grammar/mouvement_5_22_{ancres,differentielle,controle,generalisation}_research_test.go`

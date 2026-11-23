@@ -14,7 +14,7 @@ par le compte du parc, SANS cuisson, avant de décider le retrait (DU-7, règle 
 | Journal du serveur `logs/general.log` depuis le redémarrage (2026-10-02 5 h 18 → 15 h 45) | cycles de sync | lignes `replis` des passes killsource, usage-summary et du jugement de fraîcheur des dérivés |
 
 Les journaux de la vague sont dans le dossier de travail de la session qui l'a menée
-(`%TEMP%\claude\C--Users-Guillaume-Projects-LevelUp\4432ca41-...\scratchpad\vague_j114\`, UTF-16,
+(`%TEMP%\claude\C--Users-poste-Projects-LevelUp\4432ca41-...\scratchpad\vague_j114\`, UTF-16,
 lignes repliées à la largeur de la console : le dépouillement recolle les lignes repliées). Le
 total de la ligne de corpus d'usage-summary (2 984 / 163 / 5) est retrouvé à l'unité par la somme
 des lignes par match.

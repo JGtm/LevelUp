@@ -139,7 +139,7 @@ Hors perimetre, consigne au registre.
 
 Page autonome, generee hors depot :
 
-	C:\Users\GUILLA~1\AppData\Local\Temp\claude\c--Users-Guillaume-Projects-LevelUp\
+	<poste>\AppData\Local\Temp\claude\c--Users-poste-Projects-LevelUp\
 	  1d8d44ec-6f37-47fb-b05b-a7d238cb6ffd\scratchpad\revue_cartes_lot5.html
 
 Elle porte, par carte : la vue du dessus (structure mesuree en gris, objectifs avec leur

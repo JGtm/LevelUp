@@ -273,7 +273,7 @@ espace de recherche — c'est le plancher **mesuré**, pas calculé (méthode, r
 u32 **nul**, puis un champ de 2 bits **nul**. Ces cinq champs prennent la même valeur sur les
 **44** enregistrements des **6** films : une position de bit arbitraire ne produirait pas cela.
 
-**Le seul manque, et il est nommé** : `00162144`, XUID `2533274799249008` (équipe 0, rang 3),
+**Le seul manque, et il est nommé** : `00162144`, XUID `2765003746637034` (équipe 0, rang 3),
 0 touche. Ce match est aussi le seul du lot à porter un bot (`bid(16.0)`). Hypothèse non testée :
 le joueur a rejoint après l'écriture de `chunk_00` (le film est écrit au démarrage du match, comme
 l'horodatage le montre), ou son slot est occupé par le bot. **Non tranché.**
@@ -307,7 +307,7 @@ d'un match à l'autre). Un découpage faux ne produirait pas cette égalité.
 | XUID | longueur | films |
 |---|---|---|
 | `2533274823110022` | **27 969 bits** | `000d5950`, `00162144`, `0014603f`, `02784ce1` |
-| `2533274858283686` | **28 081 bits** | `00162144`, `0014603f`, `007d53a4`, `02784ce1` |
+| `2623439693412443` | **28 081 bits** | `00162144`, `0014603f`, `007d53a4`, `02784ce1` |
 
 **2/2 joueurs vus dans au moins deux films ont une longueur d'enregistrement CONSTANTE**, à travers
 deux builds différents. C'est le contrôle le plus fort du lot : il ne dépend d'aucune source
@@ -432,7 +432,7 @@ Windows** (`C:/...`) : un chemin de style Git Bash (`/c/...`) fait échouer l'ou
 
 ```bash
 cd apps/go-api
-C="C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks"
+C="<poste>/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks"
 
 # B / B.1 : la carte relue chez l'écrivain, la fermeture arithmétique, le décalage d'un bit
 CHUNK00_FILMS="$C/000d5950;$C/00162144;$C/00502e52" \
@@ -453,7 +453,7 @@ CHUNK00_CORPUS="$C" CHUNK00_CORPUS_MAX=250 \
   go test ./internal/analysis/filmdec/ -run TestSection3RosterCorpus -v -timeout 40m
 
 # D.2 : R-POS / R-NEG, avec le roster de match_participants (≈21 s pour 6 films)
-CHUNK00_FILMS="…" CHUNK00_ROSTERS="000d5950=2533274980284321,2535467794760703,…;…" \
+CHUNK00_FILMS="…" CHUNK00_ROSTERS="000d5950=2543372234349153,2667725237021739,…;…" \
   go test ./internal/analysis/filmdec/ -run TestSection3RosterParXuid -v -timeout 30m
 ```
 

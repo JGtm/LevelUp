@@ -190,15 +190,15 @@ ete confrontees au contenu reel des fichiers de carte.
 
 ### Ce qui a ete telecharge — 3 appels reseau
 
-**Diagnostic d'authentification d'abord.** Le premier essai (`--player Chocoboflor`, le joueur
+**Diagnostic d'authentification d'abord.** Le premier essai (`--player joueur_165`, le joueur
 par defaut) echoue sur **AADSTS70000** — « token issued for a different client id ». AUCUNE
 re-capture (doctrine du depot). L'inspection du magasin montre pourquoi, et qui utiliser :
 
 | compte | RT | `reauth_required` | classe d'erreur | maj |
 |---|---|---|---|---|
-| Chocoboflor, Madina97294, XxDaemonGamerxX | 417/393 car. | **oui** | `revoked` | 30/08 |
+| joueur_165, joueur_117, joueur_291 | 417/393 car. | **oui** | `revoked` | 30/08 |
 | **JGtm** | **329 car.** | **non** | — | **31/08** |
-| Trimbutton, DankerGlue, QuiteSiren, UppedJoker, GeleJugefi | 373 car. | non | — | 30/08 |
+| joueur_1018, joueur_1016, QuiteSiren, UppedJoker, joueur_1017 | 373 car. | non | — | 30/08 |
 
 Trois comptes sont revoques depuis le 30/08 ; la longueur du RT les trahit (417/393 = ancienne
 application). **Un seul essai supplementaire**, avec `JGtm` (sain, rafraichi la veille) : succes.

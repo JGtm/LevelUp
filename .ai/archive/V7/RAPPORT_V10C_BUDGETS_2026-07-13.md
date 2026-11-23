@@ -106,9 +106,9 @@ J2 délibéré sur RAM partagée 2 Go).
 | `rw halo_infinite/shared_social` | 4 | 0 | **0** | 0 |
 | `rw halo_5/metadata`, `rw halo_5/shared_social` | 4 | 0 | **0** | 0 |
 | `rw halo_infinite/players/JGtm/stats` | **1** | 0 | 64 | 261,5 ms |
-| `rw halo_infinite/players/Madina97294/stats` | **1** | 0 | 44 | 193,1 ms |
-| `rw halo_infinite/players/Chocoboflor/stats` | **1** | 0 | 40 | 78,6 ms |
-| `rw halo_infinite/players/XxDaemonGamerxX/stats` | **1** | 0 | 28 | 90,8 ms |
+| `rw halo_infinite/players/joueur_117/stats` | **1** | 0 | 44 | 193,1 ms |
+| `rw halo_infinite/players/joueur_165/stats` | **1** | 0 | 40 | 78,6 ms |
+| `rw halo_infinite/players/joueur_291/stats` | **1** | 0 | 28 | 90,8 ms |
 | `rw halo_5/players/*` (×4) | 1 | 0 | **0** | 0 |
 | `rw global/monitoring` | 1 | 0 | 2 | 1,48 ms |
 

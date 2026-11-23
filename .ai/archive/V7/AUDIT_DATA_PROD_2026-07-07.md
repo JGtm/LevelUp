@@ -1,7 +1,7 @@
 # Audit données de prod — LOT V9a (2026-07-07)
 
 > Source : copie restaurée par V10a depuis restic `latest` (snapshot **9e96ed20**,
-> 2026-06-27) vers `C:\Users\Guillaume\Downloads\Scripts\LevelUp-prod-copy\`.
+> 2026-06-27) vers `<poste>\Downloads\Scripts\LevelUp-prod-copy\`.
 > Toutes les lectures faites en READ-ONLY via `apps/go-api/cmd/tmpdbq` (driver DuckDB Go,
 > `access_mode=read_only`). Aucune écriture sur la copie pendant V9a.
 > **Verdict global : la copie prod (au 2026-06-27) est propre sur les 3 dettes DATA
@@ -37,10 +37,10 @@ mémoires (964 matchs TZ, matchs classés non flaggés) sont **historiques**, pa
 | 3 | Orphelins medals_earned / participant | **0** | **2149** (1190 xuid vide + 959 xuid non-participant ; bruit ingestion H5, cf. §Découvertes) |
 | 3 | Doublons match_id (registry) | **0** | **0** |
 | 3 | Doublons participants (match_id,xuid) | **0** | **0** |
-| 3 | `match_skill_rank` vs `_latest` cohérent (par joueur) | **cohérent** (ex. Madina 27226 raw → 1172 latest = 1172 distinct) | — (non LUSR) |
+| 3 | `match_skill_rank` vs `_latest` cohérent (par joueur) | **cohérent** (ex. joueur_075 27226 raw → 1172 latest = 1172 distinct) | — (non LUSR) |
 | 4 | `known_teammates_count` + `friends_xuids` présents (PME, DEC-6) | **présents** (4/4 joueurs) | **présents** (4/4 joueurs) |
 | 4 | `discord_notified` présent (media_files, G5) | **présent** (shared_social) | **présent** (shared_social) |
-| 5 | Désync watermark LUSR v2 (watermark vs dernière ligne rated) | **watermark = dernière ligne** pour les 4 joueurs (pas de désync de tête) ; gaps d'intérieur : Madina 7, JGtm 10, Choco 6, XxDaemon 0 | — (H5 CSR, pas LUSR) |
+| 5 | Désync watermark LUSR v2 (watermark vs dernière ligne rated) | **watermark = dernière ligne** pour les 4 joueurs (pas de désync de tête) ; gaps d'intérieur : joueur_075 7, JGtm 10, joueur_901 6, joueur_639 0 | — (H5 CSR, pas LUSR) |
 | 6 | Counts globaux vs V10a | **1780 matchs / 26577 participants** (2021-11-19 → 2026-06-25) = OK | **3032 matchs / 24208 participants** = OK |
 
 ---
@@ -87,14 +87,14 @@ Toutes physiquement présentes :
 
 | Joueur | Watermark MAX | Dernière ligne LUSR | Écart de tête | Matchs non notés (LUSR-éligibles) |
 |--------|---------------|---------------------|---------------|-----------------------------------|
-| Madina97294 | 2026-06-10 20:14:52 | 2026-06-10 20:14:52 | **aucun** | 7 (4 en 2026, 3 en 2025) |
+| joueur_117 | 2026-06-10 20:14:52 | 2026-06-10 20:14:52 | **aucun** | 7 (4 en 2026, 3 en 2025) |
 | JGtm | 2026-06-25 16:59:51 | 2026-06-25 16:59:51 | **aucun** | 10 (7 en 2026, 3 en 2025) |
-| Chocoboflor | 2026-06-10 20:14:52 | 2026-06-10 20:14:52 | **aucun** | 6 (5 en 2026, 1 en 2025) |
-| XxDaemonGamerxX | 2026-04-13 20:53:30 | 2026-04-13 20:53:30 | **aucun** | 0 |
+| joueur_165 | 2026-06-10 20:14:52 | 2026-06-10 20:14:52 | **aucun** | 6 (5 en 2026, 1 en 2025) |
+| joueur_291 | 2026-04-13 20:53:30 | 2026-04-13 20:53:30 | **aucun** | 0 |
 
 Lecture : la désync de TÊTE (watermark en avance sur la dernière ligne → matchs récents
 `rating_type:none`) **n'existe plus** — le fix `canonicalGate` du 2026-06-07 tient. Les
-23 matchs non notés (Madina 7 + JGtm 10 + Choco 6) sont des gaps d'INTÉRIEUR : le résidu
+23 matchs non notés (joueur_075 7 + JGtm 10 + joueur_901 6) sont des gaps d'INTÉRIEUR : le résidu
 « ~0,8 % de matchs à gros turnover roster qui échouent l'EP → skip + WARN nominatif »
 documenté dans la mémoire lusr_v2_watermark_row_desync (propriété de sécurité : compute
 échoué = jamais de note corrompue). Récupérables via `cmd/lusr_v2_canonical_backfill

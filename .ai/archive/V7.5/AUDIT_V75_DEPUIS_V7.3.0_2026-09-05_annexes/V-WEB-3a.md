@@ -1,6 +1,6 @@
 # Vérification adverse V-WEB-3a
 
-Dépôt `C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration`, branche `feat/v75`, HEAD `736ccf3c3`.
+Dépôt `<poste>/Downloads/Scripts/LevelUp-go-migration`, branche `feat/v75`, HEAD `736ccf3c3`.
 Lecture seule. Toutes les lignes citées ont été rouvertes et recomptées.
 
 ## Constat 1 — « le web ne PEUT PAS gater sur le film » : RÉFUTÉ

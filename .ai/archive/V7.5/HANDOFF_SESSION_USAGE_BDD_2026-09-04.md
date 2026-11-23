@@ -211,7 +211,7 @@ surchargeables par les reglages d'accessibilite, jamais `teamColorResolver` (cf.
   sont deja des graphes, avec `ValueGrid`, `SectionCard`, et les jetons d'equipe
   surchargeables. C'est le modele a suivre pour S3.
 - **Temoin de travail** : session du **2026-07-31, 19:22 -> 21:06**, joueur `JGtm`,
-  escouade `JGtm + Madina97294 + Chocoboflor` (les trois sur les neuf matchs),
+  escouade `JGtm + joueur_117 + joueur_165` (les trois sur les neuf matchs),
   9 matchs dont 8 avec film, trois familles de mode (6 Assassin, 2 Drapeau,
   1 Bastion), objectifs sur 3 matchs avec **deux jeux de colonnes differents**.
   C'est le meilleur cas de test du depot : il porte les quatre difficultes d'un coup.

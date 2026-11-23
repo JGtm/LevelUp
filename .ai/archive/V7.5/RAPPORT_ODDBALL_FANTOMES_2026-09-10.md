@@ -127,7 +127,7 @@ d9781168 schema=48 vies=174 dont sans xuid=19 | portages=36 horsPresence=6 debor
 ```
 
 **6 sur 36 = 16,7 %** : la valeur exacte du registre. Les deux temoins de l'utilisateur du
-2026-08-28 sortent au bit pres — `2535435655459376` porte `[326..426]` alors que sa premiere
+2026-08-28 sortent au bit pres — `2808972188417258` porte `[326..426]` alors que sa premiere
 vie commence a **868**, et `[6944..6974]` alors que sa derniere s'acheve a **6505** ; ses
 14 vies sont exactement celles listees au §5.4 de `RESTES_R4_R5_2026-09-08.md`. **Le harnais
 hors ligne de ce lot reproduit donc la mesure de reference.**
@@ -143,7 +143,7 @@ sont **les vies** :
 |---|---|---|
 | vies publiees | 174 | 174 |
 | dont sans xuid | **19** | **0** |
-| vies de `2535435655459376` | 14, la 1re `[868..984]`, la derniere `[6421..6505]` | 17, la 1re **`[0..984]`**, la derniere **`[6605..6977]`** |
+| vies de `2808972188417258` | 14, la 1re `[868..984]`, la derniere `[6421..6505]` | 17, la 1re **`[0..984]`**, la derniere **`[6605..6977]`** |
 
 Le portage `[326..426]` n'a jamais ete mal attribue : **la vie qui le porte n'etait pas
 publiee sous le nom de son porteur.** Le calque n'avait donc pas de position a lire — le
@@ -167,12 +167,12 @@ joueur le reste. Aucune ligne de `skull_carries.go` n'a ete touchee entre-temps.
 
 | film | porteur | portage | images sans position |
 |---|---|---|---|
-| `d9781168` | 2533274974091007 | `[492..1023]` | 406 / 532 |
-| `d9781168` | 2535455182553276 | `[4480..4771]` | 47 / 292 |
-| `d9781168` | 2533274974091007 | `[5796..6187]` | 160 / 392 |
-| `51ebbc0f` | 2533274920533076 | `[3035..3455]` | 81 / 421 |
+| `d9781168` | 2573225322239947 | `[492..1023]` | 406 / 532 |
+| `d9781168` | 2539574356664086 | `[4480..4771]` | 47 / 292 |
+| `d9781168` | 2573225322239947 | `[5796..6187]` | 160 / 392 |
+| `51ebbc0f` | 2799294802411940 | `[3035..3455]` | 81 / 421 |
 
-Exemple : `2533274974091007` a les vies `[227..534] [920..922] [974..1033]` ; son portage
+Exemple : `2573225322239947` a les vies `[227..534] [920..922] [974..1033]` ; son portage
 `[492..1023]` traverse un trou de 385 images (38,5 s) ou son bipede n'est pas replique.
 `unionOverlap` (regle de l'UNION, schema 45) conserve donc les bornes, et le crane disparait
 pendant le trou.
@@ -233,10 +233,10 @@ crane sans avoir cette raison-la.
 
 | film | portages avant -> apres | `noBridge` avant -> apres | joueur recupere | avant | apres | oracle |
 |---|---|---|---|---|---|---|
-| `d9781168` | 36 -> **37** | 1 -> **0** | 2533274977810162 | 25,0 s | **48,0 s** | 51,1 s |
+| `d9781168` | 36 -> **37** | 1 -> **0** | 2586124022981975 | 25,0 s | **48,0 s** | 51,1 s |
 | `51ebbc0f` | 19 -> 19 | 0 -> 0 | — | — | — | — |
 | `43716616` | 12 -> 12 | 2 -> **2** | *(non recupere, cf. §6)* | 0,0 s | 0,0 s | 62,3 s |
-| `c88ec007` | 27 -> **30** | 3 -> **0** | 2535448682342105 | 15,0 s | **33,0 s** | 40,8 s |
+| `c88ec007` | 27 -> **30** | 3 -> **0** | 2588953248547176 | 15,0 s | **33,0 s** | 40,8 s |
 
 Total du parc Oddball : **985,9 s -> 1 026,9 s** publiees pour **1 249,0 s** a l'oracle, soit
 **78,9 % -> 82,2 %**. Controles :
@@ -319,7 +319,7 @@ Recuisson par le superviseur (le lot n'ouvre aucune base) :
    manches), donc `CompletedByLines` (garde MONO-MANCHE : le triplet apparie des totaux de
    match) ne s'applique a aucun d'eux. Le gain de ce lot vient entierement de
    `CompletedByElimination`, qui ne resout pas ces deux slots-la. C'est le plus gros porteur du
-   match (2533274978052136, 62,3 s a l'oracle) : le calque le montre a 0. Reprise = une voie de
+   match (2733226566552357, 62,3 s a l'oracle) : le calque le montre a 0. Reprise = une voie de
    completion par manche pour un slot dont l'elimination ne tranche pas.
 2. **694 images de portage sans position (7,0 % du parc Oddball, 18,5 % de `d9781168`)** — les
    4 portages du §2.5 traversent un trou de replication du bipede. Le portage est vrai, la

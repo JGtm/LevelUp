@@ -11,7 +11,7 @@ import { buildPlayers, type ReplayPlayer } from '../lib/replay/rosterLogic'
 import { readInstantDocSeries } from '../features/match-replay/model/playerInstantSources'
 import { identityKeys } from '../features/match-replay/model/playerInstantStats'
 
-const DIR = 'c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite'
+const DIR = '<dossier du projet>/data/cache/replays/halo_infinite'
 const OUT = path.join(os.tmpdir(), 'bl1118_mesure_d.json')
 
 const CAS = [

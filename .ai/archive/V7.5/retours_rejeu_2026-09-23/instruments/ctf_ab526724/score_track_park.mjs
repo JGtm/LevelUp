@@ -1,6 +1,6 @@
 // Pour chaque document : la piste SCORE de la frise serait-elle dessinee ? (regle web : >= 2 series d'equipe AVEC teamId)
 import fs from 'fs';
-const dir = 'C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
+const dir = 'C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
 const files = fs.readdirSync(dir).filter(f => f.endsWith('.json') && !f.includes('derived'));
 const cat = {};
 const rows = [];

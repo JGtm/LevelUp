@@ -22,7 +22,7 @@ verts ; items de la séquence Notion cochés.
 
 - **D1 (17/10)** : version **v8.0.0** — tag `v8.0.0`, `## [8.0.0]` dans les changelogs, bloc
   `**v8.0 — …**` dans les notes de version (la clé servie est tronquée à `vX.Y`).
-- **D2 (17/10)** : **Nuzzles est déclaré en prod**, profil indépendant, **sans amis**. Déclaré par
+- **D2 (17/10)** : **joueur_074 est déclaré en prod**, profil indépendant, **sans amis**. Déclaré par
   l'onboarding admin APRÈS le premier boot (le semis des amis et du groupe par défaut a alors déjà
   tourné : il n'hérite de rien). Sa base copiée est reprise telle quelle (`CreatePlayer` ne fait
   qu'un `MkdirAll`). Sans jeton propre, il dépend du pool (étape 5.8 avant 5.9).
@@ -57,8 +57,8 @@ verts ; items de la séquence Notion cochés.
 - **D4 (17/10)** : aucun travail de code avant que la session « backlog des 12 corrections » ait
   fini et fusionné.
 - Rappels antérieurs : tout en local puis copie, aucune passe sur le VPS (23/09) ; les 24 matchs
-  présents seulement en prod (XxGdakilla187xX, hors de tout profil) sont perdus à la copie,
-  assumé (23/09) ; mise en commun : 9 comptes désignés, **jamais XxGdakilla187xX** (16/10) ; droit
+  présents seulement en prod (joueur_1421, hors de tout profil) sont perdus à la copie,
+  assumé (23/09) ; mise en commun : 9 comptes désignés, **jamais joueur_1421** (16/10) ; droit
   applicable des conditions non précisé (16/10).
 
 ### Décisions de conception proposées par ce plan (l'utilisateur peut s'y opposer)
@@ -296,8 +296,8 @@ Binaire construit une seule fois : `go build -o <scratchpad>/levelup_v8.exe ./cm
       JGtm, 1 108 matchs, 47 s.
 - [x] 2.8e **Indicateur « données de compétence » des 157 matchs synchronisés du 25 au 30 mai**
       (ajouté le 2026-10-18 depuis le plan backlog du 2026-10-16) : la donnée est en base (MMR d'équipe
-      présent, mesuré sur la copie du 16/10 : JGtm 137 matchs, Chocoboflor 87, Madina97294 75,
-      XxDaemonGamerxX 10), seul le bit skill (4) de `backfill_completed` manque. Posé en local le
+      présent, mesuré sur la copie du 16/10 : JGtm 137 matchs, joueur_165 87, joueur_117 75,
+      joueur_291 10), seul le bit skill (4) de `backfill_completed` manque. Posé en local le
       2026-10-18 par `levelup reset-bitmasks --dry-run` puis `--apply` (serveur arrêté), donc dans la copie
       des bases vers le VPS : RIEN à faire en prod. Gate de release : `levelup_v8.exe reset-bitmasks
       --dry-run` annonce 0 ligne `match_registry` à mettre à jour (vérifié le 2026-10-18 à 23:43 : 0).
@@ -410,10 +410,10 @@ ses nouvelles captures d'écran (annoncées le 2026-10-18).
       `/health` 200 ; logs du boot : la tâche « relance des citations du film » démarre en prod
       et PAS dans la démo ; aucun conflit de verrou de la base joueur au premier post-sync.
 - [x] 5.8 (20/10, voir journal) **Mise en commun des jetons** (juste après le boot) : `pool-sharing list` ;
-      `pool-sharing grandfather --players JGtm,Chocoboflor,XxDaemonGamerxX,Madina97294,DankerGlue,GeleJugefi,Trimbutton,QuiteSiren,UppedJoker`
-      (simulation), puis la même avec `--yes` ; `list` = 9 `granted`, XxGdakilla187xX `undecided` ;
+      `pool-sharing grandfather --players JGtm,joueur_165,joueur_291,joueur_117,joueur_1016,joueur_1017,joueur_1018,QuiteSiren,UppedJoker`
+      (simulation), puis la même avec `--yes` ; `list` = 9 `granted`, joueur_1421 `undecided` ;
       `docker compose restart levelup`.
-- [x] 5.9 (20/10 soir : déclaré par l'admin, profil écrit à la main après l'échec EBUSY, D-24) **Nuzzles** (D2) : onboarding admin (xuid `2535472547643888`), aucun ami, hors du groupe.
+- [x] 5.9 (20/10 soir : déclaré par l'admin, profil écrit à la main après l'échec EBUSY, D-24) **joueur_074** (D2) : onboarding admin (xuid `2543518745364847`), aucun ami, hors du groupe.
 - [x] 5.10 (20/10 ; premier job de bout en bout -> 6.7b) **Ouvrier** (D’ABORD, en root sur csstat, une fois le déploiement de l’ouvrier passé : `install -o root -g root -m 0644 /opt/levelup/packaging/systemd/levelup-worker.service /etc/systemd/system/levelup-worker.service && systemctl daemon-reload && systemd-analyze verify …`, cf. 4.2 ; puis séquence de `RUNBOOK_REPLAY_WORKER.md` §4, qui fait foi) : test d'accès à `/api/v1/internal/build-queue/claim` (503 sans jeton, 401
       jeton faux ; jamais 403 `csrf_rejected` ni 404) ; `allow <IP csstat>; deny all;` dans
       `location /api/v1/internal/` + `nginx -t && systemctl reload nginx` ; sur csstat
@@ -431,7 +431,7 @@ ses nouvelles captures d'écran (annoncées le 2026-10-18).
 - [x] 6.2 (20/10, voir journal) `data/global/player_friends.json` existe avec N entrées (4 attendues, cf. 4.5) ; pas de groupe par défaut (D-19).
 - [x] 6.3 (20/10, voir journal) +1 h : logs `post-sync: kill source` → `sans_killfeed=0`, `ecrits` > 0,
       `backlog_restant` en baisse.
-- [x] 6.4 (20/10 21h : 7 post-sync de Nuzzles avec nouveaux matchs, aucun « joueur en échec » ; WARN trompeur D-26) Synchro de Nuzzles réussie (`auto_sync: sync delta réussie`), plus de `joueur en échec`.
+- [x] 6.4 (20/10 21h : 7 post-sync de joueur_074 avec nouveaux matchs, aucun « joueur en échec » ; WARN trompeur D-26) Synchro de joueur_074 réussie (`auto_sync: sync delta réussie`), plus de `joueur en échec`.
 - [!] 6.5 (20/10 : pool créé size=13 ; /privacy et /terms 200 et rendus ; carte injoignable pour un joueur (D-25) corrigée dans feat/v75 `4509475a2` pour la v8.0.1 ; reste le contrôle à l'écran de la bannière et de la carte après déploiement) Logs `pool: créé` à la bonne taille ; bannière de mise en commun pour un nouvel inscrit ;
       Réglages > Synchronisation affiche la carte ; `/privacy` et `/terms` sans compte (FR et EN).
 - [x] 6.6 (20/10 : pied de page « Licence AGPL-3.0 », /privacy cite l'AGPL-3.0, vu au navigateur) Pied de page « Licence AGPL-3.0 », confidentialité parle d'AGPL.
@@ -526,7 +526,7 @@ des gamertags des fixtures, réécriture de l'historique (push forcé sur `main`
 - **D-22 (20/10)** : les commandes CLI dans le conteneur durci doivent tourner en `-u appuser` (en root : `permission denied` sur `data/auth`) ; à corriger dans le runbook (`docker compose exec -T -u appuser levelup levelup …`) et dans la séquence Notion.
 - **D-23 (20/10)** : nginx prod : la conf active est `/etc/nginx/sites-enabled/levelup` (fichier), `sites-available/levelup` est une ancienne copie ; la conf versionnée `packaging/nginx/levelup.conf` ne porte pas le `allow/deny` de csstat ajouté le 20/10 (5.12).
 
-- **D-24 (20/10)** : l'onboarding admin de Nuzzles échoue en `rename ... device or resource busy` :
+- **D-24 (20/10)** : l'onboarding admin de joueur_074 échoue en `rename ... device or resource busy` :
   `db_profiles.json` est monté en fichier dans le conteneur, `rename(2)` y répond EBUSY. Profil écrit
   à la main (`cat >`, même inode) puis redémarrage ; correctif `atomicfile.WriteFile` dans la v8.0.1.
 - **D-25 (20/10)** : la carte de mise en commun des jetons (`PoolSharingCard`) n'est montée que dans
@@ -536,7 +536,7 @@ des gamertags des fixtures, réécriture de l'historique (push forcé sur `main`
   onglet Synchronisation ». Correctif à faire dans la v8.0.1 (proposé à l'utilisateur le 20/10).
 - **D-26 (20/10)** : `registry_auth.go:284` journalise en WARN « refresh du token échoué (le store
   contient pourtant un refresh token) » avec `err=user tokens not found` pour un profil suivi SANS
-  jeton (Nuzzles, 12 fois en 2 h) : message faux et bruit. Non traité (hors périmètre).
+  jeton (joueur_074, 12 fois en 2 h) : message faux et bruit. Non traité (hors périmètre).
 - **D-27 (20/10)** : CI de la PR #100, job de couverture `film-grammar-reste` : le paquet `grammar`
   dépasse le délai de 600 s (même commit vert en CI de branche) ; relance verte. Marge de temps du
   lot à surveiller (cf. mémoire coverage replay -timeout 600 s).
@@ -604,7 +604,7 @@ non close. État git : `git log --oneline -10 feat/release-v8`. État des passes
     source.
   - 2.10 : air relancé à 20:20 (journaux du serveur sous `apps/go-api/logs/` : `LEVELUP_LOGS_DIR` non
     posé par ce lancement), `/health` 200. Citations du film recalculées pour les 5 joueurs entre 20:22
-    et 20:23 (Chocoboflor 574, Madina97294 580, XxDaemonGamerxX 39, JGtm 1 139, Nuzzles 1 158 matchs).
+    et 20:23 (joueur_165 574, joueur_117 580, joueur_291 39, JGtm 1 139, joueur_074 1 158 matchs).
     Sur une COPIE de la base partagée : depuis le 2025-09-01, 2 477 matchs résumés, 56 avec
     `shieldless_kills` NULL (186 lignes sur 20 157 : les artefacts appauvris de D-12 et voisins) ;
     avant : 109 résumés, tous NULL (rejeux non recuits, attendu). Au démarrage, 3 échecs killsource
@@ -632,7 +632,7 @@ non close. État git : `git log --oneline -10 feat/release-v8`. État des passes
   - 4.1 : `.env.local` prod : `LEVELUP_ENV=production`, `LEVELUP_REPLAY_PUBLIC=1`, jeton de l'ouvrier
     présent ; `replay_build_location` absent de `app_settings.json`.
   - 4.3 : `/opt/levelup-staging/` créé (deploy:deploy). rsync msys64 : il faut
-    `-o UserKnownHostsFile=/c/Users/Guillaume/.ssh/known_hosts` (sinon « Host key verification
+    `-o UserKnownHostsFile=<poste>/.ssh/known_hosts` (sinon « Host key verification
     failed », le ssh msys64 lit un autre `known_hosts`). Copié : 3,1 Go de bases (15 sur 23 : les 8
     bases tenues par le serveur local sont verrouillées par Windows, « Device or resource busy »),
     5,4 Go de rejeux (2 928 fichiers, = local), 250 Mo de films de la démo, alias. Les 8 bases
@@ -692,7 +692,7 @@ non close. État git : `git log --oneline -10 feat/release-v8`. État des passes
   `config/`, `static/`, et `app_settings.json` + `db_profiles.json` de PROD (scp), sans `data/auth`,
   port 8090. Boot OK, `/health` 200, aucun FATAL ni panic, 1 seul ERROR (`catalog_refresh_cron: cycle
   échoué`, attendu sans jetons). `friends: listes d'amis par joueur créées … created=4` ;
-  `player_friends.json` produit (JGtm → XxDaemonGamerxX, Madina97294, Chocoboflor, etc.). **Groupe par
+  `player_friends.json` produit (JGtm → joueur_291, joueur_117, joueur_165, etc.). **Groupe par
   défaut : AUCUN créé** — `migrateDefaultGroupAtBoot` sort en silence car le `db_profiles.json` de
   prod n'a pas de champ `"admin"` (le local non plus) ; la prod n'a pas de `groups.json` aujourd'hui
   (même état qu'en v7.3.2). D-19, soumis à l'utilisateur. Copie supprimée, serveur local relancé.
@@ -728,10 +728,10 @@ non close. État git : `git log --oneline -10 feat/release-v8`. État des passes
     jamais mis à jour, D-21) → checkout de csstat remis à `origin/main` (en `deploy`), rerun : OK.
   - 5.8 : `pool-sharing grandfather` échoue en `root` (`permission denied` sur
     `watcher_tokens/*.json.tmp`, conteneur durci) → relancé avec `-u appuser` : 9 `granted`
-    (`grandfathered_explicit`), XxGdakilla187xX `undecided` (D-22 : runbook et Notion à corriger).
+    (`grandfathered_explicit`), joueur_1421 `undecided` (D-22 : runbook et Notion à corriger).
   - 5.10 : jetons prod et csstat identiques (empreinte) ; pré-vol 401/401 ; nginx : la conf ACTIVE est
     `sites-enabled/levelup` (fichier, pas lien ; `sites-available/levelup` est périmé) : `allow
-    82.165.167.179; deny all;` ajoutés dans `location /api/v1/internal/` (sauvegarde
+    <ip-vps>; deny all;` ajoutés dans `location /api/v1/internal/` (sauvegarde
     `/root/nginx-levelup.bak-20261020-preworker`), `nginx -t` OK, reload ; depuis l'extérieur 403, depuis
     csstat 401 (jeton faux) ; unité installée en copie root, `systemd-analyze verify` 0, `enable --now` :
     enabled/active, « replay-worker: démarré ». Premier job de bout en bout : en attente d'un match.
@@ -748,7 +748,7 @@ non close. État git : `git log --oneline -10 feat/release-v8`. État des passes
   toutes à 08:13 (arrêt pour la régénération de la démo) ou 08:32:49 (redémarrage pour le groupe) :
   `context canceled` à l'arrêt, sans suite. La CLI `healthcheck` dans le conteneur échoue sur les
   verrous (attendu : elle exige le serveur arrêté ; `/health` du serveur est la référence).
-  Restent : 6.4 (Nuzzles, à déclarer par l'utilisateur ce soir dans l'admin), 6.5 (bannière, réglages :
+  Restent : 6.4 (joueur_074, à déclarer par l'utilisateur ce soir dans l'admin), 6.5 (bannière, réglages :
   visuel), 6.6 (pied de page AGPL : visuel), 6.7 / 6.7b / 6.7c (au premier match joué ce soir), 6.9.
   Branche `fix/v8-0-1-deploiement` (`0db0ec7f5`) : D-20, D-22, D-23 + changelog [8.0.1] ; fusion vers
   `main` = déploiement, sur feu vert de l'utilisateur.
@@ -786,7 +786,7 @@ Ajout : rejeux recuits au schéma 101 (levelup-af, 2 500 artefacts, GrammarRev 2
 - VPS : images Docker inutiles purgées (~3 Go : `golang:1.24`, `golang:1.26`, `golang:1.26-bookworm`, jq) ; rejeux 101 mis en place AVANT la fusion (aucun artefact propre à la prod ; v8.0.0 lit le 101 sans contrôle de schéma, vérifié par levelup-af) ; anciens rejeux supprimés.
 - `gh pr merge 100 --squash` -> `658b294ce` ; tag `v8.0.1` ; run 39745506585 : CI, deploy, demo, ouvrier verts. La régénération de la démo ARRÊTE la prod le temps de lire ses bases (comportement connu du job).
 - restic 08:29:36 UTC ; `/root/swap_v801.sh` : bascule 08:29:44 -> health 08:30:09 (25 s) ; 23 bases, 0 WAL ; anciennes bases en `data/titles.pre-v801` (contient aussi les sauvegardes de compactage du 21/10).
-- Premier démarrage : réparation des clés refusée seulement pour `streak` de Chocoboflor (décision : on n'y touche pas) ; WARN `data_health` passes supersédées `match_kill_events` 8,4 M brutes / 420 k gardées (bases locales jamais compactées) -> compactage de nuit.
+- Premier démarrage : réparation des clés refusée seulement pour `streak` de joueur_165 (décision : on n'y touche pas) ; WARN `data_health` passes supersédées `match_kill_events` 8,4 M brutes / 420 k gardées (bases locales jamais compactées) -> compactage de nuit.
 - Unités `levelup-compact-passes.{service,timer}` installées (accord de l'utilisateur du 22/10), prochain passage 03:30 UTC.
 - `LEVELUP_REPLAY_PUBLIC=1` retiré du `.env.local` (copie `/root/env.local.bak-20261022-replaypublic`), conteneur recréé, variable absente.
 - Démo relancée après la bascule (job rerun) : rejeu servi au schéma 101. Prod : 2 508 artefacts, tous au schéma 101 ; aucun 5xx depuis la bascule.

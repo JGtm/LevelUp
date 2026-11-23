@@ -67,10 +67,10 @@ restic stats latest            # restore-size mode; expect ~735 MiB for the full
 
 # 4. Restore the latest snapshot into an isolated directory OUTSIDE the git repo,
 #    so it is not tracked and survives the session (consumed by the data audit, LOT V9).
-restic restore latest --target "/c/Users/Guillaume/Downloads/Scripts/LevelUp-prod-copy"
+restic restore latest --target "<poste>/Downloads/Scripts/LevelUp-prod-copy"
 ```
 
-Restore target (documented exact path): **`C:\Users\Guillaume\Downloads\Scripts\LevelUp-prod-copy\`**
+Restore target (documented exact path): **`<poste>\Downloads\Scripts\LevelUp-prod-copy\`**
 — outside the git working tree, no `.gitignore` needed, survives the session.
 
 ### Method B — streaming dump (fallback, no local restic)
@@ -125,15 +125,15 @@ Checks performed and expected shape:
 | Infinite shared_matches_v2 | start range | 2021-11-19 → 2026-06-25 |
 | Infinite metadata | maps / medals / playlists / asset_tr | 123 / 167 / 35 / 9702 |
 | Infinite shared_pve | pve_match_stats | 20 |
-| Infinite player Madina97294 | matches / enrich / csr_latest | 1182 / 4120 / 1172 |
+| Infinite player joueur_117 | matches / enrich / csr_latest | 1182 / 4120 / 1172 |
 | Infinite player JGtm | matches / enrich / csr_latest | 958 / 4674 / 948 |
-| Infinite player Chocoboflor | matches / enrich / csr_latest | 490 / 2428 / 499 |
-| Infinite player XxDaemonGamerxX | matches / enrich / csr_latest | 22 / 157 / 32 |
+| Infinite player joueur_165 | matches / enrich / csr_latest | 490 / 2428 / 499 |
+| Infinite player joueur_291 | matches / enrich / csr_latest | 22 / 157 / 32 |
 | H5 shared_matches_v2 | match_registry / participants | 3032 / 24208 |
 | H5 shared_matches_v2 | start range | 2015-10-29 → 2023-04-05 |
 | H5 metadata | table count | 13 |
 | H5 shared_social | table count | 33 |
-| H5 player Madina97294 | mv_player_matches | 1424 |
+| H5 player joueur_117 | mv_player_matches | 1424 |
 | auth watcher_tokens | *.json files | 9 |
 
 Note on magnitude: `shared_matches_v2.match_registry` holds *shared* match rows (~1.8k

@@ -133,7 +133,7 @@ func doRequest(h http.Handler, c routeCase) *httptest.ResponseRecorder {
 
 // authenticatedSession : session avec login local (mode password).
 func authenticatedSession() *domain.SessionData {
-	name := "guillaume"
+	name := "utilisateur"
 	return &domain.SessionData{Username: &name}
 }
 

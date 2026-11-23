@@ -307,7 +307,7 @@ backlog qu'elle ouvre est de datation (aucune mort ne change), sur signal utilis
 
 ### 6.1 Gate 1
 
-Depuis `apps/go-api`, `GOCACHE=C:/Users/Guillaume/AppData/Local/go-build-cg-l3a`, une commande `go`
+Depuis `apps/go-api`, `GOCACHE=<poste>/AppData/Local/go-build-cg-l3a`, une commande `go`
 à la fois :
 
 | Gate | Sortie |

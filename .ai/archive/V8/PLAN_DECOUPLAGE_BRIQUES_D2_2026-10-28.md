@@ -62,7 +62,7 @@ frontières.
   `i18n` 2, `filmshell` 2, `equipenergy` 2, `replaydoc` 2, `equipmentusage` 2, `weapons` 1,
   `objectiveevent` 1, `analysis/digest` 1) et 61 fichiers `research` (`filmproc` 36, `domain/title` 9,
   `testutil` 7, `highlightevent` 6, `mappings` 4, `filmshell` 2, `weapons` 2, `domain` 1). 19 fichiers
-  de test citent encore `C:\Users\Guillaume\Projects\LevelUp` (découverte 9 de D1).
+  de test citent encore `<poste>\Projects\LevelUp` (découverte 9 de D1).
 - LevelUp importe le film depuis 45 paquets (198 fichiers de production, 188 de test) : `replay` 111,
   `decfilm` 72, `filmcache` 34, `finalise` 10, `types` 7, `damagetag` 4, `medalname` 2, `killicon` 2 ;
   `filmproc` depuis 10 paquets, `filmshell` 5, `equipenergy` 2, `playerposition` 5, `objectiveevent` 5,
@@ -254,7 +254,7 @@ pilote (2026-10-28, D1) et demandé d'enchaîner sans s'arrêter. Elles sont FER
 **Clos quand** : 0.6 passé. Aucun commit de code (le plan est commité au lot 1 avec le garde-fou).
 
 **Exécution du lot 0 (2026-10-28/29, poste local, worktree `LevelUp-wt-decouplage-d2`, base `a5bae50b4`)** — témoins sous
-`%TEMP%\claude\c--Users-Guillaume-Downloads-Scripts-LevelUp\77a8b90a-21a6-40a0-ac64-eb152f616862\scratchpad\temoins_d2_lot0_avant\`
+`%TEMP%\claude\c--Users-poste-Downloads-Scripts-LevelUp\77a8b90a-21a6-40a0-ac64-eb152f616862\scratchpad\temoins_d2_lot0_avant\`
 (`md5s.txt` = MD5 de chaque témoin). Aucun fichier du dépôt touché hors ce plan et le journal.
 - 0.1 : arbre propre (seul le plan est non suivi), HEAD `a5bae50b4`, branche `refactor/decouplage-d2-decodeur-film`.
   CI de `release/v8.1.0` sur `a5bae50b4` : success (run 40769279871, 13 min 39 s).
@@ -406,7 +406,7 @@ Chaque item fait descendre une tolérance du lot 1 ; T1 à T3 relancés en fin d
 **Clos quand** : 2.12 passé, CI de la branche verte, entrée thought_log, point d'étape à l'utilisateur.
 
 **Exécution du lot 2 (2026-10-29, worktree `LevelUp-wt-decouplage-d2`)** — témoins sous
-`%TEMP%\claude\c--Users-Guillaume-Downloads-Scripts-LevelUp\77a8b90a-21a6-40a0-ac64-eb152f616862\scratchpad\temoins_d2_lot2_1\`.
+`%TEMP%\claude\c--Users-poste-Downloads-Scripts-LevelUp\77a8b90a-21a6-40a0-ac64-eb152f616862\scratchpad\temoins_d2_lot2_1\`.
 - 2.1 (cadre historique de l'empreinte, D2-F). **Sur pièces** : les trois dépendances au chemin du module annoncées dans
   « Chiffres de départ » sont confirmées — (a) `jetons.go` garde le littéral de chaque jeton `STRING`, donc les chaînes d'import ;
   (b) `couches.go` nomme les racines `internal/games/halo_infinite/film/internal/...` relativement au module ; (c)
@@ -483,7 +483,7 @@ Chaque item fait descendre une tolérance du lot 1 ; T1 à T3 relancés en fin d
 **Clos quand** : 3.8 passé, CI verte, thought_log, point d'étape.
 
 **Exécution du lot 3 (2026-10-29, worktree `LevelUp-wt-decouplage-d2`, base `915203a32`)** — témoins sous
-`%TEMP%\claude\c--Users-Guillaume-Downloads-Scripts-LevelUp\77a8b90a-21a6-40a0-ac64-eb152f616862\scratchpad\temoins_d2_lot3\`.
+`%TEMP%\claude\c--Users-poste-Downloads-Scripts-LevelUp\77a8b90a-21a6-40a0-ac64-eb152f616862\scratchpad\temoins_d2_lot3\`.
 - **Ouverture.** Le lot s'ouvre avec la CI du lot 2 (run 40808984883 sur `915203a32`) rouge sur le SEUL job `npm audit` (avis GHSA
   seroval publié le 2026-10-29, sans lien avec le code de la branche ; Deploy Pre-Check et gitleaks verts) : règle 9 de plan-execution,
   arrêt propre documenté, correctif en PR séparée (#112, `fix/npm-audit-seroval`, `apps/web/package-lock.json` seul). Au préalable
@@ -644,7 +644,7 @@ code de production n'a changé, seuls un test et deux commentaires.
 découvertes de D1 et D2).
 
 **Exécution du lot 5 (2026-10-29, worktree `LevelUp-wt-decouplage-d2`, HEAD de départ `32f118cd9`)** — témoins sous
-`%TEMP%\claude\c--Users-Guillaume-Downloads-Scripts-LevelUp\77a8b90a-21a6-40a0-ac64-eb152f616862\scratchpad\temoins_d2_lot5_apres\`.
+`%TEMP%\claude\c--Users-poste-Downloads-Scripts-LevelUp\77a8b90a-21a6-40a0-ac64-eb152f616862\scratchpad\temoins_d2_lot5_apres\`.
 - 5.1 T4 : `go run ./cmd/replay-corpus-gate -reference=base -base=a5bae50b4 -parc-root <dépôt principal> -source-root <worktree> -work-root <scratchpad>\gate_work_d2
   -json corpus_gate.json`, plafond mémoire par défaut. **Première passe** (sans `-allow-missing`, base cuite à froid, 11 min 31 s) : 18 témoins `ok` (0 gain, 0 perte,
   0 changement, banc de vérité `ok` sur les 18) et UN témoin **ABSENT** : `f75e7053` (famille `koth_collines`), « manifeste du film f75e7053 absent du parc
