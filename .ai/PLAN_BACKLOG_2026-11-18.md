@@ -17,7 +17,7 @@ Demande du user (2026-11-18) : analyser les entrées du backlog ajoutées la vei
 instruire sur preuve, garder ce qui est pertinent et faisable, planifier en pistes parallèles (Sonnet par
 défaut, Haiku quand c'est mécanique, Opus quand il le faut, Fable pour la revue finale), périmètre fermé,
 découvertes au backlog seulement si elles valent le coup. Deux retours ajoutés par le user : le pictogramme
-d'une ligne de ramassage du fil du rejeu lui déplaît ; sur le match `38900a5e`, à 5:00, ELOsk11 est donné mort
+d'une ligne de ramassage du fil du rejeu lui déplaît ; sur le match `38900a5e`, à 5:00, le joueur A est donné mort
 alors qu'il quitte la partie.
 
 Abréviation : `MR/` = `apps/web/src/features/match-replay/`.
@@ -28,7 +28,7 @@ Objectif : régler ce qui se règle maintenant dans les entrées des 17 et 18 no
 du user, et donner un sort écrit à chaque entrée instruite.
 
 Critère de succès : chaque entrée de la section 1 a un sort écrit (traitée, close, reformulée, gardée avec sa
-condition) ; sur le match `38900a5e`, ELOsk11 n'a plus de ligne « mort » à 5:00 et sa fiche dit qu'il a quitté
+condition) ; sur le match `38900a5e`, le joueur A n'a plus de ligne « mort » à 5:00 et sa fiche dit qu'il a quitté
 la partie ; `make gate-push` vert ; suite complète du web verte ; CI verte sur `release/v8.3.0`.
 
 | Piste | Ce que le user verra |
@@ -62,7 +62,7 @@ avant de coder (étape 0.4).
 
 | Retour | Constat sur pièces | Sort |
 |---|---|---|
-| ELOsk11 « mort » à 5:00 (match `38900a5e`) | Le décodeur lit le départ : mort à 4:41 (image 9539, compte à rebours lu), réapparition à l'image 9783, corps SUPPRIMÉ à l'image 9785 (`endReason: "deleted"`, aucun lâcher, aucun compte à rebours), présence au tableau fermée à l'image 9937, place reprise par le bot 343 Mickey à 9938. Le site n'en tire rien : toute fin de vie close sans frag devient une ligne « mort » (`MR/model/killFeedLogic.ts:300-302` et `:469-471`), `MR/model/lifeEndProof.ts:9` range `deleted` sous « fin de manche », et la fiche lit « mort » dès qu'aucune vie ne couvre l'image (`apps/web/src/lib/replay/rosterLogic.ts:538-554`). Seule la croix sur la carte est évitée. Parc : 1 386 départs en cours de match dans 729 rejeux ; 875 finissent par un corps supprimé (le schéma d'ELOsk11), 503 par une vraie mort suivie du départ, 8 sans raison publiée ; 5 rejeux ne publient pas de présence | Piste A (A.1), côté site seulement |
+| Le joueur A « mort » à 5:00 (match `38900a5e`) | Le décodeur lit le départ : mort à 4:41 (image 9539, compte à rebours lu), réapparition à l'image 9783, corps SUPPRIMÉ à l'image 9785 (`endReason: "deleted"`, aucun lâcher, aucun compte à rebours), présence au tableau fermée à l'image 9937, place reprise par le bot 343 Mickey à 9938. Le site n'en tire rien : toute fin de vie close sans frag devient une ligne « mort » (`MR/model/killFeedLogic.ts:300-302` et `:469-471`), `MR/model/lifeEndProof.ts:9` range `deleted` sous « fin de manche », et la fiche lit « mort » dès qu'aucune vie ne couvre l'image (`apps/web/src/lib/replay/rosterLogic.ts:538-554`). Seule la croix sur la carte est évitée. Parc : 1 386 départs en cours de match dans 729 rejeux ; 875 finissent par un corps supprimé (le schéma du joueur A), 503 par une vraie mort suivie du départ, 8 sans raison publiée ; 5 rejeux ne publient pas de présence | Piste A (A.1), côté site seulement |
 | Pictogramme d'une ligne de ramassage | Tracé au trait générique (`MR/model/feedGlyphs.ts`, clés `pickup`, `pickupPower`, `pickupEquipment`), choisi par la nature de la prise (`MR/ui/ReplayEventLine.tsx:61`). La ligne connaît l'arme, et le document porte son dessin (`weaponLabels[clé].img`, `tinted`), déjà employé par une ligne d'élimination (`FeedWeaponIcon`) | Piste A (A.2), selon D-1 |
 
 ### 1.2 Entrées retenues
@@ -246,7 +246,7 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
       de `apps/web/src/components/` et de `apps/web/src/features/squad/` ; sorties des tests par minute de
       l'Escouade (`per_minute_caracterisation_test.go`, `per_minute_temoins_test.go`) ; compte du garde-rail
       des couches ; pour le match `38900a5e`, les lignes du fil entre 4:30 et 5:30 et l'état de la fiche
-      d'ELOsk11 aux images 9700, 9786, 9900 et 9940, tirés d'un test jetable hors dépôt.
+      du joueur A aux images 9700, 9786, 9900 et 9940, tirés d'un test jetable hors dépôt.
 - [x] 0.3 (fait le 2026-11-18 : (a) 0 compte à rebours sur 875 ; (b) 6 539 joueurs sur 12 126 en écart sur au moins une image, 166 au total final différent ; (c) 0 lâcher repris à + 1 ou + 2 sur 28 540 ; (d) 2,2 à 4,3 ms) Mesures qui décident, sur les rejeux du poste, un fichier à la fois, lecture seule, résultats dans
       `.ai/annexes_backlog_1118/mesures.md` :
       (a) départs : faite le 2026-11-18 (`mesure_departs.md`) ; à compléter par la répartition de l'écart
@@ -289,7 +289,7 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
       (`matchMedals.ts:40`) ; `ReplayFeedMedals.tsx` et `MedalBadges.tsx` dessinent par
       `components/ui/MedalIcon.tsx`, comme la fiche. Test : une médaille à découpe rend son image dans les deux
       composants ; une médaille à image seule est inchangée.
-- **Gate A** : gate commun web sur `MR/` ; témoin 0.2 rejoué : plus de ligne « mort » pour ELOsk11, fiche
+- **Gate A** : gate commun web sur `MR/` ; témoin 0.2 rejoué : plus de ligne « mort » pour le joueur A, fiche
   « a quitté la partie » aux images 9786 et 9900 ; mesure (a) rejouée avec la règle codée : 875 départs
   reconnus, 511 fins de vie gardées (503 morts et 8 dernières vies sans raison publiée ; chiffre corrigé le
   2026-11-18 sur la mesure 0.3). Amendé le 2026-11-18 au retour de la piste : 884 départs avec la marge de 3 s du fil
@@ -569,7 +569,7 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 - [ ] R.2 Une ronde de relecture adversariale du diff complet (skill `adversarial-review`, Fable) et deux
       relectures ciblées (Sonnet) : jetons et file (pistes E et F), écritures en base (piste T) ; P0 et P1
       corrigés en une ronde, P2 au backlog seulement s'ils valent le coup.
-- [ ] R.3 Artefact des vérifications du user : départ d'ELOsk11 à 5:00 sur le match `38900a5e` ; ligne de
+- [ ] R.3 Artefact des vérifications du user : départ du joueur A à 5:00 sur le match `38900a5e` ; ligne de
       ramassage ; « Seul » puis « Suivre » ; sortie du Plein cadre ; orientation Auto dans la Tactique ; barre
       d'une ligne au Cinéma, fenêtre d'environ 1 440 px, disposition en colonne.
 - [ ] R.4 Tous les items statués ; outillage de mesure retiré ou documenté ; fusion dans `release/v8.3.0` ;
@@ -617,7 +617,7 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 
 - 2026-11-18 — piste A rendue après trois compléments du pilote (durée de « a quitté la partie », taille de
   `killFeedLogic.ts` ramenée de 591 à 567 lignes, test de la marge), relue, commitée (`d99966fcaa`). Sur le vrai
-  rejeu du match signalé par le user : fiche d'ELOsk11 « mort » à l'image 9700, « a quitté la partie » aux
+  rejeu du match signalé par le user : fiche du joueur A « mort » à l'image 9700, « a quitté la partie » aux
   images 9786, 9900, 9940 et à la dernière ; plus de ligne « mort » à 5:00. Sa place d'écriture va à la session
   du fond Relief (deux écrivains chacun). Vérifications lourdes du pilote sur l'intégration (K.2, E, H, C, G) :
   types, lint, compilation et `vet` verts ; suite complète du web 14 315 réussis, 2 échecs sans défaut de code

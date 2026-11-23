@@ -26,7 +26,7 @@ Les quantiles de l'écart entre la fin de la dernière vie et la fermeture de la
 (étape 0.3 a du plan) : le script les a calculés sur une liste qui contenait des valeurs non numériques
 (vies sans `endFrame`). Bornes fiables : aucun écart négatif, 62 écarts au-delà de 30 s.
 
-## Match `38900a5e`, ELOsk11
+## Match `38900a5e`, joueur A
 
 Images de 33 ms ; coup d'envoi du film à 33 415 ms ; horloge de manche : 5:00 écoulées vers l'image 9790.
 
@@ -35,7 +35,7 @@ Images de 33 ms ; coup d'envoi du film à 33 415 ms ; horloge de manche : 5:00 �
 | 9539 | Fin de vie par lâcher de commande, compte à rebours de 9539 à 9782 : une mort |
 | 9783 | Nouvelle vie (3 points) |
 | 9785 | Corps supprimé (`endReason: "deleted"`), aucun lâcher, aucun compte à rebours |
-| 9937 | Fermeture de la présence d'ELOsk11 à la place 2 |
+| 9937 | Fermeture de la présence du joueur A à la place 2 |
 | 9938 | Le bot 343 Mickey prend la place 2 ; sa première vie commence à l'image 10188 |
 
 Le document ne publie aucune mort neutre (`neutralDeaths`) pour ce joueur.
