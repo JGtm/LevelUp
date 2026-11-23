@@ -132,6 +132,24 @@ func (o *CycleOrchestratorImpl) populateOutcome(
 		}
 		candidates = append(candidates, mID)
 	}
-	out.MatchesInserted += pr.stored[p.PlayerSlug].insertedFor(candidates, pr.fetched)
+	stored := pr.stored[p.PlayerSlug]
+	inserted := stored.insertedFor(candidates, pr.fetched)
+	out.MatchesInserted += inserted
+	// Les nouveaux matchs (arrivés depuis la dernière passe) s'annoncent ; les autres sont ramenés par le
+	// rattrapage (budget du joueur compris) ou sont des abandons retentés : jamais annoncés.
+	fresh := intersect(candidates, disc.History[p.PlayerSlug].newMatches(listed))
+	out.CatchUpInserted += inserted - stored.insertedFor(fresh, pr.fetched)
 	per[p.PlayerSlug] = out
+}
+
+// intersect rend, dans l'ordre de `ids`, ceux qui figurent aussi dans `of`.
+func intersect(ids, of []string) []string {
+	in := toSet(of)
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if in[id] {
+			out = append(out, id)
+		}
+	}
+	return out
 }

@@ -44,7 +44,7 @@ type BackfillStats struct {
 	Campaign      int // matchs Campagne écartés (non jouables côté app)
 	PersistErrors int // erreurs de persistance (page-level)
 
-	// HistoryEnd : la liste de l'API a rendu une page vide ou incomplète (fin d'historique vue,
+	// HistoryEnd : la liste de l'API a rendu une page vide (fin d'historique vue,
 	// voir halo5.CaptureStats.HistoryEnd). Faux quand la passe s'arrête avant : budget atteint,
 	// erreur de page, anti-boucle, profondeur historystate.MaxDepth.
 	HistoryEnd bool
@@ -125,6 +125,10 @@ type BackfillDeps struct {
 // HeadID est l'identifiant de l'entrée en position 0 de la liste lue par cette passe (l'ancre des
 // marque-pages qu'elle range, historystate.Cursor.HeadID). Vide quand la passe n'a pas encore lu la
 // tête : les marque-pages prennent alors la tête vue par la capture de la première page.
+//
+// Un échec qui ne compte pas (panne de l'API : historyfail) ne fait pas avancer le compte vers l'abandon. Une
+// page abandonnée est un trou connu : OnAbandon le note (historystate.NoteHole), pour que le rattrapage
+// relise la liste après historystate.AbandonRetryAfter.
 type BackfillResume struct {
 	Start       int
 	ExpectID    string
@@ -133,6 +137,7 @@ type BackfillResume struct {
 	Attempts    int
 	MaxAttempts int
 	Save        func(ctx context.Context, c historystate.Cursor)
+	OnAbandon   func(ctx context.Context)
 }
 
 // RunBackfill exécute le backfill historique complet d'un joueur Halo 5 : paginne

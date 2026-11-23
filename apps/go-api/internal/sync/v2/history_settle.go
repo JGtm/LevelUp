@@ -7,7 +7,11 @@
 //     la persistance) ou en ÉCHEC ; un échec compte une passe dans la liste des échecs rangée avec le
 //     marque-page ; un match résolu sort de cette liste ;
 //   - à maxCatchUpAttempts passes en échec, le match est ABANDONNÉ : journalisé et compté une fois, il
-//     ne bloque plus rien (la découverte ne le liste plus : history.go) ;
+//     ne bloque plus rien (la découverte ne le liste plus : history.go) ; il est retenté après
+//     historystate.AbandonRetryAfter (retry.go), tentatives remises à zéro ;
+//   - une panne de l'API ne compte aucune tentative : un échec passager (429, réseau, délai) ne compte
+//     jamais, et dans une passe de masse (historyfail.Wide, un 5xx général compris) aucun échec ne compte. Le match retient alors
+//     la passe sans entrer dans la liste des échecs : la passe suivante le retente ;
 //   - un match encore dans la file d'écriture (attente expirée, persist_pending.go) n'est ni résolu ni un
 //     échec : il ne compte aucune passe, et retient la fin et le marque-page jusqu'à la passe suivante ;
 //   - la fin d'historique se range quand la fin est vue et qu'il ne reste aucun échec non abandonné ;
@@ -25,6 +29,7 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/sync/historyfail"
 	"levelup/go-api/internal/sync/historystate"
 )
 
@@ -71,7 +76,10 @@ func (o *CycleOrchestratorImpl) settlePlayerHistory(
 	if !ok {
 		return false
 	}
-	failures, blocking := trackFailures(ctx, p, ph.Failures, passOutcome{listed: listed, unresolved: unresolved, fetchErrs: in.fetchErrs})
+	failures, blocking := trackFailures(ctx, p, ph.Failures, passOutcome{
+		listed: listed, unresolved: unresolved, fetchErrs: in.fetchErrs,
+		due: toSet(ph.Retry), wide: wideFailure(unresolved, len(listed), ph.catchUpBudget()),
+	})
 	canAdvance := blocking == 0 && queued == 0
 	complete := canAdvance && ph.EndSeen
 	saveCursor := !complete && canAdvance && ph.Proposed != nil
@@ -120,30 +128,43 @@ func (o *CycleOrchestratorImpl) settlePlayerHistory(
 // bien rangé ; une erreur de lecture du match, de décodage ou de file d'écriture ne passe pas pour un
 // succès). ok=false : ensemble connu illisible, rien ne peut être conclu et l'état n'est pas touché.
 func unresolvedListed(ctx context.Context, p PlayerProfile, listed []string, in settleInput) (unresolved map[string]bool, ok bool) {
+	if notFound := len(notFoundListed(listed, in.fetchErrs)); notFound > 0 {
+		observability.AddIntT(ctxkeys.TitleSlug(ctx), counterHistoryNotFound, int64(notFound))
+		slog.InfoContext(ctx, "sync.v2: rattrapage d'historique — matchs introuvables côté API (404/410), non bloquants",
+			"event", "sync.v2.history.not_found", "player", p.PlayerSlug, "not_found", notFound)
+	}
+	return storedMissing(listed, in)
+}
+
+// storedMissing rend les matchs listés qui ne sont ni introuvables (404/410) ni prouvés rangés par la
+// relecture de l'ensemble connu. ok=false : relecture en échec (journalisée par proveStored), rien
+// ne peut être conclu.
+func storedMissing(listed []string, in settleInput) (missing map[string]bool, ok bool) {
 	toCheck := make([]string, 0, len(listed))
 	for _, id := range listed {
 		if !isNotFoundFetch(in.fetchErrs, id) {
 			toCheck = append(toCheck, id)
 		}
 	}
-	if notFound := len(listed) - len(toCheck); notFound > 0 {
-		observability.AddIntT(ctxkeys.TitleSlug(ctx), counterHistoryNotFound, int64(notFound))
-		slog.InfoContext(ctx, "sync.v2: rattrapage d'historique — matchs introuvables côté API (404/410), non bloquants",
-			"event", "sync.v2.history.not_found", "player", p.PlayerSlug, "not_found", notFound)
-	}
-	unresolved = map[string]bool{}
+	missing = map[string]bool{}
 	if len(toCheck) == 0 {
-		return unresolved, true
+		return missing, true
 	}
 	if !in.stored.read {
-		return nil, false // relecture en échec : journalisée par proveStored
+		return nil, false
 	}
 	for _, id := range toCheck {
 		if !in.stored.known[id] {
-			unresolved[id] = true
+			missing[id] = true
 		}
 	}
-	return unresolved, true
+	return missing, true
+}
+
+// wideFailure dit si les matchs en échec d'une passe (`failed`, parmi `listed` matchs listés, pour un budget
+// de passe `budget`) sont ceux d'une panne de l'API plutôt que de matchs précis (historyfail.Wide).
+func wideFailure(failed map[string]bool, listed, budget int) bool {
+	return historyfail.Wide(len(failed), listed, budget)
 }
 
 // passOutcome est le bilan d'une passe pour un joueur : matchs listés, ceux qui ne sont ni résolus ni
@@ -152,7 +173,14 @@ type passOutcome struct {
 	listed     []string
 	unresolved map[string]bool
 	fetchErrs  map[string]error
+	// due : les abandons échus (HistoryState.Retry) : leurs tentatives repartent de zéro.
+	due map[string]bool
+	// wide : passe de masse (wideFailure) : aucun échec ne compte une tentative.
+	wide bool
 }
+
+// counts dit si l'échec du match compte une tentative vers l'abandon (historyfail.Counts).
+func (o passOutcome) counts(id string) bool { return historyfail.Counts(o.wide, o.fetchErrs[id]) }
 
 // trackFailures met à jour la liste des échecs d'un joueur après une passe et rend la nouvelle liste
 // (du plus ancien échec au plus récent) et le nombre de matchs en échec NON abandonnés (ceux qui
@@ -162,7 +190,10 @@ type passOutcome struct {
 //   - un échec dont le match est résolu sort de la liste ;
 //   - un échec dont le match est encore non résolu gagne une passe (sauf s'il est déjà abandonné : un
 //     orphelin de l'ensemble connu peut être listé de nouveau sans pour autant bloquer) ;
-//   - un match listé non résolu et jamais échoué entre dans la liste à une passe.
+//   - un match listé non résolu et jamais échoué entre dans la liste à une passe ;
+//   - un échec qui ne compte pas (pass.counts : panne de l'API) ne change pas la liste mais retient la passe ;
+//   - un match abandonné dont l'abandon est échu (pass.due) sort de la liste : ses tentatives repartent
+//     de zéro, il redevient un inconnu ordinaire.
 //
 // Le passage au seuil maxCatchUpAttempts abandonne le match : journalisé (dernière erreur) et compté.
 func trackFailures(
@@ -171,38 +202,45 @@ func trackFailures(
 	prev []historystate.Failure,
 	pass passOutcome,
 ) (next []historystate.Failure, blocking int) {
-	listed, unresolved, fetchErrs := pass.listed, pass.unresolved, pass.fetchErrs
-	listedSet := make(map[string]bool, len(listed))
-	for _, id := range listed {
-		listedSet[id] = true
-	}
+	listedSet := toSet(pass.listed)
 	known := make(map[string]bool, len(prev))
-	next = make([]historystate.Failure, 0, len(prev)+len(unresolved))
+	next = make([]historystate.Failure, 0, len(prev)+len(pass.unresolved))
 	for _, f := range prev {
+		if isAbandoned(f.Attempts) && pass.due[f.MatchID] {
+			continue
+		}
 		known[f.MatchID] = true
 		switch {
 		case !listedSet[f.MatchID]:
 			next = append(next, f)
-		case !unresolved[f.MatchID]:
+		case !pass.unresolved[f.MatchID]:
 			// résolu : sort de la liste
 		case isAbandoned(f.Attempts):
 			next = append(next, f)
+		case !pass.counts(f.MatchID):
+			next = append(next, f)
+			blocking++
 		default:
 			f.Attempts++
 			next = append(next, f)
-			if !noteAttempt(ctx, p, f, fetchErrs) {
+			if !noteAttempt(ctx, p, f, pass.fetchErrs) {
 				blocking++
 			}
 		}
 	}
-	for _, id := range listed {
-		if unresolved[id] && !known[id] {
-			known[id] = true
-			f := historystate.Failure{MatchID: id, Attempts: 1}
-			next = append(next, f)
-			if !noteAttempt(ctx, p, f, fetchErrs) {
-				blocking++
-			}
+	for _, id := range pass.listed {
+		if !pass.unresolved[id] || known[id] {
+			continue
+		}
+		known[id] = true
+		if !pass.counts(id) {
+			blocking++
+			continue
+		}
+		f := historystate.Failure{MatchID: id, Attempts: 1}
+		next = append(next, f)
+		if !noteAttempt(ctx, p, f, pass.fetchErrs) {
+			blocking++
 		}
 	}
 	return next, blocking

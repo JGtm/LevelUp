@@ -16,6 +16,10 @@
 // clé [CursorKey], voir [Cursor]) pour que la suivante reprenne là au lieu de reparcourir la liste
 // depuis le début ; [MarkComplete] l'efface.
 //
+// Abandon : un match (Infinite) ou une page (Halo 5) qui échoue plusieurs passes de suite est abandonné pour ne
+// pas garder le joueur au rattrapage à vie, mais pas pour toujours : [AbandonRetryAfter] plus tard, il est
+// retenté ([SkipSet.Due] pour un match, [HoleDue] puis [Reopen] pour une page). Un 404/410 reste exclu.
+//
 // Bail d'écriture : [MarkComplete], [SaveCursor] et [ClearCursor] écrivent dans la base joueur ; l'APPELANT tient le bail d'écriture
 // de ce joueur pendant l'appel (règle ART n°4, `dblease.AcquireWriterCtx` / `AcquirePlayerWriterTimeout`),
 // ce paquet n'en prend pas. Le cycle V2 et le runner Halo 5 l'appellent sous le bail joueur de leur passe.
@@ -30,6 +34,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/domain"
@@ -38,7 +43,8 @@ import (
 
 const (
 	// Key est la clé de `sync_meta` qui porte, par joueur, l'instant où une passe a vu la fin de
-	// l'historique du titre. Absente : l'historique n'a jamais été parcouru jusqu'au bout. Le nom
+	// l'historique du titre. Absente ou vide : l'historique n'a jamais été parcouru jusqu'au bout (ou a
+	// été rouvert par [Reopen]). Le nom
 	// est inchangé depuis son introduction : un joueur déjà marqué le reste.
 	Key = "history_complete_at"
 
@@ -58,7 +64,7 @@ func PassBudget() int {
 var ErrNoPlayerDB = errors.New("historystate: base joueur absente")
 
 // Complete dit si la fin de l'historique a déjà été vue pour ce joueur : (vrai, nil) clé rangée,
-// (faux, nil) clé absente. Une lecture en échec (ou une base absente, ErrNoPlayerDB) rend
+// (faux, nil) clé absente ou vide ([Reopen] la vide). Une lecture en échec (ou une base absente, ErrNoPlayerDB) rend
 // (faux, erreur) : l'état est INCONNU, jamais « complet ». L'appelant ne rattrape pas et n'écrit
 // rien de l'état à cette passe (delta ordinaire), garde le joueur « en attente » pour que la
 // cadence courte réessaie, et journalise l'erreur.
@@ -66,11 +72,11 @@ func Complete(ctx context.Context, db *sql.DB) (bool, error) {
 	if db == nil {
 		return false, ErrNoPlayerDB
 	}
-	_, ok, err := syncmeta.Get(ctx, db, Key)
+	value, ok, err := syncmeta.Get(ctx, db, Key)
 	if err != nil {
 		return false, fmt.Errorf("historystate: lecture de %s: %w", Key, err)
 	}
-	return ok, nil
+	return ok && strings.TrimSpace(value) != "", nil
 }
 
 // MarkComplete range l'instant de fin d'historique dans la base joueur. L'appelant tient le bail

@@ -218,6 +218,47 @@ page.
     doublon, fin rangée) : cycle après redémarrage 14 min 28 s -> 35 à 44 s (test entier 151 à 168 s, trois passes dont une après la fusion de D-24), zéro « different
     configuration », zéro « database is closed ». Tests : attente sans progrès (persist, v2), `Complete` sur erreur
     (historystate, V2 cycle et chargeur, Halo 5, historyrepo, ordonnanceur), partage du handle (platform/duckdb).
+- **D-26** (pilote, validé par l'utilisateur, 22/11, après la revue adversariale) Une panne de l'API ne fait pas abandonner des
+  matchs sains ; le budget est celui du cycle ; la branche « marque-page sans ancre » d'Infinite disparaît ; la fin d'historique ne se conclut
+  que sur une page vide.
+  - [x] D-26.1 (P1-1) Aucune tentative n'est comptée quand l'échec est systémique, et un abandon est retenté après 24 h.
+    Systémique = erreur passagère (429, 408, délai dépassé, réseau coupé, fin de flux, pool sans jeton, arrêt du cycle : verdicts typés de la
+    brique `halo-api` et erreurs de la bibliothèque standard, `sync/historyfail`) OU passe de masse (plus de 10 % des matchs de la passe en échec,
+    au moins 5, la passe se mesurant à son budget quand elle liste moins : une dernière passe de quelques matchs durablement refusés n'est pas
+    une panne et finit par les abandonner). Un 5xx isolé compte (un match que l'API refuse toujours en 5xx existe : sans abandon, le joueur
+    resterait au rattrapage à vie, régression de D-16) ; un 5xx de masse ne compte pas. Un match systémique retient la passe sans entrer dans la
+    liste des échecs : la passe suivante le retente. Infinite : `v2/history_settle.go` (`trackFailures`, `passOutcome.counts`).
+    Halo 5 : `backfill_walk.go` (`failFrontier` rend « ne compte pas » sur erreur passagère ou persistance de masse).
+    Retente après `historystate.AbandonRetryAfter` (24 h) : Infinite, l'ensemble des matchs à ne plus demander porte `at` par entrée (format
+    `{"id","why","at"}` ; une entrée sans date vaut la date de la dernière écriture, sans date du tout elle n'échoit pas) ; `LoadSkipSet`
+    rend `SkipSet{Active, Due}` ; un abandon échu est retenté par identifiant (`v2/retry.go`, au plus 50 par cycle et par joueur, comme un orphelin),
+    tentatives remises à zéro au rattrapage (`trackFailures`), abandonné de nouveau pour 24 h à l'historique complet (`settleSkips`, sauf panne) ;
+    un 404/410 au retour le rend définitif. Halo 5 : une page abandonnée note un trou (`history_hole_since`, `historystate.NoteHole`) ; 24 h plus tard
+    `readHistoryState` rouvre l'historique (`historystate.Reopen` : clé de fin vidée, marque-page, compte d'échecs et trou effacés) et la passe suivante
+    relit la liste depuis son début, connus sautés. `historystate.Complete` lit une clé vide comme « incomplet ». Garde-rail des clés étendu.
+  - [x] D-26.2 (P1-2, partie Infinite) Budget GLOBAL par cycle V2 = `historystate.PassBudget()` (200), réparti également entre les joueurs au
+    rattrapage du cycle (`v2/budget.go`, `RunDiscovery` en deux temps : lecture de tous les joueurs, puis liste avec `HistoryState.Budget`), au moins
+    25 chacun (`catchUpMinBudget`) ; au-delà de 8 joueurs, les 8 premiers par identifiant rattrapent, les autres font un delta ordinaire
+    (borné à 25 matchs : un joueur sans historique rangé n'y tient pas 500 matchs) avec `HistoryPending` vrai. Le delta des joueurs complets n'est
+    pas compté. (La partie Halo 5 est faite dans l'ordonnanceur.)
+  - [x] D-26.3 (P1-4) Infinite : un marque-page sans ancre = pas de marque-page (reprise depuis le début, journalisée et comptée par
+    `sync_v2_history_cursor_fallback_total`) ; `scanNew`, `resumeStart`, `topSpan`, `reachedKnown` et leurs tests supprimés. Halo 5 garde la sienne.
+  - [x] D-26.4 (P2-1) La fin d'historique ne se conclut que sur une page VIDE, Infinite (`scanFrom`, `scanTop`) et Halo 5 (`capturePage`) : un appel de
+    plus quand la dernière page est partielle. Le delta Infinite à historique complet (`listDelta`) ne conclut rien et garde sa sortie sur page partielle.
+  - [x] D-26.5 (pilote, mesure réelle) Halo 5 : le résolveur d'identités Xbox attend sous la limite de débit au lieu d'abandonner. Un participant dont
+    le gamertag ne se résout pas est SAUTÉ du match (resolve-or-skip, `mapCarnageParticipants`, compté dans `RosterDropped`) ; le match est rangé sans lui, puis
+    jamais revu (il est connu : le delta ne le relit pas ; seule la commande `h5-roster-refetch` le complète). La brique `halo-api` rend `peoplehub HTTP 429`
+    en texte, sans type ni `Retry-After` (non modifiée) ; `livesync/resolver_retry.go` : cadence d'une requête tous les 15 s / 9 (1,67 s) par compte (sous les 10 par 15 s
+    observés), attente sur 429 de 3 s doublée jusqu'à 15 s, au plus 2 min cumulées par passe, comptée (`h5_xuid_resolve_retry_total`, `h5_xuid_resolve_giveup_total`).
+  - Mesures D-26 (appels de pages d'historique, avant -> après) : convergence V2 1 000 matchs `[8 9 10 9 10 2]` (48) -> `[8 9 10 9 10 3]` (49) (la fin se
+    voit sur la page vide, un appel de plus au dernier cycle) ; convergence Halo 5 `[8 11 10 11 10 3]` (53) inchangée (monde simulé dont la dernière page est pleine) ;
+    page courte au milieu de la liste : fin non rangée, lecture poursuivie ; fin sur page partielle : 4 lectures `[0 25 50 75]` -> 5 `[0 25 50 75 100]`.
+  - Gate D-26 : `go build ./...`, `go vet` (avec et sans `integration`), `go test` et `go test -tags=integration` sur `sync/v2`, `sync/historystate`,
+    `sync/historyfail`, `games/halo_5/...`, `go test -tags=integration -run 'Convergence|Difficile' ./cmd/server/` (1 657 s), `go test ./internal/archlint/ -run HistoryKey`,
+    golangci-lint `--new-from-merge-base=origin/main` sur ces paquets : verts.
+  - [x] D-26.6 (fusion de D-27) `CatchUpInserted` rempli : V2 (`populateOutcome`) = matchs rangés prouvés moins ceux arrivés au-dessus de l'ancre du marque-page
+    (`Listing.Arrived`, lus par `scanTop`) ; à l'historique complet ou rattrapage reporté, tous les rangés sont des nouveaux sauf les abandons retentés (comptés côté rattrapage) ;
+    sans ancre retrouvée, tout est du rattrapage. Halo 5 : `catchUpPass.run` ajoute `bs.Inserted` (le delta du dessus n'y entre pas). Le budget réparti ne change pas la règle.
 - **D-11** Rien ne change dans la base : aucune migration, aucune table. Clé `sync_meta` existante.
 - **D-27** (pilote, validé par l'utilisateur, 22/11) Constats de la revue adversariale sur le rattrapage d'historique et
   corrections.
@@ -574,7 +615,7 @@ fichier, `git log --oneline -10` dans chaque worktree, `ListAgents`.
 
 ## Découvertes
 - D-19 : un match qui échoue au parsage dans `PersistCycle` n'est jamais soumis ; après une attente expirée il n'est pas distingué des matchs en file que par la liste `DrainTimeoutError.Submitted` (traité : seuls les soumis sont « en file »). Un match rangé en arrière-plan après l'expiration n'a pas les soins ciblés du post-sync de ce cycle (hors périmètre).
-- D-21 : un marque-page sans ancre (rangé avant ce correctif) retombe sur la règle précédente une passe, puis reçoit son ancre.
+- D-21 (remplacé par D-26.3 pour Infinite) : un marque-page sans ancre (rangé avant ce correctif) retombe sur la règle précédente une passe, puis reçoit son ancre. Infinite : il vaut désormais pas de marque-page (reprise depuis le début) ; Halo 5 garde la règle précédente.
 - Test `TestSoak_V2_CycleStability` : un échec isolé lancé en parallèle d'un autre paquet, vert seul (3/3) et au rejeu complet (2/2) ; non relié.
 
 (Les correctifs hors périmètre sont interdits : les noter ici.)
@@ -678,6 +719,9 @@ fichier, `git log --oneline -10` dans chaque worktree, `ListAgents`.
 - D-25 (gate) : `go test ./internal/archlint/` échoue sur la branche intégrée hors de ce lot : `TestRepoRootNEstPlusLuHorsConfigEtResolveur` compte 1 lecteur de RepoRoot dans `internal/sync/replayartifacts/artifacts.go` pour 2 à l'allowlist (fichier non touché ici, dernier commit 822-14) ; l'allowlist est à abaisser par la piste qui l'a migré. Gardes DuckDB, ouverture RW et clé d'historique vertes.
 - D-25 : deux autres lecteurs d'une base joueur passent encore par `OpenReadForQuery` dans le serveur (instantané de fin de cycle `sync/snapshot/snapshot_cutter.go`, `sync/match_recomputer.go`) : sans handle en cache, ils ouvrent en lecture seule et peuvent faire refuser le worker (« different configuration ») le temps de leur lecture. Hors périmètre, noté.
 - D-23 : un match inconnu proche du haut de liste qui échoue toujours (stats en 500) est maintenant retenté à chaque delta tant qu'il reste à moins de 25 entrées de connus au-dessus de lui (il remet la suite à zéro) ; en V1 et en V2 historique complet le delta lit alors deux pages au lieu d'une, jusqu'à ce que 25 matchs plus récents l'aient éloigné. Pas d'abandon hors rattrapage (D-16). Hors périmètre, noté.
-- D-23 : sans ancre (marque-page rangé avant D-21), N compte les entrées jusqu'à la dernière inconnue ; un connu arrivé plus bas n'est pas compté (page de recouvrement ratée, reprise depuis 0 journalisée et comptée) : état transitoire d'une passe.
+- D-23 (Infinite : branche supprimée par D-26.3, Halo 5 inchangé) : sans ancre (marque-page rangé avant D-21), N compte les entrées jusqu'à la dernière inconnue ; un connu arrivé plus bas n'est pas compté (page de recouvrement ratée, reprise depuis 0 journalisée et comptée) : état transitoire d'une passe.
 - D-24 : le moteur V1 (suivi en direct, synchronisation manuelle d'un joueur) ne lit ni n'écrit l'ensemble des matchs à ne plus demander : un match introuvable en haut de liste y est redemandé à chaque tick tant qu'il reste dans les premières entrées (une demande par tick). Hors périmètre (V1 est un delta pur, D-18), noté.
 - D-24 : l'ensemble est lu par une seconde ouverture lecture seule de la base joueur par cycle et par joueur (`known_loader_skip.go`, capacité facultative `SkipSetLoader`) parce que `known_loader.go` était pris par une autre piste ; à replier dans `LoadKnown` (lecture sur la poignée déjà ouverte) quand cette piste sera intégrée. Replié par D-25 : `readHistoryState` lit l'ensemble sur l'ouverture de `LoadKnown` ; `known_loader_skip.go` et `SkipSetLoader` supprimés.
+- D-26 : la cadence d'un joueur dont le rattrapage est reporté (plus de 8 joueurs) reste celle du cycle ; il est compté « en attente » (`HistoryPending`) et son delta est borné à 25 matchs. Un abandon échu retenté à l'historique complet ne retient pas la fin : il n'y a pas de fin à ranger.
+- D-26 : un joueur à plus de 20 matchs durablement refusés dans une même dernière passe (plus de 10 % du budget) est lu comme une passe de masse : aucun abandon, il reste au rattrapage tant que l'API ne les rend pas ; l'abandon exige que les échecs durables restent sous 10 % du budget de la passe (20 matchs sur 200). Choix assumé, à revoir si la mesure en production montre le cas.
+- D-26 (gate) : `go test ./internal/archlint/` complet échoue hors de ce lot sur la branche intégrée : `TestNoNewFrenchLabelLiteral` (un littéral accentué de `games/halo_5/livesync/catchup_anchor.go`, fichier non touché ici) et `TestEnregistreurHTTPUnique` (deux `RoundTrip` de `cmd/server/sync_v2_convergence_*_integration_test.go`, fichiers non touchés). À corriger par les pistes qui les ont introduits.

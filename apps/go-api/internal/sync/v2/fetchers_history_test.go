@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"testing"
 
-	"levelup/go-api/internal/ctxkeys"
-	"levelup/go-api/internal/observability"
 	syncpkg "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/historystate"
 )
@@ -201,7 +199,7 @@ func TestListCatchUp_RepriseAuMarquePage(t *testing.T) {
 	budget := historystate.PassBudget()
 	old := matchIDs("m", 1000)
 	known := knownOfIDs(old[:600])
-	cursor := &historystate.Cursor{Offset: 600, LastMatchID: old[599]}
+	cursor := &historystate.Cursor{Offset: 600, LastMatchID: old[599], HeadID: old[0]}
 
 	t.Run("sans nouveau match", func(t *testing.T) {
 		c := newPagedClient(old)
@@ -213,8 +211,8 @@ func TestListCatchUp_RepriseAuMarquePage(t *testing.T) {
 		if l.Proposed == nil || *l.Proposed != want {
 			t.Errorf("Proposed = %+v, want %+v", l.Proposed, want)
 		}
-		// Pas de rebalayage : seules la première page (delta du dessus) et la page de
-		// recouvrement (575) précèdent la zone à lire.
+		// Pas de rebalayage : seules la première page (lecture du haut, jusqu'à l'ancre) et la page de
+		// contrôle (599) précèdent la zone à lire.
 		if got := c.startsBetween(25, 575); got != 0 {
 			t.Errorf("%d lectures entre les positions 25 et 575 : la liste a été reparcourue", got)
 		}
@@ -250,43 +248,20 @@ func TestListCatchUp_RepriseAuMarquePage(t *testing.T) {
 	})
 }
 
-// Page de recouvrement qui ne contient pas le dernier match du marque-page (liste remaniée) : la
-// position n'est plus fiable, la lecture repart du début, et le compteur le dit.
-func TestListCatchUp_RecouvrementRate_RepriseDepuisZero(t *testing.T) {
-	ids := matchIDs("m", 1000)
-	known := knownOfIDs(ids[:600])
-	cursor := &historystate.Cursor{Offset: 600, LastMatchID: "disparu"}
-	title := ctxkeys.TitleSlug(context.Background())
-	before := observability.LoadCounterT(title, counterHistoryCursorFallback)
-
-	c := newPagedClient(ids)
-	l := listCatchUpOf(t, c, known, cursor)
-
-	if !equalSlice(l.Unknown, ids[600:600+historystate.PassBudget()]) {
-		t.Errorf("Unknown = %d ids : la reprise depuis le début doit sauter les connus et trouver les mêmes inconnus", len(l.Unknown))
-	}
-	if got := c.startsBetween(25, 575); got == 0 {
-		t.Error("aucune lecture du milieu de la liste : la reprise depuis le début n'a pas eu lieu")
-	}
-	if got := observability.LoadCounterT(title, counterHistoryCursorFallback) - before; got != 1 {
-		t.Errorf("compteur de reprise depuis le début +%d, want +1", got)
-	}
-}
-
-// Marque-page proche du haut : la page de recouvrement est bornée à 0, la lecture ordinaire suffit.
+// Marque-page proche du haut : la lecture de contrôle tombe dans la première page, la lecture ordinaire suffit.
 func TestListCatchUp_MarquePageProcheDuHaut(t *testing.T) {
 	ids := matchIDs("m", 60)
 	known := knownOfIDs(ids[:10])
-	l := listCatchUpOf(t, newPagedClient(ids), known, &historystate.Cursor{Offset: 10, LastMatchID: ids[9]})
+	l := listCatchUpOf(t, newPagedClient(ids), known, &historystate.Cursor{Offset: 10, LastMatchID: ids[9], HeadID: ids[0]})
 	if !equalSlice(l.Unknown, ids[10:]) || !l.EndSeen {
 		t.Errorf("Listing = {%d inconnus, EndSeen %v}, want {50, true}", len(l.Unknown), l.EndSeen)
 	}
 }
 
-// Avec un marque-page, tant qu'aucun match connu n'est rencontré en haut de liste, le décalage
-// n'est pas translatable : budget atteint sans position proposée ; liste courte vue en entier = fin.
+// Avec un marque-page dont l'ancre n'est pas rencontrée en haut de liste, le décalage n'est pas
+// translatable : budget atteint sans position proposée ; liste courte vue en entier = fin.
 func TestListCatchUp_MarquePageSansPremierConnu(t *testing.T) {
-	cursor := &historystate.Cursor{Offset: 600, LastMatchID: "x"}
+	cursor := &historystate.Cursor{Offset: 600, LastMatchID: "x", HeadID: "y"}
 
 	l := listCatchUpOf(t, newPagedClient(matchIDs("m", 1000)), map[string]bool{}, cursor)
 	if len(l.Unknown) != historystate.PassBudget() || l.EndSeen || l.Proposed != nil {
@@ -368,7 +343,7 @@ func TestListCatchUp_AbandonneEnHautNeDecalePasLaReprise(t *testing.T) {
 	known := knownOfIDs(ids[2:600])
 	hist := HistoryState{
 		Incomplete: true,
-		Cursor:     &historystate.Cursor{Offset: 600, LastMatchID: ids[599]},
+		Cursor:     &historystate.Cursor{Offset: 600, LastMatchID: ids[599], HeadID: ids[0]},
 		Failures: []historystate.Failure{
 			{MatchID: ids[0], Attempts: maxCatchUpAttempts},
 			{MatchID: ids[1], Attempts: maxCatchUpAttempts},
@@ -382,7 +357,74 @@ func TestListCatchUp_AbandonneEnHautNeDecalePasLaReprise(t *testing.T) {
 	if !equalSlice(l.Unknown, ids[600:600+historystate.PassBudget()]) {
 		t.Fatalf("Unknown = %d ids, want %d ids à partir de la position 600", len(l.Unknown), historystate.PassBudget())
 	}
-	if c.startsBetween(575, 576) == 0 {
-		t.Errorf("lectures %v : la reprise devait se faire à 600-25=575 (aucun nouveau match)", c.starts)
+	if c.startsBetween(25, 599) != 0 || c.startsBetween(599, 600) != 1 {
+		t.Errorf("lectures %v : la reprise devait se faire à 599 (aucun nouveau match), sans lire le milieu", c.starts)
 	}
+}
+
+// shortPageClient rend, à `shortAt`, une page plus courte que demandée alors que la liste continue.
+type shortPageClient struct {
+	*pagedClient
+	shortAt, n int
+}
+
+func (c *shortPageClient) GetMatchHistory(ctx context.Context, g, mt string, start, count int) ([]syncpkg.MatchHistoryEntry, error) {
+	if start == c.shortAt {
+		count = c.n
+	}
+	return c.pagedClient.GetMatchHistory(ctx, g, mt, start, count)
+}
+
+// Une page courte au milieu de la liste ne range pas la fin : la lecture continue au-delà, et la fin n'est
+// vue que sur une page vide, une page de plus qu'avant.
+func TestListCatchUp_PageCourteAuMilieu_NeRangePasLaFin(t *testing.T) {
+	ids := matchIDs("m", 100)
+	for name, cursor := range map[string]*historystate.Cursor{
+		"sans marque-page":     nil,
+		"marque-page et ancre": {Offset: 1, LastMatchID: ids[0], HeadID: ids[0]},
+	} {
+		t.Run(name, func(t *testing.T) {
+			c := &shortPageClient{pagedClient: newPagedClient(ids), shortAt: 25, n: 10}
+			provider := NewMatchListProvider(func(string, string) HaloClient { return c }, "matchmaking", 25, 20)
+			l, err := provider.ListUnknownMatches(context.Background(), PlayerProfile{Gamertag: "alice", XUID: "999"},
+				map[string]bool{}, HistoryState{Incomplete: true, Cursor: cursor})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if c.startsBetween(50, 100) == 0 {
+				t.Errorf("lectures %v : la page courte à 25 a été prise pour la fin", c.starts)
+			}
+			if !l.EndSeen || l.Unknown[len(l.Unknown)-1] != ids[99] {
+				t.Errorf("EndSeen %v, dernier inconnu %s, want vrai et %s (fin vue sur la page vide, au bout de la liste)", l.EndSeen, l.Unknown[len(l.Unknown)-1], ids[99])
+			}
+			if got := c.starts[len(c.starts)-1]; got != 100 {
+				t.Errorf("dernière lecture à %d, want 100 : la page vide", got)
+			}
+		})
+	}
+}
+
+// La fin sur une page partielle coûte un appel de plus : la page vide qui la confirme.
+func TestListCatchUp_FinSurPagePartielle_UnAppelDePlus(t *testing.T) {
+	ids := matchIDs("m", 90) // 3 pages pleines + une page de 15
+	c := newPagedClient(ids)
+	l := listCatchUpOf(t, c, map[string]bool{}, nil)
+	if !l.EndSeen || len(l.Unknown) != 90 {
+		t.Fatalf("Listing = {%d inconnus, EndSeen %v}, want {90, true}", len(l.Unknown), l.EndSeen)
+	}
+	if want := []int{0, 25, 50, 75, 100}; !equalInts(c.starts, want) {
+		t.Errorf("lectures %v, want %v (avant : se terminait à 75)", c.starts, want)
+	}
+}
+
+func equalInts(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }

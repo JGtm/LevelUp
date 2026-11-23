@@ -60,24 +60,44 @@ type HistoryState struct {
 	// Failures : les matchs que le rattrapage n'a pas réussi à ranger, avec leur nombre de passes en
 	// échec (du plus ancien au plus récent). N'a de sens que si Incomplete.
 	Failures []historystate.Failure
-	// Skip : les matchs que la découverte ne demande plus (introuvables 404/410, abandonnés), lus de
-	// `historystate.LoadSkipSet`, y compris pour un joueur dont l'historique est complet. Neutres pour la
+	// Skip : les matchs que la découverte ne demande plus (introuvables 404/410, abandonnés non échus), lus
+	// de `historystate.LoadSkipSet`, y compris pour un joueur dont l'historique est complet. Neutres pour la
 	// découverte : ni connus, ni inconnus (voir skipset.go de historystate). Lu par KnownLoader.LoadKnown,
 	// sur la même ouverture que l'ensemble connu.
 	Skip map[string]bool
+	// Retry : les matchs abandonnés depuis `historystate.AbandonRetryAfter` ou plus (SkipSet.Due), à
+	// retenter par identifiant avec leurs tentatives remises à zéro (retry.go).
+	Retry []string
+	// Budget : nombre de matchs inconnus que la passe de rattrapage de ce joueur range au plus ; 0 = le
+	// budget entier d'une passe (historystate.PassBudget). Posé par RunDiscovery, qui partage le budget du
+	// cycle entre les joueurs au rattrapage (budget.go).
+	Budget int
+	// Deferred : le joueur est au rattrapage mais n'en a pas sa place ce cycle (budget.go) : delta ordinaire,
+	// Incomplete est ramené à faux, et il reste en attente (PlayerHistory.Deferred).
+	Deferred bool
 	// Unreadable : l'état n'a pas pu être lu (historystate.Complete en échec). Incomplete reste faux :
 	// delta ordinaire, rien n'est rangé ; le joueur reste en attente (HistoryPending) pour que la
 	// cadence courte réessaie.
 	Unreadable bool
 }
 
+// catchUpBudget est le budget de la passe de ce joueur : celui que le cycle lui a réparti, sinon le
+// budget entier d'une passe.
+func (h HistoryState) catchUpBudget() int {
+	if h.Budget > 0 {
+		return h.Budget
+	}
+	return historystate.PassBudget()
+}
+
 // skipped rend l'ensemble des matchs que la découverte ne demande plus : ceux de l'ensemble rangé
 // (Skip) et les matchs abandonnés du rattrapage en cours (échec à maxCatchUpAttempts passes ou plus,
-// pas encore rangés dans l'ensemble).
+// pas encore rangés dans l'ensemble), sauf ceux dont l'abandon est échu (Retry).
 func (h HistoryState) skipped() map[string]bool {
 	out, copied := h.Skip, false
+	due := toSet(h.Retry)
 	for _, f := range h.Failures {
-		if !isAbandoned(f.Attempts) || out[f.MatchID] {
+		if !isAbandoned(f.Attempts) || out[f.MatchID] || due[f.MatchID] {
 			continue
 		}
 		if !copied { // l'ensemble lu ne se modifie pas
@@ -109,6 +129,10 @@ type Listing struct {
 	// Proposed : marque-page à ranger si tous les inconnus listés sont résolus ; nil = pas de
 	// position fiable à proposer (mode delta, fin vue, ou arrêt avant la suite de matchs connus).
 	Proposed *historystate.Cursor
+	// Arrived : au rattrapage, les inconnus arrivés en tête de liste depuis la passe précédente (au-dessus de
+	// l'ancre du marque-page) : les nouveaux matchs, par opposition à ceux que le rattrapage ramène. Vide sans
+	// ancre retrouvée.
+	Arrived []string
 }
 
 // PlayerHistory est ce que la découverte retient de l'historique d'un joueur pour le cycle.
@@ -122,8 +146,51 @@ type PlayerHistory struct {
 	// Skip : l'ensemble rangé des matchs à ne plus demander au début du cycle (voir HistoryState.Skip) ;
 	// le cycle n'écrit que ce qui s'y ajoute.
 	Skip map[string]bool
+	// Retry : les abandons échus au début du cycle (voir HistoryState.Retry).
+	Retry []string
 	// Unreadable : état de l'historique illisible au début du cycle (voir HistoryState.Unreadable).
 	Unreadable bool
+	// Deferred : au rattrapage, sans place ce cycle (voir HistoryState.Deferred) ; Incomplete est faux.
+	Deferred bool
+	// Budget : le budget de la passe de ce joueur (voir HistoryState.Budget).
+	Budget int
+	// Arrived : voir Listing.Arrived.
+	Arrived []string
+}
+
+// newMatches rend, parmi les matchs listés d'un joueur, ceux qui sont de NOUVEAUX matchs (arrivés depuis la
+// dernière passe), par opposition à ceux que le rattrapage ramène : au rattrapage, ceux arrivés au-dessus de
+// l'ancre du marque-page ; sinon (delta, rattrapage reporté) tous, sauf les abandons retentés.
+func (p PlayerHistory) newMatches(listed []string) []string {
+	if p.Incomplete {
+		return p.Arrived
+	}
+	retry := toSet(p.Retry)
+	out := make([]string, 0, len(listed))
+	for _, id := range listed {
+		if !retry[id] {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
+// catchUpBudget est le budget de la passe de ce joueur : celui que le cycle lui a réparti, sinon le budget
+// entier d'une passe.
+func (p PlayerHistory) catchUpBudget() int {
+	return HistoryState{Budget: p.Budget}.catchUpBudget()
+}
+
+// toSet range des identifiants en ensemble.
+func toSet(ids []string) map[string]bool {
+	if len(ids) == 0 {
+		return nil
+	}
+	out := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		out[id] = true
+	}
+	return out
 }
 
 // historyTracker suit, pendant un cycle, les joueurs dont l'historique reste incomplet : valeur
@@ -140,7 +207,7 @@ type historyTracker struct {
 func newHistoryTracker(disc DiscoveryResult) *historyTracker {
 	t := &historyTracker{pending: make(map[string]bool, len(disc.History))}
 	for slug, h := range disc.History {
-		t.pending[slug] = h.Incomplete || h.Unreadable
+		t.pending[slug] = h.Incomplete || h.Unreadable || h.Deferred
 	}
 	return t
 }

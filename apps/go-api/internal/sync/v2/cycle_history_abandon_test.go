@@ -5,6 +5,7 @@ package v2
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -151,14 +152,15 @@ func TestCycleHistory_404_JamaisUnEchec(t *testing.T) {
 func TestCycleHistory_BorneDesEchecs(t *testing.T) {
 	e := newHistEnv(t, 100)
 	var prev []historystate.Failure
-	for i := 0; i < 150; i++ {
+	for i := 0; i < historystate.MaxFailures-2; i++ {
 		prev = append(prev, historystate.Failure{MatchID: fmt.Sprintf("ancien%03d", i), Attempts: 1})
 	}
 	if !historystate.SaveFailures(context.Background(), e.db, prev) {
 		t.Fatal("SaveFailures")
 	}
-	for _, id := range e.ids {
-		e.fetcher.perMatchErr[id] = serverErr()
+	const failing = 5 // sous la part d'une passe de masse : les échecs comptent
+	for _, id := range e.ids[:failing] {
+		e.fetcher.perMatchErr[id] = errors.New("décodage")
 	}
 	if _, err := e.cycle(); err != nil {
 		t.Fatal(err)
@@ -167,8 +169,9 @@ func TestCycleHistory_BorneDesEchecs(t *testing.T) {
 	if len(got) != historystate.MaxFailures {
 		t.Fatalf("%d échecs rangés, want %d", len(got), historystate.MaxFailures)
 	}
-	if got[0].MatchID != prev[50].MatchID || got[len(got)-1].MatchID != e.ids[99] {
-		t.Errorf("entrées gardées de %s à %s, want de %s (les 50 plus anciennes sorties) à %s",
-			got[0].MatchID, got[len(got)-1].MatchID, prev[50].MatchID, e.ids[99])
+	over := len(prev) + failing - historystate.MaxFailures
+	if got[0].MatchID != prev[over].MatchID || got[len(got)-1].MatchID != e.ids[failing-1] {
+		t.Errorf("entrées gardées de %s à %s, want de %s (les %d plus anciennes sorties) à %s",
+			got[0].MatchID, got[len(got)-1].MatchID, prev[over].MatchID, over, e.ids[failing-1])
 	}
 }

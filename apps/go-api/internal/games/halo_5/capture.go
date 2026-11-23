@@ -111,8 +111,8 @@ type CaptureStats struct {
 	ExcludedCampaign int  // matchs Campaign écartés à la collecte (cf. isExcludedH5GameMode)
 	ExcludedWarzone  int  // matchs Warzone écartés à la collecte (cf. isExcludedH5GameMode)
 	RosterDropped    int  // player-rows droppées (gamertag non résolu en xuid) — perte de roster TRACÉE (fix #10)
-	// HistoryEnd : la liste de l'API a rendu une page vide ou incomplète, donc la fin de
-	// l'historique est vue. Faux quand la capture s'arrête autrement (anti-boucle sur un match
+	// HistoryEnd : la liste de l'API a rendu une page VIDE, donc la fin de l'historique est vue (une page
+	// partielle n'est pas la fin). Faux quand la capture s'arrête autrement (anti-boucle sur un match
 	// déjà vu, cap MaxMatches, delta-stop, erreur) : la pagination n'a alors rien prouvé.
 	HistoryEnd bool
 	// LastMatchID : identifiant du dernier résumé de la liste traité (connu, écarté ou collecté). Après
@@ -215,7 +215,7 @@ func CollectRecentMatches(
 //   - isKnown  : matchID -> déjà persisté (sauté, stats.MatchesSkipped++). nil -> rien de connu.
 //
 // Retourne les batches NOUVEAUX de la page + hasMore (false = fin d'historique : page
-// vide OU page incomplète) + stats cumulées (le caller passe le MÊME *CaptureStats sur
+// vide) + stats cumulées (le caller passe le MÊME *CaptureStats sur
 // toutes les pages). seen est l'anti-boucle PARTAGÉ entre pages (un match revu →
 // hasMore=false, stop défensif). opts.MaxMatches/StopOnKnown sont ignorés ici (pas de
 // borne dure, pas de delta-stop : le backfill veut TOUT l'historique).
@@ -245,7 +245,7 @@ func CapturePageAt(
 
 // capturePage fetch + traite UNE page de l'historique à l'offset start. Cœur partagé
 // par CollectRecentMatches (live, StopOnKnown) et CapturePageAt (backfill, skip-known).
-// Met à jour stats + seen en place. hasMore=false signale l'arrêt (fin d'historique,
+// Met à jour stats + seen en place. hasMore=false signale l'arrêt (fin d'historique sur une page vide,
 // delta-stop, cap MaxMatches atteint, ou pagination non avançante).
 func capturePage(
 	ctx context.Context,
@@ -311,11 +311,9 @@ func capturePage(
 			return batches, false, nil // cap MaxMatches (live)
 		}
 	}
-	if len(summaries) < pageSize {
-		stats.HistoryEnd = true
-		return batches, false, nil // dernière page (page incomplète)
-	}
-	return batches, true, nil // page pleine -> il reste probablement des pages
+	// Une page partielle ne dit rien : l'API peut en rendre une avant la fin de la liste. La fin n'est vue
+	// que sur une page vide (ci-dessus), un appel de plus que sur une page incomplète.
+	return batches, true, nil
 }
 
 // noteListEntry retient l'identifiant d'une entrée de tête de liste : la tête (position 0) et, tant que

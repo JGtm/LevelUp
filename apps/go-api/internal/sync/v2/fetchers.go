@@ -101,6 +101,9 @@ func (p *matchListProviderV2) ListUnknownMatches(ctx context.Context, prof Playe
 	if err != nil {
 		return Listing{}, err
 	}
+	if hist.Deferred && len(unknown) > catchUpMinBudget {
+		unknown = unknown[:catchUpMinBudget] // rattrapage reporté : un delta, pas un joueur neuf à 500 matchs en mémoire
+	}
 	return Listing{Unknown: unknown}, nil
 }
 

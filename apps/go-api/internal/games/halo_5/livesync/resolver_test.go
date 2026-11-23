@@ -39,6 +39,7 @@ func TestResolveXUIDClosure_NilResolver(t *testing.T) {
 }
 
 func TestResolveXUIDClosure_ErrorSwallowed(t *testing.T) {
+	noSleep(t)
 	rx := ResolveXUIDClosure(context.Background(), fakeResolver{err: errors.New("429")}, nil)
 	if got := rx("JGtm"); got != "" {
 		t.Errorf("erreur de résolution → \"\" (best-effort), got %q", got)

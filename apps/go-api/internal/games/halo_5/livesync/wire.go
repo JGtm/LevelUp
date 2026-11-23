@@ -213,6 +213,9 @@ func halo5ResolverFactory(cfg *config.AppConfig, viewerGamertag, viewerXUID stri
 			}
 			resolvers = []worldenrich.XUIDResolver{base}
 		}
+		for i := range resolvers { // cadence sous la limite de débit de chaque compte (resolver_retry.go)
+			resolvers[i] = newPacedResolver(resolvers[i])
+		}
 		// Graine = mapping déjà connu (shared.xuid_aliases, écrit par les runs
 		// précédents) → on NE re-résout PAS les joueurs déjà vus via PeopleHub.
 		// Le self (xuid db_profiles) prime. La persistance des NOUVELLES résolutions

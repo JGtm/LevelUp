@@ -68,6 +68,9 @@ type DiscoveryResult struct {
 // RunDiscovery exécute Phase 1 en parallèle pour N joueurs.
 //
 // Sémantique :
+//   - deux temps : lecture de l'ensemble connu et de l'état de l'historique de TOUS les joueurs, puis
+//     répartition du budget de rattrapage du cycle entre ceux qui rattrapent (budget.go), puis liste de
+//     chacun avec son budget ;
 //   - errgroup avec parallélisme = len(players) (pas de bottleneck artificiel).
 //   - Échec d'un joueur capturé dans Errors, n'annule pas les autres.
 //   - Retourne err != nil uniquement sur échec global (ctx annulé). Les
@@ -93,37 +96,33 @@ func RunDiscovery(
 		return res, nil
 	}
 
+	states := loadAllKnown(ctx, players, loader, &res)
+	plan := planCatchUp(states)
 	var mu gosync.Mutex
 	eg, egCtx := errgroup.WithContext(ctx)
 	for _, p := range players {
+		state, ok := states[p.PlayerSlug]
+		if !ok {
+			continue // LoadKnown en échec : déjà dans res.Errors
+		}
 		p := p
+		hist := plan.apply(p.PlayerSlug, state.History)
+		if hist.Deferred {
+			plan.noteDeferred(ctx, p.PlayerSlug)
+		}
 		eg.Go(func() error {
-			state, err := loader.LoadKnown(egCtx, p)
+			listing, err := provider.ListUnknownMatches(egCtx, p, state.Known, hist)
+			mu.Lock()
+			defer mu.Unlock()
 			if err != nil {
-				mu.Lock()
-				res.Errors[p.PlayerSlug] = fmt.Errorf("load known: %w", err)
-				mu.Unlock()
+				res.Errors[p.PlayerSlug] = fmt.Errorf("list matches: %w", err)
+				res.History[p.PlayerSlug] = playerHistory(hist, Listing{})
 				return nil //nolint:nilerr // best-effort par joueur, on n'annule pas le groupe
 			}
-			listing, err := provider.ListUnknownMatches(egCtx, p, state.Known, state.History)
-			if err != nil {
-				mu.Lock()
-				res.Errors[p.PlayerSlug] = fmt.Errorf("list matches: %w", err)
-				res.History[p.PlayerSlug] = PlayerHistory{
-					Incomplete: state.History.Incomplete, Failures: state.History.Failures, Skip: state.History.Skip,
-					Unreadable: state.History.Unreadable,
-				}
-				mu.Unlock()
-				return nil //nolint:nilerr // idem
-			}
-			unknown := appendOrphans(egCtx, p, listing.Unknown, state.Recover, state.History.skipped())
-			mu.Lock()
+			unknown := appendOrphans(egCtx, p, listing.Unknown, state.Recover, hist.skipped())
+			unknown = appendRetries(egCtx, p, unknown, hist.Retry, state.Known)
 			res.PerPlayer[p.PlayerSlug] = unknown
-			res.History[p.PlayerSlug] = PlayerHistory{
-				Incomplete: state.History.Incomplete, EndSeen: listing.EndSeen, Proposed: listing.Proposed,
-				Failures: state.History.Failures, Skip: state.History.Skip, Unreadable: state.History.Unreadable,
-			}
-			mu.Unlock()
+			res.History[p.PlayerSlug] = playerHistory(hist, listing)
 			return nil
 		})
 	}
@@ -133,6 +132,39 @@ func RunDiscovery(
 	}
 	res.Duration = time.Since(start)
 	return res, nil
+}
+
+// loadAllKnown lit, en parallèle, l'ensemble connu et l'état de l'historique de chaque joueur. Un joueur
+// dont la lecture échoue est dans res.Errors et absent du résultat.
+func loadAllKnown(ctx context.Context, players []PlayerProfile, loader KnownLoader, res *DiscoveryResult) map[string]KnownState {
+	var mu gosync.Mutex
+	states := make(map[string]KnownState, len(players))
+	eg, egCtx := errgroup.WithContext(ctx)
+	for _, p := range players {
+		p := p
+		eg.Go(func() error {
+			state, err := loader.LoadKnown(egCtx, p)
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				res.Errors[p.PlayerSlug] = fmt.Errorf("load known: %w", err)
+				return nil //nolint:nilerr // best-effort par joueur, on n'annule pas le groupe
+			}
+			states[p.PlayerSlug] = state
+			return nil
+		})
+	}
+	_ = eg.Wait() // les goroutines ne rendent jamais d'erreur : chacune range la sienne dans res.Errors
+	return states
+}
+
+// playerHistory est ce que la découverte retient de l'historique d'un joueur, avec le résultat de sa
+// liste (vide quand elle a échoué).
+func playerHistory(h HistoryState, l Listing) PlayerHistory {
+	return PlayerHistory{
+		Incomplete: h.Incomplete, EndSeen: l.EndSeen, Proposed: l.Proposed, Failures: h.Failures, Skip: h.Skip,
+		Retry: h.Retry, Unreadable: h.Unreadable, Deferred: h.Deferred, Budget: h.Budget, Arrived: l.Arrived,
+	}
 }
 
 // appendOrphans ajoute à la liste d'un joueur les orphelins à récupérer par match_id

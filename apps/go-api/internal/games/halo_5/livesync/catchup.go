@@ -17,10 +17,14 @@ package livesync
 // décalage rangé + N moins une page de recouvrement ; (3) exige l'identifiant rangé sur la page de
 // recouvrement, sinon repart du début (journalisé, compté) ; une ancre introuvable en tête de liste
 // repart du début aussi. Une page qui échoue maxCatchUpAttempts passes de suite est abandonnée
-// (historystate.Streak), pour qu'un échec durable ne garde pas le joueur en rattrapage pour toujours.
+// (historystate.Streak), pour qu'un échec durable ne garde pas le joueur en rattrapage pour toujours ; une
+// panne de l'API (429, réseau, délai, passe de masse : historyfail) ne compte pas. Une page abandonnée est un trou
+// noté (historystate.NoteHole) : passé historystate.AbandonRetryAfter, readHistoryState rouvre l'historique
+// (historystate.Reopen) et la passe suivante relit la liste depuis son début, connus sautés, pour retenter la page.
 
 import (
 	"context"
+	"log/slog"
 
 	"levelup/go-api/internal/domain"
 	halo5 "levelup/go-api/internal/games/halo_5"
@@ -40,12 +44,17 @@ type historyState struct {
 	pending bool // l'historique est (ou peut être) incomplet : vrai tant que la fin n'est pas rangée
 }
 
-// readHistoryState lit l'état de l'historique. Sans magasin : complet (delta ordinaire, runner testable
+// readHistoryState lit l'état de l'historique, après avoir rouvert celui d'un joueur dont une page abandonnée
+// date de plus de historystate.AbandonRetryAfter. Sans magasin : complet (delta ordinaire, runner testable
 // sans base joueur). Base joueur illisible : delta ordinaire mais en attente, pour que l'ordonnanceur
 // replanifie un cycle court (la lecture de l'état ne bloque jamais le delta).
 func (r *Runner) readHistoryState(ctx context.Context) historyState {
 	if r.deps.History == nil {
 		return historyState{}
+	}
+	if r.deps.History.HoleDue(ctx) && r.deps.History.Reopen(ctx) {
+		slog.InfoContext(ctx, "h5 sync: page abandonnée depuis plus de 24 h — historique rouvert pour la retenter",
+			"gamertag", r.deps.Viewer.Gamertag)
 	}
 	complete, err := r.deps.History.Complete(ctx)
 	if err != nil {
@@ -92,7 +101,7 @@ func (r *Runner) runCatchUp(ctx context.Context, src halo5.CaptureSource, resolv
 
 // run enchaîne le delta du dessus (avec un marque-page) puis la reprise, et range la fin quand elle est vue.
 func (p *catchUpPass) run(ctx context.Context, budget int) bool {
-	resume := &BackfillResume{MaxAttempts: maxCatchUpAttempts, Save: p.saveCursor}
+	resume := &BackfillResume{MaxAttempts: maxCatchUpAttempts, Save: p.saveCursor, OnAbandon: func(ctx context.Context) { p.store.NoteHole(ctx) }}
 	subject, remaining, topClean, restart := originSubject, budget, true, false
 	if cur, ok := p.store.LoadCursor(ctx); ok {
 		subject = cur.LastMatchID
@@ -119,6 +128,7 @@ func (p *catchUpPass) run(ctx context.Context, budget int) bool {
 		Resume:      resume,
 	}, 0, p.r.logger)
 	addCapture(&p.stats, bs.Capture)
+	p.res.CatchUpInserted += bs.Inserted // le delta du dessus (topDelta) n'y entre pas : ce sont les nouveaux matchs
 	return p.finish(ctx, subject, bs, err, topClean)
 }
 

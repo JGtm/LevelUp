@@ -90,12 +90,14 @@ func addSkips(ctx context.Context, db *sql.DB, p PlayerProfile, adds []historyst
 	return true
 }
 
-// settleSkips range les matchs introuvables d'un joueur à l'historique COMPLET (le delta). Au
+// settleSkips range les matchs à ne plus demander d'un joueur à l'historique COMPLET (le delta) ou dont
+// le rattrapage attend le cycle suivant : ses matchs introuvables, et ses abandons échus retentés sans
+// succès (abandonnés de nouveau pour historystate.AbandonRetryAfter, sauf panne de l'API). Au
 // rattrapage, settlePlayerHistory range les siens avec le reste de l'état. Rien de neuf : aucune
 // ouverture de la base en écriture. Un rangement en échec est journalisé : le match sera redemandé au
 // cycle suivant, puis rangé.
 func (o *CycleOrchestratorImpl) settleSkips(ctx context.Context, p PlayerProfile, ph PlayerHistory, in settleInput) {
-	adds := freshSkips(ph.Skip, notFoundListed(in.listed, in.fetchErrs), nil)
+	adds := freshSkips(ph.Skip, notFoundListed(in.listed, in.fetchErrs), reabandoned(ctx, p, ph, in))
 	if len(adds) == 0 {
 		return
 	}
@@ -105,4 +107,28 @@ func (o *CycleOrchestratorImpl) settleSkips(ctx context.Context, p PlayerProfile
 	}
 	defer done()
 	addSkips(wctx, db, p, adds)
+}
+
+// reabandoned rend les abandons échus (ph.Retry) que ce cycle a retentés en vain : listés, ni introuvables
+// ni prouvés rangés, et dont l'échec compte (historyfail.Counts : ni passager, ni dans une passe de masse).
+// Un abandon retenté pendant une panne reste échu : le cycle suivant le retente.
+func reabandoned(ctx context.Context, p PlayerProfile, ph PlayerHistory, in settleInput) []string {
+	if len(ph.Retry) == 0 {
+		return nil
+	}
+	listed, _ := in.withoutQueued()
+	missing, ok := storedMissing(listed, in)
+	if !ok || len(missing) == 0 {
+		return nil
+	}
+	pass := passOutcome{fetchErrs: in.fetchErrs, wide: wideFailure(missing, len(listed), ph.catchUpBudget())}
+	var out []string
+	for _, id := range ph.Retry {
+		if missing[id] && pass.counts(id) {
+			out = append(out, id)
+			slog.WarnContext(ctx, "sync.v2: match abandonné retenté sans succès — abandonné de nouveau",
+				"event", "sync.v2.history.abandoned_again", "player", p.PlayerSlug, "match_id", id, "err", errorMsg(in.fetchErrs[id]))
+		}
+	}
+	return out
 }

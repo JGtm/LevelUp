@@ -12,7 +12,7 @@ import (
 func TestSkipSet_AllerRetourSansDoublon(t *testing.T) {
 	db := openMemDB(t, true)
 	ctx := context.Background()
-	if got := historystate.LoadSkipSet(ctx, db); len(got) != 0 {
+	if got := historystate.LoadSkipSet(ctx, db).Active; len(got) != 0 {
 		t.Fatalf("base neuve : %v, attendu un ensemble vide", got)
 	}
 	if !historystate.AddSkips(ctx, db, []historystate.Skip{
@@ -23,12 +23,12 @@ func TestSkipSet_AllerRetourSansDoublon(t *testing.T) {
 	}) {
 		t.Fatal("AddSkips doit rendre vrai")
 	}
-	if got := historystate.LoadSkipSet(ctx, db); len(got) != 2 || !got["m-1"] || !got["m-2"] {
+	if got := historystate.LoadSkipSet(ctx, db).Active; len(got) != 2 || !got["m-1"] || !got["m-2"] {
 		t.Fatalf("LoadSkipSet = %v, attendu m-1 et m-2", got)
 	}
 	// Deuxième écriture : s'ajoute à la suite, un doublon ne change rien.
 	historystate.AddSkips(ctx, db, []historystate.Skip{{MatchID: "m-3", Reason: historystate.SkipNotFound}, {MatchID: "m-2"}})
-	if got := historystate.LoadSkipSet(ctx, db); len(got) != 3 || !got["m-3"] {
+	if got := historystate.LoadSkipSet(ctx, db).Active; len(got) != 3 || !got["m-3"] {
 		t.Fatalf("après ajout : %v, attendu 3 matchs", got)
 	}
 	var n int
@@ -76,13 +76,13 @@ func TestAddSkips_BorneDe2000_LesPlusAnciennesSortent(t *testing.T) {
 	if !historystate.AddSkips(ctx, db, first) {
 		t.Fatal("AddSkips doit rendre vrai")
 	}
-	if got := historystate.LoadSkipSet(ctx, db); len(got) != historystate.MaxSkipSet {
+	if got := historystate.LoadSkipSet(ctx, db).Active; len(got) != historystate.MaxSkipSet {
 		t.Fatalf("à la borne : %d entrées, attendu %d", len(got), historystate.MaxSkipSet)
 	}
 	historystate.AddSkips(ctx, db, []historystate.Skip{
 		{MatchID: "neuf-1", Reason: historystate.SkipAbandoned}, {MatchID: "neuf-2", Reason: historystate.SkipAbandoned},
 	})
-	got := historystate.LoadSkipSet(ctx, db)
+	got := historystate.LoadSkipSet(ctx, db).Active
 	if len(got) != historystate.MaxSkipSet {
 		t.Fatalf("au-delà de la borne : %d entrées, attendu %d", len(got), historystate.MaxSkipSet)
 	}
@@ -106,7 +106,7 @@ func TestSkipSet_MarkCompleteNEffacePasLEnsemble(t *testing.T) {
 	if _, ok := historystate.LoadCursor(ctx, db); ok {
 		t.Error("le marque-page doit être effacé")
 	}
-	if got := historystate.LoadSkipSet(ctx, db); !got["m-1"] {
+	if got := historystate.LoadSkipSet(ctx, db).Active; !got["m-1"] {
 		t.Errorf("après la fin d'historique : %v, m-1 doit rester à ne plus demander", got)
 	}
 }
@@ -118,20 +118,20 @@ func TestSkipSet_ValeurIllisibleEnEchecEtBaseAbsente(t *testing.T) {
 		if err := syncmeta.Set(ctx, db, historystate.SkipSetKey, raw); err != nil {
 			t.Fatal(err)
 		}
-		if got := historystate.LoadSkipSet(ctx, db); len(got) != 0 {
+		if got := historystate.LoadSkipSet(ctx, db).Active; len(got) != 0 {
 			t.Errorf("%s : %v, attendu un ensemble vide", name, got)
 		}
 		// Une valeur illisible est remplacée à la prochaine écriture.
 		if !historystate.AddSkips(ctx, db, []historystate.Skip{{MatchID: "m-9", Reason: historystate.SkipNotFound}}) {
 			t.Errorf("%s : AddSkips doit remplacer la valeur", name)
 		}
-		if got := historystate.LoadSkipSet(ctx, db); !got["m-9"] || len(got) != 1 {
+		if got := historystate.LoadSkipSet(ctx, db).Active; !got["m-9"] || len(got) != 1 {
 			t.Errorf("%s : après écriture %v, attendu m-9 seul", name, got)
 		}
 	}
 	// Lecture en échec (table absente) : rien n'est écrit, l'ensemble rangé ne peut pas être écrasé.
 	horsTable := openMemDB(t, false)
-	if got := historystate.LoadSkipSet(ctx, horsTable); len(got) != 0 {
+	if got := historystate.LoadSkipSet(ctx, horsTable).Active; len(got) != 0 {
 		t.Errorf("table absente : %v, attendu un ensemble vide", got)
 	}
 	if historystate.AddSkips(ctx, horsTable, []historystate.Skip{{MatchID: "m"}}) {
@@ -140,7 +140,7 @@ func TestSkipSet_ValeurIllisibleEnEchecEtBaseAbsente(t *testing.T) {
 	if historystate.AddSkips(ctx, nil, []historystate.Skip{{MatchID: "m"}}) {
 		t.Error("base absente : AddSkips doit rendre faux")
 	}
-	if historystate.LoadSkipSet(ctx, nil) != nil {
+	if historystate.LoadSkipSet(ctx, nil).Active != nil {
 		t.Error("base absente : LoadSkipSet doit rendre nil")
 	}
 }
