@@ -343,11 +343,13 @@ Les règles R-1 à R-10 du plan v1.5.0 s'appliquent, avec ces précisions.
     révision neuf pour la couche touchée. À défaut, le cache de faits (`<racine>/data/cache/film_facts/`)
     est purgé avant toute passe.
   - Le gate de toute piste inclut les tests de révision (commande G-rev, plus bas).
-  - Un cache de faits et un espace de travail PAR PISTE, de noms distincts, jamais partagés : racine de
-    données `Scripts/dec160-racines/<piste>/` (copie des films du corpus, sans jonction) et fichier
-    `Scripts/dec160-racines/<piste>.work`. Quatre racines au plus à la fois, supprimées à la clôture de la
-    piste. L'item 0.6 vérifie que `replay-equiv -repo-root` accepte une racine de données distincte du
-    dossier des sources ; sinon la racine est un worktree de LevelUp par piste.
+  - Un cache de faits et un espace de travail PAR PISTE qui décode, de noms distincts, jamais partagés :
+    worktree `Scripts/LevelUp-wt-dec160-<piste>` (films du corpus copiés sous son `data/cache`, sans jonction)
+    et fichier `Scripts/dec-v160-recup/<piste>.work` à barres inverses. Quatre au plus à la fois, retirés à la
+    clôture de la piste, après recherche de jonction. Établi le 2026-11-23 : `replay-equiv -repo-root` n'accepte une racine distincte que si elle porte
+    aussi `data/titles/halo_infinite/reference`, `config/` et `apps/go-api/cmd/replay-equiv/testdata`, et il y
+    écrit son cache, son verrou et `logs/general.log` ; donc UN WORKTREE LevelUp PAR PISTE qui décode, plutôt
+    qu'une racine de données partielle.
 - **R-14 — garde mécanique de la précision (piste P).** Pour tout canal du contributeur qui touche les tirs,
   les touches ou les dégâts, les empreintes des étapes de tirs, de touches, de dégâts et de statistiques de
   tir de `replay-equiv -out-dir` sont IDENTIQUES avant et après sur les 20 films (les noms exacts de ces
@@ -375,13 +377,14 @@ Les règles R-1 à R-10 du plan v1.5.0 s'appliquent, avec ces précisions.
   DECODEUR_FILM_RACINE_DONNEES="<HOTE>" go test -count=1 -v <paquets> [-run <motif>] -p 1`. Lecture du
   résultat : zéro `FAIL` ; zéro `SKIP` hors de la liste attendue (tests `...Regenerate`, `Fidelite`,
   `ReecrireIdentites`) ; quand la commande filtre par `-run`, le nombre de `--- PASS` est au moins celui que
-  l'item annonce (un `-run` sans correspondance répond `ok` : ce n'est pas un vert).
+  l'item annonce (un `-run` sans correspondance répond `ok` : ce n'est pas un vert). Référence : 299 SKIP
+  attendus sur la suite complète à blanc au tag v1.5.0 ; tout nombre supérieur s'explique avant de conclure.
 - **G-rev** : marche de publication, geste 3, en mode vérification :
   `GOWORK=off go test -count=1 -v ./internal/profile/ ./internal/source/ ./internal/grammar/
   ./internal/facts/killsource/ ./internal/facts/objectives/ -run 'RevSuit|ChroniqueDe|ChroniqueCouvre|ChroniqueDObjectives'`
   (10 tests `PASS` attendus) et `go test -count=1 -v ./revision/ ./types/`.
 - **G-compat** (surface publique, à chaque gate de piste) : `gorelease -base=v1.5.0` lancé par
-  `go run golang.org/x/exp/cmd/gorelease@<version épinglée en 0.6>` depuis le worktree ; verdict attendu :
+  `go run golang.org/x/exp/cmd/gorelease@v0.0.0-20261121134650-e1094eeca1b5` (version épinglée le 2026-11-23) depuis le worktree, `GOWORK=off` ; verdict attendu :
   aucun changement incompatible. Si l'outil ne tourne pas sur le poste (à établir en 0.6), repli écrit :
   `go doc -all` de chacun des 19 paquets publics, comparé à la capture faite sur `v1.5.0` ; toute ligne
   retirée ou changée est un échec, une ligne ajoutée est admise.
@@ -390,10 +393,17 @@ Les règles R-1 à R-10 du plan v1.5.0 s'appliquent, avec ces précisions.
   branche de montée désignant la pseudo-version intégrée ; un plafond dépassé se relève là, daté.
 - **G-equiv-ref** (contre des références) : `cd LU/apps/go-api && GOWORK=<espace de la piste> go run
   ./cmd/replay-equiv -repo-root <RACINE> -originaux <HOTE>/data/film_identites/xuids_originaux.txt -fils <n>` :
-  `20 identique(s), 0 different(s)`. Compare aux références du clone.
+  `20 identique(s), 0 different(s)`. Compare aux références du clone. Commande exacte, passée à blanc le
+  2026-11-23 sans `-update` (5 min 27 s, 20 identiques, 0 différent) : depuis `Scripts/LevelUp-wt-dec160/apps/go-api`,
+  `GOWORK=Scripts/dec-v160-recup/dec160.work go run ./cmd/replay-equiv -repo-root <LevelUp-wt-dec160>
+  -originaux <HOTE>/data/film_identites/xuids_originaux.txt -out-dir <sortie>`.
 - **G-equiv-2p** (double passe, même commit) : la même commande avec `-deux-passes` : artefact identique à
   l'octet entre le décodage et le rejeu depuis les faits, aucun écart à classer. Ne lit aucune référence :
-  elle ne prouve rien contre la v1.5.0.
+  elle ne prouve rien contre la v1.5.0. Une double passe est verte quand les 20 artefacts sont identiques à
+  l'octet et que ses seuls écarts à classer sont ceux de l'écart attendu : « killsource, 20 sur 20, jamais dans
+  l'artefact » (cause prouvée le 2026-11-23 : le champ non exporté `paquet` de `killsource.Kill`,
+  `internal/facts/killsource/kill.go:69-72`, entre dans l'empreinte de l'étape sans être écrit au fichier de
+  faits).
 - **G-corpus** : marche de publication, geste 9, avec `--fils <N>` : 19 témoins, ni gain, ni perte, aucune
   décision ajoutée au manifeste. La base se cuit comme elle se cuisait ; la tête au niveau `N`.
 
@@ -548,6 +558,7 @@ sont conditionnels. Opus n'apparaît qu'avec son motif.
 | A.4c | Sonnet, moyen | B | `reponsesdejeu/`, `document_score_actions*.go` | A.4 prouvée, A.2 |
 | A.5 | Sonnet, moyen | B | `score_timeline*.go` | A.2 |
 | A.6 | Sonnet, bas | B | `reponsesdejeu/`, révision | A.5 |
+| A.7 | Sonnet, bas | B | `replay/score_timeline_players.go` | Gate 0 |
 | B.1 | Sonnet, élevé ; reprise Opus sur la même condition que A.3 | L | mesure, trois familles | 0.8 |
 | B.2 | Sonnet, moyen, un item par cause prouvée | B | `flag_*.go`, `porteurs_*.go` | B.1 |
 | B.3, B.7 | Sonnet, bas (deux mesures) | L | mesures | 0.8 |
@@ -640,21 +651,28 @@ Aucun agent ne monte le schéma ni ne régénère un golden : il rend la liste e
       branche `feat/v1.6.0`, poussée. Worktree `Scripts/LevelUp-wt-dec160` sur `chore/830-decodeur-v160`,
       créée de la tête de la montée v1.5.0 (DD-5), sans jonction ; `npm ci` et espace de travail engendré
       (R-11) ; racines de données par piste préparées à la demande (R-13).
-- [ ] 0.2 Marche de publication rejouée à blanc sur le clone SANS changement : G-clone sur `./...` (33
+- [~] 0.2 (2026-11-23 : suite complète, tests de révision et équivalence à 20 identiques faits et verts ; reste le gate du corpus lancé comme test d'infrastructure) Marche de publication rejouée à blanc sur le clone SANS changement : G-clone sur `./...` (33
       paquets), G-rev, G-equiv-ref à 20 identiques. Le gate du corpus est lancé une fois, comme TEST
       D'INFRASTRUCTURE seulement (parc de travail, verrou, manifeste lus) : sans changement de `go.mod` il
       compare la v1.5.0 à elle-même et ne prouve rien sur les sorties.
 - [ ] 0.3 Jeu de films fixe du relevé arrêté (V0.1) : présence de chaque film dans `HOTE` vérifiée ; le film
       de plus fort pic de mémoire du parc désigné par mesure ; correspondance écrite dans
       `.ai/annexes_decodeur_v160/films_du_releve.tsv`.
-- [ ] 0.4 Bruit de base du déterminisme, AVANT toute piste V : G-equiv-2p sur les 20 films, trois fois.
+- [x] 0.4 (fait le 2026-11-23 :
+      F. double passe trois fois : 20 artefacts identiques à l'octet à chaque passe ; 20 écarts « à classer »,
+      toujours les mêmes, un par film, tous à l'étape `killsource` : écart ATTENDU et fixe, cause prouvée
+      (champ `paquet` non écrit au fichier de faits), « killsource, 20 sur 20, jamais dans l'artefact » ;
+      G. parcours de `map` : 412 relevés, 113 classés sans effet sans relecture un par un, 1 SUSPECT :
+      `joinSegments` (`replay/score_timeline_players.go:188`, tri sur le seul instant de début) ;
+      un item de correction est écrit en piste A, voir A.7.)
+      Bruit de base du déterminisme, AVANT toute piste V : G-equiv-2p sur les 20 films, trois fois.
       L'écart « à classer : kill » est instruit jusqu'à sa cause ; `joinSegments` et tout parcours de `map`
       qui ordonne une sortie sont relevés, fichier et ligne. Sortie : zéro écart à classer en double passe
       sur la v1.5.0, ou un item de correction écrit ici (il changerait la sortie : il rejoint alors la
       vague 6, celle des intégrations du backlog, et la phase vitesse se prouve avec ce bruit nommé et borné à son étape).
 - [~] 0.5 (2026-11-23 : références de la section 1.1 contrôlées et corrigées ; le compteur des émissions jetées au tag reste à contrôler par décodage, avec 0.2) Contrôles sur pièces : le compteur des émissions jetées est juste hors Drapeau au tag
       (`e703301`) ; chaque référence `fichier:ligne` de la section 1.1 rouverte sur la tête du clone.
-- [ ] 0.6 (2026-11-23, fait en partie : table des fichiers confirmée et corrigée ; étapes observées des tirs `fire`, `continuousFire`, des dégâts `damages`, `damages.stats`, des touches `gameEvents`, `gameEvents.stats` (lien des touches à confirmer) ; `gorelease` et `apidiff` absents du poste, `benchstat` présent ; restent l'essai de l'outil de compatibilité et celui de `replay-equiv -repo-root`) Table des fichiers par piste confirmée sur la tête du clone, conflits écrits au journal ; noms des
+- [~] 0.6 (2026-11-23 : table des fichiers confirmée et corrigée ; étapes observées des tirs `fire`, `continuousFire`, des dégâts `damages`, `damages.stats`, des touches `gameEvents`, `gameEvents.stats` (lien des touches à confirmer) ; `gorelease` et `apidiff` absents du poste, `benchstat` présent ; essais faits : D, `replay-equiv -repo-root` sur une racine distincte ne marche que si elle porte aussi les trois dossiers de LevelUp (voir R-13) ; E, `gorelease` épinglé à `v0.0.0-20261121134650-e1094eeca1b5`, sortie à blanc « Suggested version: v1.5.1 », aucune incompatibilité ; reste à vérifier qu'il couvre les 19 paquets publics) Table des fichiers par piste confirmée sur la tête du clone, conflits écrits au journal ; noms des
       étapes de tirs, de touches et de dégâts de `replay-equiv` relevés (R-14) ; outil de G-compat essayé et
       sa version épinglée, ou repli retenu et capture `go doc -all` de `v1.5.0` rangée hors dépôt ;
       `replay-equiv -repo-root` essayé sur une racine de données distincte (R-13).
@@ -837,6 +855,10 @@ Deux relevés, parce que la génération d'un rejeu dépend de la base de LevelU
       hausse, aucun joueur exact avant ne devient inexact.
 - [ ] A.6 Révision de couche pour la table des réponses de jeu : une ligne ajoutée à la table rend un rejeu
       « à redécoder ».
+- [ ] A.7 (ajouté le 2026-11-23, issu de 0.4) `joinSegments` (`replay/score_timeline_players.go`) : le comparateur
+      devient total, instant de début PUIS slot ; test unitaire à deux segments de même début, ordre d'insertion
+      inversé ; effet attendu sur les 20 films : aucun ; change le cas d'égalité, aujourd'hui indéterminé.
+      Sonnet, effort bas, classe B.
 - **Gate A** : équivalence attribuée (G-equiv-ref, chaque écart rattaché à un item) ; accord au score
   personnel de l'API (export 0.8) sans baisse pour aucun build ; G-clone sur `./reponsesdejeu/ ./replay/
   ./internal/facts/objectives/` ; G-rev ; G-compat.
@@ -1089,6 +1111,12 @@ Ordre imposé : R.1, R.2, puis L.1, L.2, L.3. Toute correction après L.1 fait r
 
 ## Journal d'exécution
 
+- 2026-11-23 — Résumé du jour (aucun commit) :
+  A et B : suite complète du clone à blanc (code 0, 33 paquets, 3 187 PASS, 299 SKIP, 0 échec ; 299 = référence) et tests de révision (13 tests, 18 avec sous-tests, verts, aucun sauté).
+  C : équivalence contre les références, sans `-update` : 20 identiques, 0 différent (5 min 27 s).
+  D et E : racine distincte utilisable seulement avec ses trois dossiers (un worktree LevelUp par piste) ; `gorelease` épinglé, « Suggested version: v1.5.1 », aucune incompatibilité ; couverture des paquets publics à vérifier.
+  F : double passe trois fois, 20 artefacts identiques à chaque passe ; 20 écarts `killsource` fixes, cause prouvée. G : parcours de `map`, 1 suspect (`joinSegments`, item A.7).
+  Reste pour le Gate 0 : gate du corpus comme test d'infrastructure, item 0.3 (jeu de films du relevé), item 0.8 (export de vérité et mesures avant).
 - 2026-11-23 — GO du user. Clone `Scripts/dec-v160` sur `feat/v1.6.0` (tag `v1.5.0`, `dc967c2`), poussé ; worktree `Scripts/LevelUp-wt-dec160` sur `chore/830-decodeur-v160` depuis `93a4744e7b`, `npm ci` fait.
   Trois contrôles en lecture seule rendus par des agents Haiku : 0.5 et 0.6 (`controle_0_5_0_6.md`), 0.7 (`appelants_partiels_0_7.md`), inventaire du contributeur (`inventaire_contributeur.md`).
   Sept collisions de fichiers entre pistes (et avec le pilote) relevées et inscrites sous la table « Fichiers attendus par piste » ; sept autres avec le contributeur, arbitrées après le gel.
@@ -1115,3 +1143,4 @@ Ordre imposé : R.1, R.2, puis L.1, L.2, L.3. Toute correction après L.1 fait r
 
 - 2026-11-23 — L'en-tête de `LU apps/go-api/cmd/killsource/main.go` (lignes 3 à 8) affirme qu'aucun chemin de l'application n'utilise le décodeur killsource : faux (appels de production dans `internal/replaybuild/kills.go:57` et `internal/sync/killcollector/collector_run.go:215`).
 - 2026-11-23 — Un commentaire du test de surface de la façade, `LU apps/go-api/internal/archlint/film_facade_surface_test.go` (ligne 166), dit que `NomPrecisionParArmePasseSautee` et `NomDistancesDeToucheDesactivees` ont quitté la façade en v1.5.0 ; ils y restent, marqués `Deprecated` (`decfilm/replis_obsoletes.go`). Incohérence à trancher.
+- 2026-11-23 — 113 parcours de `map` classés sans effet par un outil, non relus un par un (table sous `Scripts/dec-v160-recup/etape0/maprange_classes3.tsv`) : à relire avant l'intégration de la lecture de plusieurs chunks à la fois.
