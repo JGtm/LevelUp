@@ -172,6 +172,17 @@
 
 ---
 
+### [décodeur/score] Points de bombe en Assaut : explosion reconnue, action sans nom
+
+**Relevé le 2026-11-23 (plan du décodeur v1.6.0, item A.4), mis au backlog à la demande du user.** Mesure sur 8 films d'Assaut :
+
+- L'explosion de la bombe (+200) se reconnaît dans le film : le compteur `bomb_detonations` monte dans la même émission, 22 fois sur 22. Mais rien dans le film ne donne le NOM de l'action de score : la publier obligerait à inventer un nom.
+- Un bonus de +10 tombe avec des messages de rang 349 (80 cas sur 85), sans texte, absents de la table des réponses de jeu, et sans compteur associé.
+- D'autres bonus (+25, +50, +60, +75, +150, +250) n'ont aucun motif net.
+- Même en publiant le +200, ces matchs resteraient « incomplets ».
+
+Pistes : lire l'arbre des actions du mode dans les fichiers du jeu (graphe du mode) pour nommer l'explosion et les bonus ; ou décider d'un nom publié pour l'explosion seule. Rien n'est publié dans la v1.6.0. Pièces : annexe du plan du décodeur v1.6.0, rapport du groupe « score » (hors dépôt à ce jour).
+
 ### [décodeur] Actions de score : verdict « lecture complète » faux en BTB et en Assaut
 
 **Relevé le 2026-11-17** (suites de l'audit des versions 8.2.0 à 8.3.0, `.ai/PLAN_SUITES_AUDIT_2026-11-16.md`). Le verdict « lecture complète » est faux en BTB (11 matchs sur 16) et en Assaut (4 matchs). Tant que c'est le cas, ne pas afficher le détail daté des actions de score dans ces modes. Mesure : `.ai/annexes_suites_audit/sources.md`. **Effort : à estimer.**
