@@ -743,6 +743,8 @@ Réglages Discord sans interrupteur web : relais du coach, rejeu prêt, reconnex
   - **Cadrage du user (2026-11-22)** : version suivante du décodeur (« on va y retoucher justement bientôt »). Les zones de lieu existent déjà dans LevelUp : rien à refaire pour le lieu. Nom court de la réplique : à traiter dans le décodeur, PAS repris dans LevelUp. Idées d'affichage à maquetter, non tranchées : (a) rejeu 2D, icône de son avec le texte écrit sur le joueur qui parle ; (b) rejeu 2D, icône de son et lecture du son sur ce joueur ; (c) comme Den, une des variantes au hasard dans le fil des éliminations, avec un filtre « Répliques ».
 - **Compteurs de zones sur d'anciens builds** (gate du corpus, 2026-11-22) : sur deux films de Total Control d'anciens builds, le composant nommé `zone_offensive_kills` est un octet signé qui avance de 32, pas un compteur ; les candidats restants (83 et 76) paraissent en partie faux. Sans effet à l'écran aujourd'hui : la garde d'effectif refuse tout, `objectives[]` est vide. À borner par build avant d'ouvrir la lecture au-delà de 8 joueurs.
 - **Coup d'envoi sur trois anciens builds** : environ 0,9 s plus tôt qu'avant, sous la tolérance d'une seconde, non vérifiable à l'API.
+- **Valeur de test non remesurée** (2026-11-23) : le test de l'ouvrier réel de la file de génération attend un coup d'envoi par cadence ; la valeur de la cadence de 100 ms n'a pas été remesurée après le passage à l'horloge du jeu (aucun test ne tourne à cette cadence).
+- **En-tête faux d'un outil** (2026-11-23) : l'en-tête de `apps/go-api/cmd/killsource/main.go` affirme que l'application n'utilise pas le décodeur.
 
 ## Chantier « précision » (tirs, touches, précision par arme) — section dédiée
 

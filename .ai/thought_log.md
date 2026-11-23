@@ -1,3 +1,9 @@
+## [2026-11-23] Décodeur v1.5.0 : montée dans LevelUp prête sur sa branche, régénération reportée après la v1.6.0 — Complété (hors régénération)
+
+- **Décision** : la montée reste sur sa branche `chore/830-decodeur-v150` et n'entre pas dans `release/v8.3.0` ; la régénération du parc et le rattrapage du coup d'envoi se feront une fois, après la v1.6.0 (décision du user du 2026-11-22).
+- **Résultats** : CI de la branche verte ; suite web complète verte (15 658 tests) ; suite Go d'intégration `-p 1` verte (229 paquets, après retrait d'un exécutable de build non suivi laissé dans le worktree) ; 21 décisions du gate du corpus acceptées par le user.
+- **Suite** : plan de la v1.6.0 (`.ai/PLAN_DECODEUR_V160_2026-11-23.md`), puis une seule régénération avant tout démarrage de LevelUp 8.3.0 sur les données réelles.
+
 ## [2026-11-22] Décodeur v1.5.0 publié (schéma 126) : gate du corpus vert, tag et release — Complété
 
 - **Décision** : le gate du corpus a été tenu pour bloquant ; son seul vrai défaut (un compteur de lectures écartées gonflé hors Drapeau, qu'une relecture avait classé mineur) a été corrigé avant toute acceptation ; les écarts voulus ont été inscrits au manifeste un par un, limités aux témoins touchés, sur accord daté du user.

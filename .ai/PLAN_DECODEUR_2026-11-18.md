@@ -258,7 +258,7 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       modèle revu avec le user avant tout code.
 - [x] A.2 Tests : horloge arrêtée puis qui descend ; déjà en marche à la première lecture ; qui monte ;
       plusieurs manches ; film sans horloge (aucune date, compté).
-- [ ] A.3 Mesure APRÈS : 1 455 rejeux datés ; écart au coup d'envoi d'avant, par rejeu, au registre des
+- [!] A.3 (2026-11-23 : mesure sur le parc reportée avec la régénération, décision du user du 2026-11-22 ; mesuré sur les 19 témoins du gate : 0,3 à 0,9 s plus tôt) Mesure APRÈS : 1 455 rejeux datés ; écart au coup d'envoi d'avant, par rejeu, au registre des
       changements de sortie.
 - **Gate A** : équivalence, écarts = `t0FilmMs` et sa couverture ; les lecteurs de LevelUp
   (`sync/replayartifacts/t0film.go`) lisent le même champ, vérifié à la montée (L.4).
@@ -380,7 +380,7 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       lien s'établit : publication de l'événement par le décodeur, et côté LevelUp une table des répliques
       (texte en français et en anglais, son) faite comme celle des sons d'armes, lue par la fiche du joueur.
       Sinon `[!]` avec ce qui a été écarté.
-- [ ] H.6 Côté LevelUp, à la montée : rechargements, sauts et temps en commande dans la section « En
+- [x] H.6 (fait le 2026-11-23 sur la branche de montée : section « Gestes », déplacement et rechargements, mention d'estimation quand la couverture dit qu'une part n'est pas publiée ; le bouton de saut n'est pas publié par le décodeur, donc pas affiché) Côté LevelUp, à la montée : rechargements, sauts et temps en commande dans la section « En
       passant » de la fiche du joueur, dans les deux langues ; rien n'est affiché sans couverture suffisante.
 - [x] H.7 (ajouté le 2026-11-18, demande du user : « chaque frag, imagé dans le killfeed, est taggé d'une
       certaine manière quand on frag au tir à la tête ») Marque de tir à la tête PAR ÉLIMINATION. Aujourd'hui le
@@ -420,27 +420,29 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       du format (gestes 8 à 11).
 - [x] L.3 (fait le 2026-11-22 : PR n° 33, CI verte sur Linux et Windows, squash `dc967c2`, tag `v1.5.0` posé sur ce commit, release GitHub publiée avec les changements de sortie) PR du décodeur, CI verte, tag v1.5.0, release GitHub dont le corps est le registre des changements
       de sortie (geste 12).
-- [ ] L.4 Montée dans LevelUp sur une branche `chore/830-decodeur-v150` : `require`, miroirs Go et web,
+- [x] L.4 (fait le 2026-11-23 : montée v1.5.0 prête sur la branche `chore/830-decodeur-v150`, tête `94da1aba75`, poussée ; la branche n'est pas fusionnée dans `release/v8.3.0`, décision du user du 2026-11-23) Montée dans LevelUp : `require` au tag `v1.5.0`, miroirs Go et web,
       contrat de l'API, fixtures, lecteurs alignés (coup d'envoi, usage, « En passant »), retrait de
       l'ancienne précision par film (inventaire fermé de la section F) et de la liste des champs « servis
       seuls » (gestes 13 à 15).
-- [ ] L.5 Gates de LevelUp sans `GOWORK`, suite complète du web, `make gate-push`, CI (geste 16) ; notes de
+- [x] L.5 (fait le 2026-11-23 : CI de la branche verte, suite web complète verte (15 658 tests), suite Go d'intégration `-p 1` verte (229 paquets), filet de poussée sans échec ; notes de version et changelog en français et en anglais) Gates de LevelUp sans `GOWORK`, suite complète du web, `make gate-push`, CI (geste 16) ; notes de
       version dans les deux langues, changelog, journal, backlog, registre des reports (geste 17).
-- [ ] L.6 (porte : go du user) Régénération du parc, une fois, serveur arrêté, puis les dérivés (geste 18).
-- [ ] L.7 Mesures APRÈS sur le parc régénéré, comparées à `avant.md` ; vérifications à l'écran inscrites à
+- [!] L.6 (reporté par décision du user du 2026-11-22 : une seule régénération, après la v1.6.0 ; voir le registre des reports) Régénération du parc, une fois, serveur arrêté, puis les dérivés (geste 18).
+- [~] L.7 (mesures après faites sur échantillons, voir le journal ; mesure sur le parc reportée avec L.6) Mesures APRÈS sur le parc régénéré, comparées à `avant.md` ; vérifications à l'écran inscrites à
       l'artefact des vérifications du user ; gestes de prod inscrits à la liste de la release (geste 19).
 - **Gate L** : chaque ligne du registre des changements de sortie retrouvée dans les mesures APRÈS.
 
 ## Étape R — relecture et clôture
 
-- [x] R.1 (2026-11-22, diff du décodeur relu par Fable avant le tag : aucun P0, trois P1, quatre P2, trois P3 ; le diff de la montée reste à relire) Relecture adversariale (skill `adversarial-review`, Fable) du diff du décodeur et du diff de la
+- [x] R.1 (2026-11-22, diff du décodeur relu par Fable avant le tag : aucun P0, trois P1, quatre P2, trois P3 ; diff de la montée relu par Fable le 2026-11-22 : aucun P0, trois P1 corrigés) Relecture adversariale (skill `adversarial-review`, Fable) du diff du décodeur et du diff de la
       montée ; axes imposés : heuristique déguisée, repli neuf, identifiant réel, sortie changée sans ligne
       au registre.
 - [x] R.2 (2026-11-22 : aucun P0 ; P1 du décodeur corrigés, `fb90397` et `f72779d` ; P1 de la montée corrigés, `407109bec1` ; P2 au backlog sauf ceux corrigés en passant ; un P2 du décodeur reclassé bloquant par le gate du corpus et corrigé, `e703301`) P0 et P1 corrigés en une ronde ; P2 au backlog seulement s'ils valent le coup.
-- [ ] R.3 Tous les items statués ; recherches closes ou `[!]` avec leurs pièces ; backlog mis à jour entrée
+- [~] R.3 (2026-11-23 : tous les items statués ; reports inscrits au registre ; worktrees de la v1.5.0 gardés tant que la montée n'est pas fusionnée ; backlog à jour) Tous les items statués ; recherches closes ou `[!]` avec leurs pièces ; backlog mis à jour entrée
       par entrée ; worktrees retirés un à un après recherche de jonction.
 
 ## Journal d'exécution
+
+- 2026-11-23 — CLÔTURE du plan, hors régénération. Montée du décodeur v1.5.0 dans LevelUp prête sur la branche `chore/830-decodeur-v150` (commit `94da1aba75`, poussé) : `require` au tag `v1.5.0`, miroirs Go et web, deux lignes neuves de la fiche du joueur, icônes tête et parfait branchées sur les éliminations du document, noms d'objectif au fil, actions VIP, retrait de l'ancienne précision par film, notes et changelog en deux langues. Relecture : aucun P0, trois P1 corrigés. Gates verts : CI de la branche, suite web complète (15 658 tests), suite Go d'intégration `-p 1` (229 paquets). 21 décisions inscrites au manifeste du gate du corpus avec l'accord du user (22 et 23 novembre). La branche de montée n'est pas fusionnée dans `release/v8.3.0` : décision du user du 2026-11-23, la v1.6.0 part de sa tête. Régénération (L.6) et rattrapage du coup d'envoi reportés après la v1.6.0 : décision du user du 2026-11-22.
 
 - 2026-11-22 — DÉCODEUR v1.5.0 PUBLIÉ. Accord du user sur les écarts du gate (« Oui je suis d'accord avec toi ») : 20
   décisions inscrites à `config/replay_corpus.toml`, limitées aux témoins touchés ; une 21e, la courbe d'équipe d'un seul
