@@ -1,3 +1,9 @@
+## [2026-11-23] Décodeur 1.6.0 : parallélisme intégré, corrections du score codées — En cours
+
+- **Décision** : le parallélisme se fait par un pré-passage des images-clés (quatre calculs purs rangés depuis le fil appelant, sans verrou sur un chemin de lecture) et par une tâche de fond pendant la marche ; à un fil, aucun fil n'est lancé. Le nombre de fils est choisi par l'hôte. La lecture au choix des canaux est abandonnée (décision du user). Les trois verdicts de score faux se corrigent par la lecture, pas par le verdict : quatre charges de messages lues, une trame renvoyée écartée, une manche courte admise par un fait du film plutôt que par un seuil abaissé.
+- **Résultats** : sorties identiques à 1, 2, 4 et 8 fils sur les 13 films, ordre des étapes identique, aucune course détectée ; 28 films d'un échantillon de 39 redeviennent « complets » sans changer un point.
+- **Suite** : mesure de vitesse machine seule aux quatre niveaux, décision sur la seconde partie du chantier 2, intégration des corrections du score avec leurs montées de révision.
+
 ## [2026-11-23] Décodeur 1.6.0 : vitesse doublée sur un fil, ouverture du parallélisme — En cours
 
 - **Décision** : la priorité de vitesse va aux films de la dernière version (message du user). Le profil de ces films ne montre aucun gain majeur sur un fil : le parallélisme s'ouvre, en deux chantiers (pré-décodage des images-clés, puis balayages d'après la marche), après une conception écrite et relue. Le parallélisme par morceau de la marche reste écarté, sur mesure.
