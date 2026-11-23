@@ -12,7 +12,7 @@ tout code, écris un plan propre et fais-le relire contre la grille plan-review 
 TOUTES TRANCHÉES par le user le 2026-11-23 (section 2). Le contributeur reporte lui-même ses ajouts ; tout
 se fait dans la v1.6.0, sans échéance. GO D'EXÉCUTION donné le 2026-11-23.**
 
-**Vitesse : cinq gains intégrés au 2026-11-23 ; restent G.4 en cours, G.10, G.11, G.3 à décider, puis V4 et les pistes du backlog.**
+**État au 2026-11-23 (soir) : vitesse intégrée (parallélisme compris), pistes A, B, E et F rendues ou statuées, gestes, répliques (lecture) et canaux du contributeur PORTÉS PAR NOUS et intégrés en six intégrations (tête `7bda46f`, document au schéma 127, faits au schéma 31). Restent : D.2 en cours, D.4 à D.6, E.4, R.*, L.* ; V4 et V2 abandonnées.**
 Contrat d'exécution : skill `plan-execution`, complément `levelup-plan`. Statuts : `[x]` fait, `[~]` couvert
 ailleurs (référence), `[!]` non traité (motif écrit). Aucune case vide à la clôture.
 Plans liés : `.ai/PLAN_DECODEUR_2026-11-18.md` (v1.5.0, dont ce plan reprend la forme et les règles),
@@ -264,6 +264,7 @@ tout faire pour la 1.6 je veux dire. » ([le contributeur] = le contributeur du 
   donne mon go d'avance »), rappelé le 2026-11-22 : une seule fois, après la v1.6.0, avant le premier
   démarrage de LevelUp 8.3.0. Le user est prévenu AU LANCEMENT (serveur arrêté, environ 2 h 30, pas pendant
   qu'il joue).
+- **Décisions du 2026-11-23 (soir).** Aucune option dans le décodeur : tout est publié, pleine cadence comprise. Dégâts à zéro point publiés. Série de santé et de bouclier par vie publiée. Purge de l'historique git abandonnée. Gestes (accroupi, saut) publiés seulement pour la version actuelle du jeu. Lecture au choix des canaux (V4) abandonnée. Les ajouts du contributeur sont repris par nous (piste P, « Portage par nous ») ; note de migration remise à la fin.
 - **Rythme.** 2026-11-23 : « on peut faire le tout patiemment et à notre rythme ». Aucune échéance ; des
   vagues petites et sûres ; aucun item renvoyé à une autre version par manque de temps.
 
@@ -669,7 +670,7 @@ Aucun agent ne monte le schéma ni ne régénère un golden : il rend la liste e
 
 ## Étape 0 — témoins, références, instruments (pilote ; un agent Sonnet)
 
-- [ ] 0.1 Clone neuf `Scripts/dec-v160` à la tête de `main` ; vérifier `main` = `v1.5.0` (`dc967c2`) ;
+- [x] 0.1 (2026-11-23 : fait ; `main` = `v1.5.0` (`dc967c2`), branche `feat/v1.6.0` poussée, tête `7bda46f` ; worktree `Scripts/LevelUp-wt-dec160` sur `chore/830-decodeur-v160`, `npm ci` fait) Clone neuf `Scripts/dec-v160` à la tête de `main` ; vérifier `main` = `v1.5.0` (`dc967c2`) ;
       branche `feat/v1.6.0`, poussée. Worktree `Scripts/LevelUp-wt-dec160` sur `chore/830-decodeur-v160`,
       créée de la tête de la montée v1.5.0 (DD-5), sans jonction ; `npm ci` et espace de travail engendré
       (R-11) ; racines de données par piste préparées à la demande (R-13).
@@ -800,7 +801,7 @@ ABANDONNÉE le 2026-11-23 sur mesure : gain mesuré de 0,1 à 0,8 % du total (pr
       dépendances.
 - [!] V4.4 (abandonné le 2026-11-23, avec V4.2) Mesure par le relevé A : document complet (inchangé) ; puis positions seules, tirs seuls, fil des
       morts seul : décodage, publication, total, pic.
-- [ ] V4.5 Crédit à nuzzles, fragment rendu pour les pistes V (R-15) : `README.md` (section « Speed »,
+- [~] V4.5 (2026-11-23 : V4 abandonnée ; le crédit à nuzzles est porté par L.3 (notes de la release) et L.5 (crédits de LevelUp)) Crédit à nuzzles, fragment rendu pour les pistes V (R-15) : `README.md` (section « Speed »,
       méthodes reprises, lien vers son dépôt), `NOTICE.md` (remerciement, licence de sa source, révision
       lue), une ligne en tête de chaque fichier qui porte une méthode reprise, notes de la release, et côté
       LevelUp les notes de version et la page des crédits (L.5). `FORMAT.md` n'est pas touché : le format ne
@@ -818,7 +819,7 @@ ABANDONNÉE le 2026-11-23 sur mesure : gain mesuré de 0,1 à 0,8 % du total (pr
       écrit (DD-7). Sortie : candidats écrits ici.
 - [!] V3.2 (abandonné le 2026-11-23 : déjà mémoïsé dans le code, 29 recherches pour 556 appels sur un film ; le chiffre de 30 % du registre des reports est périmé) Images-clés : une seule recherche pour les trois lecteurs (état complet du bipède, dotations de
       naissance, équipes).
-- [ ] V3.3 (2026-11-23 : la partie équipement est gardée, reprise par G.7 ; la sonde de calibration n'est pas retenue : 1,5 % sur film01 seulement, moins de 1 % ailleurs, décision du pilote ; `[!]` à poser avec ce chiffre) Sonde de calibration et récupération d'équipement passées derrière la marche, seulement si le
+- [!] V3.3 (2026-11-23 : la partie équipement est gardée, reprise par G.7 ; la sonde de calibration n'est pas retenue : 1,5 % sur film01 seulement, moins de 1 % ailleurs, décision du pilote ; `[!]` à poser avec ce chiffre) Sonde de calibration et récupération d'équipement passées derrière la marche, seulement si le
       profil V0.5 les montre au-dessus de 1 % du total ; sinon `[!]` avec le chiffre.
 - [~] V3.4 (2026-11-23 : couvert par les pistes G et K) Les candidats de V3.1 retenus par le pilote, un item écrit ici par candidat avant son code ; un
       candidat qui toucherait l'état du monde de la marche est refusé ici (il appartient à V2).
@@ -853,7 +854,7 @@ Preuve commune à chaque item : empreintes de `film-bench` identiques au relevé
 - [~] G.3 (2026-11-23 : repris par la piste K, chantier 2) Faire tourner en parallèle, entre eux et d'après la marche, les balayages hors marche ; `decodeFilmVehicleScan` avec `decodeFilmPlacements` dans `balayerMonde`. Sans effet attendu à un fil (DD-3). **À décider sur un nouveau profil.** Note (profil 2, section 8, 2026-11-23) : possible mais PAS tel quel (contexte de film muté, mémos sans verrou) ; gardé en dernier, à décider.
       Gain attendu : -8 à -20 % de durée murale à plusieurs fils (film06 : de 38 % à environ 19 %, borné par `decodeFilmVehicleScan` ; film01 : environ 20 %). Risque : moyen (état partagé du `FilmContext`, caches et verrous à vérifier ; les crochets publient). Fichiers : `replay/film_scan.go` (`balayerPositions`, `balayerMonde`, `balayerPont`, `balayerCapacites`). Preuve : celle de la piste.
 
-- [ ] G.10 mémoire : `indexBySlot` sans copie des positions (index de positions de 4 octets au lieu d'une copie de 176 octets par position ; 37 usages de `.pts` dans 11 fichiers de `replay/`). Gain attendu : pic −0,4 à −0,5 Gio sur le plus gros film, alloué −4,8 Gio. Risque moyen ; preuve : empreintes des 13 films. Source : `.ai/annexes_decodeur_v160/profil2.md`, section 6.2 (M1).
+- [x] G.10 (2026-11-23 : intégré, `da3bd2c` ; positions par rangs, empreintes des 13 films identiques ; pic du plus gros film −294 Mio, contre −0,4 à −0,5 Gio visés) mémoire : `indexBySlot` sans copie des positions (index de positions de 4 octets au lieu d'une copie de 176 octets par position ; 37 usages de `.pts` dans 11 fichiers de `replay/`). Gain attendu : pic −0,4 à −0,5 Gio sur le plus gros film, alloué −4,8 Gio. Risque moyen ; preuve : empreintes des 13 films. Source : `.ai/annexes_decodeur_v160/profil2.md`, section 6.2 (M1).
 - [ ] G.11 : note à l'hôte sur le plafond souple de mémoire (`-plafond-gio`) : à 1 Gio, le pic du plus gros film tombe à 1 161 Mio pour +1,3 % de temps (mesuré sur ce seul film). Réglage de l'hôte, pas du décodeur ; à consigner dans la mise en production. Source : `.ai/annexes_decodeur_v160/profil2.md`, section 6.2 (M0).
 
 Gate de la piste G : G-clone sur les paquets touchés (`-race` pour G.3) ; G-rev, empreinte refigée par le pilote à valeur constante (R-13) ; G-compat ; G-equiv-ref : 20 identiques contre les références de la v1.5.0 ; G-equiv-2p ; relevé complet de `film-bench` sur la machine au repos (fenêtre de mesure, R-8), comparé à `bench/releves/v1.5.0.tsv`.
@@ -893,7 +894,7 @@ Chantier 1, pré-décodage des images-clés (après les fondations). Preuve de l
       Films récents, total par film, v1.5.0 puis 1 / 2 / 4 / 8 fils : Slayer 1 123 ms → 826 / 622 / 570 / 550 ; Bases 1 586 → 1 191 / 891 / 803 / 766 ; Colline 1 371 → 1 048 / 776 / 705 / 675 ; Drapeau d'arène 525 → 399 / 271 / 247 / 236 ; Bombe 1 197 → 903 / 648 / 579 / 547. Soit, sur un film récent, environ −26 % à un fil (effet de K.0), −45 % à deux fils, −50 % à quatre.
       Films anciens : le plus ancien 18,1 s → 5,5 s à un fil, 4,6 s à quatre ; le plus gros 19,6 s → 10,1 s à un fil, 8,8 s à quatre.
       Pic de mémoire : inchangé d'un niveau de fils à l'autre (plus gros film 1 965 à 2 022 Mio contre 2 198 en v1.5.0 ; film récent 235 à 256 Mio). Le gain plafonne après quatre fils. La publication ne bouge pas (environ +4 % contre le relevé de référence, à contrôler au relevé final).
-- [ ] K.I6 Job de CI de détection de courses élargi aux tests neufs (préfixes `TestFils`, `TestVoie`, `ExecuterEnParallele`) ; `bench/README.md` : les durées par étape ne sont pas significatives à plus d'un fil. Haiku, effort bas.
+- [x] K.I6 (2026-11-23 : fait, `41389c4` ; le job de courses couvre `^TestFils|^TestVoie|^TestExecuterEnParallele`, `bench/README.md` dit que les durées par étape ne sont pas significatives à plus d'un fil) Job de CI de détection de courses élargi aux tests neufs (préfixes `TestFils`, `TestVoie`, `ExecuterEnParallele`) ; `bench/README.md` : les durées par étape ne sont pas significatives à plus d'un fil. Haiku, effort bas.
 
 Chantier 2a, lectures qui ne dépendent que du film :
 - [x] K.J1 (2026-11-23 : intégré dans `feat/v1.6.0` ; `LireLesFaitsDuFilmSeul` prend le film et une fonction de roster, le pont verse les replis au même endroit ; test d'égalité avec le pont seul) Extraire du pont la lecture « film seul » (temps forts, médailles, index des joueurs, origine d'horloge), sorties identiques.
@@ -911,7 +912,7 @@ Gate de la piste K : à tout niveau de fils, empreintes du document et des faits
 
 ## Intégration « vitesse » (pilote)
 
-- [ ] I.1 V4 puis V3 fusionnées dans `feat/v1.6.0`, une à une (V1 abandonnée le 2026-11-23 ; la piste G passe en premier) ; G-equiv-ref après chacune : aucun écart,
+- [~] I.1 (2026-11-23 : V4 abandonnée par le user, V3 couverte par les pistes G et K (V3.4) ; les pistes G et K se sont intégrées une à une dans `feat/v1.6.0`, empreintes des 13 films identiques à chaque intégration) V4 puis V3 fusionnées dans `feat/v1.6.0`, une à une (V1 abandonnée le 2026-11-23 ; la piste G passe en premier) ; G-equiv-ref après chacune : aucun écart,
       références non refigées ; empreintes de révision refigées par leur porte, valeurs inchangées (R-13) ;
       G-façade.
 - [ ] I.2 Preuve d'identité complète, points 1 à 7 (gate du corpus au niveau `N`, pseudo-version désignée
@@ -955,21 +956,21 @@ ABANDONNÉE le 2026-11-23 sur analyse : le monde est unique pour tout le film, l
       « incomplètes » sans rang non confirmé ni manque ; la Grande bataille « complète » à tort (points
       publiés au-dessus du tableau) ; le film dont le tableau cesse de monter dans les dernières secondes.
       Cause par film, ou `[!]`.
-- [ ] A.2 Selon A.1 : corrections, écrites ici avant leur code (2026-11-23). Le verdict lui-même est juste : ce sont trois lectures qui se corrigent.
-  - [ ] A.2a (2026-11-23 : codé et prouvé sur films, `piste/a2a`, `d96be0c` ; genres 13, 27 et 117 lus, genre 93 lu dans son seul cas inhibé ; 143 trames arrêtées sur 39 films ramenées à 0, les 1 258 632 trames se ferment ; les cinq films deviennent « complets » sans changer un point, 28 films sur 39 au total ; sur 461 joueurs aucun ne se dégrade ; quelques tirs, touches et dégâts en plus dans les listes ; non coché : intégration avec montée de la révision de la grammaire et écart d'équivalence attribué) Lecteurs de charge des genres 13, 27, 93 et 117 de la vue A, qui arrêtent aujourd'hui la lecture d'une trame (cinq Grandes batailles « incomplètes » alors que leurs points égalent l'API pour 128 joueurs ; environ 180 rejeux du parc, estimation). Largeurs à établir : témoin, puis preuve par le film (la trame se poursuit jusqu'à sa fin sur toutes les occurrences). Un genre non prouvé reste arrêtant. Sortie changée sur les films concernés : écart à attribuer à l'intégration.
-  - [ ] A.2b (2026-11-23 : codé et prouvé sur films, `piste/a2b`, `1d5f91a` ; sur le film, les éliminations du joueur concerné passent de 21 à 20 et sa somme de 2 325 à 2 225, aucun autre total ne bouge, 35 messages comptés comme copies ; trois films du corpus : aucune trame écartée ; non coché : intégration avec montée de la révision de la grammaire) Trame renvoyée en entier par le jeu (un film : une élimination comptée deux fois, +100 points) : écarter une trame dont TOUS les messages, au moins deux, répètent à clé identique (rang, charge, destinataires, numéro de séquence) ceux d'une trame de moins de 3 s ; la fenêtre d'une seconde reste pour un message isolé. Fichier : `internal/grammar/evenements_de_jeu.go`. Preuve : test avec les deux trames du film ; aucun changement sur les autres films relus.
-  - [ ] A.2c (2026-11-23 : codé et prouvé sur films, `piste/a2c`, `a2cfcdd` ; critère factuel ajouté, seuil intact ; le film passe de 17 680 à 18 805 points, égal à l'API pour ses 8 joueurs ; aucune autre manche changée sur 27 films ; les 4 films de la découverte restent inchangés à juste titre : leur manche 1 n'existe pas dans le film ; non coché : intégration avec montée de la révision de la couche des objectifs) Dernière manche courte refusée (un film : 1 125 points absents du tableau) : la manche est écrite dans le film avec la remise à zéro simultanée de tous les joueurs présents. Décision du pilote : admettre une manche par ce FAIT (remise à zéro de tous les joueurs présents dans la même seconde) plutôt qu'abaisser le seuil de part d'enregistrements de 10 à 7 % ; le seuil n'est abaissé que si le fait ne se lit pas. Fichiers : `internal/facts/objectives/statborg.go`, `rounds_decision.go`. Preuve : le film réglé, aucun autre changement sur l'échantillon de 220 films, les 4 films à manche manquante de la section Découvertes examinés.
-- [ ] A.3 Recherche (une session) : arbre des actions décalé sur le build qui précède `HI_1_11_0` (31
+- [x] A.2 (2026-11-23 : A.2a, A.2b et A.2c intégrés) Selon A.1 : corrections, écrites ici avant leur code (2026-11-23). Le verdict lui-même est juste : ce sont trois lectures qui se corrigent.
+  - [x] A.2a (2026-11-23 : codé et prouvé sur films, `piste/a2a`, `d96be0c` ; genres 13, 27 et 117 lus, genre 93 lu dans son seul cas inhibé ; 143 trames arrêtées sur 39 films ramenées à 0, les 1 258 632 trames se ferment ; les cinq films deviennent « complets » sans changer un point, 28 films sur 39 au total ; sur 461 joueurs aucun ne se dégrade ; quelques tirs, touches et dégâts en plus dans les listes ; intégré le 2026-11-23, fusion `e3d422b`, révision de la grammaire montée à `grammar-2026-11-23` ; l'attribution des écarts d'équivalence est portée par L.1) Lecteurs de charge des genres 13, 27, 93 et 117 de la vue A, qui arrêtent aujourd'hui la lecture d'une trame (cinq Grandes batailles « incomplètes » alors que leurs points égalent l'API pour 128 joueurs ; environ 180 rejeux du parc, estimation). Largeurs à établir : témoin, puis preuve par le film (la trame se poursuit jusqu'à sa fin sur toutes les occurrences). Un genre non prouvé reste arrêtant. Sortie changée sur les films concernés : écart à attribuer à l'intégration.
+  - [x] A.2b (2026-11-23 : codé et prouvé sur films, `piste/a2b`, `1d5f91a` ; sur le film, les éliminations du joueur concerné passent de 21 à 20 et sa somme de 2 325 à 2 225, aucun autre total ne bouge, 35 messages comptés comme copies ; trois films du corpus : aucune trame écartée ; intégré le 2026-11-23, fusion `303b7d7`, même montée de révision ; l'attribution des écarts d'équivalence est portée par L.1) Trame renvoyée en entier par le jeu (un film : une élimination comptée deux fois, +100 points) : écarter une trame dont TOUS les messages, au moins deux, répètent à clé identique (rang, charge, destinataires, numéro de séquence) ceux d'une trame de moins de 3 s ; la fenêtre d'une seconde reste pour un message isolé. Fichier : `internal/grammar/evenements_de_jeu.go`. Preuve : test avec les deux trames du film ; aucun changement sur les autres films relus.
+  - [x] A.2c (2026-11-23 : codé et prouvé sur films, `piste/a2c`, `a2cfcdd` ; critère factuel ajouté, seuil intact ; le film passe de 17 680 à 18 805 points, égal à l'API pour ses 8 joueurs ; aucune autre manche changée sur 27 films ; les 4 films de la découverte restent inchangés à juste titre : leur manche 1 n'existe pas dans le film ; intégré le 2026-11-23, fusion `0242b1f`, révision des objectifs montée à `objectives-2026-11-23` ; l'attribution des écarts d'équivalence est portée par L.1) Dernière manche courte refusée (un film : 1 125 points absents du tableau) : la manche est écrite dans le film avec la remise à zéro simultanée de tous les joueurs présents. Décision du pilote : admettre une manche par ce FAIT (remise à zéro de tous les joueurs présents dans la même seconde) plutôt qu'abaisser le seuil de part d'enregistrements de 10 à 7 % ; le seuil n'est abaissé que si le fait ne se lit pas. Fichiers : `internal/facts/objectives/statborg.go`, `rounds_decision.go`. Preuve : le film réglé, aucun autre changement sur l'échantillon de 220 films, les 4 films à manche manquante de la section Découvertes examinés.
+- [!] A.3 (2026-11-23 : verdict « non prouvable », `a_score_verdicts_a3_a4_a5_a6.md` ; sur 9 Grandes batailles de `HI_1_10_0`, 2 990 trames restent arrêtées sur une soixantaine de genres, la somme des actions n'égale l'API que pour 33 joueurs sur 232 sans le décalage et 38 avec : l'égalité n'est pas testable ; 14 lectures directes du tableau concordent avec la table décalée, 0 contraire ; pour les 34 Grandes batailles à drapeau, aucun groupe ni décalage ne se prouve (meilleur accord 13,5 %). Manque pour reprendre : la table des genres de la vue A de `HI_1_10_0`, et la source du groupe de scripts du drapeau dans les fichiers du jeu) Recherche (une session) : arbre des actions décalé sur le build qui précède `HI_1_11_0` (31
       lectures concordantes, égalité non testable sur des films à trames arrêtées) et les 34 Grandes
       batailles à drapeau sans groupe de scripts. Sortie : décalage PROUVÉ par le tableau du film, ou `[!]`.
-- [ ] A.4 Assaut : points de bombe hors de l'arbre des scripts (4 films). Recherche bornée ; publication si
+- [!] A.4 (2026-11-23 : reporté au backlog de LevelUp, entrée « Points de bombe en Assaut » de `.ai/BACKLOG.md` ; l'explosion (+200) se reconnaît 22 fois sur 22 par le compteur, aucune source ne nomme l'action ; rien publié) Assaut : points de bombe hors de l'arbre des scripts (4 films). Recherche bornée ; publication si
       le film les nomme.
-- [ ] A.5 Courbe de score qui recule : la pénalité de suicide ou de trahison (−100) publiée comme telle, au
+- [x] A.5 (2026-11-23 : fait, `436c09c` ; cause prouvée sur 1 595 films : 1 282 pénalités dans 635 films, la baisse de exactement 100 porte avec elle la montée du compteur de suicides ou de trahisons ; sur 67 films dont un total change, exacts 864 sur 1 030 avant, 928 sur 1 030 après, aucun exact devenu inexact ; sur les 20 films du corpus d'équivalence aucun total ne change) Courbe de score qui recule : la pénalité de suicide ou de trahison (−100) publiée comme telle, au
       lieu de la plus longue suite non décroissante. Mesure attendue : accord au score personnel de l'API en
       hausse, aucun joueur exact avant ne devient inexact.
-- [ ] A.6 Révision de couche pour la table des réponses de jeu : une ligne ajoutée à la table rend un rejeu
+- [x] A.6 (2026-11-23 : fait, `436c09c` ; la table des réponses de jeu est associée à la révision de la grammaire (`Couche.Associes`), une ligne de plus change l'empreinte ; 4 tests neufs) Révision de couche pour la table des réponses de jeu : une ligne ajoutée à la table rend un rejeu
       « à redécoder ».
-- [ ] A.7 (2026-11-23 : codé sur `piste/a7`, `7701999`, comparateur instant de début puis slot, test neuf ; non coché : preuve d'équivalence sur les 20 films à l'intégration) (ajouté le 2026-11-23, issu de 0.4) `joinSegments` (`replay/score_timeline_players.go`) : le comparateur
+- [ ] A.7 (2026-11-23 : codé sur `piste/a7`, `7701999`, comparateur instant de début puis slot, test neuf ; intégré le 2026-11-23, fusion `03f5144` ; non coché : la preuve d'équivalence sur les 20 films attend L.1, les références n'étant pas refigées) (ajouté le 2026-11-23, issu de 0.4) `joinSegments` (`replay/score_timeline_players.go`) : le comparateur
       devient total, instant de début PUIS slot ; test unitaire à deux segments de même début, ordre d'insertion
       inversé ; effet attendu sur les 20 films : aucun ; change le cas d'égalité, aujourd'hui indéterminé.
       Sonnet, effort bas, classe B.
@@ -979,32 +980,32 @@ ABANDONNÉE le 2026-11-23 sur analyse : le monde est unique pour tout le film, l
 
 ## Piste B — drapeau et zones (Sonnet ; Opus pour B.1)
 
-- [ ] B.1 Recherche (une session) sur les 16 portages à l'état « au socle » faux : porteur précédent hors
+- [x] B.1 (2026-11-23 : causes prouvées, `b1_causes_des_portages_faux.md` ; famille 1 : lecture limitée aux 8 premiers sièges ; famille 2 : variante à un seul drapeau lue avec deux ; famille 3 : suite d'un siège qui change d'occupant, et position d'un corps immobile) Recherche (une session) sur les 16 portages à l'état « au socle » faux : porteur précédent hors
       des 8 premières places ou sur une place sans humain nommé (7) ; variante à un seul drapeau publiée
       avec deux drapeaux d'équipe (4) ; résidu (5). Une cause prouvée par famille, ou `[!]`.
-- [ ] B.2 Corrections prescrites par B.1, écrites ici avant leur code.
-- [ ] B.3 Équipe du porteur sur une carte à 6 socles (25 portages sur 25 d'un film) : lecture de l'équipe
+- [x] B.2 (2026-11-23 : intégré ; B.2a tous les sièges du film lus pour le drapeau (`3f6eda6`), B.2b une base neutre lue par le film fait un seul drapeau (`32eb357`), B.2d la suite d'un siège se coupe au changement d'occupant (`2734cea`), B.2c un porteur immobile garde sa position à travers un trou de lecture (`f49affe`) ; sur 218 joueurs de 13 films, justes à 2 s de l'API : 161 avant, 197 avec B.2a et B.2b, 203 avec B.2d, aucun juste devenu faux) Corrections prescrites par B.1, écrites ici avant leur code.
+- [!] B.3 (2026-11-23 : verdict rendu sans code, `b_zones_verdicts_b3_b4_b6_b7.md` ; l'équipe est lue pour 25 joueurs sur 25, ce que la règle ne sait pas nommer est le DRAPEAU (3 par camp) ; conséquence mesurable nulle : temps de porteur à 2 s de l'API pour 24 joueurs sur 25 ; le compteur `carrierTeamUnknown` mesure l'abstention de la règle, nom trompeur, entrée du backlog) Équipe du porteur sur une carte à 6 socles (25 portages sur 25 d'un film) : lecture de l'équipe
       par le film, ou `[!]`.
-- [ ] B.4 Compteurs de zones sur d'anciens builds (octet signé qui avance de 32) : borne par build, lue dans
+- [!] B.4 (2026-11-23 : verdict rendu sans code ; le composant 21 côté A n'est pas un compteur sur ces builds (valeurs congrues à 8 modulo 32), la définition des emplacements du tableau n'existe dans le film que pour `HI_1_12_0` et `HI_1_13_0` ; sans effet aujourd'hui (`objectives[]` vide) ; manque pour reprendre : un lecteur Go de ces définitions) Compteurs de zones sur d'anciens builds (octet signé qui avance de 32) : borne par build, lue dans
       les définitions du film.
-- [ ] B.5 Ouverture de la bande au-delà de 8 joueurs, SEULEMENT si, après B.2 et B.4, le temps de porteur
+- [~] B.5 (2026-11-23 : couvert par B.2a, qui lit tous les sièges ; justes à 2 s de l'API 161 -> 203 sur 218, aucun juste devenu faux ; le rapport exact au-delà de 8 joueurs contre en deçà n'a pas été calculé séparément) Ouverture de la bande au-delà de 8 joueurs, SEULEMENT si, après B.2 et B.4, le temps de porteur
       est à 2 s de l'API pour au moins autant de joueurs au-delà de 8 qu'en deçà (91,7 % en v1.5.0) ; sinon
       `[!]` avec la mesure.
-- [ ] B.6 Lettre des zones comme contrôle : deux compteurs de couverture (lettres lues, lettres en accord
+- [!] B.6 (2026-11-23 : calcul fait et mesuré, 231 lettres justes sur 231 (77 films de Bases, `Unmatched` 0), mais NON intégré : il reste sur la branche `piste/bl-zones`, sans appelant ; manquent la source (balayage qui publie état et équipe des marqueurs) et la lecture du composant qui arrête les images-clés) Lettre des zones comme contrôle : deux compteurs de couverture (lettres lues, lettres en accord
       avec le rang publié) ; lecture du composant du marqueur qui arrête la lecture aux images-clés.
-- [ ] B.7 Zone au propriétaire de nom inconnu (un film) : cause, puis lecture ou `[!]`.
+- [!] B.7 (2026-11-23 : non reproduit ; sur le film et sur un second film de Bases, les trois zones sont nommées et aucun repli ne joue ; la cause était la sonde de la recherche, pas le rejeu) Zone au propriétaire de nom inconnu (un film) : cause, puis lecture ou `[!]`.
 - **Gate B** : équivalence attribuée ; temps de porteur contre l'API sur les 186 films à drapeau : aucun
   porteur juste avant ne devient faux ; compteurs de zones contre l'API sans baisse ; G-clone sur
   `./replay/ ./internal/grammar/` ; G-rev ; G-compat.
 
 ## Piste C — gestes (Sonnet)
 
-- [ ] C.1 Accroupissement et glissade sur les versions récentes : le bit de valeur 1 de l'entrée de contrôle,
+- [~] C.1 (2026-11-23 : repris par le portage des gestes du contributeur : accroupi publié comme commande tenue, `de99cbc`, seulement sur les films à pleine cadence, donc pour la version actuelle du jeu (décision du user) ; la glissade n'est pas publiée : 74 % seulement des séries rapides atteignent le pic, aucune vérité indépendante, `c123_gestes_mesures.md`) Accroupissement et glissade sur les versions récentes : le bit de valeur 1 de l'entrée de contrôle,
       recoupé avec la vitesse et la hauteur sur 20 films. Vérité : les 7 rejeux qui les publient déjà par
       l'autre voie. Publication si l'accord atteint 90 %.
-- [ ] C.2 Bouton de saut sur les builds 1.9 à 1.11 (accord de 50 à 61 %) : disposition de la vue de contrôle
+- [~] C.2 (2026-11-23 : repris par le portage des gestes : saut publié comme commande tenue sur les films à pleine cadence seulement, `de99cbc` ; les builds 1.9 à 1.11 sont à 30 Hz et ne publient pas le saut) Bouton de saut sur les builds 1.9 à 1.11 (accord de 50 à 61 %) : disposition de la vue de contrôle
       de ces builds ; publication du bouton seulement à 90 % d'accord sur tous les builds, sinon `[!]`.
-- [ ] C.3 Sens des quatre booléens d'un rechargement : mesure contre les munitions lues ; nommés s'ils sont
+- [~] C.3 (2026-11-23 : repris par le portage des gestes : les rechargements gagnent l'instant et le compte des copies (`276b1e1`) ; aucun des quatre booléens n'est nommé, laissés tels quels) Sens des quatre booléens d'un rechargement : mesure contre les munitions lues ; nommés s'ils sont
       prouvés, sinon laissés tels quels.
 - [x] C.4 (2026-11-23 : table rendue, `.ai/annexes_decodeur_v160/c4_e5_recoupements.md` ; le contributeur apporte coup de mêlée, lancer, rechargement et déplacement brut ; désaccord sur le bit du saut à trancher par un film récent, avec C.2) Recoupement avec les canaux du contributeur (manche, postures de contrôle, gestes), sans code :
       table « son champ, notre champ, lequel reste », versée à l'inventaire P.1 et au dossier P.2.
@@ -1016,15 +1017,15 @@ ABANDONNÉE le 2026-11-23 sur analyse : le monde est unique pour tout le film, l
 - [ ] D.1 (2026-11-23 : intégré dans `feat/v1.6.0`, tête `cd8f560`, empreintes des 13 films identiques ; genre 75 = réplique d'un Spartan, genre 76 = annonce ; lus seulement quand un canal le demande, rien de publié ; essai sur un film : 365 répliques, 951 annonces, aucune trame arrêtée ; non coché : contrôle des comptes contre le témoin sur 3 films, à la file des mesures) Lecture par la grammaire des genres 75 et 76 de la vue A (locuteur, identifiant du son, priorité,
       indice de réplique ; annonceur : identifiant du son, destinataires), aujourd'hui traversés sans valeur.
       Contrôle : mêmes comptes que le témoin sur 3 films.
-- [ ] D.2 Nom court de la réplique, DANS le décodeur (cadrage du user) : recherche bornée de la
+- [ ] D.2 (2026-11-23 : EN COURS, agent lancé le 2026-11-23, branche `piste/d2`) Nom court de la réplique, DANS le décodeur (cadrage du user) : recherche bornée de la
       correspondance entre l'indice du film et l'entrée des tables de vocalisation (5 noms résolus à ce
       jour). Un nom est publié quand il est prouvé ; une réplique dont le nom n'est pas prouvé est publiée
       sans nom, et comptée. La recherche suit R-3. Aucun nom inventé.
-- [ ] D.3 Publication : calque `chatter[]` (image, joueur, son, genre, nom court s'il existe) et sa
+- [x] D.3 (2026-11-23 : intégré, `b4958dc` puis fusion `cc0de33` ; calques `chatter[]` et `announcements[]` publiés depuis un canal de la marche, couverture, schéma 127) Publication : calque `chatter[]` (image, joueur, son, genre, nom court s'il existe) et sa
       couverture (lus, publiés, sans joueur, hors du match) ; les annonces de l'annonceur dans un calque à
       part si D.1 les lit. Le film ne dit pas quelle variante audio a joué : le document ne le dit pas non
       plus.
-- [ ] D.4 Fragments de documentation (R-15) : `FORMAT.md`, `GLOSSARY.md` ; crédit à Den (méthode et table de
+- [ ] D.4 (2026-11-23 : `FORMAT.md`, `GLOSSARY.md` et `NOTICE.md` posés pour les répliques, les annonces et les gestes, `3faf1b4` ; reste le nom court de D.2) Fragments de documentation (R-15) : `FORMAT.md`, `GLOSSARY.md` ; crédit à Den (méthode et table de
       textes, libfilmshell, MIT) pour `NOTICE.md`.
 - [ ] D.5 (décision du user du 2026-11-23 : textes ET voix, en français et en anglais, versés au dépôt comme les sons d'armes ; estimation donnée au user : textes environ 40 Ko, voix 12 à 30 Mo pour les deux langues, à MESURER avant de verser ; deux inconnues à lever : nombre de voix de Spartan enregistrées par réplique, et la voix anglaise n'est pas installée sur le poste) HORS DÉCODEUR (DD-4) : côté LevelUp, à la montée, commande qui bâtit
       la table des répliques depuis le jeu installé (identifiant du son vers textes français et anglais et
@@ -1041,13 +1042,13 @@ ABANDONNÉE le 2026-11-23 sur analyse : le monde est unique pour tout le film, l
 
 ## Piste E — canaux neufs du backlog (Sonnet ; Haiku pour E.5)
 
-- [ ] E.1 Éliminations dont un bot est l'auteur : mesure d'abord (combien `eliminations[]` en porte sur les
+- [x] E.1 (2026-11-23 : intégré, `b3aca22` ; éliminations et actions de score d'un bot publiées par place, sans identifiant ; mesure `e1_eliminations_de_bots.md` : 0 élimination de bot dans `eliminations[]` avant, sur 5 films à bots, écart de 1 à 12,6 % contre le tableau du film) Éliminations dont un bot est l'auteur : mesure d'abord (combien `eliminations[]` en porte sur les
       films à bots, combien `scoreActions` en nomme) ; puis publication avec un auteur sans identifiant et
       sa place. Vérité : le tableau du film.
-- [ ] E.2 VIP : temps en VIP, plus long temps en VIP, meilleure série en VIP, publiés en courbes par joueur
+- [x] E.2 (2026-11-23 : intégré, `caaa8ca` ; courbes par joueur du temps en VIP, du plus long temps et de la meilleure série ; temps 24 sur 24 exacts, série 24 sur 24, plus long temps 22 sur 24 plus deux à 0,1 s ; constat vérifié le 2026-11-23 : sur un des trois films VIP, 23 courbes pour 8 joueurs au lieu de 24, la courbe absente est la meilleure série en VIP d'un joueur dont la valeur est 0 dans le film ET dans l'API ; une courbe absente se lit zéro, le chiffre est juste, laissé en l'état ; poids +3,1 à +4,1 % sur ces films, documents identiques à 1 et 4 fils) VIP : temps en VIP, plus long temps en VIP, meilleure série en VIP, publiés en courbes par joueur
       comme les compteurs du tableau. L'hôte dit que le match est un VIP par la constante déjà exportée
       (`decfilm.ObjectiveTypeVip`). Après la piste A (mêmes fichiers).
-- [ ] E.3 (2026-11-23 : instruit sans code, `dec-v160-recup/pistes/e3/instruction.md` hors dépôt ; le film ne porte que le hachage, vérifié sur deux films à tous les décalages de bit ; les archives lisibles du jeu ne rendent aucun des 30 hachages testés ; les noms sont très probablement dans l'exécutable, non lu ; aucun code tant que la source n'est pas établie) Nom des options de variante : le document publie le nom à côté du hachage quand le FILM ou les
+- [!] E.3 (2026-11-23 : source des noms d'options non établie, motif ci-dessous ; instruit sans code, `dec-v160-recup/pistes/e3/instruction.md` hors dépôt ; le film ne porte que le hachage, vérifié sur deux films à tous les décalages de bit ; les archives lisibles du jeu ne rendent aucun des 30 hachages testés ; les noms sont très probablement dans l'exécutable, non lu ; aucun code tant que la source n'est pas établie) Nom des options de variante : le document publie le nom à côté du hachage quand le FILM ou les
       fichiers du JEU le donnent (chaîne lue, contrôlée par son hachage). La table du parseur voisin n'est
       ni copiée ni consultée comme source. Une option sans nom lu reste un hachage, comptée.
 - [ ] E.4 Apparence enregistrée des Spartans (armure, revêtement) : recherche bornée (une session), sur 3
@@ -1055,7 +1056,7 @@ ABANDONNÉE le 2026-11-23 sur analyse : le monde est unique pour tout le film, l
       `[!]`. À remettre à la session du rejeu 3D dans les deux cas.
 - [x] E.5 (2026-11-23 : zoom déjà publié chez nous, sorties de lunette sous-comptées ; coup de mêlée sans mort couvert par le contributeur seulement ; même annexe que C.4) Zoom et coup de mêlée sans mort : contrôle sur pièces de ce qui est déjà publié (visée) et de ce
       que les gestes du contributeur couvrent (coup) ; sort écrit, versé à l'inventaire P.1.
-- [ ] E.6 Victime d'une élimination appariée au plus proche : victime absente et compteur d'ambiguïté quand
+- [x] E.6 (2026-11-23 : intégré, `caaa8ca` ; champ `victimAmbiguous`, victime absente quand plusieurs candidates restent ; effet nul sur 27 films, 332 joueurs sur 332 égaux à l'API) Victime d'une élimination appariée au plus proche : victime absente et compteur d'ambiguïté quand
       une action a plusieurs candidats.
 - **Gate E** : équivalence attribuée ; éliminations et statistiques VIP contre l'API sans baisse ; G-clone
   sur `./replay/ ./internal/grammar/ ./internal/facts/objectives/` ; G-rev ; G-compat.
@@ -1071,17 +1072,17 @@ ABANDONNÉE le 2026-11-23 sur analyse : le monde est unique pour tout le film, l
       `flagCarries.spans.returnProgress/{n, total}`. Les 21 décisions du 2026-11-22 restent nécessaires tant
       que la montée du décodeur n'est pas fusionnée dans la branche de version (la base du gate final sera
       alors le décodeur v1.4.1).
-- [ ] F.3 Repli du voisinage des pièces montées : compté sur les films à véhicules par le harnais ; à zéro
+- [!] F.3 (2026-11-23 : repli GARDÉ, `e_f_verdicts_e2_e6_f3_f6.md` ; zéro sur 13 films à véhicules, mais le film de format 31, seul cas visé par le repli, n'a aucune pièce montée ; à reprendre sur le parc régénéré) Repli du voisinage des pièces montées : compté sur les films à véhicules par le harnais ; à zéro
       partout, l'entrée du registre est retirée et sa constante gardée, marquée dépréciée.
-- [ ] F.4 Temps forts « mode » sans action de score (3 410 en Drapeau, 691 en Total Control, 303 en
+- [x] F.4 (2026-11-23 : verdict rendu, aucun code ; 409 temps forts « mode » sur 410 ont un objectif ET une action de score du même joueur à 2 s ; le reste vient de films d'anciens builds où rien ne se publie, refusé par le roster) Temps forts « mode » sans action de score (3 410 en Drapeau, 691 en Total Control, 303 en
       Extraction) : recroisés avec les huit noms d'action neufs de la v1.5.0. Verdict écrit ; aucun code si
       rien ne se prouve.
-- [ ] F.5 Décalage de 35 s entre le film et le temps de jeu de l'API : une session de mesure (ce que l'API
+- [x] F.5 (2026-11-23 : cause trouvée sur 7 films, aucun code ; la durée de l'API compte l'avant coup d'envoi, 26 à 41 s, égal à l'instant de coup d'envoi du film à 0,4 s près, et s'arrête environ 6,5 s avant la fin du film) Décalage de 35 s entre le film et le temps de jeu de l'API : une session de mesure (ce que l'API
       compte avant le coup d'envoi et après la fin). Cause, ou `[!]`.
-- [ ] F.6 Lâchers 2 à 4 images après une mort (4 cas) : un fait du film qui nomme le propriétaire du lâcher,
+- [!] F.6 (2026-11-23 : aucun défaut ; dans les 4 cas la vie « repreneuse » est du MÊME joueur que la vie achevée, rien à créditer à un autre ; aucune tolérance posée) Lâchers 2 à 4 images après une mort (4 cas) : un fait du film qui nomme le propriétaire du lâcher,
       ou `[!]` (aucune tolérance de temps).
-- [ ] F.7 Cinq rejeux sans build : pourquoi aucun compteur nommé n'y est lisible ; verdict écrit.
-- [ ] F.8 (ajouté le 2026-11-23, issu de la preuve d'A.2b) Harnais de test : `mapEntryFromCatalog` (`replay/ability_impulses_film_test.go`) choisit une carte par l'ordre de parcours d'une `map` quand deux cartes du catalogue portent la même signature d'axes ; le document produit par les tests et les sondes qui l'appellent varie alors d'un lancement à l'autre (mesuré : dix lancers, deux empreintes). Aucun appelant de production : l'hôte donne toujours la carte. Correction : échouer en nommant les candidates quand la signature est partagée, ou prendre la carte donnée par l'appelant ; test : même erreur sur cent appels. Haiku, effort bas, classe B.
+- [x] F.7 (2026-11-23 : verdict rendu, `f7_rejeux_sans_build.md` ; ces films n'ont pas de section d'identification (format 20), donc ni table de joueurs ni compteur nommé) Cinq rejeux sans build : pourquoi aucun compteur nommé n'y est lisible ; verdict écrit.
+- [x] F.8 (fait le 2026-11-23, `41389c4` : l'aide de test échoue en nommant les candidates quand deux cartes partagent la signature) (ajouté le 2026-11-23, issu de la preuve d'A.2b) Harnais de test : `mapEntryFromCatalog` (`replay/ability_impulses_film_test.go`) choisit une carte par l'ordre de parcours d'une `map` quand deux cartes du catalogue portent la même signature d'axes ; le document produit par les tests et les sondes qui l'appellent varie alors d'un lancement à l'autre (mesuré : dix lancers, deux empreintes). Aucun appelant de production : l'hôte donne toujours la carte. Correction : échouer en nommant les candidates quand la signature est partagée, ou prendre la carte donnée par l'appelant ; test : même erreur sur cent appels. Haiku, effort bas, classe B.
 - **Gate F** : G-clone sur `./internal/facts/fallback/ ./decfilm/` ; équivalence attribuée pour F.3 ;
   G-compat (la constante de F.3 est toujours là).
 
@@ -1105,7 +1106,7 @@ n'écrit sur la branche ; seules y entrent ses PR, une à une, puis les correcti
 correctif de notre côté après le gel lui est annoncé avant d'être poussé. Avant le gel, il peut travailler
 sur le tag `v1.5.0` ; il sait qu'un seul rebase l'attend, sur le commit de gel.
 
-- [ ] P.1 (2026-11-23 : inventaire rendu dans `.ai/annexes_decodeur_v160/inventaire_contributeur.md` ; non coché : l'ordre des tags des trois briques et la table par canal, exigés ci-dessous, ne figurent pas encore dans ce rendu) Inventaire en lecture seule de ses copies, en deux parts confiées à deux agents (P.1a le
+- [~] P.1 (2026-11-23 : remplacé par le portage par nous, voir « Portage par nous » ; `portage_complet_contributeur.md` porte l'inventaire par thème et la table par canal ; inventaire rendu dans `.ai/annexes_decodeur_v160/inventaire_contributeur.md` ; non coché : l'ordre des tags des trois briques et la table par canal, exigés ci-dessous, ne figurent pas encore dans ce rendu) Inventaire en lecture seule de ses copies, en deux parts confiées à deux agents (P.1a le
       décodeur, P.1b les deux autres briques), pour PRÉPARER l'accueil (aucun code, aucune PR), sur la
       tête de son dépôt au jour de l'item : pour le décodeur, diff de `third_party/film-decoder` contre
       v1.3.6 puis contre v1.5.0 ; pour les deux autres briques, diff à trois voies contre nos v1.4.0 et
@@ -1114,7 +1115,7 @@ sur le tag `v1.5.0` ; il sait qu'un seul rebase l'attend, sur le commit de gel.
       codec `REPLAYINPUTS30`, dépendance neuve (`woozymasta/bcn`, licence à relire), fichiers du jeu omis.
       Rendu : `.ai/annexes_decodeur_v160/inventaire_contributeur.md`, avec l'ORDRE DES TAGS des trois
       briques.
-- [ ] P.2 Dossier remis au contributeur, en anglais, `.ai/annexes_decodeur_v160/accueil_contributeur.md`,
+- [~] P.2 (2026-11-23 : remplacé par le portage par nous, décision du user du 2026-11-23, voir « Portage par nous ») Dossier remis au contributeur, en anglais, `.ai/annexes_decodeur_v160/accueil_contributeur.md`,
       envoyé par le user. Contenu fermé :
       (a) l'état de départ : tag `v1.5.0` du décodeur (`dc967c2`, document au schéma 126, faits au schéma
       30), brique des cartes v1.4.0, lecteur de fichiers v1.2.0 ; ce que la v1.5.0 a ajouté et qui recouvre
@@ -1140,13 +1141,13 @@ sur le tag `v1.5.0` ; il sait qu'un seul rebase l'attend, sur le commit de gel.
       (g) ce que nous lui demandons de ne pas remonter (section 2), et la garde de la précision (R-14) :
       un canal qui touche tirs, touches ou dégâts ajoute des champs sans changer un compte existant ;
       (h) ce qui est vérifié à l'arrivée (P.5), pour qu'il le sache d'avance.
-- [ ] P.3 Points de synchronisation, annoncés au contributeur par le user ou par une issue du dépôt : fin de
+- [~] P.3 (2026-11-23 : remplacé par le portage par nous, décision du user du 2026-11-23, voir « Portage par nous ») Points de synchronisation, annoncés au contributeur par le user ou par une issue du dépôt : fin de
       la phase vitesse (les options et le balayage du film ont leur forme finale) ; première intégration au
       schéma 127 ; gel. À chacun : le commit, la liste des fichiers de la liste des collisions qui ont bougé.
-- [ ] P.4 Gel : toutes nos pistes intégrées ou statuées, `feat/v1.6.0` verte (G-clone sur `./...`, G-rev,
+- [~] P.4 (2026-11-23 : remplacé par le portage par nous, décision du user du 2026-11-23, voir « Portage par nous ») Gel : toutes nos pistes intégrées ou statuées, `feat/v1.6.0` verte (G-clone sur `./...`, G-rev,
       G-compat, G-equiv-ref à 20 identiques sur références refigées) ; commit de gel annoncé ; plus aucune
       écriture de notre côté hors R-17.
-- [ ] P.5 Vérification à l'arrivée, PAR PR du décodeur, dans cet ordre, sur une branche de contrôle (jamais
+- [~] P.5 (2026-11-23 : remplacé par le portage par nous, décision du user du 2026-11-23, voir « Portage par nous ») Vérification à l'arrivée, PAR PR du décodeur, dans cet ordre, sur une branche de contrôle (jamais
       sur `feat/v1.6.0`) : contrôle des identifiants et des fichiers du jeu (R-5) ; relecture par un agent
       Sonnet qui n'a pas écrit le code, axes : heuristique ou dérivation à la place d'une lecture, repli
       sans nom, sortie changée non déclarée, recouvrement avec un champ existant ; G-clone sur `./...` ;
@@ -1156,23 +1157,58 @@ sur le tag `v1.5.0` ; il sait qu'un seul rebase l'attend, sur le commit de gel.
       contributeur avec la mesure) ; si V2 est intégrée, empreintes du niveau `N` égales à celles du
       niveau 1. Un contrôle rouge : la PR lui revient avec la pièce ; nous ne corrigeons pas son code à sa
       place sans son accord.
-- [ ] P.6 Réception des deux autres briques, dans l'ordre de P.1 : `go test -count=1 -v ./...` de la brique,
+- [~] P.6 (2026-11-23 : remplacé par le portage par nous, décision du user du 2026-11-23, voir « Portage par nous ») Réception des deux autres briques, dans l'ordre de P.1 : `go test -count=1 -v ./...` de la brique,
       zéro `SKIP` inattendu ; G-compat contre son dernier tag ; aucun fichier extrait du jeu ; licence de
       toute dépendance neuve relue ; `make go-api-test-gamefiles` une fois, par le pilote, seul sur la
       machine. Tags mineurs posés par le pilote. Ordre : lecteur de fichiers, puis brique des cartes (elle
       en dépend), puis montée des `require` du décodeur si un canal l'exige (suivie de G-clone sur `./...`
       et de G-equiv-ref sans écart), puis seulement le tag du décodeur. La montée de ces deux `require` dans
       LevelUp se fait sur la branche du plan 3D, pas sur celle de ce plan.
-- [ ] P.7 Intégration de ses PR du décodeur dans `feat/v1.6.0`, une à une, sous le SEUL schéma 127 : le
+- [~] P.7 (2026-11-23 : remplacé par le portage par nous, décision du user du 2026-11-23, voir « Portage par nous ») Intégration de ses PR du décodeur dans `feat/v1.6.0`, une à une, sous le SEUL schéma 127 : le
       pilote fond les entrées de chronique, refige goldens, révisions (rang neuf, R-13), fixtures de contrat
       et références, tient le registre des changements de sortie (une ligne par canal, avec son crédit), et
       assemble ses fragments de documentation (R-15). G-façade après chaque intégration.
-- [ ] P.8 Après la dernière intégration : G-corpus au niveau `N` ; son application compile et joue un match
+- [~] P.8 (2026-11-23 : remplacé par le portage par nous, décision du user du 2026-11-23, voir « Portage par nous ») Après la dernière intégration : G-corpus au niveau `N` ; son application compile et joue un match
       contre `feat/v1.6.0` (contrôle fait par lui) ; la session du rejeu 3D est prévenue des champs ajoutés
       (R-10) ; crédit du contributeur dans `NOTICE.md` et les notes de version.
 - **Gate P** : chaque PR a passé P.5 ; les trois briques sont taguées dans l'ordre de P.1, sauf le décodeur
   (tag en L.3) ; aucun compte de tirs, de touches ni de dégâts n'a bougé ; le document n'a qu'UNE entrée de
   chronique 127 ; G-corpus sans perte non décidée par le user.
+
+### Portage par nous (2026-11-23)
+
+Décision du user du 2026-11-23 : NOUS reprenons les ajouts du contributeur dans notre dépôt, un thème à la fois, sans attendre
+ses demandes de fusion ; une note de migration lui est remise à la fin (P.9). Pièces : `portage_complet_contributeur.md`,
+`portage_des_gestes_contributeur.md`, `comparaison_tirs_contributeur.md`, `vitalites_sante_bouclier.md`,
+`journal_des_integrations.md`. Les lectures sont reprises sous nos règles (la grammaire prime, aucun seuil sans raison,
+replis nommés et comptés), pas copiées.
+
+Porté et intégré dans `feat/v1.6.0` (six intégrations) :
+- gestes : coup de mêlée et lancer amorcé (`276b1e1`) ; rechargements avec leur instant et le compte des copies ; accroupi et saut comme commandes tenues, publiés seulement quand le pas des commandes dit 60 Hz, donc pour la version actuelle du jeu (`de99cbc`) ;
+- tireur d'un tir par la place de contrôle lue dans le film (`f6e3441`, correctif `1c62962`) ;
+- décalage du tir dans son image, dégâts désignés par piste, dégâts à zéro point publiés (`be66d06`) ;
+- visées sans position lues sur tout film, versées dans la pleine cadence (`6995a51`) ;
+- arme tirée en main et munitions portées, munitions gardées dans les faits (`a5ebfcc`, `9277e4b`) ;
+- positions, visée et projectiles à pleine cadence (`3bcd38e`), puis pleine cadence TOUJOURS publiée, l'option est retirée (`56fa59c`) ;
+- série de santé et de bouclier par vie, à chaque changement (`c7aef20`) ;
+- projectiles collés, avec un calque pour ceux qu'aucun vol ne porte (`b927896`, `2af640a`) ;
+- détonation d'un lancer sans vol, candidats de socle, socles d'équipement (`2a563d3`) ; source de film par chemin, catalogue de bornes en octets, axes du socle d'arme (`e97771d`).
+
+Non porté, et pourquoi :
+- causes des morts (`killCauses`) : LevelUp a ses éliminations et leur arme, et `eliminations[].headshot` existe ;
+- table des scores cibles par variante : reste chez l'hôte, qui passe déjà `TargetScore` ;
+- traductions des journaux et noms anglais des replis, instruments et sondes de recherche : hors règles du dépôt ;
+- tri des tirs par décalage : nous gardons l'ordre du film ;
+- glissade : aucune vérité indépendante (74 % des séries rapides au pic, sous les 90 % exigés) ;
+- bouton de saut des builds à 30 Hz et saut dérivé de la vitesse verticale : non publiés ;
+- booléens d'un rechargement : aucun nom prouvé ;
+- seconde famille du Stalker Rifle : absente du catalogue de la tête, non statuée par les pièces d'intégration ;
+- plage de la pose d'un projectile collé : les trois valeurs brutes sont publiées, aucune plage figée (mesure sur 4 944 grenades).
+
+Décisions du user du 2026-11-23 qui s'y rattachent : aucune option dans le décodeur (tout est publié, pleine cadence comprise) ; dégâts à zéro point publiés ; série de santé et de bouclier par vie publiée ; purge de l'historique git abandonnée.
+
+- [ ] P.9 Note de migration remise au contributeur (en anglais), à la clôture.
+- [ ] P.10 Crédit au contributeur sous son pseudo GitHub llampwall : remerciements du décodeur à la clôture, crédits de LevelUp à la montée (page des crédits, fichier de crédits), pour le décodeur et surtout le rejeu 3D.
 
 ## Étape R — relecture, AVANT les gates finals
 
@@ -1230,6 +1266,20 @@ Ordre imposé : R.1, R.2, puis L.1, L.2, L.3. Toute correction après L.1 fait r
   LevelUp verte sur `release/v8.3.0`.
 
 ## Journal d'exécution
+
+- 2026-11-23 (soir) — FAITS CHIFFRÉS ÉTABLIS SUR PIÈCES : document au schéma 127 (126 en v1.5.0), faits au schéma 31 (30 en v1.5.0). Poids d'un rejeu compressé : +45 à +46 % depuis la v1.5.0 (trois films : 329 993 -> 482 325, 840 362 -> 1 225 879, 7 833 786 -> 11 368 190 octets ; pleine cadence et santé et bouclier par vie en sont la cause). Vitesse d'un film récent (Slayer, machine seule, total) : 1,12 s en v1.5.0, 0,80 s à un fil, 0,53 s à deux, 0,48 s à quatre, 0,46 s à huit (`releve_voies_fils1.tsv` à `releve_voies_fils8.tsv`). Pic de mémoire du plus gros film, un fil : 1 624 Mio à la cinquième intégration (2 198 Mio en v1.5.0). Tests de la suite complète : 4 538 passés, 301 sautés, seuls 4 tests de fixtures de contrat rouges (fixtures de l'hôte à recopier). Annexes versées : `journal_des_integrations.md` et les rapports de portage, de score, de drapeau et de verdicts E et F.
+
+- 2026-11-23 (soir) — INTÉGRATION 6, tête `7bda46f` : `bl-score` puis `bl-divers`. Entrent : pénalité de suicide ou de trahison publiée (A.5), table des réponses de jeu associée à la révision de la grammaire (A.6), statistiques VIP en courbes par joueur (E.2), victime absente quand elle est ambiguë (E.6). Fusions sans conflit ; `Couche.Associes` devient une chaîne pour garder la structure comparable. Contrôles : 4 538 tests passés, 301 sautés, 4 rouges de contrat ; courses `replay` et `grammar` sans signalement ; `gorelease` : seules les deux constantes de schéma changent de valeur ; empreintes de 13 films égales à 1 et 4 fils ; trois films VIP égaux à 1 et 4 fils. Un des trois films VIP a 23 courbes VIP pour 8 joueurs (la courbe absente vaut zéro dans le film et dans l'API).
+
+- 2026-11-23 (soir) — INTÉGRATION 5, tête `f13aacd` : `p-colles`. Entrent les projectiles collés, lus par la marche et publiés sur leur vol, plus un calque pour ceux qu'aucun vol ne porte. Fusion sans conflit (`movement_states.go` à exactement 500 lignes). Contrôles : 4 516 tests passés, 301 sautés, 4 rouges de contrat ; courses sans signalement ; `gorelease` inchangé ; empreintes à 1 fil = 4 fils pour les 13 films ; poids final 482 325 / 1 225 879 / 11 368 190 octets, pic du plus gros film 1 624 Mio.
+
+- 2026-11-23 (soir) — INTÉGRATION 4, tête `46be3cf` : `p-place` puis `p-visee`. Entrent le tireur d'un tir par la place de contrôle lue dans le film, et les visées sans position lues sur tout film. Fusions automatiques sans conflit. Fixtures de contrat : 11 461 910 octets, sous le plafond de 11 Mio. Trois films d'entrées changent. Contrôles : 4 494 tests passés, 301 sautés, 4 rouges de contrat ; courses sans signalement ; `gorelease` inchangé ; empreintes à 1 fil = 4 fils pour les 13 films.
+
+- 2026-11-23 (soir) — INTÉGRATION 3, tête `2a49ff4` : `p-cadence` et `vitalites`. Entrent la pleine cadence toujours publiée (l'option est retirée) et la série de santé et de bouclier par vie. Plafond des fixtures de contrat relevé à 11 Mio (mesure 11 354 146 octets). Poids gzip des trois films : 481 783 / 1 223 306 / 11 231 739 octets (v1.5.0 : 329 993 / 840 362 / 7 833 786). Contrôles : 4 466 tests passés, 301 sautés, 4 rouges de contrat ; courses sans signalement ; `gorelease` inchangé ; empreintes à 1 fil = 4 fils pour les 13 films ; pic du plus gros film 1 726 Mio.
+
+- 2026-11-23 (soir) — INTÉGRATION 2, tête `ddf99f9` : `p-tirs`, `p-arme`, `p-socles`. Entrent le décalage du tir dans son image, les dégâts désignés par piste et à zéro point, l'arme tirée en main, les munitions portées, les candidats de socle, les socles d'équipement et la détonation d'un lancer sans vol. Fusions sans conflit. Plafond des fixtures de contrat relevé à 5 Mio (mesure 5 226 571 octets), fixtures d'entrées pseudonymisées et contrôlées (aucun identifiant d'origine). Contrôles : 4 438 tests passés, 301 sautés, 4 rouges de contrat ; courses sans signalement ; `gorelease` : un type de socle d'arme devenu non comparable, corrigé (`2ac0a7e`) ; empreintes à 1 fil = 4 fils pour les 13 films.
+
+- 2026-11-23 (soir) — INTÉGRATION 1, tête `2ac0a7e` : `a7`, `a2a`, `a2b`, `a2c`, `b2d` (B.2a, B.2b, B.2d), `b2c`, `e1c`, `d3`, puis les deux files des gestes (`gestes-a`, `gestes-b`, avec des conflits d'union résolus en gardant les deux canaux, répliques puis gestes) et `portage-0` (source de film par chemin, catalogue en octets, axes du socle d'arme, munitions dans les faits). Poses de l'intégrateur : calques `chatter` et `announcements`, porte de cadence des gestes, schéma 127 et faits 31, révisions `grammar-2026-11-23` et `objectives-2026-11-23`. Contrôles : 4 393 tests passés, 301 sautés, seuls 4 tests de fixtures de contrat rouges (verts sur la racine bac à sable ; à recopier dans l'hôte : 8 fichiers 126 supprimés, 8 fichiers 127 et le manifeste ajoutés) ; courses `replay` et `grammar` sans signalement ; `gorelease` : retraits signalés (deux champs `SeatsBeyondBand`, trois compteurs de `ControlHoldStats`), conservés et dépréciés ensuite (`0cc5366`) ; empreintes à 1 fil = 4 fils pour les 13 films, toutes différentes de la v1.5.0 comme attendu.
 
 - 2026-11-23 (après-midi) — Reprise après une coupure de courant : une référence git et un fichier en cours d'écriture abîmés, réparés ; aucun travail intégré perdu. Seconde partie du chantier 2 faite et mesurée (K.2b). G.10 intégré (pic du plus gros film −294 Mio). Sur leurs branches, prouvés, en attente de l'intégration commune du contenu : A.7, A.2a à A.2c (score), B.2a à B.2d (drapeau : 203 joueurs sur 218 à 2 s de l'API contre 161, aucun juste devenu faux), E.1c (éliminations de bots, par place), D.3 (répliques publiées), gestes (accroupi, saut, mêlée, lancer, rechargements). Décisions du user : le chantier 2b se fait dans la v1.6.0 ; les gestes ne se publient que pour la version actuelle du jeu (condition retenue : la cadence des commandes mesurée dans le film, deux films de même version ayant deux cadences) ; NOUS reprenons les ajouts du contributeur du lecteur 3D dans notre dépôt, avec une note de migration pour lui à la fin (la piste P devient un portage ; plans : `dec-v160-recup/pistes/gestes/portage.md` et `pistes/portage/portage_complet.md`, à verser en annexe après purge des pseudos cités).
 
@@ -1303,6 +1353,14 @@ Ordre imposé : R.1, R.2, puis L.1, L.2, L.3. Toute correction après L.1 fait r
   table des vagues réécrite avec ce qui tourne en même temps. Aucun item n'est lancé par cette mise à jour.
 
 ## Découvertes (consignées, non traitées)
+
+- 2026-11-23 (intégrations) — 33 collages de projectile se posent sur une entité de l'archétype des véhicules que `vehicles[]` ne publie pas sous ce slot : ils restent sans cible (`unresolved`), aucune résolution forcée (déduit). Entrée du backlog.
+- 2026-11-23 (intégrations) — Deux joueurs (API 483 et 514 tirs) masquaient un manque réel d'environ 200 tirs non écrits, que la lecture à tout rang fait apparaître ; renvoyé au chantier précision du backlog (DD-2).
+- 2026-11-23 (B.3) — Le compteur `carrierTeamUnknown` porte un nom trompeur : il mesure l'abstention de la règle qui nomme le DRAPEAU pris (32 sur 32 portages d'un film à 6 socles), pas une équipe inconnue (l'équipe est lue pour 25 joueurs sur 25). Entrée du backlog.
+- 2026-11-23 (montée de LevelUp) — Adaptations attendues côté LevelUp à la montée : ignorer les lignes de dégâts à zéro point ; accepter une élimination ou une action de score par `place` sans identifiant ; une courbe de score peut reculer (pénalité de suicide ou de trahison) ; les rejeux pèsent 45 à 46 % de plus, leur chargement dans le navigateur est à vérifier ; les 8 fichiers de fixtures de contrat 126 sont à remplacer par les 8 du schéma 127.
+- 2026-11-23 (B.6) — Le calcul de la lettre des zones comme contrôle existe sur la branche `piste/bl-zones` (231 sur 231), sans appelant : volontairement non intégré, la source manque.
+- 2026-11-23 (E.2) — Sur un des trois films VIP, 23 courbes pour 8 joueurs au lieu de 24 : la courbe absente est la meilleure série en VIP d'un joueur dont la valeur est 0 dans le film et dans l'API ; une courbe absente se lit zéro.
+- 2026-11-23 (A.4) — Sur un film d'Assaut dont le groupe de scripts est mal résolu, des points publiés en trop (−2 400 à +450 d'écart) ; et un événement de détonation porte le joueur d'un autre siège que celui dont le score monte de 200 : à reprendre avec l'entrée du backlog sur les points de bombe.
 
 - 2026-11-23 (A.2b) — Un comptage variable d'un lancement à l'autre sur un film a été élucidé : il vient du harnais de test, qui devine la carte au hasard entre deux candidates de même signature ; le décodeur publié n'est pas en cause (carte imposée : dix lancers identiques). Devenu l'item F.8.
 
