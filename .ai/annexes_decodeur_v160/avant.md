@@ -131,7 +131,7 @@ bout en bout, V0.5 pour le relevé de la brique), qui lisent ces 13 films et leu
 
 ## Fichiers produits
 
-Tout sous `C:/Users/Guillaume/Downloads/Scripts/dec-v160-recup/verite/` (hors dépôt) :
+Tout sous `Scripts/dec-v160-recup/verite/` (hors dépôt) :
 
 - `api_copie.duckdb` : copie de la base partagée (lecture seule), 483 143 680 octets.
 - `donnees/titles/halo_infinite/warehouse/shared_matches_v2.duckdb` : seconde copie de la précédente, racine de données

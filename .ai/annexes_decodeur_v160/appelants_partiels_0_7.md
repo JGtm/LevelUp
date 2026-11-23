@@ -2,8 +2,8 @@
 
 Inventaire en lecture seule, fait le 2026-11-23.
 
-- Application : `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-dec160/apps/go-api` (worktree sur `release/v8.3.0`).
-- Décodeur : `C:/Users/Guillaume/Downloads/Scripts/dec-v160`, arbre propre au tag `v1.5.0`.
+- Application : `Scripts/LevelUp-wt-dec160/apps/go-api` (worktree sur `release/v8.3.0`).
+- Décodeur : `Scripts/dec-v160`, arbre propre au tag `v1.5.0`.
 - Version pinée par LevelUp : `github.com/JGtm/halo-infinite-film-decoder v1.5.0` (`go.mod`, ligne 14). Pas de `replace` : le code lu dans `dec-v160` est donc celui que LevelUp compile.
 - Périmètre : fichiers `.go` hors `_test.go`, sous `internal/` et `cmd/`.
 
