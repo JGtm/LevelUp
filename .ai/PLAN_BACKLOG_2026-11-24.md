@@ -89,16 +89,16 @@ Cible confirmée par le user le 2026-11-24 : la **8.3.0**.
 Rendu : `.ai/annexes_backlog_1124/etape0.md`. Pour chaque entrée des pistes A à E : le défaut existe-t-il
 encore sur la tête de la release (fichier et ligne), sa mesure, les fichiers à toucher, l'effort.
 
-- [ ] 0.1 Relecture des entrées des pistes A à E, une ligne par entrée.
-- [ ] 0.2 Entrées peut-être déjà closes : zone du tueur dans le fil (citée livrée en 8.2.0), ménage du disque
+- [x] 0.1 (2026-11-24, annexe `etape0.md`) Relecture des entrées des pistes A à E, une ligne par entrée.
+- [x] 0.2 (2026-11-24 : les quatre entrées sont closes ; zone du tueur livrée en 8.2.0, ménage du disque corrigé par `84ec5ed295`, contrôlé par le pilote) Entrées peut-être déjà closes : zone du tueur dans le fil (citée livrée en 8.2.0), ménage du disque
       (le script dit épargner les worktrees), deux films à l'ancien schéma et arme des touches sur l'index
       brut (parc régénéré le 2026-11-24). Verdict par entrée.
-- [ ] 0.3 Témoins avant : sorties des pages touchées par A et B sur trois matchs (fil, cartes Némésis, onglet
+- [x] 0.3 (2026-11-24, `temoins_avant.md` : comptes SQL capturés et tests de service listés ; les sorties de pages ne sont pas capturées, faute de serveur) Témoins avant : sorties des pages touchées par A et B sur trois matchs (fil, cartes Némésis, onglet
       d'équipe, section Objectifs), rangées dans `annexes_backlog_1124/temoins_avant.md`.
-- [ ] 0.4 Halo 5 (D-5) : dire si l'API sert encore la chronologie de trois des 303 matchs, par la commande de
+- [x] 0.4 (2026-11-24, sans appel à l'API : au plus 66 matchs sur 3 032 touchés, 2,2 %, surtout des parties à un joueur de 2015-2016 ; abandon) Halo 5 (D-5) : dire si l'API sert encore la chronologie de trois des 303 matchs, par la commande de
       synchronisation existante, sans écrire en base.
-- [ ] 0.5 Les trois écarts de maquette du rejeu « à juger à l'écran » : ajoutés à l'artefact des vérifications.
-- [ ] 0.6 « Mètres » (D-11) : établir la conversion d'une unité du jeu (hypothèse : 10 pieds, soit 3,048 m)
+- [x] 0.5 (2026-11-24 : trois lignes ajoutées à l'artefact des vérifications) Les trois écarts de maquette du rejeu « à juger à l'écran » : ajoutés à l'artefact des vérifications.
+- [x] 0.6 (2026-11-24 : une unité vaut environ 3 m, établi par trois mesures ; 3,0 ou 3,048 non séparés ; 17 affichages web et 22 champs d'API listés) « Mètres » (D-11) : établir la conversion d'une unité du jeu (hypothèse : 10 pieds, soit 3,048 m)
       sur des mesures du jeu (taille d'un Spartan, vitesse de course, portées connues) ; lister chaque
       distance affichée à l'écran et sa source.
 - **Gate 0 :** annexe écrite, chaque entrée classée « à faire », « déjà faite » ou « à écarter (motif) » ; le
@@ -144,7 +144,7 @@ Gates communs. Go : `go build ./... && go vet ./...`, tests des paquets touchés
 
 ### Piste C — rejeu (web, un peu de Go)
 
-- [ ] C.1 Zone du tueur à chaque ligne du fil (si 0.2 ne la dit pas livrée).
+- [~] C.1 (livrée en 8.2.0 ; le fil affiche le lieu de la victime par décision de la refonte ; étape 0) Zone du tueur à chaque ligne du fil (si 0.2 ne la dit pas livrée).
 - [ ] C.2 Suite des collines jouées, et la prochaine quand elle est connue.
 - [ ] C.3 Gestes du joueur dans la fiche (section « En passant ») : champs publiés par le décodeur v1.6.
 - [ ] C.4 Éliminations et actions de score d'un bot désignées par place ; bots rouverts dans les antagonistes.
@@ -162,13 +162,13 @@ Gates communs. Go : `go build ./... && go vet ./...`, tests des paquets touchés
       Revue adversariale propre (authentification).
 - [ ] D.3 Alerte « zero-insert » qui ignore les matchs rangés par une autre voie ; avertissement de mise en file
       quand aucun compte n'a consenti.
-- [ ] D.4 Halo 5 incomplet : seulement si D-5 le retient.
+- [!] D.4 (abandon, D-5 et D-13 : au plus 66 matchs sur 3 032 ; une commande de reprise manuelle existe) Halo 5 incomplet : seulement si D-5 le retient.
 - **Gate D :** gates Go, `go test -tags=integration ./internal/sync/... ./internal/scheduler/...`, démarrage
   mesuré avant / après sur le poste (temps jusqu'à « serveur prêt »).
 
 ### Piste E — hygiène (H pour les items marqués)
 
-- [ ] E.1 Ménage du disque : épargner worktrees enregistrés et dépôts à commits non poussés (si 0.2 le dit
+- [~] E.1 (déjà corrigé le 2026-11-22, commit `84ec5ed295` ; étape 0) Ménage du disque : épargner worktrees enregistrés et dépôts à commits non poussés (si 0.2 le dit
       encore à faire), journal de ce qui est épargné.
 - [ ] E.2 (H) Commentaires périmés, libellé de garde-rail faux, doc d'une commande (EN et FR).
 - [ ] E.3 Garde-rail des jetons figé sur 2026 ; garde « processus enfants » qui balaie un dossier disparu ;
@@ -244,3 +244,11 @@ dépendance est close.
 - 2026-11-24 — décisions du user : voix des répliques versées au dépôt (D-8) ; entrée du schéma des bases
   joueur retirée du backlog ; entrée des fichiers de variante de carte gardée et reformulée, en attente de la
   réponse de Den sur Cartographer.
+- 2026-11-24 — ÉTAPE 0 rendue (annexes `etape0.md` et `temoins_avant.md`). Sur 27 items : 21 à faire, 2 déjà
+  faits (C.1, E.1), D.4 abandonné, B.1 proposé à l'écart (volume nul sur Halo Infinite, 6 éliminations sur
+  Halo 5), E.2 et E.3 avec un point chacun non localisable. Écarts avec le plan : A.1 et A.2 sont un seul
+  défaut (une migration) ; A.3 touche 36 matchs et les deux « coups d'envoi après la fin » viennent d'une
+  durée fausse au registre ; B.2 se réduit aux « rencontres » ; B.6 touche aussi un calcul (rayon du radar
+  de la Tactique comparé à des distances en unités). Gate 0 en attente des décisions du user : facteur de
+  conversion, radar de la Tactique, champs d'API en `_m`, fenêtre du coup d'envoi, écart de B.1, périmètre
+  de E.4.
