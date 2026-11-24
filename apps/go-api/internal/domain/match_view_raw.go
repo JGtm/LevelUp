@@ -347,11 +347,6 @@ type EventRaw struct {
 	// platform/duckdb/match_view_repo_noms.go) — cascade de la vue canonique, bots compris, et
 	// « Joueur #### » pour un xuid qu'aucune source ne nomme. Nil uniquement pour un event sans xuid.
 	Gamertag *string
-	// MedalName : nom ANGLAIS de la médaille (events `medal` uniquement), extrait
-	// côté repo du raw_json de highlight_events (champ medal_name). Nil pour les
-	// autres event_types, et pour un event medal dont le raw_json est absent ou
-	// illisible — le service dégrade alors en event medal anonyme.
-	MedalName *string
 }
 
 // MedalNameMeta : l'identité d'une médaille résolue depuis son nom ANGLAIS

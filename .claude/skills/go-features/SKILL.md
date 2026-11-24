@@ -42,7 +42,7 @@ Réutiliser ces KPI plutôt que de recalculer : KDA n'est jamais un quotient.
 | `temporal/` (README) | `BucketByGranularity`, `FilterByPeriod`, `RollingMean`, `LowessSmooth`, score d'engagement |
 | `trends/` | indicateurs de tendance, matrice, séries de victoires et défaites, vue escouade |
 | `sessions.go` | `ComputeSessions`, `BuildSessionGroups`, `IsSessionPotentiallyActive` |
-| `match_history_avg.go` | `ComputeModeCategory` (moyennes glissantes de l'historique) |
+| `match_history_avg.go` | `ComputeModeCategory` (catégorie de mode d'un match) |
 | `rank_progression.go` | `ComputeRankProgressionByChain` |
 | `retention.go` | `BorneRetention`, `BorneRetentionDepuis` |
 
@@ -146,13 +146,6 @@ Le décodage du film est dans la brique `halo-infinite-film-decoder` (façade `d
 |---|---|
 | `registry.go` | `Registry` (`NewRegistry`), `TitleDescriptor`, `PathResolver` (`NewPathResolver`, `NewPathResolverRoots`) |
 | `matcher.go` | `MatchByXboxTitleID`, `MatchBySteamAppID`, `MatchPresence` |
-
-## Code sans appelant de production
-
-Ces fonctions existent mais aucun code de production ne les appelle : ne pas les présenter comme réutilisables, et se demander s'il faut les supprimer avant de bâtir dessus.
-
-- `ComputeAntagonistCounts` (`killer_victim.go`).
-- `ComputeModeCategoryAverages` (`match_history_avg.go`).
 
 ## Pattern de vérification
 

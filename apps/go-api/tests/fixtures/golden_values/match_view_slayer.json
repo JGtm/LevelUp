@@ -257,32 +257,6 @@
         "power_weapon_kills": 0,
         "outcome_label": "Abandon"
       }
-    ],
-    "nemesis": [
-      {
-        "xuid": "2718270975167800",
-        "gamertag": "Joueur900e",
-        "killed_me": 5,
-        "i_killed": 2
-      },
-      {
-        "xuid": "2812439739709975",
-        "gamertag": "Joueur90000003",
-        "killed_me": 1,
-        "i_killed": 1
-      },
-      {
-        "xuid": "2543163017804789",
-        "gamertag": "Joueur90000002",
-        "killed_me": 1,
-        "i_killed": 1
-      },
-      {
-        "xuid": "2545046430549344",
-        "gamertag": "Joueur90009",
-        "killed_me": 1,
-        "i_killed": 1
-      }
     ]
   },
   "media_tab": {

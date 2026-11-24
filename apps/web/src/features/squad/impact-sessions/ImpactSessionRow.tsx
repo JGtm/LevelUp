@@ -51,15 +51,17 @@ export function ImpactSessionRow({ row, index, selected, columnCount, view, impa
       {row.getIsExpanded() && (
         <tr>
           <td colSpan={columnCount} className="bg-muted/40 p-0">
-            <SessionMatrix
-              row={row.original}
-              view={view}
-              impact={impact}
-              text={text}
-              locale={locale}
-              inkOf={inkOf}
-              ariaLabel={row.id === ALL_SESSIONS_KEY ? text.totalsLabel : text.matrixLabel(row.original.label)}
-            />
+            <div className="overflow-x-auto">
+              <SessionMatrix
+                row={row.original}
+                view={view}
+                impact={impact}
+                text={text}
+                locale={locale}
+                inkOf={inkOf}
+                ariaLabel={row.id === ALL_SESSIONS_KEY ? text.totalsLabel : text.matrixLabel(row.original.label)}
+              />
+            </div>
           </td>
         </tr>
       )}

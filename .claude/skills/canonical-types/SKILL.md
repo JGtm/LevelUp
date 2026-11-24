@@ -109,7 +109,6 @@ Interface dans `internal/games/adapter.go`. Chaque méthode rend un type canoniq
 
 | Besoin | Méthode |
 |---|---|
-| Liste de matchs | `LoadMatchSummaries(ctx, matchIDs)` |
 | Stats d'un joueur | `LoadPlayerStats(ctx, xuid, StatsScope)` |
 | Carrière | `LoadCareerSnapshot(ctx, xuid, CareerOptions)` |
 | Série temporelle | `LoadTimeseries(ctx, xuid, TimeseriesQuery)` |

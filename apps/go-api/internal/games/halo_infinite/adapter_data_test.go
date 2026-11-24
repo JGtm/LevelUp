@@ -155,15 +155,6 @@ func TestLoadCareerSnapshot_PropagatesUnknownError(t *testing.T) {
 	}
 }
 
-func TestLoadMatchSummaries_NotImplemented(t *testing.T) {
-	t.Parallel()
-	a := newSilentAdapter(nil)
-	_, err := a.LoadMatchSummaries(context.Background(), []string{"m1"})
-	if !errors.Is(err, games.ErrCapabilityNotSupported) {
-		t.Errorf("err = %v", err)
-	}
-}
-
 func TestLoadTimeseries_NotImplemented(t *testing.T) {
 	t.Parallel()
 	a := newSilentAdapter(&stubCareer{})

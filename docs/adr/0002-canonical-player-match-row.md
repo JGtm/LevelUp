@@ -65,7 +65,7 @@ Core types (non-exhaustive):
 ### Positive
 
 - **Title-agnostic services** — `match_view_service.go`, `career_service.go`, `synthesis_service.go`, etc. consume only `canonical.*`. Adding a second title = implementing the adapter, no service change.
-- **Capability-based degradation** — `data.LoadMatchSummaries(ctx, ids)` returns `games.ErrCapabilityNotSupported` when the title doesn't have the data. Service degrades gracefully (cf. `arch-rules` skill).
+- **Capability-based degradation** — `data.LoadPlayerStats(ctx, xuid, scope)` returns `games.ErrCapabilityNotSupported` when the title doesn't have the data. Service degrades gracefully (cf. `arch-rules` skill).
 - **Frontend simplification** — TS types in `lib/api/types.ts` mirror canonical structs. Single contract per page.
 - **Tests by layer** — `analysis/` tested with canonical inputs (no DB), `service/` tested with mock `port.Repository`, `platform/duckdb/` tested with `:memory:` per title.
 

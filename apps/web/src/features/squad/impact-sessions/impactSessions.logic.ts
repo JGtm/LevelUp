@@ -13,6 +13,26 @@ import { outcomeCodeToValue } from '@/lib/outcome'
 import { stripSessionCountSuffix } from '@/lib/sessions/sessionLabels'
 import type { SquadImpactSessions } from '@/lib/api/types'
 
+// Largeurs de la matrice d'une session (px) : le joueur, un rôle, le score, et le MINIMUM d'une
+// colonne de match (le numéro et une icône de rôle de 18 px avec leurs marges ; deux rôles sur un
+// même match passent à la ligne dans la cellule).
+export const PLAYER_COL_PX = 200
+export const ROLE_COL_PX = 40
+export const SCORE_COL_PX = 110
+export const MATCH_COL_MIN_PX = 44
+/** Plancher de la matrice : une session courte garde la largeur d'un tableau complet. */
+const MATRIX_FLOOR_PX = 900
+
+/**
+ * Largeur minimale de la matrice d'une session : le plancher, ou la somme des colonnes quand les
+ * matchs de la session ne tiennent plus dedans. Sous cette largeur le tableau défile à l'horizontale
+ * (conteneur `overflow-x-auto`) au lieu d'écraser les colonnes de match.
+ */
+export function matrixMinWidthPx(matchCount: number, roleCount: number): number {
+  const needed = PLAYER_COL_PX + matchCount * MATCH_COL_MIN_PX + roleCount * ROLE_COL_PX + SCORE_COL_PX
+  return Math.max(MATRIX_FLOOR_PX, needed)
+}
+
 /** Clé de la ligne « Toutes les sessions ». */
 export const ALL_SESSIONS_KEY = 'all'
 

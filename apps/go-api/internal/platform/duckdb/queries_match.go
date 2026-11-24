@@ -438,17 +438,11 @@ ORDER BY kvf.time_ms ASC`
 // portant un xuid par l'annuaire du match en portée base. Écart nommé (DA.4 (i)) : un xuid
 // qu'aucune source ne connaît reçoit « Joueur #### » là où la jointure rendait NULL (et l'écran
 // le xuid brut). Un event sans xuid garde un nom NULL.
-//
-// medal_raw : le raw_json des SEULS events `medal` — il porte le nom anglais de la
-// médaille (medal_name), parsé côté Go (medalNameFromRawJSON), jamais par une
-// extension JSON DuckDB. La colonne raw_json est garantie par la chaîne de
-// migration (ApplyHighlightEventsAutoincrement la crée avec la table).
 const Q21MatchEventsWithXUID = `
 SELECT
     he.event_type,
     he.time_ms,
-    he.xuid,
-    CASE WHEN he.event_type = 'medal' THEN he.raw_json END AS medal_raw
+    he.xuid
 FROM highlight_events he
 WHERE he.match_id = ?
 ORDER BY he.time_ms ASC NULLS LAST`

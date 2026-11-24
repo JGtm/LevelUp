@@ -2,10 +2,11 @@
 // D UNE MEDAILLE.
 //
 // `highlight_events.raw_json` est le seul endroit ou vit le nom d une medaille du
-// film. Le lecteur (platform/duckdb.medalNameFromRawJSON) n en tire qu un champ,
-// `medal_name`, et tolere les champs surnumeraires ; les documents de l ere Python
-// en portaient trois (type_hint, medal_value, medal_name). Cote Go on n ecrit que
-// le champ lu — le couple d octets, lui, a ses propres colonnes.
+// film. Aucun lecteur de production ne le relit : le fil des eliminations ne sert
+// plus le nom de la medaille, et ce document est a retirer avec ses ecrivains. Les
+// documents de l ere Python portaient trois champs (type_hint, medal_value,
+// medal_name) ; cote Go on n ecrit que `medal_name` — le couple d octets, lui, a ses
+// propres colonnes.
 //
 // Ce fichier existe pour que les DEUX ecrivains (le collecteur du live sync et la
 // passe de rattrapage hors ligne) composent le meme document a partir du meme code.

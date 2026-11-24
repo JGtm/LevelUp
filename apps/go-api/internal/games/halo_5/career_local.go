@@ -16,7 +16,7 @@ import (
 // CareerLocalSource lit le career Halo 5 d'un joueur depuis le substrat LOCAL
 // (DuckDB synchronisé) : meilleur CSR à vie + Spartan Rank. Implémentée
 // STRUCTURELLEMENT par platform/duckdb.Halo5CareerSource (retour domain.H5CareerLocal,
-// aucun import croisé → pas de cycle ; même pattern que MatchHistorySource).
+// aucun import croisé → pas de cycle).
 type CareerLocalSource interface {
 	GetLatestCareer(ctx context.Context) (*domain.H5CareerLocal, error)
 	// GetXPHistory : historique XP (career_progression) pour le graphe « Historique

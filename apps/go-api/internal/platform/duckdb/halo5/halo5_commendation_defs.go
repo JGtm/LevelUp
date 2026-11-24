@@ -4,7 +4,7 @@ package halo5
 // (metadata h5) et de ses noms par langue (asset_translations) pour résoudre nom + icône d'une
 // commendation NATIVE par UUID.
 // Satisfait halo_5.CommendationDefSource structurellement (retour canonical, aucun
-// import du package halo_5 → pas de cycle ; parité Halo5MatchHistorySource).
+// import du package halo_5 → pas de cycle ; même pattern que les autres sources locales).
 
 import (
 	"context"

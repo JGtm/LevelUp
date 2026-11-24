@@ -5,8 +5,7 @@ import (
 	"testing"
 )
 
-// TestMedalRawJSON_FormeLue — le document doit rendre EXACTEMENT le champ que le
-// lecteur extrait (platform/duckdb.medalNameFromRawJSON lit `medal_name`).
+// TestMedalRawJSON_FormeLue — le document doit rendre EXACTEMENT le champ `medal_name`.
 func TestMedalRawJSON_FormeLue(t *testing.T) {
 	raw, err := MedalRawJSON("Odin's Raven")
 	if err != nil {

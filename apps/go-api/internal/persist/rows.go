@@ -71,8 +71,8 @@ type EnrichmentRow struct {
 //     dans `type_hint` — pas dans `raw_json` (games/halo_5/ingest/medals.go).
 //     Le nom du champ est une séquelle ; sa cible, elle, est bien `type_hint`.
 //   - RawJSON : le document `raw_json` lui-même. Sur un event `medal` Halo
-//     Infinite il porte `{"medal_name":"..."}` — l'identité que le fil des
-//     éliminations lit (platform/duckdb.medalNameFromRawJSON).
+//     Infinite il porte `{"medal_name":"..."}` — identité que plus aucun lecteur de
+//     production ne relit.
 //
 // Un row ne renseigne JAMAIS TypeHint ET DetailsJSON : ils visent la même
 // colonne. En cas de conflit TypeHint l'emporte (persist.valeurTypeHint).

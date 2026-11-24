@@ -47,26 +47,6 @@ var _ h5Source = (*Client)(nil)
 // est absent (-> degradation gracieuse cote adapter, pas de panique).
 type SourceFactory func(ctx context.Context) (h5Source, error)
 
-// MatchHistorySource lit l'historique de matchs Halo 5 depuis le substrat LOCAL
-// synchronisé (shared_matches_v2.duckdb du titre : match_registry ⨝
-// match_participants) et le projette en canonical.MatchSummary. PAS de fetch live :
-// la donnée y est déjà écrite par le livesync (cf. AXE A du prod-gate). C'est le
-// pendant h5 du MatchHistoryRepo d'Infinite.
-//
-// L'identité joueur est PORTÉE par la source (fixée à la construction depuis le
-// PlayerDB, comme ExplorerRepo d'Infinite) — d'où l'absence de paramètre gamertag
-// dans GetMatchSummaries, conforme à la signature de TitleDataAdapter.LoadMatchSummaries.
-//
-// matchIDs nil/vide → les N derniers matchs du joueur (ORDER BY start_time DESC).
-// matchIDs non vide → filtre sur ces IDs, ORDRE D'ENTRÉE PRÉSERVÉ (un match absent
-// du shared est silencieusement omis).
-//
-// Interface définie côté package h5 (le consommateur) : l'implémentation DuckDB
-// (internal/platform/duckdb) la satisfait STRUCTURELLEMENT, sans cycle d'import.
-type MatchHistorySource interface {
-	GetMatchSummaries(ctx context.Context, matchIDs []string) ([]canonical.MatchSummary, error)
-}
-
 // NewSpartanTokenSource est la SourceFactory de PRODUCTION : lit le SpartanToken du
 // contexte (ctxkeys.HaloTokens) et construit un Client live h5. Erreur si pas de
 // token (le caller dégrade). C'est le point de jonction wiring (Phase 1b) -> client.
@@ -91,11 +71,6 @@ type DataAdapter struct {
 	staticCaps     games.CapabilityMap
 	placementTotal int // TitleDescriptor.PlacementMatches (0 -> defaut h5DefaultPlacementMatches)
 	logger         *slog.Logger
-	// matchHistory (optionnel) — source de lecture de l'historique LOCAL (shared h5)
-	// projeté en canonical.MatchSummary. nil → LoadMatchSummaries dégrade en
-	// ErrCapabilityNotSupported. Injecté via WithMatchHistorySource au builder
-	// player-scoped (porte l'identité du joueur, cf. MatchHistorySource).
-	matchHistory MatchHistorySource
 	// commendationDefs (optionnel) — référentiel natif (nom + icône + catégorie +
 	// paliers) des commendations par UUID, lu dans la metadata h5
 	// (commendation_definitions). Consommé par LoadCommendationTotals
@@ -144,14 +119,6 @@ func (a *DataAdapter) WithCapabilities(caps games.CapabilityMap) *DataAdapter {
 // mapping. Chainable.
 func (a *DataAdapter) WithPlacementTotal(n int) *DataAdapter {
 	a.placementTotal = n
-	return a
-}
-
-// WithMatchHistorySource injecte la source de lecture de l'historique LOCAL (shared
-// h5 → canonical.MatchSummary) utilisée par LoadMatchSummaries. nil (défaut) ->
-// LoadMatchSummaries reste dégradé (ErrCapabilityNotSupported). Chainable.
-func (a *DataAdapter) WithMatchHistorySource(s MatchHistorySource) *DataAdapter {
-	a.matchHistory = s
 	return a
 }
 
@@ -219,13 +186,13 @@ func (a *DataAdapter) Capabilities() games.CapabilityMap {
 // supported (match view servi depuis le substrat DuckDB synchronisé — mapping_carnage.go
 // / capture.go — un match non encore synchronisé renvoie un 404 propre, PAS de fetch
 // live, cf. BACKLOG "Retirer le fallback LIVE du Match view") ; match.history = supported
-// (LoadMatchSummaries, shared h5 local → canonical, AXE A prod-gate). Le reste =
+// (l'historique est servi depuis le shared h5 local, hors adapter). Le reste =
 // not_exposed tant que la methode est un stub (remonte a mesure du cablage :
 // scoreboard, timeseries...). Parite avec config/titles/halo_5/mappings/capabilities.toml
 // (capabilities_parity_test).
 func fallbackCapabilities() games.CapabilityMap {
 	return games.CapabilityMap{
-		games.CapMatchHistory:       games.CapSupported, // CÂBLÉ : LoadMatchSummaries (shared h5 local → canonical.MatchSummary)
+		games.CapMatchHistory:       games.CapSupported, // CÂBLÉ : historique servi depuis le shared h5 local
 		games.CapMatchDetailCore:    games.CapSupported, // CÂBLÉ : match view via le substrat DuckDB synchronisé (pas de fetch live)
 		games.CapScoreboardExtra:    games.CapNotExposed,
 		games.CapMatchSkillSnapshot: games.CapNotExposed,

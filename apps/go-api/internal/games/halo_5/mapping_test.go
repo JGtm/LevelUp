@@ -153,7 +153,7 @@ func TestMapMatchSummaries_RealShape(t *testing.T) {
 // set-membership : un HopperId dans le set classé → IsRanked=true + MatchType
 // ranked ; un HopperId hors set (set peuplé, donc exhaustif) → IsRanked=false +
 // social ; un set PvE → IsPvE=true + firefight. Prouve la stratégie #1 bout-à-bout
-// au niveau du mapper pur (pré-câblage Phase 2 LoadMatchSummaries).
+// au niveau du mapper pur.
 func TestMapMatchSummaries_RankedClassifier(t *testing.T) {
 	const hopper = "f0c9ef9a-48bd-4b24-9db3-2c76b4e23450" // HopperId du fixture
 	var resp halo5.H5MatchesResponse

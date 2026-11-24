@@ -19565,12 +19565,6 @@ components:
           type:
             - array
             - "null"
-        nemesis_duels:
-          items:
-            $ref: '#/components/schemas/MatchNemesisRow'
-          type:
-            - array
-            - "null"
         tug_of_war:
           items:
             $ref: '#/components/schemas/MatchTugOfWarBin'
@@ -19584,7 +19578,6 @@ components:
         - tug_of_war
         - impact_badges
         - kd_timeline
-        - nemesis_duels
       type: object
     MatchDelay:
       additionalProperties: false
@@ -19978,8 +19971,6 @@ components:
         killer_damage_pct:
           format: int64
           type: integer
-        medal_name:
-          type: string
         victim_gamertag:
           type: string
         victim_team_id:
@@ -20624,25 +20615,6 @@ components:
         - next_match_id
         - current_index
         - total_matches
-      type: object
-    MatchNemesisRow:
-      additionalProperties: false
-      properties:
-        gamertag:
-          type: string
-        i_killed:
-          format: int64
-          type: integer
-        killed_me:
-          format: int64
-          type: integer
-        xuid:
-          type: string
-      required:
-        - xuid
-        - gamertag
-        - killed_me
-        - i_killed
       type: object
     MatchParticipant:
       additionalProperties: false

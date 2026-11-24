@@ -65,25 +65,6 @@ func TestComputeKillerVictimPairs_NegativeTolerance(t *testing.T) {
 	}
 }
 
-func TestComputeAntagonistCounts(t *testing.T) {
-	pairs := []KVPair{
-		{KillerXUID: "me", VictimXUID: "enemy1"},
-		{KillerXUID: "me", VictimXUID: "enemy2"},
-		{KillerXUID: "enemy1", VictimXUID: "me"},
-		{KillerXUID: "enemy1", VictimXUID: "me"},
-	}
-	killedByMe, killedMe := ComputeAntagonistCounts(pairs, "me")
-	if killedByMe["enemy1"] != 1 {
-		t.Errorf("expected 1 kill of enemy1, got %d", killedByMe["enemy1"])
-	}
-	if killedByMe["enemy2"] != 1 {
-		t.Errorf("expected 1 kill of enemy2, got %d", killedByMe["enemy2"])
-	}
-	if killedMe["enemy1"] != 2 {
-		t.Errorf("expected 2 deaths by enemy1, got %d", killedMe["enemy1"])
-	}
-}
-
 // Le résultat ne dépend pas de l ordre des événements en entrée, même quand plusieurs kills et
 // plusieurs morts tombent au même instant (ordre total sur la clé complète).
 func TestComputeKillerVictimPairs_OrdreDEntreeSansEffet(t *testing.T) {

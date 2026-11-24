@@ -14,9 +14,6 @@ type stubData struct{ slug string }
 
 func (s *stubData) TitleSlug() string           { return s.slug }
 func (s *stubData) Capabilities() CapabilityMap { return CapabilityMap{} }
-func (s *stubData) LoadMatchSummaries(_ context.Context, _ []string) ([]canonical.MatchSummary, error) {
-	return nil, nil
-}
 func (s *stubData) LoadPlayerStats(_ context.Context, _ string, _ canonical.StatsScope) (*canonical.PlayerStats, error) {
 	return nil, nil
 }

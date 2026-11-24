@@ -124,8 +124,6 @@ func TestSyntheticTitleB_AdapterIsAgnostic(t *testing.T) {
 		if caps == nil {
 			t.Errorf("[%s] Capabilities nil", d.TitleSlug())
 		}
-		// Match summaries doit toujours être appelable, même si vide.
-		_, _ = d.LoadMatchSummaries(context.Background(), []string{"m1"})
 	}
 }
 

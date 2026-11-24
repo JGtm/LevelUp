@@ -12,7 +12,7 @@
 // IconURL / Category restent VIDES ici (enrichis par le caller via les définitions).
 //
 // Satisfait STRUCTURELLEMENT halo_5.CommendationTotalsSource (retour canonical, aucun
-// import du package halo_5 → pas de cycle ; parité Halo5MatchHistorySource).
+// import du package halo_5 → pas de cycle ; même pattern que les autres sources locales).
 package halo5
 
 import (

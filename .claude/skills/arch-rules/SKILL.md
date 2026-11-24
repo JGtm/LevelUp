@@ -339,7 +339,7 @@ data, err := resolver.Data(titleSlug)
 if err != nil { ... }
 
 // Dégradation gracieuse — ne jamais paniquer sur une capability absente
-summaries, err := data.LoadMatchSummaries(ctx, ids)
+stats, err := data.LoadPlayerStats(ctx, xuid, canonical.StatsScope{})
 if errors.Is(err, games.ErrCapabilityNotSupported) {
     // dégrader proprement, ex: retourner une réponse partielle
 }

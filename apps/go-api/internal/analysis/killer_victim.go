@@ -173,21 +173,6 @@ func nouvellePaire(kill, victim RawEvent) KVPair {
 	}
 }
 
-// ComputeAntagonistCounts agrège les comptes kills/deaths par paire de joueurs.
-// killerXUID→victimXUID. Retourne (killed_by_me, killed_me) maps.
-func ComputeAntagonistCounts(pairs []KVPair, myXUID string) (killedByMe, killedMe map[string]int) {
-	killedByMe = make(map[string]int)
-	killedMe = make(map[string]int)
-	for _, p := range pairs {
-		if p.KillerXUID == myXUID {
-			killedByMe[p.VictimXUID]++
-		} else if p.VictimXUID == myXUID {
-			killedMe[p.KillerXUID]++
-		}
-	}
-	return killedByMe, killedMe
-}
-
 // ---------------------------------------------------------------------------
 // Helpers bisect (equivalent Python bisect_left / bisect_right)
 // ---------------------------------------------------------------------------

@@ -4,8 +4,9 @@ package main
 //
 // ELLE REND LEUR NOM AUX MEDAILLES DEJA EN BASE. Depuis la bascule Collect->Persist
 // (avril 2026) le collecteur ecrivait les events `medal` de `highlight_events` sans
-// `raw_json` : 415 matchs, 22 031 events, aucune identite. Le fil des eliminations
-// lit `raw_json.medal_name` — sans lui il n affiche AUCUNE medaille.
+// `raw_json` : 415 matchs, 22 031 events, aucune identite. Plus aucun lecteur de
+// production ne lit `raw_json.medal_name` (le fil des eliminations ne sert plus le nom
+// de la medaille) : cette commande est a retirer avec le document.
 //
 // LES DEUX ECRIVAINS SONT REPARES depuis le 2026-09-02 — le flux primaire
 // (sync/collect.go) ET la voie completion/convergence

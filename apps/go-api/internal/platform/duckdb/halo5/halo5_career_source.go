@@ -4,7 +4,7 @@
 // cryptum live est indisponible (démo : aucun token).
 //
 // Satisfait STRUCTURELLEMENT halo_5.CareerLocalSource (retour domain.H5CareerLocal,
-// aucun import du package halo_5 → pas de cycle ; parité Halo5MatchHistorySource).
+// aucun import du package halo_5 → pas de cycle ; même pattern que les autres sources locales).
 // La PROJECTION vers canonical.CareerSnapshot (libellés de palier FR, bornes SR)
 // reste côté halo_5 (qui détient les référentiels CSR/SR).
 package halo5

@@ -1,5 +1,5 @@
 // Package halo_5 — adapter_data_loaders.go : methodes DataAdapter carriere + chargement de
-// matchs (LoadCareerSnapshot / LoadMatchSummaries + helpers). Extrait de
+// matchs (LoadCareerSnapshot + helpers). Extrait de
 // adapter_data.go (K3f god-file split, 2026-07-06), meme package.
 //
 // LoadMatchDetail (fallback LIVE du Match view, mapping_carnage_detail.go) a été
@@ -12,7 +12,6 @@ package halo_5
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -161,26 +160,4 @@ func (a *DataAdapter) degradeUnavailable(ctx context.Context, err error, gamerta
 		return true
 	}
 	return false
-}
-
-// LoadMatchSummaries projette l'historique de matchs Halo 5 vers []MatchSummary
-// depuis le substrat LOCAL synchronisé (shared_matches_v2.duckdb du titre :
-// match_registry ⨝ match_participants), comme le MatchHistoryRepo d'Infinite —
-// PAS de fetch live (la donnée y est déjà écrite par le livesync).
-//
-//   - matchIDs nil/vide → les N derniers matchs du joueur (ORDER BY start_time DESC) ;
-//   - matchIDs non vide → filtre sur ces IDs, ordre d'entrée préservé.
-//
-// Dégradation propre : source non câblée (nil) → ErrCapabilityNotSupported (le
-// caller dégrade). C'est aussi le cas sous le builder global live-only (pas de
-// PlayerDB) : seul le builder player-scoped injecte la source.
-func (a *DataAdapter) LoadMatchSummaries(ctx context.Context, matchIDs []string) ([]canonical.MatchSummary, error) {
-	if a.matchHistory == nil {
-		return nil, games.ErrCapabilityNotSupported
-	}
-	summaries, err := a.matchHistory.GetMatchSummaries(ctx, matchIDs)
-	if err != nil {
-		return nil, fmt.Errorf("h5 LoadMatchSummaries: %w", err)
-	}
-	return summaries, nil
 }
