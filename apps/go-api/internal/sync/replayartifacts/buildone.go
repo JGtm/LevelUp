@@ -162,6 +162,10 @@ func avecFils(build BuildOneFunc, fils int) BuildOneFunc {
 	}
 }
 
+// spawnEnfant est le lanceur de l'enfant ; une variable pour que les tests lisent la requete posee sans
+// demarrer de processus (cablage du nombre de fils).
+var spawnEnfant = replaychild.Spawn
+
 // SpawnBuildOne est la strategie de PRODUCTION : elle delegue a un enfant borne (plafond
 // memoire dur, priorite CPU basse) qui rend les octets sans rien ecrire.
 //
@@ -169,7 +173,7 @@ func avecFils(build BuildOneFunc, fils int) BuildOneFunc {
 // ce paquet-ci definit le contrat et connait le lanceur ; le lanceur, lui, ne connait rien de
 // la synchronisation. L'inverse ferait un cycle d'import.
 func SpawnBuildOne(ctx context.Context, req BuildOneRequest) (BuildOneResult, error) {
-	res, err := replaychild.Spawn(ctx, replaychild.Request{
+	res, err := spawnEnfant(ctx, replaychild.Request{
 		MatchID:        req.MatchID,
 		TitleSlug:      req.TitleSlug,
 		RepoRoot:       req.RepoRoot,

@@ -66,11 +66,18 @@ func (r *ServiceRegistry) RunReplayBuild(ctx context.Context, titleSlug, matchID
 		return nil, fmt.Errorf("film absent du cache local pour %s — cette action est hors ligne, elle ne télécharge rien", fullID)
 	}
 
-	return construireRejeuAdmin(ctx, replayartifacts.SpawnBuildOne, replayartifacts.BuildOneRequest{
+	return construireRejeuAdmin(ctx, replayartifacts.SpawnBuildOne,
+		r.requeteReplayAdmin(fullID, titleSlug, names, filmcache.ChunkDir(cacheRoot, short), facts))
+}
+
+// requeteReplayAdmin compose la requete de construction de l'action d'administration, nombre de fils du decodeur
+// de l'installation compris.
+func (r *ServiceRegistry) requeteReplayAdmin(fullID, titleSlug string, names []string, filmDir string, facts port.MatchFacts) replayartifacts.BuildOneRequest {
+	return replayartifacts.BuildOneRequest{
 		MatchID: fullID, TitleSlug: titleSlug, RepoRoot: r.cfg.RepoRoot,
-		MapNames: names, FilmDir: filmcache.ChunkDir(cacheRoot, short), Facts: facts,
+		MapNames: names, FilmDir: filmDir, Facts: facts,
 		DecoderThreads: r.cfg.Capabilities.DecoderThreads,
-	})
+	}
 }
 
 // RunReplayBuildAction est l'action admin « construire le rejeu » : la construction de RunReplayBuild,

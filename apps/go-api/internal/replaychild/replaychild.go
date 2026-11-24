@@ -136,7 +136,7 @@ func RunChild(ctx context.Context, args []string) int {
 	if req.SansEcritureDesFaits {
 		builder = builder.SansEcritureDesFaits()
 	}
-	builder = builder.AvecFils(req.DecoderThreads)
+	builder = appliquerFils(builder, req)
 	built, err := builder.BuildBytes(ctx, req.MatchID, req.MapNames, req.FilmDir, req.Facts)
 	if err != nil {
 		// UN REFUS VOULU (carte hors catalogue, cle de film inconnue, film non finalise) sort en
@@ -164,6 +164,11 @@ func RunChild(ctx context.Context, args []string) int {
 // valueOf rend la valeur qui suit un drapeau, ou "" — un mini-lecteur d'arguments plutot que
 // `flag`, parce que ce processus est AUSSI un serveur : installer un FlagSet complet ici
 // entrerait en conflit avec le sien.
+// appliquerFils regle le builder sur le nombre de fils du decodeur que la requete porte.
+func appliquerFils(builder *replaybuild.Builder, req Request) *replaybuild.Builder {
+	return builder.AvecFils(req.DecoderThreads)
+}
+
 func valueOf(args []string, flag string) string {
 	for i, a := range args {
 		if a == flag && i+1 < len(args) {
