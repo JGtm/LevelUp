@@ -10,7 +10,7 @@ package killcollector
 //
 // DEUX GESTES, UN INVARIANT : « un match dont le film est complet à l'archive n'est pas marqué
 // absent ».
-//   - [ReconcileFilmAbsent] retire la marque des matchs marqués dont le film est complet
+//   - [reconcilierFilmsAbsents] (lecture des marques par la passe, [retirerMarquesAbsentes]) retire la marque des matchs marqués dont le film est complet
 //     (filmcache.FilmComplet : manifeste fini ET morceaux présents) ; le match revient dans la file
 //     par les voies existantes (le décodage de la passe film, les rattrapages de rejeu).
 //   - [KillSourceCollector.AvecFilmComplet] : la passe ne pose plus la marque sur un match dont le film
@@ -42,29 +42,10 @@ type ReconcileFilmAbsentDeps struct {
 	TitleSlug string
 	// ArchiveRoot : la racine de l'archive des films. Vide : rien à réconcilier.
 	ArchiveRoot string
-	// WithRead ouvre un segment de LECTURE shared court (jamais le writer).
-	WithRead func(ctx context.Context, step string, fn func(sharedDB *sql.DB))
 	// AcquireWriter : le segment d'écriture, pris seulement s'il y a des marques à retirer.
 	AcquireWriter persist.SharedWriterFn
 	// Complete : nil = filmcache.FilmComplet.
 	Complete FilmCompletFn
-}
-
-// ReconcileFilmAbsent retire `MBitFilmAbsent` des matchs marqués dont le film est complet à l'archive.
-// Rend le nombre de marques retirées. Journalise ce qu'elle retire ; idempotente.
-func ReconcileFilmAbsent(ctx context.Context, d ReconcileFilmAbsentDeps) (int, error) {
-	if d.ArchiveRoot == "" || d.WithRead == nil || d.AcquireWriter == nil {
-		return 0, nil
-	}
-	var marques []string
-	var lecture error
-	d.WithRead(ctx, "film_absent_reconcile", func(sharedDB *sql.DB) {
-		marques, lecture = matchsMarquesAbsents(ctx, sharedDB)
-	})
-	if lecture != nil {
-		return 0, fmt.Errorf("réconciliation film absent: lecture des marques: %w", lecture)
-	}
-	return retirerMarquesAbsentes(ctx, d, marques)
 }
 
 // retirerMarquesAbsentes retire la marque des matchs de `marques` dont le film est complet à l'archive.
@@ -149,7 +130,7 @@ func reconcilierFilmsAbsents(ctx context.Context, d PostSyncDeps, racine string,
 		return
 	}
 	if _, err := retirerMarquesAbsentes(ctx, ReconcileFilmAbsentDeps{
-		TitleSlug: d.TitleSlug, ArchiveRoot: racine, WithRead: d.WithRead, AcquireWriter: d.AcquireWriter,
+		TitleSlug: d.TitleSlug, ArchiveRoot: racine, AcquireWriter: d.AcquireWriter,
 	}, marques); err != nil {
 		slog.WarnContext(ctx, "post-sync: réconciliation des marques film absent échouée, reprise au cycle suivant",
 			"titleSlug", d.TitleSlug, "err", err)

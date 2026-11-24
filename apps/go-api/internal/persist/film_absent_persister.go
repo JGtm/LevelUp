@@ -3,7 +3,7 @@
 //
 // Le marqueur (`MBitFilmAbsent`) est terminal : posé, il sort le match de tous les rattrapages. Il
 // n'a de sens que tant que le film manque ; quand le film est complet à l'archive, la passe de
-// réconciliation (`killcollector.ReconcileFilmAbsent`) le retire par ce persisteur, et le match
+// réconciliation (`killcollector.retirerMarquesAbsentes`, appelée par la passe film au début de chaque démarrage) le retire par ce persisteur, et le match
 // reprend sa place dans la file par les voies existantes.
 //
 // ART-SAFETY : un `UPDATE match_registry ... WHERE match_id = ?` par match, séquentiels, sous
