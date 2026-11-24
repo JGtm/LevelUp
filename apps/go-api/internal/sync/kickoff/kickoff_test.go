@@ -158,3 +158,149 @@ func TestResolve_RangeFilmRejeuAbsent_TempsDeJeuCorrige(t *testing.T) {
 		}
 	}
 }
+
+// La durée du registre est fausse (21 s pour un match dont un joueur a joué 462 s) : le coup d'envoi
+// juste du rejeu est retenu, et le temps de jeu rangé des joueurs reste tel que l'API l'a donné,
+// sans être recalculé sur une fenêtre de 21 s.
+func TestResolve_DureeDuRegistreFausse(t *testing.T) {
+	start := time.Date(2026, 11, 18, 12, 0, 0, 0, time.UTC)
+	d := 21
+	m := Match{
+		MatchID: "m1", StartUTC: start, DurationSeconds: &d,
+		RealStart: at(start, 10), Source: timeline.KickoffSourceAPI,
+		Participants: []Participant{
+			{XUID: "2603225103667623", FirstJoined: at(start, 10), PresentAtBeginning: true, TimePlayed: ip(462)},
+			{XUID: "2547408409520575", FirstJoined: at(start, 12), PresentAtBeginning: true, TimePlayed: ip(450)},
+		},
+	}
+	t0 := int64(38_000)
+	p := Resolve(m, FilmPublished(&t0))
+	if p.Kickoff.Source != timeline.KickoffSourceFilm || p.Kickoff.FilmOutOfBounds || p.Kickoff.OffsetMs != 38_000 {
+		t.Fatalf("coup d'envoi = %+v, attendu le rejeu retenu", p.Kickoff)
+	}
+	if len(p.TimePlayed) != 0 {
+		t.Fatalf("temps de jeu = %+v : la durée est fausse, les valeurs rangées restent", p.TimePlayed)
+	}
+}
+
+// Un coup d'envoi `film` rangé, gardé parce que le rejeu n'est plus lisible, est contrôlé contre la
+// fenêtre du match comme un coup d'envoi lu : hors fenêtre il est refusé (compté), et le match
+// retombe sur l'estimation. Dans la fenêtre, ou dans la fenêtre bornée par le plus long temps de
+// jeu quand la durée du registre est fausse, il est gardé tel quel.
+func TestResolve_FilmGardeControleContreLaFenetre(t *testing.T) {
+	start := time.Date(2026, 11, 18, 12, 0, 0, 0, time.UTC)
+	cas := []struct {
+		nom      string
+		duree    int
+		joue     int
+		offset   float64
+		garde    bool
+		source   timeline.KickoffSource
+		horsBorn bool
+	}{
+		{"dans la fenêtre", 600, 580, 26, true, timeline.KickoffSourceFilm, false},
+		{"après la durée du match", 600, 580, 700, false, timeline.KickoffSourceAPI, true},
+		{"durée fausse, dans le temps de jeu", 21, 462, 38, true, timeline.KickoffSourceFilm, false},
+		{"durée fausse, au-delà du temps de jeu", 21, 462, 700, false, timeline.KickoffSourceAPI, true},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			d := c.duree
+			m := Match{
+				MatchID: "m1", StartUTC: start, DurationSeconds: &d,
+				RealStart: at(start, c.offset), Source: timeline.KickoffSourceFilm,
+				Participants: []Participant{
+					{XUID: "2603225103667623", FirstJoined: at(start, 20), PresentAtBeginning: true, TimePlayed: ip(c.joue)},
+				},
+			}
+			for _, f := range []Film{{State: FilmAbsent}, {State: FilmUnreadable}} {
+				p := Resolve(m, f)
+				if p.FilmKept != c.garde || p.Kickoff.Source != c.source || p.Kickoff.FilmOutOfBounds != c.horsBorn {
+					t.Fatalf("film %v : gardé=%v source=%q horsBornes=%v, attendu %v/%q/%v",
+						f.State, p.FilmKept, p.Kickoff.Source, p.Kickoff.FilmOutOfBounds, c.garde, c.source, c.horsBorn)
+				}
+			}
+		})
+	}
+}
+
+// Des bots dont le temps de jeu dépasse la durée d'une seconde ne rendent pas la durée fausse : seuls les
+// joueurs comptent (cas réel : durée juste de 917 s, deux bots à 947 s). La fenêtre n'est pas élargie (un
+// coup d'envoi après la fin réelle reste refusé) et le temps de jeu est recalculé comme avant le lot.
+func TestResolve_BotsNeRendentPasLaDureeFausse(t *testing.T) {
+	start := time.Date(2026, 11, 18, 12, 0, 0, 0, time.UTC)
+	d := 917
+	m := Match{
+		MatchID: "m1", StartUTC: start, DurationSeconds: &d,
+		RealStart: at(start, 20), Source: timeline.KickoffSourceAPI,
+		Participants: []Participant{
+			{XUID: "2603225103667623", FirstJoined: at(start, 0), PresentAtBeginning: true, TimePlayed: ip(900)},
+			{XUID: "bid(1.0)", FirstJoined: at(start, 0), PresentAtBeginning: true, TimePlayed: ip(947)},
+			{XUID: "bid(2.0)", FirstJoined: at(start, 0), PresentAtBeginning: true, TimePlayed: ip(947)},
+		},
+	}
+	t0 := int64(26_000)
+	p := Resolve(m, FilmPublished(&t0))
+	if p.Kickoff.Source != timeline.KickoffSourceFilm || p.Kickoff.FilmOutOfBounds {
+		t.Fatalf("coup d'envoi = %+v, attendu le rejeu retenu", p.Kickoff)
+	}
+	if len(p.TimePlayed) != 3 {
+		t.Fatalf("temps de jeu = %+v, attendu les trois participants recalculés (comme avant le lot)", p.TimePlayed)
+	}
+	for _, c := range p.TimePlayed {
+		if c.After != 891 {
+			t.Fatalf("temps de jeu de %s = %d, attendu 891 s (917 - 26)", c.XUID, c.After)
+		}
+	}
+	apres := int64(930_000)
+	if p := Resolve(m, FilmPublished(&apres)); p.Kickoff.Source == timeline.KickoffSourceFilm || !p.Kickoff.FilmOutOfBounds {
+		t.Fatalf("coup d'envoi à 930 s sur un match de 917 s : %+v, attendu refusé (durée juste, fenêtre non élargie)", p.Kickoff)
+	}
+}
+
+// Un joueur à une seconde de plus que la durée n'est pas une durée fausse : sous la marge, la durée reste tenue.
+func TestResolve_SousLaMargeLaDureeResteJuste(t *testing.T) {
+	start := time.Date(2026, 11, 18, 12, 0, 0, 0, time.UTC)
+	d := 600
+	m := Match{
+		MatchID: "m1", StartUTC: start, DurationSeconds: &d,
+		RealStart: at(start, 20), Source: timeline.KickoffSourceAPI,
+		Participants: []Participant{
+			{XUID: "2603225103667623", FirstJoined: at(start, 0), PresentAtBeginning: true, TimePlayed: ip(601)},
+		},
+	}
+	t0 := int64(590_000)
+	p := Resolve(m, FilmPublished(&t0))
+	if p.Kickoff.Source != timeline.KickoffSourceFilm || len(p.TimePlayed) != 1 || p.TimePlayed[0].After != 10 {
+		t.Fatalf("plan = %+v, attendu le rejeu retenu et le temps de jeu recalculé à 10 s (600 - 590)", p)
+	}
+	after := int64(601_000)
+	if p := Resolve(m, FilmPublished(&after)); p.Kickoff.Source == timeline.KickoffSourceFilm {
+		t.Fatalf("un coup d'envoi à 601 s sur un match de 600 s doit rester refusé : %+v", p.Kickoff)
+	}
+}
+
+// LE TEST QUI GARDE « le temps de jeu n'est pas recalculé sur une durée fausse » : match rangé à 21 s dont
+// le joueur a joué 462 s, arrivé AVANT le coup d'envoi du rejeu (15 s). Sur une fenêtre de 21 s son temps
+// de jeu retomberait à quelques secondes ; il reste celui de l'API. Remplacer DurationUnreliable par faux
+// dans Resolve fait échouer ce test.
+func TestResolve_TempsDeJeuIntactSurDureeFausse(t *testing.T) {
+	start := time.Date(2026, 11, 18, 12, 0, 0, 0, time.UTC)
+	d := 21
+	m := Match{
+		MatchID: "m1", StartUTC: start, DurationSeconds: &d,
+		RealStart: at(start, 10), Source: timeline.KickoffSourceAPI,
+		Participants: []Participant{
+			{XUID: "2603225103667623", FirstJoined: at(start, 2), PresentAtBeginning: true, TimePlayed: ip(462)},
+			{XUID: "2547408409520575", FirstJoined: at(start, 3), PresentAtBeginning: true, TimePlayed: ip(420)},
+		},
+	}
+	t0 := int64(15_000)
+	p := Resolve(m, FilmPublished(&t0))
+	if p.Kickoff.Source != timeline.KickoffSourceFilm || p.Kickoff.OffsetMs != 15_000 {
+		t.Fatalf("coup d'envoi = %+v, attendu le rejeu à 15 s", p.Kickoff)
+	}
+	if len(p.TimePlayed) != 0 {
+		t.Fatalf("temps de jeu = %+v : la durée est fausse, les valeurs rangées ne bougent pas", p.TimePlayed)
+	}
+}

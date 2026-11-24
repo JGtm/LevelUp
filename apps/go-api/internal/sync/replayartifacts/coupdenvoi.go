@@ -9,10 +9,13 @@ package replayartifacts
 // suivante sinon, puis le temps de jeu de chaque joueur sur ce coup d'envoi. Le champ est pris TEL
 // QUE LE DOCUMENT LE DONNE, sur l'artefact rangé (jamais le blob candidat, cf. derivations.go).
 //
-// LECTURE AVANT TOUT SEGMENT D'ÉCRITURE : l'état du match se lit par le segment de lecture, avec les
-// autres préparations ; le writer partagé n'est acquis que si un match change quelque chose. Un
-// artefact déjà reporté ne réécrit rien : la résolution rend ce que la base porte déjà. Un chemin sans
-// segment de lecture câblé lit l'état sur le segment d'écriture de la passe, au moment d'écrire.
+// LECTURE AVANT TOUT SEGMENT D'ÉCRITURE, RÉSOLUTION SOUS LE WRITER : l'état du match se lit par le
+// segment de lecture, avec les autres préparations, et ne sert qu'à décider s'il faut prendre le writer
+// partagé (un match qui change quelque chose). Les plans qui s'écrivent sont REFAITS sous le segment
+// d'écriture, sur ce que la base porte alors : le rattrapage du coup d'envoi a pu écrire entre les deux,
+// et un plan périmé écrirait par-dessus. Un artefact déjà reporté ne réécrit rien : la résolution rend ce
+// que la base porte déjà. Un chemin sans segment de lecture câblé lit l'état sur le segment d'écriture
+// de la passe, au moment d'écrire.
 
 import (
 	"context"
@@ -44,7 +47,9 @@ type coupsDEnvoi struct {
 	// surWriter : aucun segment de lecture n'est câblé sur ce chemin ; l'état des matchs de films se
 	// lit alors sur le segment d'écriture de la passe, au moment d'écrire.
 	surWriter bool
-	films     map[string]kickoff.Film
+	// films : ce que le rejeu de chaque match du lot dit de son coup d'envoi, pour refaire sa résolution
+	// sous le segment d'écriture.
+	films map[string]kickoff.Film
 }
 
 // preparerCoupsDEnvoi lit l'état rangé des matchs du lot par le segment de lecture et résout leur
@@ -80,7 +85,7 @@ func preparerCoupsDEnvoi(ctx context.Context, d Deps, b *bilanDerivations, lus [
 		return coupsDEnvoi{}
 	}
 	signalerAbsents(ctx, d, missing)
-	return coupsDEnvoi{plans: plans}
+	return coupsDEnvoi{plans: plans, films: films}
 }
 
 // signalerAbsents journalise et compte les rejeux dont le match n'est pas au registre. Ce n'est pas
@@ -97,38 +102,46 @@ func signalerAbsents(ctx context.Context, d Deps, missing []string) {
 // ecrireCoupsDEnvoi écrit les plans qui changent quelque chose, dans le segment d'écriture de la
 // passe, acquis seulement s'il y a lieu (toujours quand l'état doit se lire sur lui).
 func ecrireCoupsDEnvoi(ctx context.Context, d Deps, b *bilanDerivations, c coupsDEnvoi) {
-	var aEcrire []string
-	for id := range c.films {
-		aEcrire = append(aEcrire, id)
+	// Les matchs dont le plan lu change quelque chose ; sans segment de lecture, tous (rien n'est lu).
+	films := make(map[string]kickoff.Film)
+	if c.surWriter {
+		films = c.films
 	}
 	for _, p := range c.plans {
 		if !p.Unchanged() {
-			aEcrire = append(aEcrire, p.MatchID)
+			films[p.MatchID] = c.films[p.MatchID]
 		}
 	}
-	if len(aEcrire) == 0 {
+	if len(films) == 0 {
 		observability.AddIntT(d.TitleSlug, CompteurCoupDEnvoiAJour, int64(len(c.plans)))
 		return
+	}
+	aEcrire := make([]string, 0, len(films))
+	for id := range films {
+		aEcrire = append(aEcrire, id)
 	}
 	db, release, ok := writerDesCoupsDEnvoi(ctx, d, b, aEcrire)
 	if !ok {
 		return
 	}
 	defer release()
-	plans := c.plans
-	if c.surWriter {
-		var missing []string
-		var err error
-		if plans, missing, err = kickoff.Prepare(ctx, db, d.TitleSlug, c.films); err != nil {
-			slog.ErrorContext(ctx, "post-sync: coup d'envoi — etat des matchs illisible sur le segment d'ecriture : "+
-				"lot NON reporte, NON marque", "titleSlug", d.TitleSlug, "matchs", len(c.films), "err", err)
-			observability.AddIntT(d.TitleSlug, CompteurCoupDEnvoiEchecs, int64(len(c.films)))
-			for id := range c.films {
-				b.echec(id)
-			}
-			return
+	// La résolution se refait ICI, sous le writer : l'état lu avant a pu changer entre-temps.
+	plans, missing, err := kickoff.Prepare(ctx, db, d.TitleSlug, films)
+	if err != nil {
+		slog.ErrorContext(ctx, "post-sync: coup d'envoi — etat des matchs illisible sur le segment d'ecriture : "+
+			"lot NON reporte, NON marque", "titleSlug", d.TitleSlug, "matchs", len(films), "err", err)
+		observability.AddIntT(d.TitleSlug, CompteurCoupDEnvoiEchecs, int64(len(films)))
+		for id := range films {
+			b.echec(id)
 		}
-		signalerAbsents(ctx, d, missing)
+		return
+	}
+	signalerAbsents(ctx, d, missing)
+	// Les matchs déjà à jour à la lecture n'ont pas été relus : ils se comptent « à jour », sans écriture.
+	for _, p := range c.plans {
+		if p.Unchanged() {
+			plans = append(plans, p)
+		}
 	}
 	persisterCoupsDEnvoi(ctx, d, b, db, plans)
 }

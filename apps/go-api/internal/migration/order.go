@@ -260,6 +260,8 @@ var canonicalOrder = []string{
 	"shared_registry_drop_integrity_columns_v1", // shared
 	// steps_shared_registry_kickoff_source.go trie juste après steps_shared_registry_integrity_columns.go.
 	"shared_registry_real_start_source_v1", // shared (source du coup d'envoi à côté de sa valeur, ADR 0050)
+	// Après add_highlight_events_autoincrement et drop_highlight_events_gamertag (la table a sa forme finale). Title-owned Halo Infinite.
+	"shared_highlight_events_dedupe_v1", // shared (2026-11-24 : lignes de highlight_events écrites deux fois, swap sans DELETE)
 	// Phase 1.5 b27 (reorder escaladé) : skill_v2 (créateur de lusr_hyperparams_v2)
 	// AVANT le seed tier_boundaries (qui INSERT dedans). Corrige l'inversion 148/149
 	// historique. Sûr : les 2 sont title-owned → n'affecte pas l'ordre du registre global
@@ -342,6 +344,7 @@ var canonicalOrder = []string{
 	"shared_match_usage_players_shieldless_v1", // shared (frags sans bouclier, citation « Presque, ça ne compte pas »)
 	"shared_match_usage_levelup_v1",            // shared (bris, recharges de bouclier et vengeances calculés par LevelUp + révision du calcul)
 	"shared_medals_earned_view_v1",             // shared (vue v_medals_earned : medals_earned + médailles Vengeur et Cible difficile dérivées du film)
+	"shared_medals_earned_view_v2",             // shared (la décision « dérivé » se prend sur la passe de LevelUp mesurée, plus sur une ligne de joueur)
 	// Ressource vehicules de l Emprise (plan vehicules L7.2, 2026-09-30) : position dictee par l ordre
 	// d init (steps_shared_vehicle_takes.go trie apres steps_shared_usage_summary.go et avant
 	// steps_shared_weapon_*.go) — exigence de TestSortByCanonicalIsNoOpOnCurrentRegistry.

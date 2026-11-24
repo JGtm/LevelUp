@@ -56,8 +56,7 @@ func openReplayShared(t *testing.T) *sql.DB {
 			time_ms    INTEGER,
 			xuid       VARCHAR,
 			type_hint  INTEGER,
-			raw_json   VARCHAR,
-			UNIQUE (match_id, xuid, time_ms, event_type)
+			raw_json   VARCHAR
 		);
 		-- killer_victim_pairs RESTE : les producteurs y écrivent toujours (base crédit).
 		-- Depuis le 2026-08-03 ce n'est plus elle que la sonde de présence interroge — la
@@ -417,4 +416,51 @@ func TestSortedMatchIDs_StableCopy(t *testing.T) {
 // (Présent au cas où ; pas utilisé directement par les tests ci-dessus.)
 var _ = func(d time.Duration) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), d)
+}
+
+// TestReplayHighlightEventsForMatches_MatchDejaRempliNeDoublePas : le rejeu rappelle la complétion
+// sur un match qui a déjà ses événements (cas « paires vides », ou reprise forcée). Il ne doit
+// ajouter aucune ligne à highlight_events, et le match doit rester chargé. Le schéma du test n'a
+// aucune contrainte d'unicité, comme la base réelle : seule l'écriture empêche la répétition.
+func TestReplayHighlightEventsForMatches_MatchDejaRempliNeDoublePas(t *testing.T) {
+	db := openReplayShared(t)
+	insertReplayMatch(t, db, "rempli", true, true)
+	mock := &mockHaloClient{
+		highlightChunkByMatch: map[string]highlightChunkResponse{
+			"rempli": {data: loadV41Fixture(t), version: 41, found: true},
+		},
+	}
+
+	first, err := ReplayHighlightEventsForMatches(context.Background(), mock, db, []string{"rempli"}, nil)
+	if err != nil || first.EventsInserted == 0 {
+		t.Fatalf("premier rejeu : %+v, err %v", first, err)
+	}
+	var avant int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM highlight_events WHERE match_id = 'rempli'`).Scan(&avant); err != nil {
+		t.Fatal(err)
+	}
+
+	second, err := ReplayHighlightEventsForMatches(context.Background(), mock, db, []string{"rempli"}, nil)
+	if err != nil {
+		t.Fatalf("second rejeu: %v", err)
+	}
+	if second.EventsInserted != 0 {
+		t.Errorf("second rejeu : %d lignes insérées, attendu 0", second.EventsInserted)
+	}
+	var apres int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM highlight_events WHERE match_id = 'rempli'`).Scan(&apres); err != nil {
+		t.Fatal(err)
+	}
+	if apres != avant {
+		t.Errorf("highlight_events : %d lignes avant le second rejeu, %d après", avant, apres)
+	}
+	var loaded bool
+	var bits int64
+	if err := db.QueryRow(`SELECT events_loaded, backfill_completed FROM match_registry WHERE match_id = 'rempli'`).
+		Scan(&loaded, &bits); err != nil {
+		t.Fatal(err)
+	}
+	if !loaded || bits&MBitEvents == 0 {
+		t.Errorf("après le second rejeu : events_loaded=%v bits=%d, attendu chargé avec le bit des événements", loaded, bits)
+	}
 }

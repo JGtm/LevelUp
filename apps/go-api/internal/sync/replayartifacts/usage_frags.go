@@ -18,7 +18,9 @@ import (
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
-// LireFragsDuFilDesMorts lit, pour un lot de matchs, les frags de `match_kill_events_latest`. Rend
+// LireFragsDuFilDesMorts lit, pour un lot de matchs, les frags de `match_kill_events_latest`, triés par
+// instant puis, à égalité, par tueur puis victime : l'ordre ne dépend ni de l'ordre d'insertion ni de
+// l'`id` (qui change à chaque passe d'un match), donc deux lectures rendent la même suite. Rend
 // une entrée par match demandé : un match sans aucune ligne est « non lu » (Read faux), jamais zéro.
 //
 // EXPORTEE pour le backfill, qui doit lire les frags comme le fil de l'eau.
@@ -34,7 +36,7 @@ func LireFragsDuFilDesMorts(ctx context.Context, db *sql.DB, ids []string) (map[
 	rows, err := db.QueryContext(ctx, `SELECT match_id, time_ms, COALESCE(feed_killer_xuid, ''), COALESCE(victim_xuid, '')
 		FROM match_kill_events_latest
 		WHERE match_id IN (?`+strings.Repeat(",?", len(ids)-1)+`)
-		ORDER BY match_id, time_ms`, args...)
+		ORDER BY match_id, time_ms, COALESCE(feed_killer_xuid, ''), COALESCE(victim_xuid, '')`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("resume d'usage: lecture du fil des morts: %w", err)
 	}

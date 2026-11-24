@@ -228,7 +228,7 @@ func (s *OpenSpartanImportService) writeOneMatch(
 	parts := toSyncParticipants(mm.Participants)
 	syncReg := toSyncRegistry(mm.Registry, len(parts) > 0)
 	// Coup d'envoi et temps de jeu : la même résolution que la synchronisation, avant l'insertion.
-	kickoff.Observe(ctx, ctxkeys.TitleSlug(ctx), pm.MatchID, kickoff.ApplyToRows(&syncReg, parts))
+	resolvedKickoff := kickoff.ApplyToRows(&syncReg, parts)
 	// is_ranked : la règle unique du sync (D-10, sync.AnySkillShowsRankedMatch) appliquée au
 	// RankRecap du payload skill. Posé AVANT l'insert registry — crucial pour que le recompute
 	// LUSR EXCLUE bien ces matchs (LUSR = non classé) et pour les filtres.
@@ -249,6 +249,8 @@ func (s *OpenSpartanImportService) writeOneMatch(
 		result.Errors = append(result.Errors, port.OpenSpartanImportError{MatchID: pm.MatchID, Stage: "persist_match", Err: err.Error()})
 		return
 	}
+	// Compté APRÈS l'insertion : ce chemin en connaît l'issue (une insertion en échec n'est pas comptée).
+	kickoff.ObserveResolved(ctx, ctxkeys.TitleSlug(ctx), pm.MatchID, resolvedKickoff)
 	result.InsertedMatches++
 	result.InsertedMatchIDs = append(result.InsertedMatchIDs, pm.MatchID)
 	result.InsertedParticipants += len(mm.Participants)

@@ -36,8 +36,10 @@
 //   - highlight_events possède des index ART (PK id seq + idx_highlight_match +
 //     idx_events_match_type) → INSERT-only, JAMAIS de DELETE (un DELETE sur une
 //     table ART-indexée est le trigger exact du bug `Failed to delete all rows
-//     from index`, cf. ADR 0019). La non-duplication est garantie en amont par
-//     le gate events_loaded (un match déjà complété ne repasse pas par ici).
+//     from index`, cf. ADR 0019). La non-duplication est garantie par l'écriture
+//     elle-même (insertCompletionHighlightEvents : une ligne déjà présente n'est
+//     pas réinsérée), et non par le gate events_loaded, que le rejeu des
+//     événements remet à faux sur un match déjà rempli.
 //   - killer_victim_pairs n'a ni PK ni index : les trois index ART hérités des
 //     bases anciennes (idx_kv_match, idx_kv_killer, idx_kv_victim) sont retirés par
 //     la migration shared_killer_victim_pairs_drop_legacy_indexes_v1, et aucun ne
@@ -122,14 +124,17 @@ func NewEventsCompletionPersister(db txBeginner) *EventsCompletionPersister {
 
 // Persist écrit la complétion en 1 transaction :
 //
-//	(1) si len(Events) > 0  : INSERT × N dans highlight_events (jamais de DELETE, cf. en-tête)
+//	(1) si len(Events) > 0  : INSERT × N dans highlight_events, sauf les lignes déjà
+//	    présentes (jamais de DELETE, cf. en-tête)
 //	(2) si len(Pairs)  > 0  : DELETE killer_victim_pairs WHERE match_id + INSERT × N
 //	(3) UPDATE match_registry : backfill_completed |= mask, events_loaded |= flag
 //
-// mask = (EventsBit si des events ont été insérés) | (KillerVictimBit si MarkKV).
-// events_loaded passe TRUE uniquement si des events ont été réellement insérés.
+// mask = (EventsBit si le match porte des events après l'écriture) | (KillerVictimBit si MarkKV).
+// events_loaded passe TRUE quand le match porte des events après l'écriture, qu'ils
+// viennent d'être insérés ou qu'ils y fussent déjà (rejeu d'un match rempli).
 //
-// Retourne le nombre d'events insérés (pour result.EventsInserted côté caller).
+// Retourne le nombre d'events insérés par CET appel (pour result.EventsInserted
+// côté caller) : 0 quand tout était déjà là.
 // En cas d'erreur, ROLLBACK (defer) — aucun état partiel.
 func (p *EventsCompletionPersister) Persist(ctx context.Context, in EventsCompletionInput) (int, error) {
 	if in.MatchID == "" {
@@ -151,7 +156,14 @@ func (p *EventsCompletionPersister) Persist(ctx context.Context, in EventsComple
 		return 0, err
 	}
 
-	if err := markCompletionRegistry(ctx, tx, in, eventsInserted); err != nil {
+	eventsPresent := eventsInserted > 0
+	if !eventsPresent && len(in.Events) > 0 {
+		if eventsPresent, err = matchHasHighlightEvents(ctx, tx, in.MatchID); err != nil {
+			return 0, err
+		}
+	}
+
+	if err := markCompletionRegistry(ctx, tx, in, eventsPresent); err != nil {
 		return 0, err
 	}
 
@@ -227,13 +239,25 @@ func (p *EventsCompletionPersister) MarkEventsEmptyDefinitive(ctx context.Contex
 // INSERT-only (pas de DELETE — table ART-indexée, cf. en-tête). La colonne id
 // est auto-générée (seq). Retourne le nombre de rows effectivement insérées.
 //
-// INSERT OR IGNORE : parité exacte avec la complétion legacy
-// (sync.InsertHighlightEvents). Tolère les events dupliqués (l'API Halo peut
-// répéter un event ; certains schémas ont une contrainte unique composite sur
-// (match_id, xuid, time_ms, event_type)). En prod (PK id auto-seq) OR IGNORE est
-// un no-op de dédup ; sur les schémas à clé composite il dédupe.
+// LE SURPLUS SEUL S'INSÈRE : c'est ce qui rend la complétion (et le rejeu des événements, qui la
+// rappelle sur un match rempli) idempotente. Par clé, le nombre de lignes du lot moins le nombre déjà en
+// base ; deux lignes identiques d'un même lot sont deux faits et s'écrivent toutes les deux à la première
+// passe. La clé, les formes reconnues (document, ancienne forme sans code, complétion) et le traitement
+// des médailles sont décrits dans events_completion_surplus.go. La clé n'a pas de contrainte en base (la
+// clé primaire est un `id` auto-généré) : sans ce compte, rien n'empêche la répétition.
+//
+// INSERT OR IGNORE : parité avec la complétion legacy (sync.InsertHighlightEvents) pour les
+// schémas à clé composite ; sur la base réelle il ne retire rien de plus.
 func insertCompletionHighlightEvents(ctx context.Context, tx *sql.Tx, matchID string, events []HLEventCompletion) (int, error) {
 	if len(events) == 0 {
+		return 0, nil
+	}
+	existing, err := loadExistingHighlights(ctx, tx, matchID)
+	if err != nil {
+		return 0, err
+	}
+	surplus := highlightSurplus(events, existing)
+	if len(surplus) == 0 {
 		return 0, nil
 	}
 	stmt, err := tx.PrepareContext(ctx, `
@@ -245,7 +269,7 @@ func insertCompletionHighlightEvents(ctx context.Context, tx *sql.Tx, matchID st
 	defer func() { _ = stmt.Close() }()
 
 	inserted := 0
-	for _, e := range events {
+	for _, e := range surplus {
 		res, execErr := stmt.ExecContext(ctx, matchID, e.EventType, e.TimeMS, e.XUID, e.TypeHint, e.RawJSON)
 		if execErr != nil {
 			return 0, fmt.Errorf("persist: EventsCompletion insert highlight_events %s: %w", matchID, execErr)
@@ -317,17 +341,29 @@ func killerVictimRowsFromCompletion(matchID string, pairs []KVPairCompletion) []
 	return rows
 }
 
+// matchHasHighlightEvents dit si le match porte au moins une ligne de highlight_events, y
+// compris une ligne écrite avant cet appel.
+func matchHasHighlightEvents(ctx context.Context, tx *sql.Tx, matchID string) (bool, error) {
+	var present bool
+	if err := tx.QueryRowContext(ctx,
+		`SELECT EXISTS (SELECT 1 FROM highlight_events WHERE match_id = ?)`, matchID).Scan(&present); err != nil {
+		return false, fmt.Errorf("persist: EventsCompletion presence highlight_events %s: %w", matchID, err)
+	}
+	return present, nil
+}
+
 // markCompletionRegistry positionne les bits de complétude + events_loaded en un
-// seul UPDATE (pattern bitmask existant, cf. sync.MarkEventsLoaded).
-func markCompletionRegistry(ctx context.Context, tx *sql.Tx, in EventsCompletionInput, eventsInserted int) error {
+// seul UPDATE (pattern bitmask existant, cf. sync.MarkEventsLoaded). `eventsPresent` :
+// le match porte des events après l'écriture (insérés ici ou déjà là).
+func markCompletionRegistry(ctx context.Context, tx *sql.Tx, in EventsCompletionInput, eventsPresent bool) error {
 	var mask int64
-	if eventsInserted > 0 {
+	if eventsPresent {
 		mask |= in.EventsBit
 	}
 	if in.MarkKV {
 		mask |= in.KillerVictimBit
 	}
-	eventsLoaded := eventsInserted > 0
+	eventsLoaded := eventsPresent
 	if mask == 0 && !eventsLoaded {
 		return nil // rien à marquer
 	}

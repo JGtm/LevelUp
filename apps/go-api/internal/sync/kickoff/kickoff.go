@@ -117,7 +117,10 @@ func (p Plan) Unchanged() bool { return !p.KickoffChanged() && len(p.TimePlayed)
 // Resolve décide ce que le match doit porter, d'après ce que son rejeu dit (f). Fonction pure.
 func Resolve(m Match, f Film) Plan {
 	p := Plan{MatchID: m.MatchID, Before: m.RealStart, BeforeSource: m.Source}
-	if f.State != FilmRead && m.Source == timeline.KickoffSourceFilm {
+	longest := longestPlayed(m.Participants)
+	window := timeline.MatchWindowSeconds(m.DurationSeconds, longest)
+	kept, outOfBounds := keptFilmWithinWindow(m, f, window)
+	if kept {
 		// Le rejeu n'a rien dit de neuf : le coup d'envoi rangé reste, et le temps de jeu des joueurs
 		// se calcule sur lui comme pour tout autre match.
 		p.Kickoff, p.RealStart, p.FilmKept = keptFilm(m), m.RealStart, true
@@ -128,11 +131,19 @@ func Resolve(m Match, f Film) Plan {
 		}
 		p.Kickoff = timeline.ResolveKickoff(timeline.KickoffInput{
 			StartUTC: m.StartUTC, FilmT0Ms: filmT0, DurationSeconds: m.DurationSeconds,
-			Participations: estimateInputs(m.Participants),
+			LongestPlayedSeconds: longest,
+			Participations:       estimateInputs(m.Participants),
 		})
+		p.Kickoff.FilmOutOfBounds = p.Kickoff.FilmOutOfBounds || outOfBounds
 		p.RealStart = p.Kickoff.RealStart(m.StartUTC)
 	}
-	tl, hasWindow := timeline.GameplayTimeline(m.StartUTC, m.DurationSeconds, p.Kickoff)
+	// Une durée du registre manifestement fausse ne fait pas de fenêtre de jeu fiable : le temps de
+	// jeu rangé (celui de l'API) reste, plutôt que d'être recalculé sur une fenêtre trop courte.
+	duration := m.DurationSeconds
+	if timeline.DurationUnreliable(m.DurationSeconds, longest) {
+		duration = nil
+	}
+	tl, hasWindow := timeline.GameplayTimeline(m.StartUTC, duration, p.Kickoff)
 	for _, part := range m.Participants {
 		if part.FirstJoined == nil {
 			continue // présence inconnue : la valeur rangée reste
@@ -146,6 +157,34 @@ func Resolve(m Match, f Film) Plan {
 		p.TimePlayed = append(p.TimePlayed, TimePlayedChange{XUID: part.XUID, Before: part.TimePlayed, After: secs})
 	}
 	return p
+}
+
+// keptFilmWithinWindow dit si le coup d'envoi `film` rangé est gardé tel quel : le rejeu n'a rien dit
+// de neuf (absent ou illisible) ET le coup d'envoi rangé tombe dans la fenêtre du match, la même règle
+// que celle qui accepte un coup d'envoi lu (timeline.FilmWithinMatch sur MatchWindowSeconds). Hors
+// fenêtre il n'est pas gardé (`outOfBounds` : refusé et compté, le match se résout sur la source suivante).
+func keptFilmWithinWindow(m Match, f Film, window *int) (kept, outOfBounds bool) {
+	if f.State == FilmRead || m.Source != timeline.KickoffSourceFilm {
+		return false, false
+	}
+	if !timeline.FilmWithinMatch(keptFilm(m).OffsetMs, window) {
+		return false, true
+	}
+	return true, false
+}
+
+// longestPlayed rend le plus long temps de jeu rangé des joueurs HUMAINS du match (nil quand aucun n'est
+// rangé) : un bot n'est pas un joueur, son temps de jeu dépasse la durée sans que la durée soit fausse
+// (cas réel : durée juste de 917 s, deux bots à 947 s).
+func longestPlayed(parts []Participant) *int {
+	var longest *int
+	for _, p := range parts {
+		if timeline.HumanXUID(p.XUID) && p.TimePlayed != nil && (longest == nil || *p.TimePlayed > *longest) {
+			v := *p.TimePlayed
+			longest = &v
+		}
+	}
+	return longest
 }
 
 // keptFilm : le coup d'envoi rangé d'un match de source `film`, repris tel quel (décalage = coup

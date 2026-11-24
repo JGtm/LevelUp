@@ -18,6 +18,8 @@ package mapcatalog
 // dossier deja cree.
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -87,5 +89,55 @@ func TestAddOverlayEntryConcurrentDossierAbsentNePerdRien(t *testing.T) {
 	}
 	if _, err := os.Stat(overlay + ".lock"); err == nil {
 		t.Error("le verrou n'a pas ete retire")
+	}
+}
+
+// TestPrendreVerrouAccesRefuseEstUnVerrouTenu — SOUS WINDOWS, créer le fichier de verrou pendant que
+// l'écrivain qui le tenait est en train de le supprimer rend « accès refusé » (ou un partage refusé),
+// pas « existe déjà ». Ce n'est pas une panne : c'est un verrou en cours de libération. Le traiter comme
+// une panne faisait passer l'écrivain en force sans exclusion, et l'entrée de l'autre était perdue
+// (échec environ une fois sur dix du test de concurrence).
+func TestPrendreVerrouAccesRefuseEstUnVerrouTenu(t *testing.T) {
+	overlay := filepath.Join(t.TempDir(), "generated", "map_weapon_pads.json")
+	refus := 3
+	reel := ouvrirVerrou
+	t.Cleanup(func() { ouvrirVerrou = reel })
+	ouvrirVerrou = func(chemin string) (*os.File, error) {
+		if refus > 0 {
+			refus--
+			return nil, &fs.PathError{Op: "open", Path: chemin, Err: fs.ErrPermission}
+		}
+		return reel(chemin)
+	}
+
+	retirer := prendreVerrou(overlay)
+	if refus != 0 {
+		t.Fatalf("%d refus restants : le verrou a été forcé au lieu d'être réessayé", refus)
+	}
+	if _, err := os.Stat(overlay + ".lock"); err != nil {
+		t.Fatalf("aucun verrou posé après les refus (%v) : passage forcé sans exclusion mutuelle", err)
+	}
+	retirer()
+	if _, err := os.Stat(overlay + ".lock"); err == nil {
+		t.Error("le verrou n'a pas été retiré")
+	}
+}
+
+// TestPrendreVerrouAutreErreurPasseEnForce — une erreur qui n'est ni « existe déjà » ni « accès refusé »
+// (disque plein, chemin invalide) n'est pas une attente : passage forcé immédiat, journalisé.
+func TestPrendreVerrouAutreErreurPasseEnForce(t *testing.T) {
+	overlay := filepath.Join(t.TempDir(), "generated", "map_weapon_pads.json")
+	reel := ouvrirVerrou
+	t.Cleanup(func() { ouvrirVerrou = reel })
+	appels := 0
+	ouvrirVerrou = func(chemin string) (*os.File, error) {
+		appels++
+		return nil, &fs.PathError{Op: "open", Path: chemin, Err: errors.New("disque plein")}
+	}
+	debut := time.Now()
+	retirer := prendreVerrou(overlay)
+	retirer()
+	if appels != 1 || time.Since(debut) > dureeAttenteVerrou/4 {
+		t.Errorf("appels = %d en %v : une erreur autre qu'un verrou tenu ne se réessaie pas", appels, time.Since(debut))
 	}
 }

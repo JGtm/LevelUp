@@ -14,16 +14,19 @@ import (
 	"levelup/go-api/internal/persist"
 )
 
-// Compteurs expvar (ADR 0009), par titre. Ce sont des compteurs de FLUX D'ÉCRITURE : ils ne
-// bougent que pour une résolution écrite (insertion de la synchronisation, ou plan qui change
-// quelque chose et que le persisteur a écrit) ; une simulation, ou un rattrapage qui retrouve ce que
+// Compteurs expvar (ADR 0009), par titre. Ils comptent des coups d'envoi RÉSOLUS ET RANGÉS : un plan
+// qui change quelque chose et que le persisteur a écrit (publication d'un rejeu, rattrapage), ou une
+// résolution à l'insertion d'un match de la synchronisation ou de l'import ([ObserveResolved]), comptée
+// AVANT l'insertion — la file d'écriture l'acquitte plus tard, donc une insertion qui échoue est comptée
+// et le match revient au cycle suivant. Une simulation, ou un rattrapage qui retrouve ce que
 // la base porte déjà, ne les touche pas.
 const (
-	// prefixeSource + source + "_total" : coups d'envoi écrits, par source retenue.
+	// prefixeSource + source + "_total" : coups d'envoi résolus et rangés (plan écrit, ou résolution à
+	// l'insertion d'un match), par source retenue.
 	prefixeSource = "kickoff_source_"
-	// prefixeEstimation + issue + "_total" : issues de l'estimation des coups d'envoi écrits.
+	// prefixeEstimation + issue + "_total" : issues de l'estimation des coups d'envoi résolus et rangés.
 	prefixeEstimation = "kickoff_estimation_"
-	// CompteurRejeuHorsBornes : coups d'envoi écrits dont le rejeu publiait une valeur hors de la
+	// CompteurRejeuHorsBornes : coups d'envoi résolus et rangés dont le rejeu publiait une valeur hors de la
 	// fenêtre du match (refusée, source suivante).
 	CompteurRejeuHorsBornes = "kickoff_film_hors_bornes_total"
 	// CompteurEcrits : matchs dont le coup d'envoi ou un temps de jeu a été réécrit.
@@ -44,16 +47,20 @@ func sourceLabel(s timeline.KickoffSource) string {
 	return string(s)
 }
 
-// Observe journalise et compte un coup d'envoi ÉCRIT : la source retenue, l'issue de l'estimation
-// quand elle a été jouée (une seule arrivée, arrivées dispersées, rejet) et le refus d'un coup
-// d'envoi du rejeu hors de la fenêtre du match.
-func Observe(ctx context.Context, titleSlug, matchID string, k timeline.Kickoff) {
-	countWritten(titleSlug, k)
+// ObserveResolved journalise et compte un coup d'envoi RÉSOLU à l'insertion d'un match (synchronisation,
+// import) : la source retenue, l'issue de l'estimation quand elle a été jouée (une seule arrivée,
+// arrivées dispersées, rejet) et le refus d'un coup d'envoi du rejeu hors de la fenêtre du match. Le
+// compte est fait à la résolution, AVANT l'insertion : elle part par une file qui l'acquitte plus tard,
+// et l'appelant ne connaît pas son issue. Une insertion qui échoue est donc comptée, puis le match se
+// résout de nouveau (et se recompte) au cycle suivant.
+func ObserveResolved(ctx context.Context, titleSlug, matchID string, k timeline.Kickoff) {
+	countKickoff(titleSlug, k)
 	logResolution(ctx, titleSlug, matchID, k)
 }
 
-// countWritten compte un coup d'envoi écrit (cf. les compteurs ci-dessus).
-func countWritten(titleSlug string, k timeline.Kickoff) {
+// countKickoff compte un coup d'envoi résolu et rangé : après l'écriture d'un plan ([Persist]), ou à la
+// résolution d'un match à l'insertion ([ObserveResolved], avant elle ; cf. les compteurs ci-dessus).
+func countKickoff(titleSlug string, k timeline.Kickoff) {
 	observability.IncCounterT(titleSlug, prefixeSource+sourceLabel(k.Source)+"_total")
 	if k.Estimate != "" {
 		observability.IncCounterT(titleSlug, prefixeEstimation+string(k.Estimate)+"_total")
@@ -121,7 +128,7 @@ func Persist(ctx context.Context, db *sql.DB, titleSlug string, plans []Plan) (w
 			failed = append(failed, plan.MatchID)
 			continue
 		}
-		countWritten(titleSlug, plan.Kickoff)
+		countKickoff(titleSlug, plan.Kickoff)
 		written++
 	}
 	observability.AddIntT(titleSlug, CompteurEcrits, int64(written))

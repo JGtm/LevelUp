@@ -518,3 +518,227 @@ func TestEventsCompletionPersister_EmptyMatchID(t *testing.T) {
 		t.Error("Persist avec MatchID vide: attendu une erreur, got nil")
 	}
 }
+
+// TestEventsCompletionPersister_DeuxPassagesNeDoublentPas : écrire deux fois la complétion d'un
+// même match laisse les mêmes lignes de highlight_events. La table porte des index ART, donc
+// aucun DELETE : l'écriture elle-même refuse de répéter une ligne déjà là (le rejeu des
+// événements, qui remet events_loaded à faux, en dépend).
+func TestEventsCompletionPersister_DeuxPassagesNeDoublentPas(t *testing.T) {
+	ctx := context.Background()
+	db := openCompletionTestDB(t)
+	matchID := "m-idem-events"
+	seedCompletionRegistry(t, db, matchID)
+
+	p := NewEventsCompletionPersister(db)
+	first, err := p.Persist(ctx, sampleCompletionInput(matchID))
+	if err != nil {
+		t.Fatalf("Persist #1: %v", err)
+	}
+	second, err := p.Persist(ctx, sampleCompletionInput(matchID))
+	if err != nil {
+		t.Fatalf("Persist #2: %v", err)
+	}
+	if first != 2 || second != 0 {
+		t.Errorf("lignes insérées = %d puis %d, attendu 2 puis 0", first, second)
+	}
+	if got := countCompletionRows(t, db, "highlight_events", matchID); got != 2 {
+		t.Errorf("highlight_events après deux passages = %d, attendu 2", got)
+	}
+}
+
+// TestEventsCompletionPersister_RejeuApresRemiseAFaux : le rejeu remet events_loaded à faux puis
+// repasse par la complétion. Les événements sont déjà là : rien n'est ajouté, et le match
+// redevient « chargé » (sinon la convergence le reprendrait à chaque cycle).
+func TestEventsCompletionPersister_RejeuApresRemiseAFaux(t *testing.T) {
+	ctx := context.Background()
+	db := openCompletionTestDB(t)
+	matchID := "m-rejeu-rempli"
+	seedCompletionRegistry(t, db, matchID)
+
+	p := NewEventsCompletionPersister(db)
+	if _, err := p.Persist(ctx, sampleCompletionInput(matchID)); err != nil {
+		t.Fatalf("Persist #1: %v", err)
+	}
+	if _, err := db.ExecContext(ctx, `UPDATE match_registry
+		SET events_loaded = FALSE, backfill_completed = backfill_completed & ~?
+		WHERE match_id = ?`, testBitEvents, matchID); err != nil {
+		t.Fatalf("remise à faux: %v", err)
+	}
+	if _, err := p.Persist(ctx, sampleCompletionInput(matchID)); err != nil {
+		t.Fatalf("Persist #2: %v", err)
+	}
+	if got := countCompletionRows(t, db, "highlight_events", matchID); got != 2 {
+		t.Errorf("highlight_events après rejeu = %d, attendu 2", got)
+	}
+	bits, loaded := completionRegistryState(t, db, matchID)
+	if !loaded || bits&testBitEvents == 0 {
+		t.Errorf("après rejeu : events_loaded=%v bits=%d, attendu chargé avec le bit des événements", loaded, bits)
+	}
+}
+
+// TestEventsCompletionPersister_AncienneFormeSansCodeNonRedoublee : un match écrit avant que le
+// flux principal pose le code (type_hint et raw_json NULL) n'est pas doublé par un rejeu, qui
+// porte le code : la ligne sans code tient lieu de la ligne du film.
+func TestEventsCompletionPersister_AncienneFormeSansCodeNonRedoublee(t *testing.T) {
+	ctx := context.Background()
+	db := openCompletionTestDB(t)
+	matchID := "m-ancienne-forme"
+	seedCompletionRegistry(t, db, matchID)
+	for _, r := range []struct {
+		typ string
+		ms  int
+		xu  string
+	}{{"kill", 1000, "111"}, {"death", 1002, "222"}} {
+		if _, err := db.ExecContext(ctx, `INSERT INTO highlight_events (match_id, event_type, time_ms, xuid)
+			VALUES (?, ?, ?, ?)`, matchID, r.typ, r.ms, r.xu); err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+	}
+	n, err := NewEventsCompletionPersister(db).Persist(ctx, sampleCompletionInput(matchID))
+	if err != nil {
+		t.Fatalf("Persist: %v", err)
+	}
+	if n != 0 {
+		t.Errorf("lignes insérées = %d, attendu 0 (déjà présentes sous l'ancienne forme)", n)
+	}
+	if got := countCompletionRows(t, db, "highlight_events", matchID); got != 2 {
+		t.Errorf("highlight_events = %d, attendu 2", got)
+	}
+}
+
+// TestEventsCompletionPersister_DeuxMedaillesAuMemeInstantRestent : deux médailles distinctes du
+// même joueur au même instant sont deux faits ; seule une ligne identique est une répétition.
+func TestEventsCompletionPersister_DeuxMedaillesAuMemeInstantRestent(t *testing.T) {
+	ctx := context.Background()
+	db := openCompletionTestDB(t)
+	matchID := "m-deux-medailles"
+	seedCompletionRegistry(t, db, matchID)
+
+	a, b := `{"medal_name":"Double Kill"}`, `{"medal_name":"Killjoy"}`
+	in := EventsCompletionInput{
+		MatchID: matchID,
+		Events: []HLEventCompletion{
+			{XUID: "111", EventType: "medal", TimeMS: 1000, TypeHint: 50, RawJSON: &a},
+			{XUID: "111", EventType: "medal", TimeMS: 1000, TypeHint: 50, RawJSON: &b},
+		},
+		EventsBit: testBitEvents, KillerVictimBit: testBitKillerVictim,
+	}
+	p := NewEventsCompletionPersister(db)
+	for i := 0; i < 2; i++ {
+		if _, err := p.Persist(ctx, in); err != nil {
+			t.Fatalf("Persist #%d: %v", i+1, err)
+		}
+	}
+	if got := countCompletionRows(t, db, "highlight_events", matchID); got != 2 {
+		t.Errorf("highlight_events = %d, attendu 2 (deux médailles distinctes, une fois chacune)", got)
+	}
+}
+
+// TestEventsCompletionPersister_IdentiquesLegitimesEcritesPuisStables : deux lignes IDENTIQUES d'un même
+// lot sont deux faits (deux médailles identiques au même instant, avec ou sans nom ; deux temps forts
+// « mode » identiques). Elles s'écrivent toutes les deux à la première passe, et rejouer ne change plus
+// rien.
+func TestEventsCompletionPersister_IdentiquesLegitimesEcritesPuisStables(t *testing.T) {
+	ctx := context.Background()
+	db := openCompletionTestDB(t)
+	matchID := "m-identiques"
+	seedCompletionRegistry(t, db, matchID)
+	nom := `{"medal_name":"Kong"}`
+	in := EventsCompletionInput{
+		MatchID: matchID,
+		Events: []HLEventCompletion{
+			{XUID: "111", EventType: "medal", TimeMS: 1000, TypeHint: 50, RawJSON: &nom},
+			{XUID: "111", EventType: "medal", TimeMS: 1000, TypeHint: 50, RawJSON: &nom},
+			{XUID: "111", EventType: "medal", TimeMS: 2000, TypeHint: 60}, // sans nom, même code
+			{XUID: "111", EventType: "medal", TimeMS: 2000, TypeHint: 60},
+			{XUID: "222", EventType: "mode", TimeMS: 3000, TypeHint: 10},
+			{XUID: "222", EventType: "mode", TimeMS: 3000, TypeHint: 10},
+		},
+		EventsBit: testBitEvents, KillerVictimBit: testBitKillerVictim,
+	}
+	p := NewEventsCompletionPersister(db)
+	first, err := p.Persist(ctx, in)
+	if err != nil || first != 6 {
+		t.Fatalf("première passe : %d lignes insérées, err %v ; attendu 6 (les identiques légitimes sont écrites)", first, err)
+	}
+	for i := 2; i <= 4; i++ {
+		n, err := p.Persist(ctx, in)
+		if err != nil || n != 0 {
+			t.Fatalf("passe %d : %d lignes insérées, err %v ; attendu 0", i, n, err)
+		}
+	}
+	if got := countCompletionRows(t, db, "highlight_events", matchID); got != 6 {
+		t.Errorf("highlight_events = %d, attendu 6 après quatre passes", got)
+	}
+}
+
+// Une base qui porte déjà UNE des deux lignes identiques reçoit l'autre : le compte, pas l'existence.
+func TestEventsCompletionPersister_NInsereQueLeSurplus(t *testing.T) {
+	ctx := context.Background()
+	db := openCompletionTestDB(t)
+	matchID := "m-surplus"
+	seedCompletionRegistry(t, db, matchID)
+	nom := `{"medal_name":"Kong"}`
+	for _, q := range []string{
+		`INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, type_hint, raw_json)
+			VALUES ('m-surplus', 'medal', 1000, '111', 50, '{"medal_name":"Kong"}')`,
+		`INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, type_hint) VALUES ('m-surplus', 'mode', 3000, '222', 10)`,
+	} {
+		if _, err := db.ExecContext(ctx, q); err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+	}
+	in := EventsCompletionInput{
+		MatchID: matchID,
+		Events: []HLEventCompletion{
+			{XUID: "111", EventType: "medal", TimeMS: 1000, TypeHint: 50, RawJSON: &nom},
+			{XUID: "111", EventType: "medal", TimeMS: 1000, TypeHint: 50, RawJSON: &nom},
+			{XUID: "222", EventType: "mode", TimeMS: 3000, TypeHint: 10},
+			{XUID: "222", EventType: "mode", TimeMS: 3000, TypeHint: 10},
+		},
+		EventsBit: testBitEvents, KillerVictimBit: testBitKillerVictim,
+	}
+	n, err := NewEventsCompletionPersister(db).Persist(ctx, in)
+	if err != nil || n != 2 {
+		t.Fatalf("%d lignes insérées, err %v ; attendu 2 (une médaille et un « mode » manquaient)", n, err)
+	}
+	if got := countCompletionRows(t, db, "highlight_events", matchID); got != 4 {
+		t.Errorf("highlight_events = %d, attendu 4", got)
+	}
+}
+
+// Un match écrit sous la forme « document » (raw_json plein sur les éliminations et les morts, médailles
+// avec un document plus riche que celui de la complétion) rejoué par la complétion ne reçoit aucune ligne.
+func TestEventsCompletionPersister_FormeDocumentRejoueeNInsereRien(t *testing.T) {
+	ctx := context.Background()
+	db := openCompletionTestDB(t)
+	matchID := "m-document"
+	seedCompletionRegistry(t, db, matchID)
+	for _, q := range []string{
+		`INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, type_hint, raw_json) VALUES
+			('m-document', 'kill', 1000, '111', 50, '{"xuid": 111, "event_type": "kill", "time_ms": 1000}'),
+			('m-document', 'death', 1002, '222', 1, '{"xuid": 222, "event_type": "death", "time_ms": 1002}'),
+			('m-document', 'medal', 1000, '111', 50, '{"xuid": 111, "is_medal": true, "medal_value": 101, "medal_name": "Kong"}')`,
+	} {
+		if _, err := db.ExecContext(ctx, q); err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+	}
+	nom := `{"medal_name":"Kong"}`
+	in := EventsCompletionInput{
+		MatchID: matchID,
+		Events: []HLEventCompletion{
+			{XUID: "111", EventType: "kill", TimeMS: 1000, TypeHint: 50},
+			{XUID: "222", EventType: "death", TimeMS: 1002, TypeHint: 1},
+			{XUID: "111", EventType: "medal", TimeMS: 1000, TypeHint: 50, RawJSON: &nom},
+		},
+		EventsBit: testBitEvents, KillerVictimBit: testBitKillerVictim,
+	}
+	n, err := NewEventsCompletionPersister(db).Persist(ctx, in)
+	if err != nil || n != 0 {
+		t.Fatalf("%d lignes insérées, err %v ; attendu 0 (forme document rejouée)", n, err)
+	}
+	if got := countCompletionRows(t, db, "highlight_events", matchID); got != 3 {
+		t.Errorf("highlight_events = %d, attendu 3", got)
+	}
+}
