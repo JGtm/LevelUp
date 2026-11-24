@@ -67,6 +67,15 @@ export interface SettingDef {
 
 const BACKGROUNDS: readonly MapBackgroundVariant[] = ['plan', 'rendu', 'relief']
 
+/**
+ * LES RÉGLAGES PARTAGÉS AVEC UNE AUTRE PAGE : le fond, les traits du relief, le plan des murs et l'orientation de la carte sont
+ * lus (et pour le fond, écrits) par la Tactique et « Occupation du terrain », qui n'ont aucun réglage propre. Un préréglage ou
+ * une vue enregistrée n'en écrit JAMAIS aucun : appliquer « Combat » ne change pas ce que ces pages montrent. Ils sont donc
+ * hors de la couverture des préréglages (`preset: false`) et de l'état « modifié ». Liste unique, lue par le garde-rail
+ * `sharedSettings.guard.test.tsx` ; un réglage qui devient partagé s'y ajoute.
+ */
+export const SHARED_SETTING_IDS: readonly SettingId[] = ['bg', 'reliefLines', 'wallPlan', 'orientation']
+
 /** Un interrupteur de rubrique : couvert par les préréglages, épinglable, compté par le maître. */
 function toggle(
   id: SettingId, rubric: RubricId | null, def: boolean,
@@ -104,8 +113,10 @@ export const SETTING_DEFS: readonly SettingDef[] = [
 
   // CARTE : le terrain.
   choice('bg', 'carte', BACKGROUNDS, 'plan'),
-  toggle('reliefLines', 'carte', true, { parent: 'bg' }),
-  toggle('wallPlan', 'carte', true, { parent: 'bg' }),
+  // Partagés avec la Tactique et « Occupation du terrain » (`SHARED_SETTING_IDS`) : hors des préréglages.
+  // Les traits du relief se retiennent PAR FOND (allumés d'office sur le Relief seulement) : `true` est la valeur du Relief.
+  toggle('reliefLines', 'carte', true, { parent: 'bg', preset: false }),
+  toggle('wallPlan', 'carte', true, { parent: 'bg', preset: false }),
   { id: 'floor', rubric: 'carte', control: 'floor', default: null, preset: false, pinnable: false, master: false },
   toggle('floorFollow', 'carte', false, { ...APART, parent: 'floor' }),
   choice('orientation', 'carte', ['auto', '0', '1', '2', '3'], 'auto'),

@@ -46,15 +46,15 @@ function table(on: readonly SettingId[], feedFilter = 'tout'): ViewValues {
  */
 const PRESETS: Readonly<Record<PresetId, ViewValues>> = {
   complet: table([
-    'aim', 'trail', 'shotFx', 'killFx', 'forecast', 'reliefLines', 'wallPlan', 'zones', 'weaponPads', 'groundWeapons',
+    'aim', 'trail', 'shotFx', 'killFx', 'forecast', 'zones', 'weaponPads', 'groundWeapons',
     'vehicles', 'placements', 'placeDropped', 'objectives', ...WITH_CARRIED, 'planFeed',
     'catWeapon', 'catGrenade', 'catMelee', 'catEquip',
   ]),
   combat: table([
-    'aim', 'trail', 'shotFx', 'killFx', 'deaths', 'killers', 'wallPlan', 'weaponPads', 'groundWeapons', 'vehicles',
+    'aim', 'trail', 'shotFx', 'killFx', 'deaths', 'killers', 'weaponPads', 'groundWeapons', 'vehicles',
     'objectives', ...WITH_CARRIED, 'planFeed', 'catWeapon', 'catGrenade', 'catMelee',
   ], 'kills'),
-  deplacements: table(['trail', 'spawns', 'forecast', 'zones', 'reliefLines', 'heatmap', 'vehicles', 'planFeed']),
+  deplacements: table(['trail', 'spawns', 'forecast', 'zones', 'heatmap', 'vehicles', 'planFeed']),
   objectif: table([
     'trail', 'zones', 'objectives', ...WITH_CARRIED, 'vehicles', 'weaponPads', 'planFeed', 'catWeapon',
   ], 'objectives'),

@@ -45,7 +45,8 @@ describe('la table des réglages', () => {
 
   it('les interrupteurs hors préréglage, hors maître ou hors accès rapide sont ceux que la maquette désigne', () => {
     const off = (key: 'preset' | 'master' | 'pinnable') => SETTING_DEFS.filter((d) => d.control === 'toggle' && !d[key]).map((d) => d.id)
-    expect(off('preset')).toEqual(['floorFollow', 'sound', 'thinBar'])
+    // Le plan des murs et les traits du relief sont partagés avec d'autres pages : hors préréglages (`SHARED_SETTING_IDS`).
+    expect(off('preset')).toEqual(['reliefLines', 'wallPlan', 'floorFollow', 'sound', 'thinBar'])
     expect(off('master')).toEqual(['floorFollow', 'thinBar'])
     expect(off('pinnable')).toEqual([
       'floorFollow', 'groundSpecial', 'groundStarting', 'placeDropped', 'placeUnnamed',
@@ -53,8 +54,8 @@ describe('la table des réglages', () => {
     ])
   })
 
-  it('les préréglages couvrent 31 réglages : tous les interrupteurs de rubrique sauf l’étage, le son, la barre fine, et le filtre du fil', () => {
-    expect(PRESET_COVERED).toHaveLength(31)
+  it('les préréglages couvrent 29 réglages : les interrupteurs de rubrique sauf l’étage, le son, la barre fine et les réglages partagés, plus le filtre du fil', () => {
+    expect(PRESET_COVERED).toHaveLength(29)
     expect(PRESET_COVERED).toContain('feedFilter')
     for (const hors of ['bg', 'orientation', 'floor', 'floorFollow', 'sound', 'volume', 'colors', 'heatMode', 'heatSpan', 'livesWho', 'livesWhen', 'forecastDraw', 'thinBar'] as const) {
       expect(PRESET_COVERED).not.toContain(hors)
@@ -176,7 +177,7 @@ describe('les préréglages souples', () => {
   it('appliquer Combat écrit les seuls réglages qui diffèrent, filtre du fil compris', () => {
     const c = makeSettingsContext()
     const writes = Object.fromEntries(writesToReach(presetValues('combat'), FACTORY, c))
-    expect(writes).toMatchObject({ deaths: true, killers: true, zones: false, forecast: false, reliefLines: false, feedFilter: 'kills' })
+    expect(writes).toMatchObject({ deaths: true, killers: true, zones: false, forecast: false, feedFilter: 'kills' })
     expect(writes).not.toHaveProperty('aim')
     expect(writes).not.toHaveProperty('sound')
     expect(writes).not.toHaveProperty('bg')
