@@ -139,8 +139,7 @@ func NewPostSyncHook(repoRoot string, perCycle int) *PostSyncHook {
 // WithArchive branche l'ecriture des films lus au reseau sur le reglage « archiver les films » : la
 // fonction est relue a chaque film, un reglage change a chaud prend effet a la passe en cours. Sans
 // elle (nil), la source archive tout ce qu'elle lit. Le moteur de synchronisation l'appelle depuis le
-// hook des rejeux, qui sait si une cuisson locale va relire le film dans le meme cycle
-// (`replayartifacts.Hook.ArchiveFrags`).
+// hook des rejeux, qui porte le reglage. Coupe, rien n'est ecrit, dans aucun profil.
 func (h *PostSyncHook) WithArchive(archive func(context.Context) bool) *PostSyncHook {
 	h.archive = archive
 	return h

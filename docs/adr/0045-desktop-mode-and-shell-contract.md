@@ -234,8 +234,9 @@ a hand-edited file cannot arm an irreversible purge). The disk alert is the exis
 which watches the archive volume with its own anti-spam state when the archive lives outside the data root.
 Lot L14. The default is derived from the deployment profile (capability `ArchiveFilmsByDefault`, ADR 0044): on for
 the desktop, development and the demo, off on a hosted server (2026-11-24); a saved value always wins. The frag source
-reads the setting per film and, with the setting off, writes a film only when this process cooks the replay in the same
-cycle (placement local), which then removes it (`replayartifacts.Hook.ArchiveFrags`).
+reads the setting per film and, with the setting off, writes nothing, in every profile (the replay pass downloads the
+film again anyway: the server's Halo client has no film cache, so a film written as a relay would save no download and
+could stay on disk when the cook does not run).
 
 Detail of the lot. The archive root is the fourth field of `Roots` (`FilmArchive`, read once from
 `app_settings.json:film_archive_dir` by `config.ResolveRoots`, absolute path only). Changing the folder in the settings

@@ -2,8 +2,8 @@ package sync
 
 // film_archive_wiring_test.go — la source des frags suit le réglage « archiver les films » par le hook des
 // rejeux, dont le défaut vient de la capacité ArchiveFilmsByDefault du profil : le site hébergé n'écrit rien à
-// l'archive tant que l'administrateur n'a rien écrit, le bureau et le développement archivent, et une valeur
-// écrite gagne dans les deux sens.
+// l'archive tant que l'administrateur n'a rien écrit, le bureau et le développement archivent, une valeur
+// écrite gagne dans les deux sens, et archive coupée la source des frags n'écrit rien, quel que soit le profil.
 
 import (
 	"os"
@@ -28,8 +28,9 @@ func TestEngine_ArchivageDesFragsSuitLeReglageEtLeProfil(t *testing.T) {
 		{"hébergé, archive écrite : elle gagne", config.DeploymentHosted, "production", config.LaunchModeDefault, `{"archive_films": true}`, true},
 		{"développement, rien d'écrit : archive", config.DeploymentDev, "", config.LaunchModeDefault, "", true},
 		{"bureau, rien d'écrit : archive", config.DeploymentDesktop, "", config.LaunchModeDesktop, "", true},
-		// Le bureau cuit le rejeu lui-même : il écrit le film pour le relire et le retirer, il ne le télécharge pas deux fois.
-		{"bureau, archive coupée : le film sert de relais à la cuisson locale", config.DeploymentDesktop, "", config.LaunchModeDesktop, `{"archive_films": false}`, true},
+		// Le client Halo du serveur n'a pas de cache de film : la cuisson re-télécharge de toute façon, la source des
+		// frags n'a donc aucune raison d'écrire quand le réglage est coupé, dans aucun profil.
+		{"bureau, archive coupée : la source des frags n'écrit rien", config.DeploymentDesktop, "", config.LaunchModeDesktop, `{"archive_films": false}`, false},
 		{"hébergé, archive coupée : pas d'archive", config.DeploymentHosted, "production", config.LaunchModeDefault, `{"archive_films": false}`, false},
 	}
 	for _, c := range cas {
