@@ -7,9 +7,11 @@
 // nu ouvre une fenêtre par enfant ; cas mesurés le 2026-11-02). Un `exec.Command` direct perd cette
 // garantie. Le paquet n'explique pas, à lui seul, une fenêtre vue sur l'application installée.
 //
-// INTERDIT dans internal/ et dans les briques de libs/ (hors _test.go) : un appel
-// `exec.Command` / `exec.CommandContext`, hors du paquet childproc. Les outils de cmd/ ont une
-// console et ne sont pas visés.
+// INTERDIT dans internal/ et dans les briques (hors _test.go) : un appel `exec.Command` /
+// `exec.CommandContext`, hors du paquet childproc. Les chemins `libs/<brique>` sont des clés de
+// garde-rail, pas un dossier du dépôt : `internal/briques` les résout vers le dépôt de chaque brique
+// (cache de modules ou espace de travail local). Une racine introuvable fait échouer le test. Les
+// outils de cmd/ ont une console et ne sont pas visés.
 package archlint
 
 import (
