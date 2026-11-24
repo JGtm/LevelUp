@@ -219,3 +219,16 @@ func TestAfterAccountsResolved(t *testing.T) {
 		}
 	})
 }
+
+// Arrêt demandé alors que la résolution est déjà terminée : les deux canaux de WaitResolved sont prêts, le select
+// en choisit un au hasard. La boucle ne doit jamais partir avec un contexte déjà annulé.
+func TestAfterAccountsResolved_ContexteDejaAnnule(t *testing.T) {
+	p := newAutoSyncPool(context.Background(), &resolveurLent{delai: time.Millisecond}, douzeComptes()[:1])
+	defer p.Close()
+	pool.WaitResolved(context.Background(), p)
+	ctx, arreter := context.WithCancel(context.Background())
+	arreter()
+	for i := 0; i < 300; i++ {
+		afterAccountsResolved(p, func(context.Context) { t.Fatal("la boucle est partie avec un contexte annulé") })(ctx)
+	}
+}

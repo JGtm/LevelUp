@@ -136,7 +136,8 @@ func launchCatalogCrons(st *bootState) {
 // fond (ou absent) : la boucle part tout de suite. Arrêt demandé pendant l'attente : la boucle ne part pas.
 func afterAccountsResolved(p pool.Pool, run func(context.Context)) func(context.Context) {
 	return func(ctx context.Context) {
-		if !pool.WaitResolved(ctx, p) {
+		// Le contexte est relu APRÈS l'attente : à l'arrêt, les deux canaux de WaitResolved peuvent être prêts.
+		if !pool.WaitResolved(ctx, p) || ctx.Err() != nil {
 			return
 		}
 		run(ctx)
