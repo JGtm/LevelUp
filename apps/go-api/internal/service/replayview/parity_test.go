@@ -56,15 +56,6 @@ var racines = []struct {
 	{"MapCalloutsEntry", reflect.TypeOf(replay.MapCalloutsEntry{}), reflect.TypeOf(replaydoc.MapCalloutsEntry{})},
 }
 
-// balisesServiesDifferentes : les champs dont la balise JSON servie differe de la stockee, avec la raison datee.
-// `xuid` est omis a vide cote stocke (un bot n'a pas d'identifiant et se designe par `place`) ; le servi ne porte que
-// les lignes d'un joueur identifie (`sliceOfIdentified`, depuis le decodeur v1.6.0, 2026-11-24), donc le champ y est
-// toujours present et le contrat le declare obligatoire.
-var balisesServiesDifferentes = map[string]bool{
-	"ScoreAction.XUID": true,
-	"Elimination.XUID": true,
-}
-
 // TestChaqueChampStockeAUneDecision : rien ne sort du contrat par omission.
 func TestChaqueChampStockeAUneDecision(t *testing.T) {
 	servis := indexerTypes(racines[0].servi, racines[1].servi, racines[2].servi)
@@ -72,6 +63,7 @@ func TestChaqueChampStockeAUneDecision(t *testing.T) {
 	typesVus := map[string]bool{}
 	parcourir(racinesStockees(), testutil.ReplayTypesNonServis, func(ts reflect.Type) {
 		typesVus[ts.Name()] = true
+		marquerLesEmbarques(ts, vus, typesVus)
 		if motif, exclu := testutil.ReplayTypesNonServis[ts.Name()]; exclu {
 			if strings.TrimSpace(motif) == "" {
 				t.Errorf("le type %q est inscrit non servi SANS justification datee", ts.Name())
@@ -100,7 +92,7 @@ func TestChaqueChampStockeAUneDecision(t *testing.T) {
 					"dans testutil.ReplayChampsNonServis — soit le contrat le porte, soit la decision s'ecrit", cle)
 				continue
 			}
-			if a, b := f.Tag.Get("json"), g.Tag.Get("json"); a != b && !balisesServiesDifferentes[cle] {
+			if a, b := f.Tag.Get("json"), g.Tag.Get("json"); a != b && !testutil.BaliseDeclaree(cle, a, b) {
 				t.Errorf("%s : tag json %q cote stocke, %q cote servi — le client lirait un autre "+
 					"nom que celui que la cuisson ecrit", cle, a, b)
 			}
@@ -309,6 +301,27 @@ func parcourir(racines []reflect.Type, exclus map[string]string, visite func(ref
 	}
 	for _, r := range racines {
 		walk(r)
+	}
+}
+
+// marquerLesEmbarques inscrit comme vus les champs embarques sans tag json de `t` (le champ et son type) : la
+// serialisation les remonte a plat, donc la comparaison des champs ne les voit jamais, alors que la forme des
+// jumeaux (`filmcorpus`, `TestDocumentShapeTwinsAgree`) les nomme et que les listes de decisions les citent.
+func marquerLesEmbarques(t reflect.Type, vus, typesVus map[string]bool) {
+	for f := range t.Fields() {
+		if !f.Anonymous || f.Tag.Get("json") != "" {
+			continue
+		}
+		et := f.Type
+		if et.Kind() == reflect.Pointer {
+			et = et.Elem()
+		}
+		if et.Kind() != reflect.Struct {
+			continue
+		}
+		vus[t.Name()+"."+f.Name] = true
+		typesVus[et.Name()] = true
+		marquerLesEmbarques(et, vus, typesVus)
 	}
 }
 

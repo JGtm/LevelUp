@@ -51,7 +51,7 @@ func init() {
 		"ProjectileCoverage.FullRateSamples", "ScoreActionCoverage.BotRecipient", "ScoreActionCoverage.BotTarget",
 		"ScoreCoverage.RoundsAdmittedByReset", "ScoreCoverage.RoundsAdmittedByShare", "ShotAimCoverage.SansPosition",
 		"StanceControlCoverage.CrouchCommand", "StanceControlCoverage.FullCadence", "StanceControlCoverage.JumpCommand",
-		"StanceControlCoverage.StepUS", "TrackCoverage.AimOnlyBeforeOrigin", "TrackCoverage.AimOnlyNoLife",
+		"StanceControlCoverage.StepUS", "TrackCoverage.ViseesSeulesCoverage", "TrackCoverage.AimOnlyBeforeOrigin", "TrackCoverage.AimOnlyNoLife",
 		"TrackCoverage.FullRateAimOnlySamples", "TrackCoverage.FullRateAimSamples", "TrackCoverage.FullRateSamples",
 		"TrackCoverage.NoWorld",
 	} {
@@ -61,7 +61,7 @@ func init() {
 		"AmmoRead", "AmmoReadCoverage", "Announcement", "AnnouncementCoverage", "Appearance", "AppearanceCoverage",
 		"Attachment", "Chatter", "ChatterCoverage", "ControlKindCoverage", "ControlPlaceCoverage", "DrawnWeapon",
 		"DrawnWeaponCoverage", "FullRateFlight", "FullRateTrack", "Gesture", "GestureCoverage", "GrenadeDetonation",
-		"ProjectileAttach", "ProjectileAttachCoverage", "Vital", "VitalCoverage",
+		"ProjectileAttach", "ProjectileAttachCoverage", "ViseesSeulesCoverage", "Vital", "VitalCoverage",
 	} {
 		ReplayTypesNonServis[nom] = motifV160Calque
 	}
