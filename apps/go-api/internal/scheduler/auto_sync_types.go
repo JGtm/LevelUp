@@ -66,6 +66,11 @@ type PlayerOutcomeDetail struct {
 	// sont les nouveaux matchs, seuls annoncés par la notification de fin de cycle (domain.SyncResult). Interne :
 	// ni servi par le diagnostic ni rangé dans l'instantané persisté.
 	CatchUpInserted int `json:"-"`
+	// LastMatchAt : le dernier match connu du joueur à la fin de son dernier cycle réussi (zéro : inconnu),
+	// que le cycle suivant compare au sien pour voir les matchs rangés par une autre voie (compteur
+	// zero-insert). Conservé tel quel par les cycles sautés ou en échec. Interne : ni servi par le
+	// diagnostic ni rangé dans l'instantané persisté.
+	LastMatchAt time.Time `json:"-"`
 }
 
 // ConsecutiveZeroInsertWarnThreshold est le seuil au-delà duquel le scheduler

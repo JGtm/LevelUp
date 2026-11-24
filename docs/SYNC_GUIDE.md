@@ -61,7 +61,7 @@ Started by the server at boot (`internal/watcher` daemon). For each player it ru
 Each cycle, for every player in `db_profiles.json`:
 1. Skip if the player has no entry in the token pool, or if the watcher already has an active session for them.
 2. Build a `PooledHaloClient` pinned to that player.
-3. Run `SyncEngine.RunDelta` (parallel internal fetches). Repeated zero-insert cycles raise a warning (incident guard: 14 days of silent zero inserts in mai 2026).
+3. Run `SyncEngine.RunDelta` (parallel internal fetches). Repeated zero-insert cycles raise a warning (incident guard: 14 days of silent zero inserts in mai 2026). A match stored by another route between two cycles (the end-of-game trigger of the live watch) counts as a match: the counter also reads the latest known match of the player, and the warning only fires when no match arrived by any route over the window, once at the threshold, then every 48 cycles.
 
 Diagnostics are exposed via the admin endpoint `/api/v1/_diag/auto-sync/snapshot`.
 

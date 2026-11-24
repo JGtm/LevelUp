@@ -18,6 +18,7 @@ import (
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/auth/pool"
 	"levelup/go-api/internal/platform/auth/tokencache"
+	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/historyrepo"
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/sync/filmbacklog"
@@ -95,7 +96,10 @@ func initScheduler(st *bootState) {
 		// l'écran d'état de l'historique sous la capacité FilmCatchUp : sans lui, l'historique se dirait
 		// complet avec des films en retard. Sans la capacité (serveur hébergé), aucun lecteur : la cadence ne suit
 		// que l'historique.
-		WithFilmBacklogReader(filmbacklog.ReaderFor(cfg.Capabilities.FilmCatchUp))
+		WithFilmBacklogReader(filmbacklog.ReaderFor(cfg.Capabilities.FilmCatchUp)).
+		// Le compteur zero-insert lit le dernier match connu de chaque joueur : un match rangé par le
+		// déclencheur de fin de partie n'est pas un cycle sans nouveau match.
+		WithLastMatchReader(duckdb.LastMatchReader{Log: slog.Default()})
 	schedulerCtx, cancelSchedulerLoops := context.WithCancel(ctx)
 	// L'arrêt annule aussi la résolution des comptes en tâche de fond, dès son premier instant.
 	cancelScheduler := func() {

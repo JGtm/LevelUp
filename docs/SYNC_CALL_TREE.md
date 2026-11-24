@@ -65,7 +65,7 @@ AutoSyncScheduler.Run(ctx)                         (scheduler/auto_sync.go)
                       ├─ runner.RunDelta(ctx, domain.DefaultSyncOptions())   → see SyncEngine.run
                       │
                       ├─ record counters (MatchesInserted / Skipped / MedalsInserted / PostSync)
-                      ├─ ConsecutiveZeroInserts++ (reset if inserted>0)  ← warn ≥ threshold(6)
+                      ├─ ConsecutiveZeroInserts++ (reset if inserted>0 or latest known match advanced)  ← warn at threshold(6), then every 48 cycles
                       └─ runEventsConvergencePass(ctx, gamertag, xuid)
                             └─ BuildEngine(...).RunEventsConvergence(ctx, nil, limit)   ← bounded heal
 ```

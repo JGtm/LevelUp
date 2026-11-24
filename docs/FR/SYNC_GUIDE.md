@@ -61,7 +61,7 @@ Démarré par le serveur au boot (démon `internal/watcher`). Pour chaque joueur
 À chaque cycle, pour chaque joueur de `db_profiles.json` :
 1. Skip si le joueur n'a pas d'entrée dans le pool de tokens, ou si le watcher a déjà une session active pour lui.
 2. Construit un `PooledHaloClient` pinné sur ce joueur.
-3. Lance `SyncEngine.RunDelta` (fetches internes parallèles). Des cycles répétés à zéro insertion déclenchent un warning (garde-fou : 14 jours de zéro insertion silencieuse en mai 2026).
+3. Lance `SyncEngine.RunDelta` (fetches internes parallèles). Des cycles répétés à zéro insertion déclenchent un warning (garde-fou : 14 jours de zéro insertion silencieuse en mai 2026). Un match rangé par une autre voie entre deux cycles (le déclencheur de fin de partie du suivi en direct) compte comme un match arrivé : le compteur lit aussi le dernier match connu du joueur, et le warning ne part que si aucun match n'est arrivé, par aucune voie, sur la fenêtre, une fois au seuil puis tous les 48 cycles.
 
 Le diagnostic est exposé via l'endpoint admin `/api/v1/_diag/auto-sync/snapshot`.
 

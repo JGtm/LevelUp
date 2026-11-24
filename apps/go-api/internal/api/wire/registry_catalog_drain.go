@@ -157,24 +157,41 @@ var ErrNoPublicReadToken = errors.New("wire: aucun jeton de lecture publique dis
 // accord : le jeton d'un joueur ne sert jamais le contenu d'un autre sans son consentement.
 // Source non câblée ou aucun compte consentant : ErrNoPublicReadToken, journalisée ; le jeton d'un
 // profil n'est jamais pris en repli.
+//
+// Le refus se journalise UNE fois par épisode ([ServiceRegistry.signalerRefusJeton]) : cette prise a lieu à
+// chaque mise en file d'un rejeu, et le même constat répété à chaque fois noierait le journal.
 func (r *ServiceRegistry) haloTokensForDrain(ctx context.Context) (*domain.HaloTokens, error) {
 	if r.publicReadTokenSrc == nil {
-		monitoringLog.WarnContext(ctx, "jeton de lecture publique : source de la mise en commun non câblée, rien n'est téléchargé")
+		r.signalerRefusJeton(ctx, "jeton de lecture publique : source de la mise en commun non câblée, rien n'est téléchargé")
 		return nil, fmt.Errorf("%w: source non câblée", ErrNoPublicReadToken)
 	}
 	acquireCtx, cancel := context.WithTimeout(ctx, publicReadPoolAcquireTimeout)
 	defer cancel()
 	tokens, _, err := r.publicReadTokenSrc.ResolveAny(acquireCtx)
 	if err != nil {
-		monitoringLog.WarnContext(ctx, "jeton de lecture publique : aucun compte consentant ou sain dans la mise en commun, rien n'est téléchargé",
+		r.signalerRefusJeton(ctx, "jeton de lecture publique : aucun compte consentant ou sain dans la mise en commun, rien n'est téléchargé",
 			"err", err)
 		return nil, fmt.Errorf("%w: %w", ErrNoPublicReadToken, err)
 	}
 	if tokens == nil {
-		monitoringLog.WarnContext(ctx, "jeton de lecture publique : la source n'a rendu aucun jeton, rien n'est téléchargé")
+		r.signalerRefusJeton(ctx, "jeton de lecture publique : la source n'a rendu aucun jeton, rien n'est téléchargé")
 		return nil, fmt.Errorf("%w: jeton vide", ErrNoPublicReadToken)
 	}
+	if r.drainTokenRefused.CompareAndSwap(true, false) {
+		monitoringLog.InfoContext(ctx, "jeton de lecture publique : de nouveau disponible dans la mise en commun")
+	}
 	return tokens, nil
+}
+
+// signalerRefusJeton journalise un refus de jeton de lecture publique : un avertissement à l'ENTRÉE de
+// l'épisode de refus, le niveau débogage tant qu'il dure. Un jeton servi de nouveau clôt l'épisode : le
+// refus suivant avertit encore.
+func (r *ServiceRegistry) signalerRefusJeton(ctx context.Context, msg string, args ...any) {
+	if r.drainTokenRefused.CompareAndSwap(false, true) {
+		monitoringLog.WarnContext(ctx, msg, args...)
+		return
+	}
+	monitoringLog.DebugContext(ctx, msg, args...)
 }
 
 // jetonsCatalogue : prise des jetons Halo du catalogue (expansion des playlists, drain UGC), le
