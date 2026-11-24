@@ -48,18 +48,11 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/observability"
-	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	settingsPkg "levelup/go-api/internal/platform/settings"
-	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
+	"levelup/go-api/internal/sync/filmbacklog"
 	"levelup/go-api/internal/sync/filmfetch"
 )
-
-// maxPerCycle borne le nombre d'artefacts construits par cycle : un sync initial insère
-// des centaines de matchs, et décoder des centaines de films dans le post-sync bloquerait
-// le cycle pendant des heures. Le solde relève du backfill CLI (levelup backfill-replay),
-// idempotent et repris par SchemaVersion.
-const maxPerCycle = 5
 
 // EnqueueFunc met la construction du rejeu d'un match dans la FILE DURABLE (le
 // travail part alors à un ouvrier, éventuellement sur une autre machine), à la priorité donnée
@@ -96,6 +89,9 @@ type Hook struct {
 	// BuildOne : la strategie de cuisson, cablee par NewHook (cf. buildone.go). Elle voyage
 	// avec le hook pour que les DEUX sites de wiring la recoivent sans la redeclarer.
 	BuildOne BuildOneFunc
+	// FilmCatchUp : la capacité FilmCatchUp du profil (NewHook la lit sur la configuration) : bornes du cycle (bornes.go),
+	// et celles de la source des frags (`SyncEngine.WithReplayArtifacts`).
+	FilmCatchUp bool
 }
 
 // SettingsReader : la lecture des réglages vivants dont le hook a besoin.
@@ -145,7 +141,8 @@ func NewHook(cfg *config.AppConfig, store SettingsReader, enqueue EnqueueFunc) *
 		FilmRoot:  cfg.PathResolver().FilmArchiveDir,
 		// LA CUISSON PART DANS UN ENFANT BORNE, TOUJOURS (lot BUILDALL) : le serveur ne
 		// decode plus un film dans son propre processus.
-		BuildOne: SpawnBuildOneAvecFils(cfg.Capabilities.DecoderThreads),
+		BuildOne:    SpawnBuildOneAvecFils(cfg.Capabilities.DecoderThreads),
+		FilmCatchUp: cfg.Capabilities.FilmCatchUp,
 	}
 }
 
@@ -240,6 +237,9 @@ type Deps struct {
 	RetentionMonths int
 	// Placement : la décision du cycle (Hook.Placement()).
 	Placement replaybuild.Placement
+	// PerCycle et Horizon : plafond de matchs par cycle et matchs lus au registre (Hook.PerCycle, Hook.Horizon) ;
+	// 0 = [maxPerCycle] et [BacklogHorizon], les valeurs sous la capacité FilmCatchUp.
+	PerCycle, Horizon int
 	// Budget : durée maximale d'une passe de cycle. 0 = BudgetParCycle (le contrat de
 	// production) ; négatif = « déjà épuisé ». N'est renseigné que par les tests.
 	Budget time.Duration
@@ -258,65 +258,6 @@ type Deps struct {
 	// in-process « pour ne pas perdre le cycle » est exactement ce que le lot BUILDALL
 	// supprime : c'est ainsi que la machine est morte trois fois.
 	BuildOne BuildOneFunc
-}
-
-// buildWork : un match à construire, avec ses identités de carte candidates et les faits que
-// seule la base connaît (lignes de match, scores des deux camps, nom de variante).
-type buildWork struct {
-	matchID  string
-	mapNames []string
-	facts    port.MatchFacts
-	// priorite : rang dans la file de l'ouvrier (domain.BuildPriority*), posé par la sélection.
-	priorite int
-}
-
-// attachMatchFacts lit, DANS LE MÊME SEGMENT DE LECTURE que la sélection, ce que la base sait
-// de chaque match du lot — le pont d'identité des joueurs et celui des camps.
-//
-// POURQUOI ICI ET PAS AU MOMENT DE CONSTRUIRE : le décodage d'un film dure des secondes à des
-// minutes, et rien ne doit tenir un handle partagé pendant ce temps-là (même règle que l'action
-// admin). Deux SELECT courts par match, puis la base est relâchée.
-//
-// Une lecture qui échoue DÉGRADE ce match seul, journalisée : l'artefact sortira sans compteurs
-// de joueur ni actions d'objectif, ce qui vaut mieux que pas d'artefact du tout.
-func attachMatchFacts(ctx context.Context, sharedDB *sql.DB, work []buildWork) {
-	if sharedDB == nil {
-		return
-	}
-	var repo port.ReplayFactsRepo = duckdbpkg.NewReplayFactsRepo(sharedDB)
-	for i := range work {
-		facts, err := repo.FactsForMatch(ctx, work[i].matchID)
-		if err != nil {
-			slog.WarnContext(ctx, "post-sync: faits de match illisibles — rejeu sans courbe de score complète",
-				"err", err, "match_id", work[i].matchID)
-			continue
-		}
-		work[i].facts = facts
-	}
-}
-
-// etatArtefact dit ce que vaut l'artefact déjà sur disque pour ce match : est-il à la version
-// COURANTE, et porte-t-il ce que les faits permettent d'y mettre.
-//
-// UNE SEULE ÉCRITURE DE LA RÈGLE POUR LES DEUX CHEMINS post-sync (mise en file et construction
-// locale). En deux exemplaires elle aurait divergé au premier ajustement, et un chemin serait
-// resté à figer des artefacts appauvris pendant que l'autre les répare.
-//
-// `complet` est une PRÉSOMPTION, pas une preuve : sans lignes de match, il n'y a rien de mieux
-// à espérer d'une reconstruction, donc l'artefact est réputé complet ; avec des lignes, l'absence
-// de compteurs de joueur le fait présumer appauvri (cf. l'en-tête de
-// `replaybuild.Digest.HasPlayerCounters` pour les trois vacuités légitimes que cette présomption
-// peut confondre).
-// UNE SEULE LECTURE DU FICHIER, ET C'EST L'ITEM 5.3 DE PLAN_CUISSON_PERF : les deux questions
-// (« à jour ? », « avec des compteurs ? ») ouvraient chacune l'artefact — deux `os.ReadFile` et
-// deux désérialisations d'un document de ~2 Mo, pour chaque match de chaque cycle, sur les DEUX
-// chemins post-sync. Le digest répond aux deux d'une seule lecture.
-func etatArtefact(path string, facts port.MatchFacts) (aJour, complet bool) {
-	d, ok := replaybuild.ArtifactDigest(path)
-	if !ok || !d.UpToDate() {
-		return false, false
-	}
-	return true, len(facts.Players) == 0 || d.HasPlayerCounters()
 }
 
 // Run — étape post-sync 1.58 : selon le lieu de construction réglé, ou bien pont
@@ -360,8 +301,10 @@ func cuireLeCycle(ctx context.Context, d Deps, insertedIDs []string) {
 	observability.AddIntT(titre, CompteurSelectionnes, int64(len(work)))
 	// JAUGE, PAS COMPTEUR : ce qui reste à rattraper APRÈS ce cycle. Publiée MÊME À ZÉRO —
 	// une clé absente de /debug/vars ne se distingue pas d'une étape qui ne tourne pas, et
-	// c'est précisément l'ambiguïté que ce lot ferme.
-	observability.SetIntT(titre, CompteurRetard, int64(retard))
+	// c'est précisément l'ambiguïté que ce lot ferme. Elle est publiée à la SORTIE, sur toutes
+	// les sorties : `retard` est ce que la sélection a laissé de côté, et chaque chemin y ajoute ce
+	// que la passe n'a pas atteint (budget de temps, report à la fin d'une partie).
+	defer func() { publierRetard(d, titre, retard) }()
 	if len(work) == 0 {
 		// SÉLECTION VIDE ≠ ÉTAPE MUETTE. Sans cette ligne, « la fenêtre de rétention a tout
 		// écarté » et « l'étape n'a jamais tourné » s'écrivent pareil dans le journal : rien.
@@ -385,13 +328,14 @@ func cuireLeCycle(ctx context.Context, d Deps, insertedIDs []string) {
 		// EN PLACEMENT « OUVRIER » CE PROCESS NE CUIT RIEN, mais les artefacts que l'ouvrier a
 		// déposés sont bien sur le disque : leur rattrapage est posé en `defer` par [Run], et
 		// il vaut donc pour cette sortie-ci comme pour toutes les autres.
-		enqueueAll(ctx, d, work)
+		retard += enqueueAll(ctx, d, work)
 		return
 	}
-	if len(work) > maxPerCycle {
-		slog.InfoContext(ctx, "post-sync: rejeu 2D — lot borné, solde au cycle suivant",
-			"gamertag", d.Gamertag, "selected", len(work), "cap", maxPerCycle)
-		work = work[:maxPerCycle]
+	if plafond := perCycle(d); len(work) > plafond {
+		slog.InfoContext(ctx, "post-sync: rejeu 2D — garde-fou du lot atteint, solde au cycle suivant",
+			"gamertag", d.Gamertag, "selected", len(work), "cap", plafond)
+		retard += len(work) - plafond
+		work = work[:plafond]
 	}
 	// SONDE DE TITRE, PAS UN CONSTRUCTEUR : depuis le lot BUILDALL la cuisson se fait dans un
 	// ENFANT, qui monte le sien. Ce que cet appel garde, c'est la degradation par ABSENCE de
@@ -405,16 +349,25 @@ func cuireLeCycle(ctx context.Context, d Deps, insertedIDs []string) {
 		return
 	}
 	b := buildAll(ctx, d, work)
+	if d.BuildOne != nil {
+		// Sans construction câblée (dégradation voulue, déjà journalisée), aucun passage suivant ne
+		// ferait avancer un match : il n'est pas un retard qu'une cadence courte résorbe.
+		retard += b.aReprendre(len(work))
+	}
 	// LES DÉRIVATIONS VIENNENT APRÈS TOUTE CUISSON, jamais entre deux : c'est ce qui garantit
 	// que les bursts writer ne recouvrent aucun décodage. UN SEUL POINT D'ENTRÉE, le même que
 	// celui du dépôt d'ouvrier (cf. derivations.go — constat A1). Les rasters tactiques
 	// (cf. raster.go) sont la QUATRIÈME famille dérivée : mêmes artefacts rangés, même
 	// point d'entrée — voir Deriver.
-	Deriver(ctx, DerivationsDeps{
-		RepoRoot: d.RepoRoot, TitleSlug: d.TitleSlug, Gamertag: d.Gamertag,
-		WithRead: d.WithRead, AcquireWriter: d.AcquireWriter,
-	}, b.ranges)
+	deriverParLots(ctx, d, b.ranges)
 	publierBilan(ctx, d, b, len(work))
+}
+
+// publierRetard publie le retard qui reste APRÈS le cycle : la jauge expvar, et l'arriéré de rejeux
+// que lisent l'ordonnanceur et l'écran d'état de l'historique (`filmbacklog`).
+func publierRetard(d Deps, titre string, retard int) {
+	observability.SetIntT(titre, CompteurRetard, int64(retard))
+	filmbacklog.Publier(d.TitleSlug, filmbacklog.Rejeux, retard)
 }
 
 // selectionnerLeTravail compose le lot du cycle et rend le retard qui subsiste après lui.
@@ -460,7 +413,7 @@ func placeDuRattrapage(d Deps, inseres int) int {
 	if d.Placement == replaybuild.PlacementLocal && inseres > 0 {
 		return 0
 	}
-	return maxPerCycle - inseres
+	return perCycle(d) - inseres
 }
 
 // armee dit si l'étape peut travailler, et DIT POURQUOI quand elle ne le peut pas.
@@ -503,6 +456,7 @@ func publierBilan(ctx context.Context, d Deps, b bilanCuisson, selectionnes int)
 	observability.AddIntT(titre, CompteurConstruits, int64(b.construits))
 	observability.AddIntT(titre, CompteurFilmsPersistes, int64(b.filmsSauves))
 	observability.AddIntT(titre, CompteurDejaAJour, int64(b.dejaAJour))
+	filmbacklog.AjouterEcrits(d.TitleSlug, b.construits+b.filmsSauves)
 	slog.InfoContext(ctx, "post-sync: rejeu 2D",
 		"gamertag", d.Gamertag, "built", b.construits, "films_persisted", b.filmsSauves,
 		"deja_a_jour", b.dejaAJour, "sans_film", b.sansFilm, "reportes_non_finalises", b.reportes,

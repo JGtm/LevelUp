@@ -3,7 +3,6 @@ package service
 
 import (
 	"context"
-	"log/slog"
 	"time"
 
 	"levelup/go-api/internal/ctxkeys"
@@ -30,23 +29,7 @@ func (s *SyncJobService) PlayerSyncStatus(ctx context.Context, playerSlug string
 		CooldownRetryAfterSec: remainingSeconds(s.manualSyncCooldownLeft(manualDeltaKey(playerSlug))),
 	}
 	status.Syncing = (job != nil && !job.IsTerminal()) || s.syncGate.IsInFlightT(titleSlug, prof.Gamertag)
-	status.HistoryComplete = s.historyComplete(ctx, playerSlug, titleSlug)
 	return status, nil
-}
-
-// historyComplete lit l'état de l'historique du joueur pour le titre. Une lecture impossible (lecteur non
-// branché, base joueur absente ou en échec) se sert comme « non complet », après journalisation : le statut
-// de la synchronisation reste servi.
-func (s *SyncJobService) historyComplete(ctx context.Context, playerSlug, titleSlug string) bool {
-	if s.history == nil {
-		return false
-	}
-	complete, err := s.history.HistoryComplete(ctx, playerSlug, titleSlug)
-	if err != nil {
-		slog.WarnContext(ctx, "sync status: état de l'historique illisible", "player", playerSlug, "titleSlug", titleSlug, "err", err)
-		return false
-	}
-	return complete
 }
 
 // remainingSeconds arrondit un délai restant à la seconde supérieure ; 0 pour un délai nul ou négatif.

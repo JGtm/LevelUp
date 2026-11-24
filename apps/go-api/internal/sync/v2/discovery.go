@@ -3,9 +3,10 @@
 // Phase 1 = découverte parallèle, read-only. Pour chaque joueur :
 //  1. LoadKnown : lecture des match_ids déjà connus (règle internal/sync/knownset :
 //     présents au registre partagé pour le joueur).
-//  2. ListUnknownMatches : pagination API jusqu'au 1er match connu (delta).
+//  2. ListUnknownMatches : pagination API jusqu'à domain.DeltaKnownRun matchs connus d'affilée (delta), ou, tant que
+//     l'historique du joueur est incomplet, rattrapage qui saute les connus (history.go).
 //  3. Orphelins de l'ensemble connu (knownset.Set.Recover) : ajoutés à la liste du joueur, donc
-//     récupérés PAR match_id par les phases suivantes, même plus anciens que le 1er connu.
+//     récupérés PAR match_id par les phases suivantes, même plus anciens que la zone déjà connue.
 //
 // Aucune écriture, aucun shared writer lease pris. Les N joueurs tournent
 // en goroutines indépendantes via errgroup (parallélisme = len(players)).
@@ -22,32 +23,31 @@ import (
 	gosync "sync"
 	"time"
 
-	"levelup/go-api/internal/sync/knownset"
-
 	"golang.org/x/sync/errgroup"
 )
 
 // KnownLoader retourne l'ensemble des match_ids déjà connus pour un
-// joueur (règle unique internal/sync/knownset, partagée avec le moteur V1), et les orphelins
-// à récupérer par match_id ce cycle (knownset.Set.Recover).
+// joueur (règle unique internal/sync/knownset, partagée avec le moteur V1), les orphelins
+// à récupérer par match_id ce cycle (knownset.Set.Recover), et l'état de l'historique du joueur
+// (historystate : fin vue ou non, marque-page), lu sur la même base joueur ouverte.
 // Read-only — pas de write lock requis. Peut être appelé concurremment pour
 // N joueurs. Une erreur wrappant knownset.ErrSharedUnreadable arrête le cycle.
 //
 // L'implémentation de production est NewKnownLoader (known_loader.go). Les
 // tests utilisent un mock direct.
 type KnownLoader interface {
-	LoadKnown(ctx context.Context, p PlayerProfile) (knownset.Set, error)
+	LoadKnown(ctx context.Context, p PlayerProfile) (KnownState, error)
 }
 
 // MatchListProvider retourne la liste des match_ids retournés par l'API
-// pour un joueur en mode delta : pagination en ordre reverse-chronologique
-// jusqu'à rencontrer un match présent dans known. Inclut tous les matchs
-// nouveaux précédant le premier connu (ordre API préservé).
-//
+// pour un joueur : en mode delta (historique complet), pagination en ordre
+// reverse-chronologique jusqu'à domain.DeltaKnownRun matchs présents dans known d'affilée ; tous les
+// matchs inconnus rencontrés avant, y compris ceux qui suivent un match connu, sont rendus (ordre API
+// préservé) ; en mode rattrapage (hist.Incomplete), les connus sont sautés (cf. Listing, history.go).
 // L'implémentation V1-bridge wrappe HaloClient pinné via le pool. Les
 // tests utilisent un mock.
 type MatchListProvider interface {
-	ListUnknownMatches(ctx context.Context, p PlayerProfile, known map[string]bool) ([]string, error)
+	ListUnknownMatches(ctx context.Context, p PlayerProfile, known map[string]bool, hist HistoryState) (Listing, error)
 }
 
 // DiscoveryResult capture le résultat agrégé de Phase 1 pour un cycle.
@@ -59,13 +59,20 @@ type MatchListProvider interface {
 type DiscoveryResult struct {
 	PerPlayer map[string][]string // PlayerSlug → []unknownMatchID (ordre API préservé, orphelins à la suite)
 	Errors    map[string]error    // PlayerSlug → erreur (best-effort par joueur)
-	Duration  time.Duration
+	// History : état de l'historique de chaque joueur dont l'ensemble connu a été lu (y compris
+	// quand sa liste d'API a échoué ensuite) ; absent = état inconnu (LoadKnown en échec).
+	History  map[string]PlayerHistory
+	Duration time.Duration
 }
 
 // RunDiscovery exécute Phase 1 en parallèle pour N joueurs.
 //
 // Sémantique :
-//   - errgroup avec parallélisme = len(players) (pas de bottleneck artificiel).
+//   - deux temps : lecture de l'ensemble connu et de l'état de l'historique de TOUS les joueurs, puis
+//     répartition du budget de rattrapage du cycle entre ceux qui rattrapent (budget.go), puis liste de
+//     chacun avec son budget ;
+//   - errgroup avec parallélisme = len(players) (pas de bottleneck artificiel) ; seule la lecture d'un
+//     rattrapage d'historique est prise à tour de rôle par le provider (fetchers_history.go).
 //   - Échec d'un joueur capturé dans Errors, n'annule pas les autres.
 //   - Retourne err != nil uniquement sur échec global (ctx annulé). Les
 //     échecs par-joueur sont accessibles via Errors.
@@ -83,35 +90,40 @@ func RunDiscovery(
 	res := DiscoveryResult{
 		PerPlayer: make(map[string][]string, len(players)),
 		Errors:    make(map[string]error),
+		History:   make(map[string]PlayerHistory, len(players)),
 	}
 	if len(players) == 0 {
 		res.Duration = time.Since(start)
 		return res, nil
 	}
 
+	states := loadAllKnown(ctx, players, loader, &res)
+	plan := planCatchUp(states)
 	var mu gosync.Mutex
 	eg, egCtx := errgroup.WithContext(ctx)
 	for _, p := range players {
+		state, ok := states[p.PlayerSlug]
+		if !ok {
+			continue // LoadKnown en échec : déjà dans res.Errors
+		}
 		p := p
+		hist := plan.apply(p.PlayerSlug, state.History)
+		if hist.Deferred {
+			plan.noteDeferred(ctx, p.PlayerSlug)
+		}
 		eg.Go(func() error {
-			set, err := loader.LoadKnown(egCtx, p)
+			listing, err := provider.ListUnknownMatches(egCtx, p, state.Known, hist)
+			mu.Lock()
+			defer mu.Unlock()
 			if err != nil {
-				mu.Lock()
-				res.Errors[p.PlayerSlug] = fmt.Errorf("load known: %w", err)
-				mu.Unlock()
+				res.Errors[p.PlayerSlug] = fmt.Errorf("list matches: %w", err)
+				res.History[p.PlayerSlug] = playerHistory(hist, Listing{})
 				return nil //nolint:nilerr // best-effort par joueur, on n'annule pas le groupe
 			}
-			unknown, err := provider.ListUnknownMatches(egCtx, p, set.Known)
-			if err != nil {
-				mu.Lock()
-				res.Errors[p.PlayerSlug] = fmt.Errorf("list matches: %w", err)
-				mu.Unlock()
-				return nil //nolint:nilerr // idem
-			}
-			unknown = appendOrphans(egCtx, p, unknown, set.Recover)
-			mu.Lock()
+			unknown := appendOrphans(egCtx, p, listing.Unknown, state.Recover, hist.skipped())
+			unknown = appendRetries(egCtx, p, unknown, hist.Retry, state.Known)
 			res.PerPlayer[p.PlayerSlug] = unknown
-			mu.Unlock()
+			res.History[p.PlayerSlug] = playerHistory(hist, listing)
 			return nil
 		})
 	}
@@ -123,10 +135,44 @@ func RunDiscovery(
 	return res, nil
 }
 
+// loadAllKnown lit, en parallèle, l'ensemble connu et l'état de l'historique de chaque joueur. Un joueur
+// dont la lecture échoue est dans res.Errors et absent du résultat.
+func loadAllKnown(ctx context.Context, players []PlayerProfile, loader KnownLoader, res *DiscoveryResult) map[string]KnownState {
+	var mu gosync.Mutex
+	states := make(map[string]KnownState, len(players))
+	eg, egCtx := errgroup.WithContext(ctx)
+	for _, p := range players {
+		p := p
+		eg.Go(func() error {
+			state, err := loader.LoadKnown(egCtx, p)
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				res.Errors[p.PlayerSlug] = fmt.Errorf("load known: %w", err)
+				return nil //nolint:nilerr // best-effort par joueur, on n'annule pas le groupe
+			}
+			states[p.PlayerSlug] = state
+			return nil
+		})
+	}
+	_ = eg.Wait() // les goroutines ne rendent jamais d'erreur : chacune range la sienne dans res.Errors
+	return states
+}
+
+// playerHistory est ce que la découverte retient de l'historique d'un joueur, avec le résultat de sa
+// liste (vide quand elle a échoué).
+func playerHistory(h HistoryState, l Listing) PlayerHistory {
+	return PlayerHistory{
+		Incomplete: h.Incomplete, EndSeen: l.EndSeen, Proposed: l.Proposed, Failures: h.Failures, Skip: h.Skip,
+		Retry: h.Retry, Unreadable: h.Unreadable, Deferred: h.Deferred, Budget: h.Budget, Arrived: l.Arrived,
+	}
+}
+
 // appendOrphans ajoute à la liste d'un joueur les orphelins à récupérer par match_id
-// (knownset.Set.Recover) que la pagination n'a pas déjà listés, à la suite (ordre de Recover).
+// (knownset.Set.Recover) que la pagination n'a pas déjà listés, à la suite (ordre de Recover). Un
+// orphelin que la découverte ne demande plus (skip : introuvable, abandonné) n'est pas ajouté.
 // Aucun orphelin → la liste est rendue telle quelle.
-func appendOrphans(ctx context.Context, p PlayerProfile, unknown, orphans []string) []string {
+func appendOrphans(ctx context.Context, p PlayerProfile, unknown, orphans []string, skip map[string]bool) []string {
 	if len(orphans) == 0 {
 		return unknown
 	}
@@ -134,15 +180,19 @@ func appendOrphans(ctx context.Context, p PlayerProfile, unknown, orphans []stri
 	for _, id := range unknown {
 		listed[id] = true
 	}
-	added := 0
+	added, skipped := 0, 0
 	for _, id := range orphans {
-		if !listed[id] {
+		switch {
+		case listed[id]:
+		case skip[id]:
+			skipped++
+		default:
 			unknown = append(unknown, id)
 			added++
 		}
 	}
 	slog.InfoContext(ctx, "sync.v2: orphelins ajoutés à la récupération par match_id",
 		"event", "sync.v2.discovery.orphans", "player", p.PlayerSlug,
-		"requested", len(orphans), "already_listed", len(orphans)-added, "added", added)
+		"requested", len(orphans), "already_listed", len(orphans)-added-skipped, "skipped", skipped, "added", added)
 	return unknown
 }

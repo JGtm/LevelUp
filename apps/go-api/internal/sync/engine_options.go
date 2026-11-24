@@ -80,7 +80,9 @@ func NewSyncEngineForTitle(
 		// wiring qui doivent y penser reproduirait exactement ce défaut. Le hook est inerte
 		// là où il n'a rien à faire : client sans GetFilmChunks, capability absente, ou
 		// backlog vide (cf. killcollector.RunPostSync).
-		killSource: killcollector.NewPostSyncHook(repoRoot, 0),
+		// BORNE DE FILMS PAR CYCLE : celle du serveur hébergé tant que WithReplayArtifacts n'a pas
+		// porté la capacité FilmCatchUp du profil (un moteur non câblé ne décode jamais plus que l'hébergé).
+		killSource: killcollector.NewPostSyncHook(repoRoot, killcollector.FragsParCycleHeberge),
 	}
 }
 
@@ -209,8 +211,15 @@ func (e *SyncEngine) WithMediaScanHook(hook func(ctx context.Context)) *SyncEngi
 // TOUJOURS ; le hook décide à chaque cycle où se construit le rejeu (local, ouvrier ou rien,
 // replaybuild.DecidePlacement), et « local » est refusé en production : le VPS web ne décode
 // jamais, il met en file pour l'ouvrier.
+//
+// LE HOOK PORTE LA CAPACITÉ FilmCatchUp DU PROFIL (replayartifacts.NewHook) : les deux étapes film du
+// post-sync, celle des rejeux et la source des frags, prennent leurs bornes par cycle chez lui, pour
+// qu'un seul point de câblage les décide.
 func (e *SyncEngine) WithReplayArtifacts(h *replayartifacts.Hook) *SyncEngine {
 	e.replayArtifacts = h
+	if h != nil && e.killSource != nil {
+		e.killSource.WithFilmCatchUp(h.FilmCatchUp)
+	}
 	return e
 }
 

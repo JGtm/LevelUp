@@ -59,6 +59,17 @@ func (o SyncOptions) Validate() error {
 	return nil
 }
 
+// DeltaKnownRun est le nombre de matchs connus d'affilée, dans la liste de l'API, après lequel un
+// delta des nouveaux matchs s'arrête (Halo Infinite V1 et V2, Halo 5). Un delta ne s'arrête plus au
+// premier match connu : un match rangé d'abord par la synchronisation d'un coéquipier est connu du
+// joueur (le joueur figure parmi ses participants) sans que les matchs que le joueur a joués seul
+// juste en dessous le soient ; s'arrêter dessus les cacherait pour toujours. Une page entière de
+// connus d'affilée prouve qu'on a rejoint la zone déjà synchronisée ; un inconnu rencontré avant est
+// pris et remet le compte à zéro. Vaut la taille de page de l'API (25) : en historique complet et
+// sans nouveau match, le delta lit la même première page qu'avant. La profondeur reste bornée par
+// la borne de pages de chaque moteur.
+const DeltaKnownRun = 25
+
 // DefaultSyncOptions retourne les options par défaut (portage de SyncOptions() Python).
 func DefaultSyncOptions() SyncOptions {
 	return SyncOptions{
@@ -87,10 +98,17 @@ type SyncResult struct {
 	FinishedAt       time.Time
 	DurationSeconds  float64
 	PostSync         *PostSyncResult
-	// HistoryExhausted : la pagination a reçu une page vide, c'est-à-dire la fin de
-	// l'historique du joueur chez le titre. Faux quand la boucle s'est arrêtée avant
-	// (plafond, annulation, page perdue, match connu en delta).
-	HistoryExhausted bool
+	// HistoryPending : la passe a laissé l'historique du joueur incomplet (la fin n'a pas été rangée
+	// pendant la passe) : la passe suivante doit rattraper. Faux quand l'historique était déjà
+	// complet au début. Rempli par le runner Halo 5 ; le pipeline V2 le porte par joueur sur son propre
+	// résultat. Le moteur V1 ne le remplit jamais (delta pur). Lu par l'ordonnanceur pour replanifier
+	// un cycle court ; absent des réponses d'API.
+	HistoryPending bool `json:"-"`
+	// CatchUpInserted : parmi MatchesInserted, les matchs que le rattrapage de l'historique a rangés (au-delà
+	// du delta du dessus). Les autres sont les nouveaux matchs, arrivés par le delta. Zéro tant que le runner
+	// ne le remplit pas : tous les matchs insérés comptent alors comme nouveaux. Lu par l'ordonnanceur pour la
+	// notification de fin de cycle, qui n'annonce que les nouveaux matchs ; absent des réponses d'API.
+	CatchUpInserted int `json:"-"`
 }
 
 // Status retourne "success", "partial_success" ou "failure".

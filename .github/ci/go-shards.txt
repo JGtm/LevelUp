@@ -82,12 +82,36 @@ heavy grammar-fils TestFilsMotsIdentiques
 # plusieurs fils et compare les sorties. Plus de la moitié du temps du paquet.
 heavy replay-fils TestFilsBorneReelleDesFilsQuiCalculent TestVoieFondIdentiqueATousLesFils TestFilsDocumentEtFaitsIdentiquesDeBoutEnBout TestVoieOrdreDesEtapesIdentique TestVoieAUnFilAucuneGoroutine TestVoieSiegesIdentique TestVoieMondeCompteLesReplisUneSeuleFois TestVoieMondeIdentique TestFilsContexteDejaLuMemesReplisATousLesFils
 
+# CMD/SERVER EN QUATRE LOTS. Les tests d'intégration du rattrapage de l'historique
+# (sync_v2_convergence*_integration_test.go : ordonnanceur et orchestrateur de production, vraies bases
+# DuckDB, faux service Halo, ~0,15 s par match persisté) pèsent ~815 s de test hors couverture sur un poste
+# de développement (relevé du 2026-11-23, après réduction des historiques à 450-500 matchs ; 1 490 s avant),
+# soit ~900 s sous couverture, contre un `-timeout 600s` par processus de test : un seul lot échouait au
+# délai sans qu'aucun test ne soit en échec (run 45098140753, `FAIL levelup/go-api/cmd/server 600.307s`).
+# Un runner de CI est ~1,4 fois plus lent : il faut des lots de ~250 s au plus sur un poste de développement.
+# Répartition par durée mesurée de chaque test de premier niveau ; durée de chaque lot rejoué avec les
+# options de la CI (couverture atomic + -coverpkg=./..., édition de liens comprise), le 2026-11-23 :
+#   server-rattrapage-1  run:server-rattrapage-1                   207 s
+#   server-rattrapage-2  run:server-rattrapage-2                   216 s
+#   server-rattrapage-3  run:server-rattrapage-3                   202 s
+#   server               skip:server-rattrapage-1,-2,-3            235 s (trois rattrapages non listés
+#                                                                   + les 166 autres tests du paquet, 22 s)
+# Un test de rattrapage non listé tombe donc dans le lot `server` : il se rééquilibre ici quand ce lot dépasse
+# durablement les autres dans le résumé de la CI.
+heavy server-rattrapage-1 TestDifficile_Interruption_ArretPendantPersistance TestDifficile_MatchIntrouvable_NEstPasCompteInsere
+heavy server-rattrapage-2 TestDifficile_DeuxJoueurs_UnCompletUnEnRattrapage TestDifficile_MatchsNeufsEtIntrouvables_RepriseExacte TestConvergence_V2_Ordonnanceur_Infinite_MatchIntrouvable404NeBloquePas
+heavy server-rattrapage-3 TestDifficile_SixJoueursSous429_NouveauxMatchsGardesEtRattrapageReprend TestConvergence_V2_Ordonnanceur_Infinite_500Matchs TestConvergence_V2_Ordonnanceur_Infinite_MatchEnEchecDurableAbandonne TestDifficile_HistoriqueDejaComplet_CasNormalInchange
+
 # Module apps/go-api. `persist` et `ops` partageaient le lot du décodeur de film (56 + 6 s hors
 # couverture au relevé du 2026-10-28) avant que le décodeur ne devienne une brique.
 module apps/go-api
 lot persist-ops         - ./internal/persist ./internal/ops
 lot platform            - ./internal/platform/duckdb/... ./internal/migration ./internal/games/halo_infinite/migrations ./internal/mapdecoupe ./cmd/levelup
 lot sync                - ./internal/sync/... ./internal/api/wire ./internal/archlint
+lot server-rattrapage-1 run:server-rattrapage-1 ./cmd/server
+lot server-rattrapage-2 run:server-rattrapage-2 ./cmd/server
+lot server-rattrapage-3 run:server-rattrapage-3 ./cmd/server
+lot server              skip:server-rattrapage-1,server-rattrapage-2,server-rattrapage-3 ./cmd/server
 lot reste               - @reste
 
 # Brique du décodeur de film (ADR 0041, 0043) : `grammar` coupé en cinq lots, `replay` en deux, le reste du

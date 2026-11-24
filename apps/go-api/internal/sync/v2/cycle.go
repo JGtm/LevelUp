@@ -56,6 +56,9 @@ type CycleOrchestratorImpl struct {
 	// invoqué explicitement après RunPostSync, hors fenêtre RW (write-lease relâché en
 	// fin de Phase 6), par PlayerSlug (= user_id des défis). nil = no-op.
 	prestigeHook func(ctx context.Context, playerSlug, titleSlug string)
+	// historyWriter (câblé par WithHistoryWriter) ouvre la base joueur en écriture sous le bail du
+	// joueur pour ranger la fin d'historique et le marque-page après la persistance (history.go).
+	historyWriter PlayerDBOpener
 }
 
 // WithSnapshotProducer câble le producteur de snapshot (Phase 6bis), optionnel et
@@ -172,6 +175,11 @@ func (o *CycleOrchestratorImpl) Run(
 		"errors", len(disc.Errors),
 	)
 
+	// HistoryPending : suivi de l'historique incomplet, recopié sur PerPlayer à CHAQUE sortie du
+	// cycle (les sorties anticipées comprises) ; settleHistory le fait baisser après la persistance.
+	hist := newHistoryTracker(disc)
+	defer hist.apply(res.PerPlayer)
+
 	// Capturer les erreurs Discovery dans PerPlayer.
 	for slug, errVal := range disc.Errors {
 		o.markFailed(res.PerPlayer, slug, playerBySlug, "discovery", errVal)
@@ -229,6 +237,12 @@ func (o *CycleOrchestratorImpl) Run(
 
 	// ─── Phase 5 — Persist ──────────────────────────────────────────────
 	persistRes := RunPersist(ctx, fetched, enrichments, playerBySlug, o.persister)
+	var proof persistProof
+	if dt := drainTimeoutOf(persistRes.Err); dt != nil {
+		// Attente de la file expirée : le cycle continue avec les matchs prouvés rangés (persist_pending.go).
+		proof = o.proveAfterDrainTimeout(ctx, players, disc, fetched, dt)
+		persistRes.MatchesPersisted, persistRes.Err = len(proof.proven), nil
+	}
 	res.PhaseDurations[PhasePersist] = persistRes.Duration
 	observability.RecordDurationMST(ctxkeys.TitleSlug(ctx), "sync_v2_phase_duration_ms_persist", persistRes.Duration.Milliseconds())
 	observability.AddIntT(ctxkeys.TitleSlug(ctx), "sync_v2_matches_persisted_total", int64(persistRes.MatchesPersisted))
@@ -252,15 +266,25 @@ func (o *CycleOrchestratorImpl) Run(
 	}
 
 	// Mettre à jour PerPlayer avec les compteurs Phase 1-5.
+	stored := o.proveStored(ctx, players, disc, fetched)
 	for _, p := range players {
-		o.populateOutcome(res.PerPlayer, p, playerBySlug, disc, dedup)
+		o.populateOutcome(res.PerPlayer, p, disc, dedup, outcomeProof{fetched: fetched, queued: proof.queued, stored: stored})
 	}
+	noteQueued(res.PerPlayer, players, disc, proof.queued)
+
+	// Persistance réussie : fin d'historique, marque-page des joueurs au rattrapage, matchs à ne plus
+	// demander de tous.
+	hist.queued = proof.queued
+	o.settleHistory(ctx, hist, players, settleCycle{disc: disc, fetched: fetched, stored: stored})
 
 	// ─── Phase 6 — Post-sync ────────────────────────────────────────────
 	// Calcule insertedByPlayer depuis fetched + dedup pour cibler les heals
 	// weapon_kills/dominance sur les nouveaux matchs.
 	insertedByPlayer := make(map[string][]string, len(players))
 	for mID := range fetched.Matches {
+		if !proof.persisted(mID) {
+			continue // encore dans la file d'écriture : rangé en arrière-plan, après ce cycle
+		}
 		for _, slug := range dedup.ParticipantsByMatch[mID] {
 			insertedByPlayer[slug] = append(insertedByPlayer[slug], mID)
 		}
@@ -383,38 +407,6 @@ func (o *CycleOrchestratorImpl) markFailed(
 		out.FirstError = fmt.Sprintf("%s: %v", phase, err)
 	}
 	per[slug] = out
-}
-
-// populateOutcome remplit les compteurs Phase 1-5 d'un joueur, sans
-// écraser un status "failed" déjà positionné par markFailed.
-func (o *CycleOrchestratorImpl) populateOutcome(
-	per map[string]PlayerOutcome,
-	p PlayerProfile,
-	byProfile map[string]PlayerProfile,
-	disc DiscoveryResult,
-	dedup DedupResult,
-) {
-	out := per[p.PlayerSlug]
-	out.Gamertag = p.Gamertag
-	out.XUID = p.XUID
-	if out.Status == "" {
-		out.Status = "ok"
-	}
-	out.MatchesUnknown = len(disc.PerPlayer[p.PlayerSlug])
-	// Compter les matchs assignés à ce joueur comme canonical fetcher,
-	// pondéré : son MatchesInserted = matchs où ses participants
-	// existent (proxy correct pour V2 où on persist en batch).
-	for _, mID := range disc.PerPlayer[p.PlayerSlug] {
-		participants := dedup.ParticipantsByMatch[mID]
-		for _, s := range participants {
-			if s == p.PlayerSlug {
-				out.MatchesInserted++
-				break
-			}
-		}
-	}
-	per[p.PlayerSlug] = out
-	_ = byProfile // signature consistante, byProfile peut servir future
 }
 
 // mergePostSyncOutcome ajoute les warnings + propage l'erreur post-sync

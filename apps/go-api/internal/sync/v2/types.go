@@ -37,6 +37,14 @@ type PlayerOutcome struct {
 	Status          string // "ok" | "partial" | "failed"
 	FirstError      string // vide si OK
 	Warnings        []string
+	// HistoryPending : la passe a laissé l'historique de ce joueur incomplet (la fin n'a pas été
+	// rangée pendant le cycle) : le cycle suivant doit rattraper. Faux quand l'historique était
+	// déjà complet au début du cycle.
+	HistoryPending bool
+	// CatchUpInserted : parmi MatchesInserted, les matchs que le rattrapage de l'historique a rangés (au-delà
+	// du delta du dessus) ; les autres sont les nouveaux matchs. Zéro tant que le cycle ne le remplit pas : tous
+	// les matchs insérés comptent alors comme nouveaux. Lu par l'ordonnanceur (notification de fin de cycle).
+	CatchUpInserted int
 }
 
 // PhaseNames sert de clés stables pour PhaseDurations et le logging.

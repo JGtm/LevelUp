@@ -30,16 +30,17 @@ package replayartifacts
 //
 // # LES DEUX BORNES SONT CELLES QUI EXISTENT DEJA
 //
-//	horizon de lecture  [BacklogHorizon] (64) matchs les plus recents de la fenetre de
+//	horizon de lecture  [BacklogHorizon] matchs les plus recents de la fenetre de
 //	                    retention — la meme requete que le rattrapage de cuisson.
-//	plafond de travail  [maxPerCycle] (5) artefacts derives par cycle. Une derivation coute une
-//	                    lecture de document et un burst writer court, pas un decodage : le
-//	                    plafond est ici une PRUDENCE, pas une necessite de duree.
+//	plafond de travail  [maxPerCycle] artefacts derives par cycle, en lots de [lotDeDerivations]
+//	                    sous le budget de temps du cycle ([deriverParLots]). Une derivation coute
+//	                    une lecture de document et un burst writer court, pas un decodage.
 
 import (
 	"context"
 	"database/sql"
 	"log/slog"
+	"time"
 
 	"levelup/go-api/internal/ctxkeys"
 	titlePkg "levelup/go-api/internal/domain/title"
@@ -82,10 +83,40 @@ func rattraperDerivations(ctx context.Context, d Deps) {
 	slog.InfoContext(ctx, "post-sync: rejeu 2D — rattrapage des derives",
 		"gamertag", d.Gamertag, "artefacts", len(candidats), "restant", restant)
 	observability.AddIntT(titre, CompteurDerivationsRattrapees, int64(len(candidats)))
-	Deriver(ctx, DerivationsDeps{
+	deriverParLots(ctx, d, candidats)
+}
+
+// lotDeDerivations : le nombre d'artefacts qu'un appel de [Deriver] lit et projette ENSEMBLE. Deriver
+// désérialise tous les documents de son lot avant d'écrire (un document range pese ~2 Mo, bien plus
+// une fois lu) : le plafond du cycle ([maxPerCycle]) ne doit pas devenir la taille d'un seul lot.
+const lotDeDerivations = 5
+
+// deriverParLots dérive des artefacts rangés par lots de [lotDeDerivations], et s'arrête ENTRE deux
+// lots quand le budget de temps du cycle est épuisé : ce qui reste n'a pas de marque de dérivation,
+// donc le rattrapage du cycle suivant le reprend. C'est le point d'entrée des DEUX sites du cycle (les
+// artefacts cuits, puis le rattrapage) ; le dépôt de l'ouvrier, lui, appelle [Deriver] directement
+// pour un seul artefact.
+func deriverParLots(ctx context.Context, d Deps, ranges []ArtefactRange) {
+	dd := DerivationsDeps{
 		RepoRoot: d.RepoRoot, TitleSlug: d.TitleSlug, Gamertag: d.Gamertag,
 		WithRead: d.WithRead, AcquireWriter: d.AcquireWriter,
-	}, candidats)
+	}
+	enLots(ctx, d, ranges, func(lot []ArtefactRange) { Deriver(ctx, dd, lot) })
+}
+
+// enLots découpe `ranges` en lots de [lotDeDerivations], applique `deriver` à chacun, et s'arrête
+// ENTRE deux lots quand le budget de temps est épuisé ou le contexte annulé. Le premier lot part
+// toujours : un budget déjà épuisé par la cuisson ne prive pas le cycle de toute dérivation.
+func enLots(ctx context.Context, d Deps, ranges []ArtefactRange, deriver func(lot []ArtefactRange)) {
+	debut, budget := time.Now(), budgetDuCycle(d)
+	for i := 0; i < len(ranges); i += lotDeDerivations {
+		if i > 0 && (ctx.Err() != nil || time.Since(debut) >= budget) {
+			slog.InfoContext(ctx, "post-sync: rejeu 2D — budget de cycle épuisé pendant les dérivations, solde au cycle suivant",
+				"gamertag", d.Gamertag, "budget", budget, "derives", i, "restant", len(ranges)-i)
+			return
+		}
+		deriver(ranges[i:min(i+lotDeDerivations, len(ranges))])
+	}
 }
 
 // candidatsDerivations lit l'horizon du registre et rend les artefacts RANGES dont les derives
@@ -117,7 +148,7 @@ func candidatsDerivations(ctx context.Context, sharedDB *sql.DB, d Deps) (work [
 			fb.Declenche(decfilm.NomFraicheurDesDerivationsParTaille)
 			continue
 		}
-		if len(work) < maxPerCycle {
+		if len(work) < perCycle(d) {
 			work = append(work, ArtefactRange{MatchID: id, Path: p})
 			continue
 		}
@@ -136,7 +167,7 @@ func candidatsDerivations(ctx context.Context, sharedDB *sql.DB, d Deps) (work [
 // jauge de retard publiait « tout est derive » sur un cycle qui n'avait rien lu (constat N3).
 func lireHorizonRegistre(ctx context.Context, sharedDB *sql.DB, d Deps) ([]string, bool) {
 	sqlQueue, args := requeteQueueRecente(d.RetentionMonths)
-	rows, err := sharedDB.QueryContext(ctx, sqlQueue, append(args, BacklogHorizon)...)
+	rows, err := sharedDB.QueryContext(ctx, sqlQueue, append(args, horizonDuRetard(d))...)
 	if err != nil {
 		slog.WarnContext(ctx, "post-sync: rejeu 2D — horizon des derives illisible", "err", err)
 		return nil, false

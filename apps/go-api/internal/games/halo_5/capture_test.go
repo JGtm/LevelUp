@@ -166,23 +166,23 @@ func TestCollectRecentMatches_ExcludesCampaignAndWarzone(t *testing.T) {
 	}
 }
 
-func TestCollectRecentMatches_DeltaStopOnKnown(t *testing.T) {
+func TestCollectRecentMatches_UnConnuNArretePasLeDelta(t *testing.T) {
 	src := &fakeH5Source{
 		pages:  map[int]*halo5.H5MatchesResponse{0: mustMatches(t, "m1", "m2", "m3")},
 		events: map[string]*halo5.H5MatchEventsResponse{"m1": killEvents()},
 	}
-	// m2 déjà connu -> on collecte m1 puis on s'arrête (delta).
+	// m2 déjà connu : un seul connu n'arrête plus le delta (D-23), m3 est collecté aussi ; la liste est finie.
 	isKnown := func(id string) bool { return id == "m2" }
 	batches, stats, err := CollectRecentMatches(context.Background(), src, jgtmViewer(), idResolver, isKnown,
 		CaptureOptions{PageSize: 25})
 	if err != nil {
 		t.Fatalf("CollectRecentMatches: %v", err)
 	}
-	if len(batches) != 1 || !stats.StoppedOnKnown {
-		t.Errorf("len=%d stoppedOnKnown=%v, want 1 + true", len(batches), stats.StoppedOnKnown)
+	if len(batches) != 2 || stats.StoppedOnKnown || !stats.HistoryEnd {
+		t.Errorf("len=%d stoppedOnKnown=%v historyEnd=%v, want 2, false, true", len(batches), stats.StoppedOnKnown, stats.HistoryEnd)
 	}
-	if stats.MatchesCollected != 1 {
-		t.Errorf("collected = %d, want 1 (m1 avant le connu m2)", stats.MatchesCollected)
+	if stats.MatchesCollected != 2 {
+		t.Errorf("collected = %d, want 2 (m1 et m3 de part et d'autre du connu m2)", stats.MatchesCollected)
 	}
 }
 
@@ -367,105 +367,98 @@ func TestCollectRecentMatches_CarnageFailureStillCollects(t *testing.T) {
 	}
 }
 
-// TestCollectRecentMatches_CatchUpSkipsKnownAndGoesDeeper : en rattrapage (CatchUp) les
-// matchs connus sont sautés SANS arrêter la pagination, et la fin de l'historique vue
-// sans interruption est signalée.
-func TestCollectRecentMatches_CatchUpSkipsKnownAndGoesDeeper(t *testing.T) {
+// TestCapturePageAt_HistoryEnd — la fin d'historique n'est vue que sur une page vide ou
+// incomplète : une page pleine, ou une page qui reprend un match déjà vu (API qui ignore `start`),
+// ne prouvent rien et laissent HistoryEnd faux.
+func TestCapturePageAt_HistoryEnd(t *testing.T) {
+	run := func(t *testing.T, src *fakeH5Source, start, pageSize int, seen map[string]struct{}) CaptureStats {
+		t.Helper()
+		var stats CaptureStats
+		if _, _, err := CapturePageAt(context.Background(), src, jgtmViewer(), idResolver, nil,
+			CaptureOptions{}, start, pageSize, seen, &stats); err != nil {
+			t.Fatalf("CapturePageAt: %v", err)
+		}
+		return stats
+	}
 	src := &fakeH5Source{pages: map[int]*halo5.H5MatchesResponse{
-		0: mustMatches(t, "m1", "m2"), // m1 connu, m2 nouveau
-		2: mustMatches(t, "m3", "m4"), // m3 connu, m4 nouveau
-		4: mustMatches(t, "m5"),       // page incomplète : fin
-	}}
-	isKnown := func(id string) bool { return id == "m1" || id == "m3" }
-	batches, stats, err := CollectRecentMatches(context.Background(), src, jgtmViewer(), idResolver, isKnown,
-		CaptureOptions{PageSize: 2, CatchUp: true})
-	if err != nil {
-		t.Fatalf("CollectRecentMatches: %v", err)
-	}
-	if len(batches) != 3 || stats.MatchesCollected != 3 || stats.MatchesSkipped != 2 {
-		t.Errorf("len=%d collected=%d skipped=%d, want 3/3/2", len(batches), stats.MatchesCollected, stats.MatchesSkipped)
-	}
-	if stats.StoppedOnKnown {
-		t.Error("le rattrapage ne s'arrête pas au premier match connu")
-	}
-	if !stats.HistoryExhausted {
-		t.Error("fin de l'historique atteinte sans erreur : HistoryExhausted attendu")
-	}
-}
-
-// TestCollectRecentMatches_CatchUpEmptyPageEndsHistory : une page vide après une page
-// pleine est la fin de l'historique.
-func TestCollectRecentMatches_CatchUpEmptyPageEndsHistory(t *testing.T) {
-	src := &fakeH5Source{pages: map[int]*halo5.H5MatchesResponse{0: mustMatches(t, "m1", "m2")}}
-	_, stats, err := CollectRecentMatches(context.Background(), src, jgtmViewer(), idResolver, nil,
-		CaptureOptions{PageSize: 2, CatchUp: true})
-	if err != nil {
-		t.Fatalf("CollectRecentMatches: %v", err)
-	}
-	if !stats.HistoryExhausted {
-		t.Error("page vide : HistoryExhausted attendu")
-	}
-}
-
-// TestCollectRecentMatches_CatchUpMaxMatchesCountsNewOnly : le plafond porte sur les
-// matchs NOUVEAUX ; atteint, la fin de l'historique n'est pas déclarée.
-func TestCollectRecentMatches_CatchUpMaxMatchesCountsNewOnly(t *testing.T) {
-	src := &fakeH5Source{pages: map[int]*halo5.H5MatchesResponse{
-		0: mustMatches(t, "m1", "m2", "m3", "m4", "m5"),
-	}}
-	isKnown := func(id string) bool { return id == "m1" || id == "m2" }
-	batches, stats, err := CollectRecentMatches(context.Background(), src, jgtmViewer(), idResolver, isKnown,
-		CaptureOptions{PageSize: 25, CatchUp: true, MaxMatches: 2})
-	if err != nil {
-		t.Fatalf("CollectRecentMatches: %v", err)
-	}
-	if len(batches) != 2 || stats.MatchesSkipped != 2 {
-		t.Errorf("len=%d skipped=%d, want 2 nouveaux (m3, m4) après 2 connus sautés", len(batches), stats.MatchesSkipped)
-	}
-	if stats.HistoryExhausted {
-		t.Error("plafond atteint : l'historique n'est pas déclaré complet")
-	}
-}
-
-// TestCollectRecentMatches_DeltaNeverDeclaresHistoryEnd : l'arrêt au premier connu ne dit
-// rien de la fin de l'historique.
-func TestCollectRecentMatches_DeltaNeverDeclaresHistoryEnd(t *testing.T) {
-	src := &fakeH5Source{pages: map[int]*halo5.H5MatchesResponse{0: mustMatches(t, "m1", "m2")}}
-	_, stats, err := CollectRecentMatches(context.Background(), src, jgtmViewer(), idResolver,
-		func(id string) bool { return id == "m2" }, CaptureOptions{PageSize: 25})
-	if err != nil {
-		t.Fatalf("CollectRecentMatches: %v", err)
-	}
-	if stats.HistoryExhausted {
-		t.Error("delta-stop : HistoryExhausted doit rester faux")
-	}
-}
-
-// TestCollectRecentMatches_CatchUpErrorMidWay : une page en erreur interrompt la passe
-// sans déclarer la fin de l'historique.
-func TestCollectRecentMatches_CatchUpErrorMidWay(t *testing.T) {
-	src := &errAfterPageSource{fakeH5Source: fakeH5Source{pages: map[int]*halo5.H5MatchesResponse{
 		0: mustMatches(t, "m1", "m2"),
-	}}, failFrom: 2}
-	_, stats, err := CollectRecentMatches(context.Background(), src, jgtmViewer(), idResolver, nil,
-		CaptureOptions{PageSize: 2, CatchUp: true})
-	if err == nil {
-		t.Fatal("erreur de pagination attendue")
+		2: mustMatches(t, "m1", "m2"), // l'API ignore `start` et rend la première page
+		4: mustMatches(t, "m5"),
+	}}
+	if run(t, src, 0, 2, nil).HistoryEnd {
+		t.Error("page pleine : HistoryEnd doit rester faux")
 	}
-	if stats.HistoryExhausted {
-		t.Error("erreur en cours : HistoryExhausted doit rester faux")
+	if run(t, src, 6, 2, nil).HistoryEnd != true {
+		t.Error("page vide : HistoryEnd doit être vrai")
+	}
+	if run(t, src, 4, 2, nil).HistoryEnd {
+		t.Error("page incomplète : HistoryEnd doit rester faux (une page courte n'est pas la fin, seule la page vide la dit)")
+	}
+	seen := map[string]struct{}{}
+	run(t, src, 0, 2, seen)
+	if run(t, src, 2, 2, seen).HistoryEnd {
+		t.Error("page qui reprend des matchs déjà vus : HistoryEnd doit rester faux (anti-boucle, pas une fin)")
 	}
 }
 
-// errAfterPageSource échoue sur toute page dont l'offset est >= failFrom.
-type errAfterPageSource struct {
-	fakeH5Source
-	failFrom int
+// TestCollectRecentMatches_TeteDeListe : HeadID est l'entrée en position 0 et TopIDs la suite contiguë
+// des entrées vues (écartées et connues comprises), bornée par TopLimit ; sans TopLimit, aucune liste.
+func TestCollectRecentMatches_TeteDeListe(t *testing.T) {
+	raw := fmt.Sprintf(`{"Start":0,"Count":4,"ResultCount":4,"Results":[%s,%s,%s,%s]}`,
+		matchJSONMode("wz1", 4), matchJSONMode("camp1", 2), matchJSONMode("arena1", 1), matchJSONMode("arena2", 1))
+	var page halo5.H5MatchesResponse
+	if err := json.Unmarshal([]byte(raw), &page); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	src := &fakeH5Source{
+		pages:  map[int]*halo5.H5MatchesResponse{0: &page},
+		events: map[string]*halo5.H5MatchEventsResponse{},
+	}
+	isKnown := func(id string) bool { return id == "arena1" }
+
+	_, stats, err := CollectRecentMatches(context.Background(), src, jgtmViewer(), idResolver, isKnown,
+		CaptureOptions{PageSize: 25, TopLimit: 25})
+	if err != nil {
+		t.Fatalf("CollectRecentMatches: %v", err)
+	}
+	if want := []string{"wz1", "camp1", "arena1", "arena2"}; fmt.Sprint(stats.TopIDs) != fmt.Sprint(want) {
+		t.Errorf("TopIDs = %v, want %v (toute la page, écartées et connue comprises)", stats.TopIDs, want)
+	}
+	if stats.HeadID != "wz1" {
+		t.Errorf("HeadID = %q, want wz1", stats.HeadID)
+	}
+
+	_, stats, err = CollectRecentMatches(context.Background(), src, jgtmViewer(), idResolver, isKnown,
+		CaptureOptions{PageSize: 25, TopLimit: 2})
+	if err != nil {
+		t.Fatalf("CollectRecentMatches: %v", err)
+	}
+	if want := []string{"wz1", "camp1"}; fmt.Sprint(stats.TopIDs) != fmt.Sprint(want) {
+		t.Errorf("TopLimit 2 : TopIDs = %v, want %v", stats.TopIDs, want)
+	}
+
+	_, stats, _ = CollectRecentMatches(context.Background(), src, jgtmViewer(), idResolver, isKnown, CaptureOptions{PageSize: 25})
+	if len(stats.TopIDs) != 0 || stats.HeadID != "wz1" {
+		t.Errorf("sans TopLimit : TopIDs = %v (attendu vide), HeadID = %q (attendu wz1)", stats.TopIDs, stats.HeadID)
+	}
 }
 
-func (e *errAfterPageSource) GetPlayerMatches(ctx context.Context, gt string, start, size int) (*halo5.H5MatchesResponse, error) {
-	if start >= e.failFrom {
-		return nil, errors.New("503")
+// TestListMatchIDs : une page d'identifiants dans l'ordre de l'API, sans filtre ; l'erreur de la source remonte.
+func TestListMatchIDs(t *testing.T) {
+	raw := fmt.Sprintf(`{"Start":0,"Count":2,"ResultCount":2,"Results":[%s,%s]}`, matchJSONMode("wz1", 4), matchJSONMode("a1", 1))
+	var page halo5.H5MatchesResponse
+	if err := json.Unmarshal([]byte(raw), &page); err != nil {
+		t.Fatalf("unmarshal: %v", err)
 	}
-	return e.fakeH5Source.GetPlayerMatches(ctx, gt, start, size)
+	src := &fakeH5Source{pages: map[int]*halo5.H5MatchesResponse{0: &page}}
+	ids, err := ListMatchIDs(context.Background(), src, "JGtm", 0, 25)
+	if err != nil || fmt.Sprint(ids) != "[wz1 a1]" {
+		t.Errorf("ListMatchIDs = %v, %v ; want [wz1 a1], nil", ids, err)
+	}
+	if ids, err := ListMatchIDs(context.Background(), src, "JGtm", 50, 25); err != nil || len(ids) != 0 {
+		t.Errorf("page vide : %v, %v ; want aucune entrée, nil", ids, err)
+	}
+	if _, err := ListMatchIDs(context.Background(), &errSource{}, "JGtm", 0, 25); err == nil {
+		t.Error("l'erreur de la source doit remonter")
+	}
 }

@@ -3,7 +3,7 @@ package livesync
 // backfill.go — backfill HISTORIQUE complet, incrémental et résumable, pour Halo 5.
 //
 // Contraste avec le sync live (Runner.RunDelta) :
-//   - Live   : delta-stop au 1er match connu (on ne veut QUE les nouveaux), capture
+//   - Live   : delta-stop après une suite de matchs connus (domain.DeltaKnownRun) (on ne veut QUE les nouveaux), capture
 //     TOUT en mémoire puis persiste à la fin (volume borné par MaxMatches).
 //   - Backfill : paginne TOUT l'historique (start croissant jusqu'à page vide), SAUTE
 //     les matchs connus mais NE s'arrête PAS dessus (skip-known + paginate-deeper), et
@@ -26,7 +26,11 @@ import (
 	"levelup/go-api/internal/games/canonical"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/sync/historystate"
 )
+
+// backfillDefaultPageSize est la taille de page de la liste de l'API (celle de halo5.CapturePageAt).
+const backfillDefaultPageSize = 25
 
 // BackfillStats résume une passe de backfill (logs + sortie CLI).
 type BackfillStats struct {
@@ -39,6 +43,28 @@ type BackfillStats struct {
 	Warzone       int // matchs Warzone écartés
 	Campaign      int // matchs Campagne écartés (non jouables côté app)
 	PersistErrors int // erreurs de persistance (page-level)
+
+	// HistoryEnd : la liste de l'API a rendu une page vide (fin d'historique vue,
+	// voir halo5.CaptureStats.HistoryEnd). Faux quand la passe s'arrête avant : budget atteint,
+	// erreur de page, anti-boucle, profondeur historystate.MaxDepth.
+	HistoryEnd bool
+	// BudgetReached : la passe s'est arrêtée parce que BackfillDeps.Budget matchs étaient insérés.
+	BudgetReached bool
+	// Capture : compteurs de capture cumulés sur toutes les pages (les champs ci-dessus en sont la projection).
+	Capture halo5.CaptureStats
+
+	// ResumeMissed : le marque-page n'était pas sur la page de recouvrement, la passe est repartie du début.
+	ResumeMissed bool
+	// AbandonedPages : pages en échec durable sautées (BackfillResume.MaxAttempts atteint), dont
+	// AbandonedErrors erreurs de persistance, qui ne comptent plus comme erreurs bloquantes.
+	AbandonedPages  int
+	AbandonedErrors int
+	// FrontierAttempts et FrontierSkipped : à la sortie, les échecs consécutifs de la première page non
+	// abandonnée après le marque-page et le nombre de pages abandonnées juste après lui.
+	FrontierAttempts int
+	FrontierSkipped  int
+	// LastError : le texte de la dernière erreur de page ou de persistance.
+	LastError string
 }
 
 // CapturePageFunc : signature de halo5.CapturePageAt (injectable → fake en test, la
@@ -68,23 +94,59 @@ type CapturePageFunc func(
 //     d'un match déjà inséré dans CE run est de toute façon no-opé par le persister).
 //   - PersistPage  : persiste les batches d'UNE page sous un lease RW court ; retourne
 //     les batches réellement écrits + les erreurs.
+//   - Budget       : nombre de matchs INSÉRÉS au-delà duquel la passe s'arrête (0 = sans borne,
+//     comportement de la commande h5-backfill). Contrôlé entre deux pages, après leur persistance :
+//     une page entière est toujours rangée, la passe insère donc au plus Budget + pageSize - 1
+//     matchs. La passe suivante reprend en sautant les matchs connus.
 type BackfillDeps struct {
 	CapturePage CapturePageFunc
 	Viewer      canonical.PlayerIdentity
 	ResolveXUID func(gamertag string) string
 	LoadKnown   func(ctx context.Context) (map[string]bool, error)
 	PersistPage func(ctx context.Context, batches []*persist.MatchBatch) (done []*persist.MatchBatch, errs []string)
+	Budget      int
+	// Resume : reprise au marque-page du rattrapage automatique (nil pour la commande h5-backfill).
+	Resume *BackfillResume
 }
 
-// backfillMaxPages : borne de sécurité anti-boucle-infinie (la condition d'arrêt
-// normale est la page vide). ~2000 pages × 25 = 50000 matchs : très au-delà de tout
-// historique h5 réaliste, mais protège d'une API qui n'honorerait jamais `start`.
-const backfillMaxPages = 2000
+// BackfillResume décrit la reprise d'une passe de rattrapage au marque-page (historystate.Cursor).
+//
+// La passe lit d'abord la page de recouvrement à Start : si ExpectID (l'identifiant du dernier match
+// traité par la passe précédente) n'y figure pas, le décalage rangé ne vaut plus et la passe repart du
+// début (ResumeMissed). Sinon elle continue au-delà, en sautant Skip pages abandonnées. Sans ExpectID
+// (pas de marque-page), les Skip pages sautées sont celles du début de la liste.
+//
+// Un marque-page est rangé (Save) après chaque page pleine rangée sans erreur qui a inséré au moins un
+// match, et une dernière fois à la sortie pour la dernière page propre. Une page en échec le laisse avant
+// elle. Quand la première page non abandonnée échoue pour la MaxAttempts-ième passe de suite (Attempts
+// échecs déjà comptés), elle est abandonnée : journalisée, comptée (h5_history_abandoned_pages_total),
+// sautée ; la passe continue. MaxAttempts 0 : jamais d'abandon.
+//
+// HeadID est l'identifiant de l'entrée en position 0 de la liste lue par cette passe (l'ancre des
+// marque-pages qu'elle range, historystate.Cursor.HeadID). Vide quand la passe n'a pas encore lu la
+// tête : les marque-pages prennent alors la tête vue par la capture de la première page.
+//
+// Un échec qui ne compte pas (panne de l'API : historyfail) ne fait pas avancer le compte vers l'abandon. Une
+// page abandonnée est un trou connu : OnAbandon le note (historystate.NoteHole), pour que le rattrapage
+// relise la liste après historystate.AbandonRetryAfter.
+type BackfillResume struct {
+	Start       int
+	ExpectID    string
+	HeadID      string
+	Skip        int
+	Attempts    int
+	MaxAttempts int
+	Save        func(ctx context.Context, c historystate.Cursor)
+	OnAbandon   func(ctx context.Context)
+}
 
 // RunBackfill exécute le backfill historique complet d'un joueur Halo 5 : paginne
 // l'historique par offset croissant, capture+persiste CHAQUE page immédiatement,
 // saute les matchs connus et continue à paginer en profondeur, s'arrête à la page
-// vide (fin d'historique) ou à la borne de sécurité backfillMaxPages.
+// vide (fin d'historique), à la profondeur historystate.MaxDepth ou, quand deps.Budget > 0,
+// dès que le budget de matchs insérés est atteint (la fin n'est alors pas vue : stats.HistoryEnd faux).
+// La boucle vit dans backfill_walk.go ; deps.Resume ajoute le marque-page et l'abandon des pages
+// en échec durable (rattrapage automatique), sans effet pour la commande h5-backfill.
 //
 // pageSize <= 0 → défaut halo5 (25). logger nil → slog.Default().
 func RunBackfill(ctx context.Context, deps BackfillDeps, pageSize int, logger *slog.Logger) (BackfillStats, error) {
@@ -92,7 +154,7 @@ func RunBackfill(ctx context.Context, deps BackfillDeps, pageSize int, logger *s
 		logger = slog.Default()
 	}
 	if pageSize <= 0 {
-		pageSize = 25
+		pageSize = backfillDefaultPageSize
 	}
 
 	// Known-set amorcé UNE fois (lease court relâché avant le fetch réseau). Best-effort :
@@ -105,56 +167,30 @@ func RunBackfill(ctx context.Context, deps BackfillDeps, pageSize int, logger *s
 			known = k
 		}
 	}
-	isKnown := func(id string) bool { return known[id] }
 
-	var (
-		stats BackfillStats
-		cum   halo5.CaptureStats              // cumulé sur toutes les pages
-		seen  = make(map[string]struct{}, 64) // anti-boucle partagé entre pages
-	)
-
-	for page := 0; page < backfillMaxPages; page++ {
-		start := page * pageSize
-		before := cum
-		batches, hasMore, err := deps.CapturePage(ctx, deps.Viewer,
-			deps.ResolveXUID, isKnown, start, pageSize, seen, &cum)
-		if err != nil {
-			logger.ErrorContext(ctx, "h5 backfill: capture page échouée (arrêt)",
-				"page", page, "start", start, "err", err)
-			return stats, err
-		}
-		stats.Pages = page + 1
-
-		inserted := persistAndTrack(ctx, deps, batches, known, &stats, logger)
-
-		oldest := oldestStart(batches)
-		logger.InfoContext(ctx, "h5 backfill: page",
-			"page", page, "start", start,
-			"page_seen", cum.MatchesSeen-before.MatchesSeen,
-			"inserted", inserted, "cumulated", stats.Inserted,
-			"skipped_cum", cum.MatchesSkipped, "oldest_match_date", oldest)
-
-		if !hasMore {
-			break // fin de l'historique (page vide ou incomplète)
-		}
-	}
-
-	finalizeStats(&stats, cum)
+	run := newBackfillRun(deps, pageSize, logger, known)
+	err := run.walk(ctx)
+	run.flushCursor(ctx)
+	run.stats.FrontierAttempts, run.stats.FrontierSkipped = run.attempts, run.skipped
+	finalizeStats(&run.stats, run.cum)
+	stats := run.stats
 	logger.InfoContext(ctx, "h5 backfill: terminé",
 		"gamertag", deps.Viewer.Gamertag, "pages", stats.Pages,
 		"seen", stats.MatchesSeen, "inserted", stats.Inserted, "skipped", stats.Skipped,
 		"events_failed", stats.EventsFailed, "carnage_failed", stats.CarnageFailed,
-		"warzone", stats.Warzone, "campaign", stats.Campaign, "persist_errors", stats.PersistErrors)
-	return stats, nil
+		"warzone", stats.Warzone, "campaign", stats.Campaign, "persist_errors", stats.PersistErrors,
+		"history_end", stats.HistoryEnd, "budget_reached", stats.BudgetReached,
+		"abandoned_pages", stats.AbandonedPages, "resume_missed", stats.ResumeMissed)
+	return stats, err
 }
 
 // persistAndTrack persiste les batches d'une page (lease court) et met à jour le
 // known-set en mémoire avec les match_ids réellement écrits (anti re-collect dans le
-// même run). Retourne le nombre de matchs insérés sur la page.
+// même run). Retourne le nombre de matchs insérés sur la page et ses erreurs de persistance.
 func persistAndTrack(ctx context.Context, deps BackfillDeps, batches []*persist.MatchBatch,
-	known map[string]bool, stats *BackfillStats, logger *slog.Logger) int {
+	known map[string]bool, stats *BackfillStats, logger *slog.Logger) (int, []string) {
 	if len(batches) == 0 || deps.PersistPage == nil {
-		return 0
+		return 0, nil
 	}
 	done, errs := deps.PersistPage(ctx, batches)
 	stats.Inserted += len(done)
@@ -167,7 +203,7 @@ func persistAndTrack(ctx context.Context, deps BackfillDeps, batches []*persist.
 			known[b.Shared.Match.MatchID] = true
 		}
 	}
-	return len(done)
+	return len(done), errs
 }
 
 // finalizeStats projette les compteurs cumulés de capture dans BackfillStats.
@@ -178,6 +214,8 @@ func finalizeStats(stats *BackfillStats, cum halo5.CaptureStats) {
 	stats.CarnageFailed = cum.CarnageFailed
 	stats.Warzone = cum.ExcludedWarzone
 	stats.Campaign = cum.ExcludedCampaign
+	stats.HistoryEnd = cum.HistoryEnd
+	stats.Capture = cum
 }
 
 // oldestStart retourne la date de début du match le plus ancien de la page (le dernier
@@ -207,16 +245,7 @@ func BuildBackfillDeps(ctx context.Context, cfg *config.AppConfig, src halo5.Cap
 	}
 
 	return BackfillDeps{
-		// Capture page-par-page câblée sur la source live : la source est CAPTURÉE dans
-		// la closure (son type events est non exporté → pas dans Deps). Réutilise le
-		// cœur de capture partagé avec le sync live (halo5.CapturePageAt).
-		CapturePage: func(ctx context.Context, viewer canonical.PlayerIdentity,
-			resolveXUID func(string) string, isKnown func(string) bool,
-			start, pageSize int, seen map[string]struct{}, stats *halo5.CaptureStats,
-		) ([]*persist.MatchBatch, bool, error) {
-			return halo5.CapturePageAt(ctx, src, viewer, resolveXUID, isKnown,
-				halo5.CaptureOptions{}, start, pageSize, seen, stats)
-		},
+		CapturePage: capturePageFrom(src),
 		Viewer:      canonical.PlayerIdentity{Gamertag: gamertag, XUID: xuid},
 		ResolveXUID: resolveXUID,
 		LoadKnown: func(ctx context.Context) (map[string]bool, error) {
@@ -225,5 +254,18 @@ func BuildBackfillDeps(ctx context.Context, cfg *config.AppConfig, src halo5.Cap
 		PersistPage: func(ctx context.Context, batches []*persist.MatchBatch) ([]*persist.MatchBatch, []string) {
 			return persistBatches(ctx, provider, sharedPath, batches)
 		},
+	}
+}
+
+// capturePageFrom câble la capture page-par-page sur la source live : la source est capturée
+// dans la closure (son type events est non exporté, donc absent des Deps). Réutilise le cœur de
+// capture partagé avec le sync live (halo5.CapturePageAt).
+func capturePageFrom(src halo5.CaptureSource) CapturePageFunc {
+	return func(ctx context.Context, viewer canonical.PlayerIdentity,
+		resolveXUID func(string) string, isKnown func(string) bool,
+		start, pageSize int, seen map[string]struct{}, stats *halo5.CaptureStats,
+	) ([]*persist.MatchBatch, bool, error) {
+		return halo5.CapturePageAt(ctx, src, viewer, resolveXUID, isKnown,
+			halo5.CaptureOptions{}, start, pageSize, seen, stats)
 	}
 }

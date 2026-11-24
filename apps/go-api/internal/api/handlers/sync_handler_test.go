@@ -410,7 +410,7 @@ func TestBackfillHandler_RefusDuService(t *testing.T) {
 func TestSyncHandler_StatusDuJoueur(t *testing.T) {
 	svc := newFakeJobService()
 	svc.status = &domain.PlayerSyncStatus{
-		PlayerSlug: "jgtm", Syncing: true, CooldownRetryAfterSec: 42, HistoryComplete: true,
+		PlayerSlug: "jgtm", Syncing: true, CooldownRetryAfterSec: 42,
 		Job: &domain.AsyncJobStatus{JobID: "job-7", JobType: string(domain.JobTypeInitialSync), Status: domain.JobStatusRunning, PlayerSlug: "jgtm"},
 	}
 	r := syncRouter(svc, nil)
@@ -424,7 +424,6 @@ func TestSyncHandler_StatusDuJoueur(t *testing.T) {
 		PlayerSlug string `json:"player_slug"`
 		Syncing    bool   `json:"syncing"`
 		Cooldown   int    `json:"cooldown_retry_after_s"`
-		History    bool   `json:"history_complete"`
 		Job        struct {
 			JobID string `json:"job_id"`
 		} `json:"job"`
@@ -432,7 +431,7 @@ func TestSyncHandler_StatusDuJoueur(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
 		t.Fatal(err)
 	}
-	if got.PlayerSlug != "jgtm" || !got.Syncing || got.Cooldown != 42 || !got.History || got.Job.JobID != "job-7" || svc.slug != "jgtm" {
+	if got.PlayerSlug != "jgtm" || !got.Syncing || got.Cooldown != 42 || got.Job.JobID != "job-7" || svc.slug != "jgtm" {
 		t.Errorf("réponse inattendue : %s", w.Body.String())
 	}
 }

@@ -20,14 +20,15 @@ import (
 // (PlayerSlug → known set) et un compteur d'appels concurrents max.
 type mockLoader struct {
 	known        map[string]map[string]bool
-	orphans      map[string][]string // PlayerSlug → orphelins à récupérer (knownset.Set.Recover)
+	orphans      map[string][]string     // PlayerSlug → orphelins à récupérer (knownset.Set.Recover)
+	history      map[string]HistoryState // PlayerSlug → état de l'historique (absent = complet)
 	failFor      map[string]error
 	delay        time.Duration
 	callsInFligh atomic.Int32
 	maxInFlight  atomic.Int32
 }
 
-func (m *mockLoader) LoadKnown(ctx context.Context, p PlayerProfile) (knownset.Set, error) {
+func (m *mockLoader) LoadKnown(ctx context.Context, p PlayerProfile) (KnownState, error) {
 	cur := m.callsInFligh.Add(1)
 	defer m.callsInFligh.Add(-1)
 	for {
@@ -40,17 +41,17 @@ func (m *mockLoader) LoadKnown(ctx context.Context, p PlayerProfile) (knownset.S
 		select {
 		case <-time.After(m.delay):
 		case <-ctx.Done():
-			return knownset.Set{}, ctx.Err()
+			return KnownState{}, ctx.Err()
 		}
 	}
 	if err, ok := m.failFor[p.PlayerSlug]; ok {
-		return knownset.Set{}, err
+		return KnownState{}, err
 	}
 	k, ok := m.known[p.PlayerSlug]
 	if !ok {
 		k = map[string]bool{}
 	}
-	return knownset.Set{Known: k, Recover: m.orphans[p.PlayerSlug]}, nil
+	return KnownState{Set: knownset.Set{Known: k, Recover: m.orphans[p.PlayerSlug]}, History: m.history[p.PlayerSlug]}, nil
 }
 
 // mockProvider implémente MatchListProvider avec un mapping statique
@@ -59,25 +60,30 @@ func (m *mockLoader) LoadKnown(ctx context.Context, p PlayerProfile) (knownset.S
 type mockProvider struct {
 	allMatches map[string][]string
 	failFor    map[string]error
-	delay      time.Duration
-	callCount  atomic.Int32
+	// listings (optionnel) : résultat imposé par joueur, qui remplace la simulation du delta.
+	listings  map[string]Listing
+	delay     time.Duration
+	callCount atomic.Int32
 }
 
-func (m *mockProvider) ListUnknownMatches(ctx context.Context, p PlayerProfile, known map[string]bool) ([]string, error) {
+func (m *mockProvider) ListUnknownMatches(ctx context.Context, p PlayerProfile, known map[string]bool, _ HistoryState) (Listing, error) {
 	m.callCount.Add(1)
 	if m.delay > 0 {
 		select {
 		case <-time.After(m.delay):
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return Listing{}, ctx.Err()
 		}
 	}
 	if err, ok := m.failFor[p.PlayerSlug]; ok {
-		return nil, err
+		return Listing{}, err
+	}
+	if l, ok := m.listings[p.PlayerSlug]; ok {
+		return l, nil
 	}
 	all, ok := m.allMatches[p.PlayerSlug]
 	if !ok {
-		return nil, nil
+		return Listing{}, nil
 	}
 	unknown := make([]string, 0, len(all))
 	for _, mid := range all {
@@ -86,7 +92,7 @@ func (m *mockProvider) ListUnknownMatches(ctx context.Context, p PlayerProfile, 
 		}
 		unknown = append(unknown, mid)
 	}
-	return unknown, nil
+	return Listing{Unknown: unknown}, nil
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────

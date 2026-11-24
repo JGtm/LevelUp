@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
@@ -140,45 +139,5 @@ func TestStartDeltaSync_EcritLeTitreDuJob(t *testing.T) {
 	st, err := f.svc.PlayerSyncStatus(ctx, "jgtm")
 	if err != nil || st.Job == nil || st.Job.JobID != job.JobID {
 		t.Fatalf("le job lancé sur halo_5 attendu sur halo_5, obtenu %+v (%v)", st, err)
-	}
-}
-
-// fakeSyncHistory : lecteur d'état de l'historique par (joueur, titre), ou une erreur.
-type fakeSyncHistory struct {
-	complete map[string]bool // clé "joueur/titre"
-	err      error
-}
-
-func (f *fakeSyncHistory) HistoryComplete(_ context.Context, playerSlug, titleSlug string) (bool, error) {
-	if f.err != nil {
-		return false, f.err
-	}
-	return f.complete[playerSlug+"/"+titleSlug], nil
-}
-
-// L'état de l'historique se lit pour le titre du contexte : posé sur un titre, absent de l'autre.
-func TestPlayerSyncStatus_HistoriqueParTitre(t *testing.T) {
-	f := newSyncJobsFixture(t)
-	f.svc.WithSyncHistoryReader(&fakeSyncHistory{complete: map[string]bool{"jgtm/halo_5": true}})
-	halo5 := ctxkeys.WithTitleSlug(context.Background(), "halo_5")
-	infinite := ctxkeys.WithTitleSlug(context.Background(), "halo_infinite")
-	if st, err := f.svc.PlayerSyncStatus(halo5, "jgtm"); err != nil || !st.HistoryComplete {
-		t.Fatalf("historique complet attendu sur halo_5, obtenu %+v (%v)", st, err)
-	}
-	if st, err := f.svc.PlayerSyncStatus(infinite, "jgtm"); err != nil || st.HistoryComplete {
-		t.Fatalf("historique non complet attendu sur halo_infinite, obtenu %+v (%v)", st, err)
-	}
-}
-
-// Lecteur absent ou en échec : le statut reste servi, l'historique est rendu non complet.
-func TestPlayerSyncStatus_HistoriqueIllisible(t *testing.T) {
-	f := newSyncJobsFixture(t)
-	if st, err := f.svc.PlayerSyncStatus(context.Background(), "jgtm"); err != nil || st.HistoryComplete {
-		t.Fatalf("sans lecteur : non complet attendu, obtenu %+v (%v)", st, err)
-	}
-	f.svc.WithSyncHistoryReader(&fakeSyncHistory{err: errors.New("base illisible")})
-	st, err := f.svc.PlayerSyncStatus(context.Background(), "jgtm")
-	if err != nil || st.HistoryComplete || st.PlayerSlug != "jgtm" {
-		t.Fatalf("lecture en échec : statut servi, non complet attendu, obtenu %+v (%v)", st, err)
 	}
 }

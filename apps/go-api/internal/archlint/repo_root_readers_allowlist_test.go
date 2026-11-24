@@ -68,7 +68,7 @@ var repoRootLecteursAllowlist = map[string]int{
 	"internal/scheduler/auto_sync_engine.go":                1,
 	"internal/service/sync_jobs.go":                         1,
 	"internal/sync/citations_backfill.go":                   2,
-	"internal/sync/replayartifacts/artifacts.go":            2,
+	"internal/sync/replayartifacts/artifacts.go":            1,
 	"internal/sync/replayartifacts/backlog.go":              1,
 	"internal/sync/replayartifacts/buildone.go":             3,
 	"internal/sync/replayartifacts/cuisson.go":              2,
