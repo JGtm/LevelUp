@@ -129,3 +129,4 @@
 // v124 (2026-11-15, le tableau des scores ne se nomme par ses entrees que quand le film en prouve la disposition). Sur un film dont la lecture
 // v125 (2026-11-15, trois apports en une version : les sieges de la table du film lus aux listes de la session, le delai de retour du drapeau et la jauge lue
 // v126 (2026-11-22, treize apports en une version : un trajet de vehicule porte le joueur du corps qui monte, le coup d envoi se lit sur l horloge de manche du
+// v127 (2026-11-23, vingt et un apports en une version : les repliques des Spartans et les annonces, les gestes du joueur et les copies d un rechargement, l accroupi et le saut tenus, les

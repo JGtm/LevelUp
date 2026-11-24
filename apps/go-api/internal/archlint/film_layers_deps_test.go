@@ -289,6 +289,12 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	// `reponsesdejeu` : la table des reponses de jeu (nom, genre et points de chaque rang de l arbre des scripts d un
 	// mode), reprise de libfilmshell, comme `medalname` : un catalogue, il ne lit aucun octet de film.
 	"libs/film/reponsesdejeu": horsCoucheFilm,
+	// `chattername` (decodeur v1.6.0, 2026-11-24) : le nom court d'une replique des Spartans, table embarquee prouvee par ses
+	// empreintes, comme `medalname` : un catalogue, il ne lit aucun octet de film.
+	"libs/film/chattername": horsCoucheFilm,
+	// `cmd/film-bench` (decodeur v1.6.0, 2026-11-24) : l'outil de mesure de vitesse de la brique. Il appelle la facade et les
+	// couches internes pour chronometrer un decodage ; il ne decode rien pour la production et ne publie rien. Hors couche.
+	"libs/film/cmd/film-bench": horsCoucheFilm,
 	// `damageeffects` : la table des effets de degat du jeu (cause et montants de chaque effet), reprise de libfilmshell,
 	// comme `medalname` : un catalogue, il ne lit aucun octet de film.
 	"libs/film/damageeffects": horsCoucheFilm,

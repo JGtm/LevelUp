@@ -27,7 +27,12 @@ const childprocPackageDir = "internal/platform/childproc/"
 var childprocSpawnRoots = []string{"internal", "libs/film", "libs/gamefiles", "libs/haloapi", "libs/himap"}
 
 // childprocSpawnAllowlist : fichiers tolérés, avec la raison. Entrée = « fichier : raison, date ».
-var childprocSpawnAllowlist = map[string]string{}
+var childprocSpawnAllowlist = map[string]string{
+	"libs/film/cmd/film-bench/enfant.go": "outil de mesure de la brique du decodeur, lance un enfant par film pour mesurer sa memoire ; " +
+		"le serveur n'embarque pas cet outil, ajoute le 2026-11-24 (decodeur v1.6.0)",
+	"libs/film/cmd/film-bench/machine.go": "meme outil : releve l'etat du depot de la mesure par `git describe` ; " +
+		"ajoute le 2026-11-24 (decodeur v1.6.0)",
+}
 
 // execSpawnSites rend « fichier:ligne » de chaque appel exec.Command / exec.CommandContext.
 func execSpawnSites(src goSource) []string {

@@ -266,6 +266,33 @@ func TestEncodeColumns_FixturesCouvrentLeDocument(t *testing.T) {
 	}
 }
 
+// champs range les champs d'une structure sous `chemin`. Un champ ANONYME sans balise JSON est aplati par `encoding/json` :
+// ses champs sortent au meme chemin que ceux de la structure qui l'embarque, et c'est elle qui les possede
+// (`TrackCoverage.AimOnlyNoLife`, comme le garde de parite le nomme).
+func champs(t reflect.Type, proprietaire, chemin string, vus map[reflect.Type]bool,
+	marche func(reflect.Type, string, map[reflect.Type]bool), out map[string][2]string) {
+	for i := 0; i < t.NumField(); i++ {
+		f := t.Field(i)
+		tag := strings.Split(f.Tag.Get("json"), ",")[0]
+		if !f.IsExported() || tag == "-" {
+			continue
+		}
+		if f.Anonymous && tag == "" && f.Type.Kind() == reflect.Struct {
+			champs(f.Type, proprietaire, chemin, vus, marche, out)
+			continue
+		}
+		if tag == "" {
+			tag = f.Name
+		}
+		base := f.Type
+		for base.Kind() == reflect.Pointer || base.Kind() == reflect.Slice || base.Kind() == reflect.Array || base.Kind() == reflect.Map {
+			base = base.Elem()
+		}
+		out[chemin+"."+tag] = [2]string{proprietaire + "." + f.Name, base.Name()}
+		marche(f.Type, chemin+"."+tag, vus)
+	}
+}
+
 // proprietairesDuType rend, pour chaque chemin JSON du type (meme notation que `cheminsDeCles`, cartes a cle
 // libre repliees en `{}`), le couple `Type.Champ` qui le porte et le nom du type du champ.
 func proprietairesDuType(t reflect.Type) map[string][2]string {
@@ -285,22 +312,7 @@ func proprietairesDuType(t reflect.Type) map[string][2]string {
 			}
 			vus[t] = true
 			defer delete(vus, t)
-			for i := 0; i < t.NumField(); i++ {
-				f := t.Field(i)
-				tag := strings.Split(f.Tag.Get("json"), ",")[0]
-				if !f.IsExported() || tag == "-" {
-					continue
-				}
-				if tag == "" {
-					tag = f.Name
-				}
-				base := f.Type
-				for base.Kind() == reflect.Pointer || base.Kind() == reflect.Slice || base.Kind() == reflect.Array || base.Kind() == reflect.Map {
-					base = base.Elem()
-				}
-				out[chemin+"."+tag] = [2]string{t.Name() + "." + f.Name, base.Name()}
-				marche(f.Type, chemin+"."+tag, vus)
-			}
+			champs(t, t.Name(), chemin, vus, marche, out)
 		}
 	}
 	marche(t, "", map[reflect.Type]bool{})

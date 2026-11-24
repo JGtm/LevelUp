@@ -61,7 +61,10 @@ var racinesTriTotal = []string{
 }
 
 // exclusTriTotal : les sous-arbres exclus (instruments de recherche).
-var exclusTriTotal = []string{"libs/film/research"}
+//
+// `libs/film/cmd` (2026-11-24, decodeur v1.6.0) : l'outil de mesure `film-bench`, que le serveur n'embarque pas et dont
+// aucune sortie n'est publiee ; un tri d'outil ne publie rien, comme un tri de test.
+var exclusTriTotal = []string{"libs/film/research", "libs/film/cmd"}
 
 // plancherFichiersTriTotal : CONTRE UN BALAYAGE MUET. 588 fichiers de production mesures le
 // 2026-09-27 ; nettement moins veut dire que l'arborescence a bouge et que le cliquet ne garde plus

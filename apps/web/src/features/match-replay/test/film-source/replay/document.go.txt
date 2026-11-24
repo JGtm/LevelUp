@@ -104,6 +104,8 @@ type ReplayDocument struct {
 	// degaine et du marqueur de lecture vide. Les deux axes coexistent parce qu'ils n'ont pas la
 	// meme cadence, et les melanger ferait masquer une lecture pleine par une lecture partielle.
 	GrenadeReads []GrenadeRead `json:"grenadeReads,omitempty"`
+	// AmmoReads : les munitions portees a chaque changement de valeur, images-cles et trames delta sur un axe (ammo_reads.go).
+	AmmoReads []AmmoRead `json:"ammoReads,omitempty"`
 	// AbilityLabels nomme les RANGS de capacité que le document emploie.
 	//
 	// LA TABLE EST PARTIELLE, et un rang absent GARDE SON NUMÉRO à l'écran, marqué non
@@ -250,6 +252,13 @@ type ReplayDocument struct {
 	// Forme, chronique et refus de publication : document_ground_weapons.go.
 	WeaponPads []WeaponPad `json:"weaponPads,omitempty"`
 	PadPickups []PadPickup `json:"padPickups,omitempty"`
+	// PadCandidates sont les grappes à UNE seule apparition que la règle « un socle est une
+	// récurrence » écarte de `weaponPads` : un objet que la carte a posé au repos et que personne n'a
+	// pris ne réapparaît pas. Ce ne sont pas des socles et le décodeur n'en promeut aucun ; un lecteur
+	// qui connaît la carte peut les promouvoir. Même forme qu'un socle, une seule ligne dans `spawns`
+	// et `presence`, jamais de `cycle` (ground_weapon_pad_candidates.go). Absent quand aucune grappe
+	// n'est écartée.
+	PadCandidates []WeaponPad `json:"padCandidates,omitempty"`
 	// Grenades est la liste des LANCERS de grenade rattachés à un slot (cf. grenades.go).
 	// Contrairement aux tirs, chaque lancer porte son auteur DANS le film — il n'est pas
 	// deviné. Ce n'est pas l'inventaire de grenades (c'est i22, non résolu) : c'est
@@ -295,6 +304,19 @@ type ReplayDocument struct {
 	ShotStats    []ShotStat            `json:"shotStats,omitempty"`
 	// Reloads : les rechargements d arme lus dans le film, une ligne par (trame, joueur, unite) (document_reloads.go).
 	Reloads []Reload `json:"reloads,omitempty"`
+	// Chatter : les repliques des Spartans lues dans le film, une ligne par message (document_repliques.go). Announcements : les
+	// annonces de l annonceur et des scripts de mode (document_repliques_annonces.go).
+	Chatter       []Chatter      `json:"chatter,omitempty"`
+	Announcements []Announcement `json:"announcements,omitempty"`
+	// Gestures : les gestes du joueur engages dans la vue A, coup de melee et lancer amorce, une ligne par (trame, joueur, geste) (document_gestes.go).
+	Gestures []Gesture `json:"gestures,omitempty"`
+	// Attachments : les collages de projectile qu aucun vol publie ne porte, une ligne par lecture (projectiles_colles_calque.go). Un collage
+	// porte par un vol publie est dans `projectiles[].attach`, jamais ici.
+	Attachments []Attachment `json:"attachments,omitempty"`
+	// DrawnWeapons : l arme tiree en main a chaque changement, une ligne par (trame, slot) (document_arme_tiree.go).
+	DrawnWeapons []DrawnWeapon `json:"drawnWeapons,omitempty"`
+	// Vitals : la sante et le bouclier de chaque vie a chaque changement, une ligne par (instant, slot) (vitals_reads.go).
+	Vitals []Vital `json:"vitals,omitempty"`
 	// Eliminations est une ligne par élimination du tableau des scores : tueur, image, victime quand le film la donne, marques
 	// de tir à la tête et de frag parfait à trois états (document_eliminations.go). Absente sans tableau des scores.
 	Eliminations []Elimination `json:"eliminations,omitempty"`

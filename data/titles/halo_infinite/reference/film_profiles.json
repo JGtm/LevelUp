@@ -315,6 +315,70 @@
       "date": "2026-11-12"
     },
     {
+      "key": "build=HI_1_11_0",
+      "field": "VueA.InterruptionDuMoteur",
+      "value": "vrai",
+      "provenance": "mesuree",
+      "proof": "20 messages de genre 13 lus sur 47 films de ce build (carte du catalogue), les 20 dans une trame fermee au bit. Ouvert la ou la fermeture au bit est prouvee : sur HI_1_10_0 (280 messages) et HI_1_9_0 (26) la lecture arrete la vue A au message suivant dans 23 % des cas, contre 2,5 % en general, et sur HI_1_12_0 (aucun message) et HI_1_13_0 (un seul, non lu) rien ne l etablit",
+      "date": "2026-11-24"
+    },
+    {
+      "key": "build=HI_1_11_0",
+      "field": "VueA.BasculeDeControle",
+      "value": "vrai",
+      "provenance": "mesuree",
+      "proof": "48 messages de genre 27 sur 47 films, les 48 dans une trame fermee au bit",
+      "date": "2026-11-24"
+    },
+    {
+      "key": "build=HI_1_13_0",
+      "field": "VueA.BasculeDeControle",
+      "value": "vrai",
+      "provenance": "mesuree",
+      "proof": "28 messages de genre 27 sur 813 films, les 28 dans une trame fermee au bit. HI_1_12_0 (deux messages) : abstention, moins de cinq",
+      "date": "2026-11-24"
+    },
+    {
+      "key": "build=HI_1_11_0",
+      "field": "VueA.ActivationDeCapacite",
+      "value": "vrai",
+      "provenance": "mesuree",
+      "proof": "15 messages de genre 93 lus (charge inhibee) sur 47 films, les 15 dans une trame fermee au bit",
+      "date": "2026-11-24"
+    },
+    {
+      "key": "build=HI_1_12_0",
+      "field": "VueA.ActivationDeCapacite",
+      "value": "vrai",
+      "provenance": "mesuree",
+      "proof": "14 messages de genre 93 lus (charge inhibee) sur 97 films, les 14 dans une trame fermee au bit",
+      "date": "2026-11-24"
+    },
+    {
+      "key": "build=HI_1_13_0",
+      "field": "VueA.ActivationDeCapacite",
+      "value": "vrai",
+      "provenance": "mesuree",
+      "proof": "52 messages de genre 93 lus (charge inhibee) sur 813 films, les 52 dans une trame fermee au bit",
+      "date": "2026-11-24"
+    },
+    {
+      "key": "build=HI_1_12_0",
+      "field": "VueA.TeleportationDuTranslocateur",
+      "value": "vrai",
+      "provenance": "mesuree",
+      "proof": "54 messages de genre 117 sur 97 films, les 54 dans une trame fermee au bit",
+      "date": "2026-11-24"
+    },
+    {
+      "key": "build=HI_1_13_0",
+      "field": "VueA.TeleportationDuTranslocateur",
+      "value": "vrai",
+      "provenance": "mesuree",
+      "proof": "160 messages de genre 117 sur 813 films, les 160 dans une trame fermee au bit. HI_1_11_0 : 36 sur 37, abstention",
+      "date": "2026-11-24"
+    },
+    {
       "key": "build=HI_1_13_0",
       "field": "Creation.ParPorte",
       "value": "vrai",

@@ -1,68 +1,68 @@
 {
- "schemaVersion": 126,
+ "schemaVersion": 127,
  "fixtures": [
   {
-   "file": "replay_schema_126_000d5950.json.gz",
+   "file": "replay_schema_127_000d5950.json.gz",
    "film": "000d5950",
    "build": "HI_1_13_0",
-   "schemaVersion": 126,
-   "bytes": 1071522,
+   "schemaVersion": 127,
+   "bytes": 1572356,
    "pointsStride": 1
   },
   {
-   "file": "replay_schema_126_a521164d.json.gz",
+   "file": "replay_schema_127_a521164d.json.gz",
    "film": "a521164d",
    "build": "HI_1_4_1",
-   "schemaVersion": 126,
-   "bytes": 633165,
+   "schemaVersion": 127,
+   "bytes": 1237763,
    "pointsStride": 15
   },
   {
-   "file": "replay_schema_126_60ae07c4.json.gz",
+   "file": "replay_schema_127_60ae07c4.json.gz",
    "film": "60ae07c4",
    "build": "HI_1_8_0",
-   "schemaVersion": 126,
-   "bytes": 334099,
+   "schemaVersion": 127,
+   "bytes": 1231354,
    "pointsStride": 15
   },
   {
-   "file": "replay_schema_126_11de8353.json.gz",
+   "file": "replay_schema_127_11de8353.json.gz",
    "film": "11de8353",
    "build": "HI_1_9_0",
-   "schemaVersion": 126,
-   "bytes": 763448,
+   "schemaVersion": 127,
+   "bytes": 1806042,
    "pointsStride": 15
   },
   {
-   "file": "replay_schema_126_111fa685.json.gz",
+   "file": "replay_schema_127_111fa685.json.gz",
    "film": "111fa685",
    "build": "HI_1_10_0",
-   "schemaVersion": 126,
-   "bytes": 758742,
+   "schemaVersion": 127,
+   "bytes": 1905180,
    "pointsStride": 15
   },
   {
-   "file": "replay_schema_126_e5adf7b2.json.gz",
+   "file": "replay_schema_127_e5adf7b2.json.gz",
    "film": "e5adf7b2",
    "build": "HI_1_11_0",
-   "schemaVersion": 126,
-   "bytes": 1048146,
+   "schemaVersion": 127,
+   "bytes": 2111938,
    "pointsStride": 15
   },
   {
-   "file": "replay_schema_126_bcb6d393.json.gz",
+   "file": "replay_schema_127_bcb6d393.json.gz",
    "film": "bcb6d393",
    "build": "HI_1_12_0",
-   "schemaVersion": 126,
-   "bytes": 137003,
+   "schemaVersion": 127,
+   "bytes": 453959,
    "pointsStride": 15
   },
   {
-   "file": "replay_schema_126_fb1a1a72.json.gz",
+   "file": "replay_schema_127_fb1a1a72.json.gz",
    "film": "fb1a1a72",
    "build": "HI_1_13_0",
-   "schemaVersion": 126,
-   "bytes": 326857,
+   "schemaVersion": 127,
+   "bytes": 1143381,
    "pointsStride": 15
   }
  ]

@@ -55,7 +55,7 @@ var tablePolarites = []blocPolarites{
 	{Blocs: []string{"coverage.shots.", "coverage.grenades.", "coverage.objectives."},
 		Echecs:  "noSlot ambiguous outOfWindow unpublished refusedByRoster unitOtherIndex aim.record aim.none",
 		Succes:  "attached byUnit aim.track aim.sameTick",
-		Neutres: "available"},
+		Neutres: "available aim.sansPosition"},
 	{Blocs: []string{"coverage.abilities."},
 		Echecs: "scanNoise unpublished",
 		Succes: "reads published"},
@@ -108,12 +108,13 @@ var tablePolarites = []blocPolarites{
 	{Blocs: []string{"coverage.flagCarries."},
 		Echecs: "ambiguousCarrierKills ambiguousHomecomings ambiguousReturns ambiguousSlot " +
 			"carrierTeamUnknown closedOverlaps noBridge noTrack open outOfWindow overlaps " +
-			"filmBaseContradict ownFlagRefused seatsBeyondBand unjudgedCarrierKills unresolved",
+			"filmBaseContradict ownFlagRefused seatsBeyondBand unjudgedCarrierKills unresolved " +
+			"gaugeReadsAmbiguous gaugeReadsUnpublished gaugeSlotsFewReads gaugeSlotsOffDrops gaugeSlotsTeamTaken",
 		Succes: "carries closed dropsRepositioned filmBaseAgree gaugePaired gaugePoints gaugeReads gaugeSlots gaugeWalkReads " +
 			"gaugeSpans markerConfirmed objectLives openConfirmed",
 		Neutres: "assignedByPlay bursts captures closedByHandoff closedByHome closedByObject gaugeWalkSpans " +
 			"closedByReturn dropsWithheld homeByObject markerObserved neutralBirths openObserved " +
-			"filmBases openings spawns spawnsFromFilm steals teamBirths"},
+			"filmBases openings spawns spawnsFromFilm steals teamBirths gaugeReadsOffDrops"},
 	{Blocs: []string{"coverage.grapple."},
 		Echecs:  "brokenBodies",
 		Succes:  "heavyReads lightReads pullLives pulls",
@@ -132,7 +133,7 @@ var tablePolarites = []blocPolarites{
 		Echecs: "horsEmprise plusieursLieux unknown",
 		Succes: "accepted cycles dated kept pads powerupAccepted powerupKept powerupPads",
 		Neutres: "anchors atRest clusters dropped never objectives occupancies rejected releves " +
-			"slots spawned"},
+			"slots spawned candidates powerupCandidates"},
 	{Blocs: []string{"coverage.inventory."},
 		Echecs:  "unpublished",
 		Succes:  "decoded published",
@@ -162,8 +163,11 @@ var tablePolarites = []blocPolarites{
 			"withOwner byFamily.* byCause.spawn_event byCause.death_written byCause.taken_written",
 		Neutres: "anchors deployed dropped other byCause.* byCause.manifest_piece byFamilyOrigin.*"},
 	{Blocs: []string{"coverage.projectiles."},
-		Echecs: "shotAmbiguous truncated",
-		Succes: "published shotLinked tracks"},
+		Echecs: "shotAmbiguous truncated attach.authorNoTrack attach.authorNone attach.desynced attach.noTracks " +
+			"attach.outOfMatch attach.unreadFrames attach.unresolved",
+		Succes: "published shotLinked tracks fullRateSamples attach.read attach.listed attach.authored",
+		Neutres: "attach.created attach.onFlight attach.player attach.records attach.repeats attach.tagged " +
+			"attach.vehicle attach.wideLocations"},
 	{Blocs: []string{"coverage.clocks."},
 		Echecs: "framesUnread clockImpossible clockUnmeasuredState countdownImpossible countdownNoPlayer " +
 			"countdownIsolated withheldUnknownIndex withheldReusedIndex withheldOutsidePresence startDeduced endDeduced",
@@ -178,7 +182,7 @@ var tablePolarites = []blocPolarites{
 			"scoreboardMissing",
 		Succes: "published closedFrames",
 		Neutres: "frames messages copies scoreMessages unrelated namedWithoutPoints outsideTree " +
-			"scored scoreboardCompared scoreboardBehind treeShift"},
+			"scored scoreboardCompared scoreboardBehind treeShift botRecipient botTarget"},
 	// Les rechargements (schema 126) : meme famille que les actions a points. La lecture arretee et les messages sans
 	// joueur ou hors de l'axe sont ce que le calque n'a pas su poser ; `copies` est le double que le jeu ecrit.
 	{Blocs: []string{"coverage.reloads."},
@@ -190,16 +194,16 @@ var tablePolarites = []blocPolarites{
 	// (`perfect` n'est jamais faux) : un denominateur.
 	{Blocs: []string{"coverage.eliminations."},
 		Echecs: "headUnknown headNoCounter headAmbiguous headGuarded headOrphanRises " +
-			"perfectAmbiguous perfectOrphans",
+			"perfectAmbiguous perfectOrphans victimAmbiguous",
 		Succes:  "withVictim headYes headNo perfectYes",
-		Neutres: "eliminations perfectUnknown"},
+		Neutres: "eliminations perfectUnknown botEliminations victimPlaces"},
 	// Les touches (schema 125) : une estimation. Les seuils de suffisance sont un reglage de l outil ; la lecture
 	// arretee et les touches non posees sont ce que le calque n a pas su faire ; les unites sans piste et les touches
 	// ou degats sur soi sont des faits du jeu, comptes a part.
 	{Blocs: []string{"coverage.hits."},
 		Echecs:     "stoppedFrames vitalsUnread noShooter noVictim beforeOrigin afterEnd",
 		Succes:     "published sufficient damages damagesMeasured",
-		Neutres:    "frames messages weaponMessages hits damagesOffUnit selfHits selfDamages players",
+		Neutres:    "frames messages weaponMessages hits damagesOffUnit selfHits selfDamages players damagesZero damagesZeroOffUnit damagesZeroOutOfAxis",
 		Telemetrie: "minCoverage maxDuplicates maxStoppedShare"},
 	// Valeurs figees (schema 126) : `read` est ce qui est lu, `expected` le denominateur (manches retenues moins la
 	// derniere), `playersWithout` et `discarded` ce que la lecture n'a pas su publier ; `statsGuarded.*` (une cle par
@@ -208,7 +212,7 @@ var tablePolarites = []blocPolarites{
 		Echecs: "roundsContradicted/n roundsContradictedRecords statsWithheld statsGuarded.* " +
 			"frozenRounds.playersWithout frozenRounds.discarded",
 		Succes:  "points frozenRounds.read",
-		Neutres: "rounds roundsWritten/n roundsUnplayed/n frozenRounds.expected"},
+		Neutres: "rounds roundsWritten/n roundsUnplayed/n frozenRounds.expected roundsAdmittedByReset/n roundsAdmittedByShare/n"},
 	{Blocs: []string{"coverage.seats."},
 		Echecs: "bornesDifferees botsRelevesEnJeu chevauchements depassements entitesContestees entitesNonLiees " +
 			"identitesHorsRoster imagesClesDouteuses placesEnTrop placesOuvertes " +
@@ -223,9 +227,16 @@ var tablePolarites = []blocPolarites{
 	{Blocs: []string{"coverage.stances."},
 		Echecs: "desyncs dropped eventPacketsUnlocated forgottenBindings refusedNews " +
 			"refusedNewFalseReads refusedNewLostCreations refusedNewUndecided " +
-			"control.withHole control.innerHoles control.noTrack control.noPlayer",
-		Succes:     "intervals jumpsDerived lives reads records control.holds control.entries control.published control.intervals",
-		Neutres:    "byKind.* jumpEpisodes tracksTotal",
+			"control.withHole control.innerHoles control.noTrack control.noPlayer " +
+			"control.crouchCommand.afterHole control.crouchCommand.innerHoles control.crouchCommand.noPlayer " +
+			"control.crouchCommand.noTrack control.crouchCommand.withHole control.jumpCommand.afterHole " +
+			"control.jumpCommand.innerHoles control.jumpCommand.noPlayer control.jumpCommand.noTrack " +
+			"control.jumpCommand.withHole",
+		Succes: "intervals jumpsDerived lives reads records control.holds control.entries control.published control.intervals " +
+			"control.crouchCommand.holds control.crouchCommand.intervals control.crouchCommand.published " +
+			"control.jumpCommand.holds control.jumpCommand.intervals control.jumpCommand.published",
+		Neutres: "byKind.* jumpEpisodes tracksTotal control.stepUs control.crouchCommand.gated control.crouchCommand.inVehicle " +
+			"control.jumpCommand.gated control.jumpCommand.inVehicle",
 		Telemetrie: "mapWidths/n"},
 	{Blocs: []string{"coverage.t0Film."},
 		Neutres: "burst marginMs moving tracks"},
@@ -235,10 +246,52 @@ var tablePolarites = []blocPolarites{
 		Neutres: "noTeam records silence tracks"},
 	{Blocs: []string{"coverage.tracks."},
 		Echecs: "gapMs gaps horsEmprise refusedMinPoints refusedPoints slotsDesarmes " +
-			"lifeEnds.unread lifeEnds.open lifeEnds.deletionsUnproven",
-		Succes:     "published publishedPoints lifeEnds.released lifeEnds.deleted",
+			"lifeEnds.unread lifeEnds.open lifeEnds.deletionsUnproven noWorld aimOnlyBeforeOrigin aimOnlyNoLife",
+		Succes: "published publishedPoints lifeEnds.released lifeEnds.deleted fullRateSamples fullRateAimSamples " +
+			"fullRateAimOnlySamples",
 		Neutres:    "avantCreation slotsArmes viesAvantPremiereCreation lifeEnds.retaken lifeEnds.filmEnd",
 		Telemetrie: "minPoints"},
+	// Les calques du schema 127 (decodeur v1.6.0), meme grille que les rechargements : la lecture arretee, l'instant hors de
+	// l'axe, le joueur ou la piste absents sont ce que le calque n'a pas su poser ; `read`, `published` et les trames
+	// fermees sont ce qui est lu ; `frames`, `copies` (le double que le jeu ecrit) et les fusions sont des populations.
+	{Blocs: []string{"coverage.ammoReads."},
+		Echecs:  "afterEnd beforeOrigin noTrack",
+		Succes:  "read",
+		Neutres: "empty unchanged fromDelta fromKeyframe"},
+	{Blocs: []string{"coverage.announcements."},
+		Echecs:  "afterEnd beforeOrigin stoppedFrames",
+		Succes:  "published read closedFrames",
+		Neutres: "frames merged"},
+	// L'apparence : `raw` est un bloc dont la tete ne se lit pas (publie entier, opaque) et `unloaded` une apparence jamais
+	// chargee ; `changed`, `distinct` et `packets` decrivent le film.
+	{Blocs: []string{"coverage.appearance."},
+		Echecs:  "noXUID raw refused unloaded unmatched",
+		Succes:  "pairs",
+		Neutres: "changed distinct packets"},
+	// Les repliques : `unnamed` est une replique sans nom court prouve (builds hors HI_1_12_0 et HI_1_13_0), comme
+	// `medals.unknownName`.
+	{Blocs: []string{"coverage.chatter."},
+		Echecs:  "afterEnd beforeOrigin stoppedFrames withoutPlayer unnamed",
+		Succes:  "published read named closedFrames bySpeaker",
+		Neutres: "frames bots"},
+	// Les places de controle : un tir rendu par le siege du roster est le repli `repli_tireur_par_le_siege_de_la_place`, un
+	// tir que personne ne tient garde l'index du record ; les liaisons contestees ou contredites sont des echecs.
+	{Blocs: []string{"coverage.controlPlaces."},
+		Echecs:  "unitContradicted contested shotsBySeat shotsUnheld burstsBySeat burstsUnheld",
+		Succes:  "bindings players shotsByPlace burstsByPlace",
+		Neutres: "multiPlace handovers returns"},
+	{Blocs: []string{"coverage.drawnWeapons."},
+		Echecs:  "afterEnd beforeOrigin noTrack slotUnbound",
+		Succes:  "published read",
+		Neutres: "duplicates"},
+	{Blocs: []string{"coverage.gestures."},
+		Echecs:  "afterEnd beforeOrigin stoppedFrames withoutPlayer",
+		Succes:  "published read closedFrames",
+		Neutres: "frames copies gated"},
+	{Blocs: []string{"coverage.vitals."},
+		Echecs:  "afterDeath afterEnd beforeOrigin noTrack",
+		Succes:  "published read births",
+		Neutres: "ramp unchanged deaths"},
 	{Blocs: []string{"coverage.carriedEquipment."},
 		Echecs:  "ambiguousCost conflicting noCatalog noGlobalId noIdentity riftEndsUnread teleportsWithoutPose trackedEffectsAmbiguous trackedEffectsUnlinked trackedUnpositioned unpositioned unresolved",
 		Succes:  "attached energyReads positionedByCarrier positionedByObject published riftEndsRead riftPoses trackedEffectEnds trackedEffects trackedEnds trackedObjects trackedPositioned uses withCost",

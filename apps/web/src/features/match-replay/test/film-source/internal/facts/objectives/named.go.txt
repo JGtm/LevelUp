@@ -315,6 +315,9 @@ func namedEventsOfTable(recs []types.StatRecord, objectiveType string, table, ju
 	// d'enregistrements pour en tirer huit series.
 	real := RealRounds(recs)
 	byKey := rawSeriesJugees(recs, table, juge, cons)
+	// UNE SUITE PAR OCCUPANT D'UN SIEGE ([seatCuts]) : ces evenements sont nommes par leur instant, donc un
+	// siege qui change de joueur doit rendre les actions des deux.
+	cuts := seatCutsOf(recs)
 	// LE BUDGET EST OUVERT ICI, ET LE PARCOURS EST TRIE POUR LUI. Le plafond total appartient
 	// a cette fonction (D13) ; le solde, lui, descend jusqu'a [incrementTimes] pour qu'aucun
 	// appel isole ne le depasse. Des qu'un budget peut s'epuiser, l'ORDRE de parcours devient
@@ -328,7 +331,7 @@ func namedEventsOfTable(recs []types.StatRecord, objectiveType string, table, ju
 		if slot.Redundant {
 			continue
 		}
-		series := cumulateRounds(byKey[key], real, cons.Diagnostics())
+		series := cumulateRounds(byKey[key], real, cuts, nil, cons.Diagnostics())
 		for _, entity := range sortedIntKeys(series) {
 			for _, t := range incrementTimes(series[entity], key, b) {
 				out = append(out, NamedEvent{

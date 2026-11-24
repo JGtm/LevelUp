@@ -147,8 +147,12 @@ func TestSiegeRecycleBcb6d393(t *testing.T) {
 			t.Errorf("action de %d ms (slot %d) : %q, attendu %q — %s", c.t, c.slot, got, c.want, c.pourquoi)
 		}
 	}
-	if fs.objectivesUnnamed != 0 {
-		t.Errorf("%d action(s) d objectif sans auteur, attendu 0", fs.objectivesUnnamed)
+	// DEUX ACTIONS SANS AUTEUR depuis le decodeur v1.6.0 (2026-11-24) : il lit en plus des lignes d'objectif de ce
+	// film que la v1.5.0 ne voyait pas (`coverage.objectives.noSlot` du film `bcb6d393`, ecart accepte par
+	// l'utilisateur le 2026-11-24 et inscrit au manifeste du corpus). Les trois actions ci-dessus gardent leur auteur ;
+	// le compte ne baisse pas, il grandit du nombre de lignes neuves, que le calque ne sait pas nommer.
+	if fs.objectivesUnnamed != 2 {
+		t.Errorf("%d action(s) d objectif sans auteur, attendu 2", fs.objectivesUnnamed)
 	}
 	// LES OCCUPATIONS PUBLIEES : deux sur le slot 12, trois sur le slot 14 (l occupant du milieu
 	// meurt une seule fois : le pont s abstient sur son intervalle).

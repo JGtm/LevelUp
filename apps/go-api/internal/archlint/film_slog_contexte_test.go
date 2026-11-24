@@ -68,7 +68,9 @@ func fichiersDuPerimetreFilm(t *testing.T, racines ...string) []fichierDuPerimet
 			}
 			rel := cheminDeGardeRail(t, p)
 			if d.IsDir() {
-				if rel == racineBriqueFilm+"/research" {
+				// `cmd/` (2026-11-24, decodeur v1.6.0) : l'outil de mesure `film-bench`, dont `main` ne releve ni de la
+				// production du decodeur ni de l'exploitation du serveur ; comme `research`, il n'entre pas dans le perimetre.
+				if rel == racineBriqueFilm+"/research" || rel == racineBriqueFilm+"/cmd" {
 					return filepath.SkipDir
 				}
 				return nil
