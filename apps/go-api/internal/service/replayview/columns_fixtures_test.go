@@ -6,10 +6,15 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
+	"regexp"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/service/replayview"
 	"levelup/go-api/internal/testutil"
+
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // Les documents de rejeu des fixtures du web (`apps/web/src/features/match-replay/test/fixtures/go/`,
@@ -120,6 +125,90 @@ func gzipBytes(t *testing.T, b []byte) []byte {
 	return buf.Bytes()
 }
 
+// calquesNonServis rend les clés JSON de premier niveau que le document stocké porte et que l'API ne sert pas
+// (`testutil.ReplayChampsNonServis`, entrées `ReplayDocument.<Champ>`).
+func calquesNonServis(t *testing.T) map[string]bool {
+	t.Helper()
+	exclus := map[string]bool{}
+	stocke := reflect.TypeOf(replay.ReplayDocument{})
+	for cle := range testutil.ReplayChampsNonServis {
+		champ, ok := strings.CutPrefix(cle, "ReplayDocument.")
+		if !ok {
+			continue
+		}
+		f, trouve := stocke.FieldByName(champ)
+		if !trouve {
+			t.Fatalf("%s : champ inconnu du document stocké", cle)
+		}
+		exclus[strings.Split(f.Tag.Get("json"), ",")[0]] = true
+	}
+	return exclus
+}
+
+// TestCalquesNonServisDuWebSontCeuxDeGo : la liste que le chargeur de fixtures du web retire
+// (`STORED_ONLY_LAYERS`, `goFixtures.ts`) est celle des calques que la décision de non-publication écrit côté Go. Deux
+// listes divergent ; celle-ci les tient égales.
+func TestCalquesNonServisDuWebSontCeuxDeGo(t *testing.T) {
+	root, err := testutil.RepoRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	src, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(webFixturesRel), "..", "goFixtures.ts"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	bloc := regexp.MustCompile(`(?s)STORED_ONLY_LAYERS: readonly string\[\] = \[(.*?)\]`).FindSubmatch(src)
+	if bloc == nil {
+		t.Fatal("STORED_ONLY_LAYERS introuvable dans goFixtures.ts")
+	}
+	web := map[string]bool{}
+	for _, m := range regexp.MustCompile(`'([A-Za-z]+)'`).FindAllSubmatch(bloc[1], -1) {
+		web[string(m[1])] = true
+	}
+	if !reflect.DeepEqual(web, calquesNonServis(t)) {
+		t.Errorf("STORED_ONLY_LAYERS (web) = %v, calques non servis côté Go = %v", web, calquesNonServis(t))
+	}
+}
+
+// sansCalquesNonServis rend le document tel que le serveur l'enverrait au web : les calques de premier niveau que
+// `testutil.ReplayChampsNonServis` exclut (`ReplayDocument.<Champ>`) en sont retires, l'ordre des autres cles gardé.
+// Les fixtures sont les documents du décodeur, avec tout ce qu'il écrit ; la racine du contrat du web est stricte.
+func sansCalquesNonServis(t *testing.T, body []byte) []byte {
+	t.Helper()
+	exclus := calquesNonServis(t)
+	dec := json.NewDecoder(bytes.NewReader(body))
+	if tok, err := dec.Token(); err != nil || tok != json.Delim('{') {
+		t.Fatalf("le document ne s'ouvre pas par un objet : %v %v", tok, err)
+	}
+	var out bytes.Buffer
+	out.WriteByte('{')
+	first := true
+	for dec.More() {
+		keyTok, err := dec.Token()
+		if err != nil {
+			t.Fatal(err)
+		}
+		var raw json.RawMessage
+		if err := dec.Decode(&raw); err != nil {
+			t.Fatal(err)
+		}
+		key := keyTok.(string)
+		if exclus[key] {
+			continue
+		}
+		if !first {
+			out.WriteByte(',')
+		}
+		first = false
+		k, _ := json.Marshal(key)
+		out.Write(k)
+		out.WriteByte(':')
+		out.Write(raw)
+	}
+	out.WriteByte('}')
+	return out.Bytes()
+}
+
 func TestColumnsFixturesMatchCommitted(t *testing.T) {
 	files := webFixtureFiles(t)
 	regen := os.Getenv(envRegenColumnsFixtures) == "1"
@@ -128,7 +217,7 @@ func TestColumnsFixturesMatchCommitted(t *testing.T) {
 		if !ok {
 			t.Fatalf("le film %s n'est plus dans les fixtures du web : mettre à jour columnsFixtureFilms", film)
 		}
-		enc, err := replayview.EncodeColumns(readGzipFile(t, src))
+		enc, err := replayview.EncodeColumns(sansCalquesNonServis(t, readGzipFile(t, src)))
 		if err != nil {
 			t.Fatalf("%s : %v", film, err)
 		}
