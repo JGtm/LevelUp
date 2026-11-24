@@ -38,10 +38,11 @@ export function ViewChips({ model, onStatus }: Props) {
   const activeUser = views.activeUser
   const { name: activeName, hint, modified } = activeViewLabel(t, views)
 
-  function chip(id: string, label: string, star: boolean) {
+  function chip(id: string, label: string, title: string, star: boolean) {
     const active = state.activeId === id
     return (
-      <button key={id} type="button" aria-pressed={active} title={label} onClick={() => views.apply(id)} className={CHIP}>
+      // UNE PUCE ACTIVE ET MODIFIÉE passe en pointillé : la vue n'est plus tout à fait celle qu'on a choisie.
+      <button key={id} type="button" aria-pressed={active} title={title} onClick={() => views.apply(id)} className={`${CHIP} ${active && modified ? 'border-dashed' : ''}`}>
         {star && <StarIcon filled />}
         {label}
         {active && modified && <span className="font-normal opacity-85">{`· ${t.modified}`}</span>}
@@ -64,9 +65,9 @@ export function ViewChips({ model, onStatus }: Props) {
     <section className="space-y-1">
       <h3 className="text-xs font-medium text-muted-foreground">{t.presetsTitle}</h3>
       <div role="group" aria-label={t.presetsTitle} className="flex flex-wrap items-center gap-1.5">
-        {PRESET_IDS.map((id) => chip(id, t.presets[id].label, false))}
+        {PRESET_IDS.map((id) => chip(id, t.presets[id].label, t.presets[id].hint, false))}
         {state.views.length > 0 && <span aria-hidden className="mx-0.5 h-4 w-px bg-border" />}
-        {state.views.map((v) => chip(v.id, v.name, state.defaultId === v.id))}
+        {state.views.map((v) => chip(v.id, v.name, t.myViewState, state.defaultId === v.id))}
       </div>
       <div className="flex min-h-6 flex-wrap items-center gap-x-2 gap-y-1 pt-1 text-xs">
         {modified ? (
