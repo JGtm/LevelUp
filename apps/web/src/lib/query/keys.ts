@@ -541,6 +541,7 @@ export const queryKeys = {
   adminMonitoringCrons: ['admin', 'monitoring', 'crons'] as const,
   adminMonitoringBuildQueue: ['admin', 'monitoring', 'build-queue'] as const,
   adminActionJournal: ['admin', 'actions', 'journal'] as const,
+  adminReplaySchema: ['admin', 'monitoring', 'replay-schema'] as const,
   adminWeaponCoverage: (slug: string) => ['admin', 'monitoring', 'weapon-coverage', slug] as const,
   adminLusrGaps: (slug: string) => ['admin', 'monitoring', 'lusr-gaps', slug] as const,
   adminDataQuality: ['admin', 'data-quality', 'counts'] as const,

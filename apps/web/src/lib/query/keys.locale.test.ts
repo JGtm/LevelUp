@@ -371,6 +371,7 @@ const nePasDependreDeLaLangue: Record<string, string> = {
   adminMonitoringCrons: CONSOLE_ADMIN,
   adminMonitoringBuildQueue: CONSOLE_ADMIN,
   adminActionJournal: CONSOLE_ADMIN,
+  adminReplaySchema: CONSOLE_ADMIN,
   adminWeaponCoverage: CONSOLE_ADMIN,
   adminLusrGaps: CONSOLE_ADMIN,
   adminDataQuality: 'langue du détecteur fixée par la constante DATA_QUALITY_LOCALE de la requête',

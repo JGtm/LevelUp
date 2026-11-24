@@ -239,6 +239,7 @@ const agnosticKeys = new Set<string>([
   // que les autres clés adminMonitoring* ci-dessus.
   'adminMonitoringBuildQueue',
   'adminActionJournal',
+  'adminReplaySchema',
   'adminWeaponCoverage',
   'adminLusrGaps',
   'adminDataQuality',

@@ -19,6 +19,7 @@ import { CronsPanel } from './CronsPanel'
 import { DataHealthPanel } from './DataHealthPanel'
 import { DiagnosticPanel } from './DiagnosticPanel'
 import { FreshnessPanel } from './FreshnessPanel'
+import { ReplaySchemaPanel } from './ReplaySchemaPanel'
 import { WeaponCoveragePanel } from './WeaponCoveragePanel'
 
 export function AdminOverviewPage() {
@@ -62,6 +63,8 @@ export function AdminOverviewPage() {
       </section>
 
       <WeaponCoveragePanel />
+
+      <ReplaySchemaPanel />
     </div>
   )
 }

@@ -109,6 +109,23 @@ export function useWeaponCoverage(titleSlug: string) {
   })
 }
 
+/** Le décompte des rejeux rangés par version de schéma, par titre (diagnostic : combien sont à l'ancien schéma). */
+export type AdminReplaySchema = components['schemas']['AdminReplaySchema']
+export type AdminReplaySchemaTitle = components['schemas']['AdminReplaySchemaTitle']
+
+/**
+ * Les rejeux par version de schéma, tous les titres que le serveur compte : l'endpoint lit les petits fichiers
+ * d'en-tête, pas de polling, un cache tranquille.
+ */
+export function useReplaySchema() {
+  return useQuery({
+    queryKey: queryKeys.adminReplaySchema,
+    queryFn: () => api.get<AdminReplaySchema>('/admin/monitoring/replay-schema'),
+    staleTime: 60_000,
+    retry: false,
+  })
+}
+
 export function useAdminJobs(limit = 20) {
   return useQuery({
     queryKey: queryKeys.adminMonitoringJobs,

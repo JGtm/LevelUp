@@ -853,6 +853,46 @@ en = "No weapon data for this title."
 fr = "Identifiants absents du référentiel d'armes ET du catalogue officiel du titre : sources de frags hors nomenclature d'arsenal (variantes non publiées par l'éditeur, contenu communautaire, objets ou environnement). Elles n'altèrent pas les statistiques d'arsenal et relèvent d'un résidu documenté ; les plus fréquentes peuvent justifier un ajout manuel au référentiel."
 en = "Identifiers absent from both the weapon registry and the title's official catalog: frag sources outside the arsenal nomenclature (variants not published by the vendor, community content, objects or environment). They do not affect arsenal statistics and are documented residue; the most frequent ones may warrant a manual registry entry."
 
+[admin.overview.replay_schema_section]
+fr = "Rejeux par version de schéma"
+en = "Replays by schema version"
+
+[admin.overview.replay_schema_hint]
+fr = "Rejeux rangés sur ce serveur, comptés d'après leur en-tête. Un rejeu à l'ancien schéma reste lisible, mais ne porte pas ce que la version courante sait y mettre."
+en = "Replays stored on this server, counted from their header. A replay on an older schema stays readable, but lacks what the current version can put in it."
+
+[admin.overview.replay_schema_current_schema]
+fr = "Schéma courant"
+en = "Current schema"
+
+[admin.overview.replay_schema_total]
+fr = "Rejeux rangés"
+en = "Stored replays"
+
+[admin.overview.replay_schema_up_to_date]
+fr = "Au schéma courant"
+en = "On the current schema"
+
+[admin.overview.replay_schema_behind]
+fr = "À l'ancien schéma"
+en = "On an older schema"
+
+[admin.overview.replay_schema_unreadable]
+fr = "Illisibles"
+en = "Unreadable"
+
+[admin.overview.replay_schema_title_empty]
+fr = "Aucun rejeu rangé pour ce titre."
+en = "No stored replay for this title."
+
+[admin.overview.replay_schema_empty]
+fr = "Aucun titre ne range de rejeux."
+en = "No title stores replays."
+
+[admin.overview.replay_schema_unavailable]
+fr = "Décompte des rejeux indisponible."
+en = "Replay count unavailable."
+
 # ─── Audit data health (compteurs) ─────────────────────────────────────────
 
 [admin.dh.uuids_raw]

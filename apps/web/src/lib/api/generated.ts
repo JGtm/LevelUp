@@ -750,6 +750,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/monitoring/replay-schema": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Monitoring dashboard: stored replays counted by schema version (current, on an older schema, unreadable), per title (admin auth required) */
+        get: operations["getAdminMonitoringReplaySchema"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/monitoring/resources": {
         parameters: {
             query?: never;
@@ -4919,6 +4936,23 @@ export interface components {
             persist_phases: components["schemas"]["PerfCallStats"][] | null;
             postsync_steps: components["schemas"]["PerfCallStats"][] | null;
             postsync_total: components["schemas"]["PerfCallStats"];
+        };
+        AdminReplaySchema: {
+            /** Format: int64 */
+            current_schema: number;
+            generated_at: string;
+            titles: components["schemas"]["AdminReplaySchemaTitle"][] | null;
+        };
+        AdminReplaySchemaTitle: {
+            /** Format: int64 */
+            behind: number;
+            /** Format: int64 */
+            current: number;
+            title_slug: string;
+            /** Format: int64 */
+            total: number;
+            /** Format: int64 */
+            unreadable: number;
         };
         AdminResourcesResponse: {
             budgets?: {
@@ -17615,6 +17649,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminPerfStats"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getAdminMonitoringReplaySchema: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminReplaySchema"];
                 };
             };
             /** @description Error */
