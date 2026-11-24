@@ -67,7 +67,7 @@ describe('ReplayRosterRow — les actions sont à la demande de la page', () => 
   it('avec `tileActions`, chaque ligne porte deux boutons nommés, un bot compris', () => {
     setup(actions())
     for (const nom of ['Alpha', 'Bravo', 'Marc']) {
-      expect(within(ligne(nom)).getByRole('button', { name: `Suivre ${nom}` })).toBeTruthy()
+      expect(within(ligne(nom)).getByRole('button', { name: `Suivre ${nom} (caméra)` })).toBeTruthy()
       expect(within(ligne(nom)).getByRole('button', { name: `Masquer ${nom}` })).toBeTruthy()
     }
   })
@@ -77,7 +77,7 @@ describe('ReplayRosterRow — les gestes', () => {
   it('Suivre : un clic demande à suivre ce joueur, sans ouvrir la fiche', () => {
     const tile = actions()
     const { onCard } = setup(tile)
-    fireEvent.click(screen.getByRole('button', { name: 'Suivre Bravo' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Suivre Bravo (caméra)' }))
     expect(tile.onFollow).toHaveBeenCalledTimes(1)
     expect(tile.onFollow).toHaveBeenCalledWith('B')
     expect(onCard).not.toHaveBeenCalled()
@@ -105,7 +105,7 @@ describe('ReplayRosterRow — les gestes', () => {
   it('le joueur suivi : « Ne plus suivre », enfoncé ; un clic arrête le suivi', () => {
     const tile = actions({ followedXuid: 'A' })
     setup(tile)
-    const bouton = screen.getByRole('button', { name: 'Ne plus suivre Alpha' })
+    const bouton = screen.getByRole('button', { name: 'Ne plus suivre Alpha (caméra)' })
     expect(bouton.getAttribute('aria-pressed')).toBe('true')
     fireEvent.click(bouton)
     expect(tile.onFollow).toHaveBeenCalledWith(null)
@@ -122,7 +122,7 @@ describe('ReplayRosterRow — les gestes', () => {
 
   it('Entrée, Espace et la souris sur un bouton d’action ne rouvrent pas la fiche et ne prennent pas le focus', () => {
     const { onCard } = setup(actions())
-    const bouton = screen.getByRole('button', { name: 'Suivre Alpha' })
+    const bouton = screen.getByRole('button', { name: 'Suivre Alpha (caméra)' })
     fireEvent.keyDown(bouton, { key: 'Enter' })
     fireEvent.keyDown(bouton, { key: ' ' })
     expect(onCard).not.toHaveBeenCalled()
@@ -132,8 +132,8 @@ describe('ReplayRosterRow — les gestes', () => {
 
 describe('ReplayRosterRow — infobulles, visibilité, ligne masquée', () => {
   it.each([
-    ['fr', 'Suivre Alpha', 'Suivre\nLa caméra cadre la carte sur Alpha.', 'Masquer Alpha', 'Masquer\nRetire Alpha de la carte : pion, traînée, nom.'],
-    ['en', 'Follow Alpha', 'Follow\nThe camera frames the map on Alpha.', 'Hide Alpha', 'Hide\nRemoves Alpha from the map: marker, trail, name.'],
+    ['fr', 'Suivre Alpha (caméra)', 'Caméra : suivre\nLa caméra cadre la carte sur Alpha.', 'Masquer Alpha', 'Masquer\nRetire Alpha de la carte : pion, traînée, nom.'],
+    ['en', 'Follow Alpha (camera)', 'Camera: follow\nThe camera frames the map on Alpha.', 'Hide Alpha', 'Hide\nRemoves Alpha from the map: marker, trail, name.'],
   ] as const)('%s : titre puis phrase', (locale, nomSuivre, titreSuivre, nomOeil, titreOeil) => {
     setup(actions(), vi.fn(), locale)
     expect(screen.getByRole('button', { name: nomSuivre }).getAttribute('title')).toBe(titreSuivre)
@@ -147,7 +147,7 @@ describe('ReplayRosterRow — infobulles, visibilité, ligne masquée', () => {
     expect(repos).toContain('group-hover:opacity-100')
     expect(repos).toContain('group-focus-within:opacity-100')
     expect(repos).toContain('[@media(hover:none)]:opacity-60')
-    for (const nom of ['Ne plus suivre Alpha', 'Afficher Bravo']) {
+    for (const nom of ['Ne plus suivre Alpha (caméra)', 'Afficher Bravo']) {
       const actif = screen.getByRole('button', { name: nom }).className
       expect(actif).toContain('opacity-100')
       expect(actif).not.toContain('opacity-0')
@@ -164,7 +164,7 @@ describe('ReplayRosterRow — infobulles, visibilité, ligne masquée', () => {
 
   it('les icônes sont en ligne, sans couleur écrite en dur', () => {
     setup(actions({ hidden: new Set(['B']) }))
-    for (const nom of ['Suivre Alpha', 'Afficher Bravo']) {
+    for (const nom of ['Suivre Alpha (caméra)', 'Afficher Bravo']) {
       const svg = screen.getByRole('button', { name: nom }).querySelector('svg')
       expect(svg, nom).not.toBeNull()
       expect(svg?.outerHTML).not.toMatch(/#[0-9a-f]{3,8}|rgb\(|hsl\(|oklch\(/i)

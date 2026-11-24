@@ -351,7 +351,7 @@ export const FR_TEXT = {
   victoryScoreLabel: 'Score final',
   trackTeammates: 'Coéquipiers',
   trackDominance: 'Dominance',
-  viewpointLabel: 'Joueur suivi',
+  viewpointLabel: 'Point de vue',
   viewpointNoData: 'Aucune donnée de match pour ce joueur',
   dominanceOfFmt: (team) => `${team} mène aux frags`,
   dominanceTied: 'Égalité aux frags',

@@ -768,7 +768,7 @@ export interface ReplayText {
   /**
    * LE MENU DE POINT DE VUE (2026-09-07, lot L3), à la place du libellé de la première piste.
    *
-   * `viewpointLabel` est le NOM ACCESSIBLE de la commande : « Joueur suivi », pas « Toi ». Le
+   * `viewpointLabel` est le NOM ACCESSIBLE de la commande : « Point de vue », pas « Toi ». Le
    * texte visible du menu est un gamertag, qui ne dit pas de quoi il est la réponse — sans ce
    * nom, un lecteur d'écran annoncerait une liste déroulante anonyme au milieu d'une frise.
    *

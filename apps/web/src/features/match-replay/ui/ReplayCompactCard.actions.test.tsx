@@ -77,7 +77,7 @@ describe.each([
   it('chaque fiche porte deux boutons nommés', () => {
     setup(actions())
     for (const nom of ['Alpha', 'Lima']) {
-      expect(within(fiche(nom)).getByRole('button', { name: `Suivre ${nom}` })).toBeTruthy()
+      expect(within(fiche(nom)).getByRole('button', { name: `Suivre ${nom} (caméra)` })).toBeTruthy()
       expect(within(fiche(nom)).getByRole('button', { name: `Masquer ${nom}` })).toBeTruthy()
     }
   })
@@ -85,7 +85,7 @@ describe.each([
   it('un clic sur un bouton agit sans ouvrir la fiche ; un clic ailleurs l’ouvre', () => {
     const tile = actions()
     const { onCard } = setup(tile)
-    fireEvent.click(screen.getByRole('button', { name: 'Suivre Bravo' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Suivre Bravo (caméra)' }))
     fireEvent.click(screen.getByRole('button', { name: 'Masquer Bravo' }))
     expect(tile.onFollow).toHaveBeenCalledWith('X1')
     expect(tile.onToggleHidden).toHaveBeenCalledWith('X1')
@@ -96,7 +96,7 @@ describe.each([
 
   it('Entrée et Espace sur un bouton ne rouvrent pas la fiche ; la souris ne prend pas le focus', () => {
     const { onCard } = setup(actions())
-    const bouton = screen.getByRole('button', { name: 'Suivre Alpha' })
+    const bouton = screen.getByRole('button', { name: 'Suivre Alpha (caméra)' })
     fireEvent.keyDown(bouton, { key: 'Enter' })
     fireEvent.keyDown(bouton, { key: ' ' })
     expect(onCard).not.toHaveBeenCalled()
@@ -106,7 +106,7 @@ describe.each([
   it('états actifs : suivi « Ne plus suivre », masqué « Afficher », enfoncés ; clic = bascule', () => {
     const tile = actions({ followedXuid: 'X0', hidden: new Set(['X1']) })
     setup(tile)
-    const suivi = screen.getByRole('button', { name: 'Ne plus suivre Alpha' })
+    const suivi = screen.getByRole('button', { name: 'Ne plus suivre Alpha (caméra)' })
     const masque = screen.getByRole('button', { name: 'Afficher Bravo' })
     expect(suivi.getAttribute('aria-pressed')).toBe('true')
     expect(masque.getAttribute('aria-pressed')).toBe('true')
@@ -115,8 +115,8 @@ describe.each([
   })
 
   it.each([
-    ['fr', 'Suivre Alpha', 'Suivre\nLa caméra cadre la carte sur Alpha.', 'Masquer Alpha', 'Masquer\nRetire Alpha de la carte : pion, traînée, nom.'],
-    ['en', 'Follow Alpha', 'Follow\nThe camera frames the map on Alpha.', 'Hide Alpha', 'Hide\nRemoves Alpha from the map: marker, trail, name.'],
+    ['fr', 'Suivre Alpha (caméra)', 'Caméra : suivre\nLa caméra cadre la carte sur Alpha.', 'Masquer Alpha', 'Masquer\nRetire Alpha de la carte : pion, traînée, nom.'],
+    ['en', 'Follow Alpha (camera)', 'Camera: follow\nThe camera frames the map on Alpha.', 'Hide Alpha', 'Hide\nRemoves Alpha from the map: marker, trail, name.'],
   ] as const)('%s : infobulles titre puis phrase', (locale, nomSuivre, titreSuivre, nomOeil, titreOeil) => {
     setup(actions(), locale)
     expect(screen.getByRole('button', { name: nomSuivre }).getAttribute('title')).toBe(titreSuivre)
@@ -130,7 +130,7 @@ describe.each([
     expect(repos).toContain('group-hover:opacity-100')
     expect(repos).toContain('group-focus-within:opacity-100')
     expect(repos).toContain('[@media(hover:none)]:opacity-60')
-    for (const nom of ['Ne plus suivre Alpha', 'Afficher Bravo']) {
+    for (const nom of ['Ne plus suivre Alpha (caméra)', 'Afficher Bravo']) {
       const actif = screen.getByRole('button', { name: nom }).className
       expect(actif).toContain('opacity-100')
       expect(actif).not.toContain('opacity-0')
@@ -149,7 +149,7 @@ describe.each([
 
   it('les boutons sont ceux des tuiles : 16 px, icônes en ligne sans couleur en dur', () => {
     setup(actions())
-    const bouton = screen.getByRole('button', { name: 'Suivre Alpha' })
+    const bouton = screen.getByRole('button', { name: 'Suivre Alpha (caméra)' })
     expect(bouton.className).toContain('h-4')
     expect(bouton.className).toContain('w-4')
     expect(bouton.querySelector('svg')?.outerHTML).not.toMatch(/#[0-9a-f]{3,8}|rgb\(|hsl\(|oklch\(/i)

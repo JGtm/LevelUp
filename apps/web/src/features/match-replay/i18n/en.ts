@@ -347,7 +347,7 @@ export const EN_TEXT = {
   victoryScoreLabel: 'Final score',
   trackTeammates: 'Teammates',
   trackDominance: 'Dominance',
-  viewpointLabel: 'Followed player',
+  viewpointLabel: 'Viewpoint',
   viewpointNoData: 'No match data for this player',
   dominanceOfFmt: (team) => `${team} leads on kills`,
   dominanceTied: 'Tied on kills',

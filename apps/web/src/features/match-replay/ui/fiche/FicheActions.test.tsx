@@ -24,7 +24,7 @@ describe('la forme : « Seul » est la seule action de la fiche', () => {
 
   it('ni Suivre ni Masquer ne sont dans la fiche', () => {
     monter()
-    expect(screen.queryByRole('button', { name: 'Suivre' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Caméra : suivre' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Masquer' })).toBeNull()
   })
 

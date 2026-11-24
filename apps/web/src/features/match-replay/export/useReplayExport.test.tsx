@@ -488,10 +488,12 @@ describe('useReplayExport — le format du fichier', () => {
         locale: 'fr',
         soundTrack: () => ({ timeline: [{ ms: 0, stem: 'x' }], endMatchStems: [], variationPercent: 0, distancePercent: 0, families: { voice: [], music: [] }, engines: [] }),
         zoomLevel: 2,
+        soundOn: false,
       }),
     )
-    // Le palier de l'ecran est RELAYE au dialogue, qui decide d'y proposer le cadrage.
+    // Le palier de l'ecran est RELAYE au dialogue, qui decide d'y proposer le cadrage ; le son de la page aussi (case « Inclure le son »).
     expect(hook.result.current.zoomLevel).toBe(2)
+    expect(hook.result.current.soundOn).toBe(false)
     await act(() => hook.result.current.run({ startFrame: 0, endFrame: 10 }))
     expect(actifPendantLeMixage).toBe(true)
     expect(isExportActive()).toBe(false)

@@ -12,7 +12,7 @@
 
 /** Les actions d'une tuile ou d'une ligne : Suivre, l'œil, et « Tout afficher » en tête de la colonne. */
 interface PlayerTileText {
-  /** Le titre de l'infobulle de chaque geste ; il sert aussi d'intitulé de la liste « Suivre » du menu de caméra. */
+  /** Le titre de l'infobulle de chaque geste ; il sert aussi d'intitulé de la liste « Caméra : suivre » du menu de caméra. */
   follow: string
   unfollow: string
   hide: string
@@ -63,12 +63,12 @@ export const FR_PLAYER_PANEL = {
   labelFmt: (name) => `Fiche de ${name}`,
   cardOpenFmt: (name) => `Ouvrir la fiche de ${name}`,
   tile: {
-    follow: 'Suivre',
+    follow: 'Caméra : suivre',
     unfollow: 'Ne plus suivre',
     hide: 'Masquer',
     show: 'Afficher',
-    followLabelFmt: (name) => `Suivre ${name}`,
-    unfollowLabelFmt: (name) => `Ne plus suivre ${name}`,
+    followLabelFmt: (name) => `Suivre ${name} (caméra)`,
+    unfollowLabelFmt: (name) => `Ne plus suivre ${name} (caméra)`,
     hideLabelFmt: (name) => `Masquer ${name}`,
     showLabelFmt: (name) => `Afficher ${name}`,
     followHintFmt: (name) => `La caméra cadre la carte sur ${name}.`,
@@ -94,12 +94,12 @@ export const EN_PLAYER_PANEL = {
   labelFmt: (name) => `${name}'s card`,
   cardOpenFmt: (name) => `Open ${name}'s card`,
   tile: {
-    follow: 'Follow',
+    follow: 'Camera: follow',
     unfollow: 'Stop following',
     hide: 'Hide',
     show: 'Show',
-    followLabelFmt: (name) => `Follow ${name}`,
-    unfollowLabelFmt: (name) => `Stop following ${name}`,
+    followLabelFmt: (name) => `Follow ${name} (camera)`,
+    unfollowLabelFmt: (name) => `Stop following ${name} (camera)`,
     hideLabelFmt: (name) => `Hide ${name}`,
     showLabelFmt: (name) => `Show ${name}`,
     followHintFmt: (name) => `The camera frames the map on ${name}.`,

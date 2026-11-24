@@ -66,7 +66,7 @@ function setup({ followed = null, viewpoint = 'x1', groups = GROUPS }: {
 
 const trigger = () => screen.getByRole('button', { name: /^Caméra/ })
 const open = () => fireEvent.click(trigger())
-const followList = () => screen.getByRole('group', { name: 'Suivre' })
+const followList = () => screen.getByRole('group', { name: 'Caméra : suivre' })
 const viewpointList = () => screen.getByRole('group', { name: 'Point de vue' })
 const namesOf = (list: HTMLElement) => within(list).getAllByRole('button').map((b) => b.textContent)
 
@@ -174,7 +174,7 @@ describe('ReplayCameraMenu — choisir', () => {
     setup()
     open()
     fireEvent.click(within(followList()).getByRole('button', { name: 'Rival' }))
-    expect(screen.queryByRole('group', { name: 'Suivre' })).toBeNull()
+    expect(screen.queryByRole('group', { name: 'Caméra : suivre' })).toBeNull()
     expect(trigger()).toHaveAttribute('aria-expanded', 'false')
     expect(document.activeElement).toBe(trigger())
   })
@@ -185,7 +185,7 @@ describe('ReplayCameraMenu — fermer', () => {
     const { onFollow, onSelectViewpoint } = setup()
     open()
     fireEvent.keyDown(window, { key: 'Escape' })
-    expect(screen.queryByRole('group', { name: 'Suivre' })).toBeNull()
+    expect(screen.queryByRole('group', { name: 'Caméra : suivre' })).toBeNull()
     expect(document.activeElement).toBe(trigger())
     expect(onFollow).not.toHaveBeenCalled()
     expect(onSelectViewpoint).not.toHaveBeenCalled()
@@ -195,7 +195,7 @@ describe('ReplayCameraMenu — fermer', () => {
     const { onFollow } = setup()
     open()
     fireEvent.pointerDown(document.body)
-    expect(screen.queryByRole('group', { name: 'Suivre' })).toBeNull()
+    expect(screen.queryByRole('group', { name: 'Caméra : suivre' })).toBeNull()
     expect(onFollow).not.toHaveBeenCalled()
   })
 
@@ -203,7 +203,7 @@ describe('ReplayCameraMenu — fermer', () => {
     setup()
     open()
     fireEvent.pointerDown(within(followList()).getByText('Cobalt'))
-    expect(screen.getByRole('group', { name: 'Suivre' })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Caméra : suivre' })).toBeInTheDocument()
   })
 
   it('le panneau se signale au mode plein écran : Échap le ferme AVANT de sortir du Plein cadre', () => {

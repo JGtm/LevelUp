@@ -595,7 +595,7 @@ export function ReplayCanvas({
   // HORLOGE et sa lecture. `play` reçoit `togglePlay` — appelé sur une PAUSE seule, il vaut lecture.
   const capture = useReplayCapture({
     canvasRef, doc, frameRef, playing: playback.playing, play: playback.togglePlay,
-    audioTrack: sound.recordingTrack, soundTrack: sound.exportTrack, soundVolume: sound.volume,
+    audioTrack: sound.recordingTrack, soundTrack: sound.exportTrack, soundVolume: sound.volume, soundOn: sound.on,
     redraw, playWindow, scoreboard, allegiance, outcome, viewpoint, locale, zoomLevel: zoom.level,
   })
 

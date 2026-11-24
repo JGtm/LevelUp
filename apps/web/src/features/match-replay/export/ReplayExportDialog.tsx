@@ -71,7 +71,8 @@ export function ReplayExportDialog({ exporter, locale, onClose }: Props) {
   const t = REPLAY_TEXT[locale]
   const domain = exporter.defaultBounds()
   const [bounds, setBounds] = useState<ExportBounds>(domain)
-  const [withSound, setWithSound] = useState(true)
+  // LE SON SUIT LE SON DE LA PAGE à l'ouverture du dialogue : coupé à l'écran, le clip part muet sauf choix contraire.
+  const [withSound, setWithSound] = useState(exporter.soundOn)
   const [format, setFormat] = useState<ExportFormatId>(readExportFormat)
   const [framing, setFraming] = useState<ExportFraming>(DEFAULT_EXPORT_FRAMING)
   const chooseFormat = (id: ExportFormatId) => {

@@ -91,7 +91,7 @@ export interface LivesMarks {
   killers: readonly KillerMark[]
   /** Compte des marques sans position, couleur ou fiche : jamais dessinées, jamais devinées. */
   skipped: { spawns: number; deaths: number; killers: number }
-  /** Un joueur est marqué « moi » : le choix « Joueur suivi » a un sens. */
+  /** Un joueur est marqué « moi » : le choix « Point de vue » a un sens. */
   followedKnown: boolean
 }
 
@@ -324,7 +324,7 @@ export function buildLivesMarks(
 }
 
 /**
- * effectiveLivesWho — « Joueur suivi » sans joueur suivi ne montrerait rien : la lecture retombe
+ * effectiveLivesWho — « Point de vue » sans joueur suivi ne montrerait rien : la lecture retombe
  * sur « tous », pour CE match seulement (la préférence mémorisée n'est pas effacée).
  */
 export function effectiveLivesWho(who: LivesWho, followedKnown: boolean): LivesWho {

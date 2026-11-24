@@ -145,6 +145,11 @@ export interface ReplayExportOptions {
    * choix du cadrage que sur une carte zoomée (décision D6 du plan « formats vidéo »). Absent : 1.
    */
   zoomLevel?: number
+  /**
+   * LE SON DE LA PAGE EST-IL ALLUMÉ ? Il ne sert qu'au DIALOGUE : la case « Inclure le son » s'ouvre sur l'état du son de la
+   * page (un son coupé à l'écran donne un clip muet par défaut, jamais une surprise). Absent : allumé, le défaut d'avant.
+   */
+  soundOn?: boolean
 }
 
 /** Ce que l'appelant choisit au moment de lancer. Le son est INCLUS par défaut (décision D6). */
@@ -202,6 +207,8 @@ export interface ReplayExport {
   run: (bounds: ExportBounds, options?: ExportRunOptions) => Promise<void>
   /** Le palier de zoom de l'écran, relayé pour le dialogue (cf. `ReplayExportOptions.zoomLevel`). */
   zoomLevel: number
+  /** Le son de la page, relayé pour le dialogue (cf. `ReplayExportOptions.soundOn`). */
+  soundOn: boolean
   cancel: () => void
   /**
    * L'HORLOGE DE MATCH d'une image, prête à afficher. Portée par l'export et non par le
@@ -466,7 +473,8 @@ export function useReplayExport(o: ReplayExportOptions): ReplayExport {
   )
 
   const zoomLevel = o.zoomLevel ?? 1
-  return { supported: canExportVideo(), state, defaultBounds, run, cancel, clockOf, lengthClock, zoomLevel }
+  const soundOn = o.soundOn ?? true
+  return { supported: canExportVideo(), state, defaultBounds, run, cancel, clockOf, lengthClock, zoomLevel, soundOn }
 }
 
 /**

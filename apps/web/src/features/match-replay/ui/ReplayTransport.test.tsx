@@ -290,6 +290,7 @@ describe('ReplayTransport — ce qui sort du rejeu et les cadres sont à droite'
       clockOf: () => '0:00',
       lengthClock: () => '1:40',
       zoomLevel: 1,
+      soundOn: true,
     } satisfies ReplayExport
     renderTransport({
       capture: { captureImage: vi.fn(), recordingSupported: true, recording: false, toggleRecording: vi.fn(), videoExport },
