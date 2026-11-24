@@ -109,6 +109,41 @@ Reste ouvert :
 
 ---
 
+### [décodeur/drapeau] Grande bataille : 45 films sans calque de portages du drapeau
+
+**Relevé le 2026-11-24** (mesures après la régénération du parc, étape L.7 du plan du décodeur v1.6.0). 45 films de capture de drapeau à 16 joueurs ou plus ont des captures et des vols lus, mais aucun calque de portages, avant comme après la régénération. Deux causes :
+- 3 films sont bloqués par la règle de reconnaissance du mode (`captures <= rafales`, `flagfilm.go:79` du décodeur). L'un d'eux a PERDU son calque à la v1.6.0 : la lecture de tous les sièges y fait passer les captures lues de 1 à 5, pour 3 rafales (qui sont ici une retransmission périodique du tableau des scores, pas des captures). Règle levée en essai : les 7 vrais porteurs sont trouvés sur 7, erreur cumulée du temps de porteur contre l'API de 114,9 s à 34,1 s. Les deux autres n'avaient pas de calque avant non plus.
+- 42 films n'ont aucune rafale : la règle les écarte, comme avant. Ils demandent une autre condition de reconnaissance, non étudiée (pistes : accord des captures lues avec la courbe d'équipes, rapport vols sur captures pour écarter l'Oddball).
+
+**Pour reprendre :** remplacer la règle par une condition qui ne suppose pas que les rafales comptent des captures, la mesurer sur les 45 films et sur les films hors drapeau (zéro faux positif exigé). Demande une version du décodeur et la régénération des seuls films concernés. Pièce : `.ai/annexes_decodeur_v160/l7_drapeau_calque_perdu.md`. **Effort : M. Priorité : moyenne.**
+
+---
+
+### [déploiement] Rejeux du site hébergé à l'ancien schéma, sans film
+
+**Relevé le 2026-11-24** (mesures après la régénération, étape L.7). Environ 2 080 rejeux du serveur n'ont pas d'équivalent local, et l'archive des films du serveur a été vidée le 2026-11-23 : ces rejeux ne peuvent être ni copiés ni régénérés. La 8.3.0 juge un rejeu à l'ancien schéma périmé et veut le refaire depuis son film, qui n'existe plus.
+
+**Pour reprendre :** établir le comportement de la 8.3.0 devant ces rejeux (page du match, génération à la demande, état affiché) AVANT le déploiement, puis décider : garder l'ancien rejeu servi, ou le marquer sans film. Voir `.ai/gestes_prod_8_3_0.md` (section du décodeur v1.6.1). **Effort : à estimer. Priorité : haute, bloquant pour le déploiement.**
+
+---
+
+### [décodeur/doc] README du décodeur : commande d'installation à `@v1.6.0`
+
+**Relevé le 2026-11-24.** Le README de la brique cite encore `@v1.6.0` à la v1.6.1. À corriger à la prochaine version de la brique (le dépôt de la brique ne se modifie pas d'ici). **Effort : trivial. Priorité : basse.**
+
+---
+
+### [décodeur] Limites des calques neufs de la v1.6.x
+
+**Relevé le 2026-11-24** (mesures après la régénération, étape L.7). Ce que les calques neufs ne couvrent pas, mesuré sur le parc de 1 455 rejeux :
+- Répliques : aucun nom de réplique sur les builds 1.9 à 1.11 (52 734 répliques lues, aucune nommée) ; 88 % nommées en 1.12, 97 % en 1.13. Aucun geste publié sur les builds 1.9 à 1.11 (règle de validation).
+- Accroupis et glissades : sur 7 films seulement (C.1 n'a pas élargi ces deux genres).
+- Lettres des zones : le compteur d'accord avec le rang (B.6) est absent de `coverage.zones`.
+
+**Pour reprendre :** décider, build par build, si une table de réplique ou une règle de geste est à établir pour les builds 1.9 à 1.11, et où publier le compteur des lettres. Pièce : `.ai/annexes_decodeur_v160/l7_mesures_apres_regeneration.md` (sections 1 et 5). **Effort : moyen. Priorité : basse.**
+
+---
+
 ### [sync/journal] Alerte « zero-insert prolongé » qui sonne à chaque cycle en prod
 
 **Relevé le 2026-11-22** (plan `.ai/PLAN_FENETRES_ET_SYNC_2026-11-22.md`). `auto_sync: zero-insert prolongé` (`internal/scheduler/auto_sync_run.go`) sonne à chaque cycle pour 4 joueurs de la prod (plus de 11 000 fois chacun depuis juin) alors que leurs matchs arrivent par le déclencheur de fin de partie : le compteur ne voit pas les matchs rangés par une autre voie. Bruit de journal qui masquerait une vraie panne.
@@ -727,6 +762,7 @@ section : à la reprise, relire les décisions datées du 2026-11-22 de `config/
 - **Parts d'échec en hausse avec les tirs lus à tout rang** : visée absente (0,12 % → 0,23 % des tirs rattachés, un témoin en porte l'essentiel), projectile au tir ambigu (5,1 % → 6,0 %), tirs sans place sur 6 témoins, tirs embarqués sans trajet sur 2 témoins. À instruire avec le chantier « précision ».
 - **Baisse acceptée du BR75** (user, 2026-11-22 : « Oui on accepte, j'ai un autre chantier à prévoir avec des idées pour la précision ») : deux joueurs de moins à 10 % de l'API après la règle du numéro de tir en retard.
 - **Ancienne précision par film retirée de LevelUp** avec la montée du décodeur v1.5.0 : la table `match_weapon_hit_distance` reste au schéma sans écrivain ni lecteur ; la supprimer ou la réemployer se décide avec ce chantier.
+- **Bilan des tirs par joueur après la régénération (2026-11-24)** : il se rapproche de l'API sur 250 films, mais s'en éloigne de plus de 50 tirs sur 151 films, parfois en passant sous l'API (trop haut en 1.10, trop bas en 1.11 et en Super Fiesta : hypothèse, estimation par la couverture des messages, non vérifiée). Pour reprendre : comparer `shotStats.coverage` à la part de messages non lus sur les dix pires films. Pièce : `.ai/annexes_decodeur_v160/l7_mesures_apres_regeneration.md`, section 3.1 point 4. Priorité moyenne.
 
 ## Confidentialité du dépôt public (2026-11-23)
 

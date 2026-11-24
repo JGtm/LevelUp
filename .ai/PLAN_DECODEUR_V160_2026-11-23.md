@@ -1252,9 +1252,10 @@ Ordre imposé : R.1, R.2, puis L.1, L.2, L.3. Toute correction après L.1 fait r
       `backfill-flag-grabs-net --force`, `tactical-rasters --backfill`) et le rattrapage du coup d'envoi
       (`levelup backfill-kickoff`). La v1.6.0 porte les canaux du contributeur (DD-1) : il n'y a qu'une
       régénération.
-- [ ] L.7 Mesures APRÈS sur le parc régénéré, comparées à `avant.md` de ce plan ET aux mesures reportées du
+- [x] L.7 Mesures APRÈS sur le parc régénéré, comparées à `avant.md` de ce plan ET aux mesures reportées du
       plan v1.5.0 (A.3, C.4, E.4, L.7) ; durée de la régénération comparée au précédent (1 455 films en
       2 h 26) ; vérifications à l'écran inscrites à l'artefact des vérifications.
+      (2026-11-24 : mesures sur les 1 455 rejeux, avant (schéma 125) contre après (schéma 127), annexes `l7_mesures_apres_regeneration.md` et `l7_drapeau_calque_perdu.md`. Score complet : 944 rejeux avant, 1 332 après ; accord exact des points avec le score personnel 98,41 % puis 99,94 % sur les rejeux complets, Grande bataille complets 77,32 % puis 100 %, aucun joueur exact devenu inexact. Compteurs nommés : aucun joueur perdu, de 2 à 35 gagnés par compteur. Temps de porteur à 2 s de l'API : 86,07 % puis 92,71 %, 143 joueurs devenus justes, 0 devenu faux ; au-delà de 8 joueurs 83,27 % puis 93,38 %. Tirs lus : 2 673 085 puis 3 256 907 (+21,8 %). Calques neufs : 9 308 030 lignes pour les huit calques. Poids : médian 1 105 992 puis 1 635 490 octets (+47,9 %), total 1,98 Go puis 2,84 Go (+43,1 %). Durée : 1 h 11 pour les films, 1 h 42 avec les passes dérivées, contre 2 h 26. NON mesuré : tout ce qui lit la base d'après (temps forts de type mode, coup d'envoi et temps de jeu en base, journal des morts) ; les vérifications à l'écran sont à l'artefact des vérifications de l'utilisateur depuis le 2026-11-24. Un seul vrai recul : un film de Grande bataille perd son calque de drapeau, voir Découvertes.)
 - [x] L.8 Gestes de production inscrits à la liste de la release : dossier d'attente, bascule ; niveau de
       fils du serveur à 1.
       (2026-11-24 : gestes inscrits dans `.ai/gestes_prod_8_3_0.md`, non exécutés : ils se font au déploiement de la 8.3.0)
@@ -1368,6 +1369,7 @@ Ordre imposé : R.1, R.2, puis L.1, L.2, L.3. Toute correction après L.1 fait r
   petits : table d'exécution ajoutée (un item, un agent, le modèle et l'effort les moins coûteux qui
   suffisent, fichiers, dépendances, classe de charge) ; recherches découpées en mesure puis correction ;
   table des vagues réécrite avec ce qui tourne en même temps. Aucun item n'est lancé par cette mise à jour.
+- 2026-11-24 — MESURES APRES LA REGENERATION (L.7) : voir la parenthèse de l'item L.7 et les annexes `l7_mesures_apres_regeneration.md` et `l7_drapeau_calque_perdu.md`. Enquête sur les trois films à drapeau en recul : un seul vrai défaut (règle de reconnaissance du mode), deux reculs voulus (un enregistrement fortuit du tableau des scores abandonné ; les portages perdus étaient faux contre l'API).
 
 ## Découvertes (consignées, non traitées)
 
@@ -1407,3 +1409,6 @@ Ordre imposé : R.1, R.2, puis L.1, L.2, L.3. Toute correction après L.1 fait r
 - 2026-11-24 (leçon de méthode) — Avant de publier une brique, faire tourner TOUS les garde-rails de l'hôte contre elle par l'espace de travail local, pas seulement le contrôle de la façade : 9 rouges ont été découverts après la publication de la v1.6.0 (7 garde-rails de la brique, 2 tests de l'hôte), d'où la v1.6.1.
 - 2026-11-24 (à faire à l'écran par l'utilisateur) — Trois contrôles : la couleur des socles d'équipement sur la carte du rejeu (ils prennent la couleur des équipements), le nom des socles de grappin, de répulseur et de propulseur dans l'infobulle (corrigé dans la montée, à voir à l'écran).
 - 2026-11-24 (L.8) — Gestes de production du décodeur v1.6.1 inscrits dans `.ai/gestes_prod_8_3_0.md` (fichier créé, section « Décodeur de film v1.6.1 » : D1 à D7), non exécutés. Neuf points restent « à vérifier avant le déploiement » (ordre bascule et premier démarrage, `BASCULE.sh` à recréer, durée des passes sur le serveur, `killsource` côté serveur, lecture du profil hébergé, correctif d archivage, une 8.2.x devant le schéma 127, faits de film du serveur, libellé du panneau d administration).
+- 2026-11-24 (L.7, drapeau) — Un film de Grande bataille perd son calque de drapeau à la v1.6.0 : la lecture de tous les sièges passe ses captures de 1 à 5, la règle `captures <= rafales` devient fausse. Entrée du backlog (45 films sans calque de portages en Grande bataille).
+- 2026-11-24 (L.7, registre) — Écart à inscrire au registre des changements de sortie à la prochaine version de la brique : la perte du calque de drapeau sur ce film n'est pas au registre de la version 127 du décodeur (l'entrée « le drapeau lit tous les sièges » annonce « aucun joueur juste ne devient faux » sur 13 films, dont ce film ne fait pas partie). Le dépôt de la brique n'est pas modifié d'ici.
+- 2026-11-24 (L.7) — Bilan des tirs par joueur : plus proche de l'API sur 250 films, plus loin de plus de 50 tirs sur 151. Rejeux du site hébergé à l'ancien schéma sans film (environ 2 080) : comportement de la 8.3.0 à établir avant le déploiement. README du décodeur encore à `@v1.6.0`. Limites des calques neufs. Quatre entrées du backlog.
