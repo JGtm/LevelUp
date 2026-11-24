@@ -100,7 +100,6 @@
 
 Reste ouvert :
 - **Nom des options de variante** : le film ne porte que le hachage (vérifié sur deux films, tous les décalages de bit) ; les archives lisibles du jeu ne rendent aucun des 30 hachages testés ; les noms sont probablement dans l'exécutable du jeu, non lu. Reprise : établir cette source (item E.3).
-- **Licence** : ses sources citent des fichiers de notre décodeur (AGPL-3.0) en « référence épinglée », son paquet est sous MIT ou Apache-2.0 ; portage ou relecture du format, non établi ; la suite est une décision du user.
 - **Crédit à nuzzles** pour les méthodes reprises : fait des deux côtés le 2026-11-24 (décodeur : fichier de crédits, README, release v1.6.0 ; LevelUp : `docs/ACKNOWLEDGMENTS.md`).
 
 **Effort : S à M. Priorité : basse.**
@@ -334,12 +333,6 @@ Règle de travail : pour chaque écart restant, trouver la cause dans le film (l
 
 ---
 
-### [assets] Planches d'icônes de Dend : armes, grenades et équipements plus nets
-
-**Demande de l'utilisateur (2026-11-09).** Dend a les mêmes icônes d'armes que LevelUp, l'air plus nettes, réunies dans une seule image : `<poste>\Downloads\feed.350c786f.png`. Une seconde planche, `<poste>\Downloads\icons.18423eb2.png`, porte les images d'armes (netteté comparable à l'existant, à première vue) et surtout les icônes des grenades (de mauvaise qualité chez LevelUp) et des équipements (venues aujourd'hui d'images trouvées sur Internet). À instruire : comment découper ces planches et faire correspondre chaque icône à son arme ou équipement, si elles remplacent les images actuelles partout, et quelle est leur provenance (droit de les réutiliser, ou retrouver les mêmes images dans les fichiers du jeu). **Condition de reprise :** examen des deux planches. **Effort : à estimer après cet examen.**
-
----
-
 ### [progression] Jalon « jours avec une précision d'au moins 50 % » atteint trop facilement
 
 Relevé le 2026-11-14 (plan `.ai/PLAN_COMPLEMENTS_V8_2_0_2026-11-14.md`, étape 1.5). `match_participants.accuracy` porte la précision native de l'API en POURCENTAGE, mais le jalon `accuracy_threshold_days` la compare au seuil 0,50 (`internal/platform/duckdb/post_sync_progression_store.go`, agrégat `Aggregates` autour de la ligne 179, et `internal/ops/milestone_dates.go`) : tout match à plus de 0,5 % de précision compte comme un jour réussi. Le test `post_sync_stores_test.go` fige ce comportement en le signalant comme « unité en question ». Corriger (diviser par 100 ou comparer à 50) change des jalons déjà affichés et datés. **Décision du user du 2026-11-15 : ne pas y toucher à ce stade, noté au backlog.** **Effort : S, plus la décision sur les jalons déjà posés.**
@@ -416,12 +409,6 @@ explicite d'inventer le schéma par analogie.
 
 ---
 
-### [rejeu/trajets] Trajet de Warthog porté par l'humain alors qu'il suit un bot
-
-Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. Film `4f77afc1` : un trajet de Warthog (siège 524, images 279 à 287) porte le xuid de l'humain alors qu'il suit la piste du bot qui le précède, et 8 pistes de bot sont rattachées à l'humain du siège par le pont « premier occupant ». Corriger demande une publication des équipes et des trajets par corps, qui fait aujourd'hui bouger des équipes (joueur `3abf0258`, revenu sous deux index). **Condition de reprise :** à planifier après la 8.1.2. **Effort : M.** Contrôlé le 2026-11-18 sur la tête du décodeur (v1.4.1) : le défaut existe encore sur `4f77afc1` (1 trajet sur 252, le nom vient de la table place vers joueur et non de la vie qui porte le trajet). Traité par l'item J.7 de `.ai/V8.3/PLAN_DECODEUR_2026-11-18.md`.
-
----
-
 ### [rejeu/schéma] Deux films du parc avec des faits d'un ancien schéma
 
 Relevé le 2026-11-10, mis à jour le 2026-11-16 (montée du décodeur v1.4.0). Sur les sept films relevés, cinq ont été rafraîchis par la régénération du parc du 2026-11-14 (`000d5950`, `51101d1d`, `9f57c612`, `a521164d`, `bcb6d393`). Restent `edc5daf6` (faits au schéma 15) et `e96070e2` (aucun chunk sur le poste). Toute recuisson demande l'accord du user. **Condition de reprise :** la régénération du parc de la 8.3.0, avec l'accord du user. **Effort : S.**
@@ -443,15 +430,6 @@ Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. Après la pse
 ### [licences] Pseudos réels hors de `apps/`
 
 Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. `.claude/skills/db-schema/SKILL.md`, `.gitignore`, `config/titles/halo_infinite/constants.toml`, `docs/` et `.ai/` portent encore des gamertags réels. Un chemin Windows personnel reste dans `apps/go-api/cmd/restore_one_player/main.go`. Le pseudo du mainteneur (`JGtm`) est conservé par décision du même jour. Décision du user du 2026-11-10 : noté au backlog. **Condition de reprise :** à planifier après la 8.1.2. **Effort : M.**
-
----
-
-### [sécurité/deps] Alerte Dependabot glib (Rust)
-
-`glib` 0.18.5 vient de `gtk` 0.18, dépendance Linux de Tauri (tauri 2.11.6, tao, wry, webkit2gtk, tray-icon, muda), non compilée
-sous Windows (`cargo tree --target x86_64-pc-windows-msvc` ne la trouve pas). `cargo update -p glib --precise 0.20.0` échoue (`gtk`
-exige `^0.18`). À écarter comme non applicable (Windows seul, ADR 0045) ou à régler à la prochaine montée de Tauri : décision du
-user. **Effort : S.**
 
 ---
 
