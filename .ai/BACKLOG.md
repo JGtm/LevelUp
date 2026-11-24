@@ -102,7 +102,7 @@ Reste ouvert :
 - **Apparence enregistrée des Spartans** (armure, revêtement) : recherche bornée à faire (item E.4), à remettre à la session du rejeu 3D.
 - **Nom des options de variante** : le film ne porte que le hachage (vérifié sur deux films, tous les décalages de bit) ; les archives lisibles du jeu ne rendent aucun des 30 hachages testés ; les noms sont probablement dans l'exécutable du jeu, non lu. Reprise : établir cette source (item E.3).
 - **Licence** : ses sources citent des fichiers de notre décodeur (AGPL-3.0) en « référence épinglée », son paquet est sous MIT ou Apache-2.0 ; portage ou relecture du format, non établi ; la suite est une décision du user.
-- **Crédit à nuzzles** pour les méthodes reprises : fait côté décodeur le 2026-11-24 (fichier de crédits, README, release v1.6.0) ; reste les crédits de LevelUp, à la montée.
+- **Crédit à nuzzles** pour les méthodes reprises : fait des deux côtés le 2026-11-24 (décodeur : fichier de crédits, README, release v1.6.0 ; LevelUp : `docs/ACKNOWLEDGMENTS.md`).
 
 **Effort : S à M. Priorité : basse.**
 
@@ -521,6 +521,30 @@ Relevé le 2026-11-23. La 8.2.2 (rattrapage de l'historique, issue #213) est dan
 
 ---
 
+### [décodeur/reprise du parc] `backfill-killsource` saute un film sur la seule révision de sa couche
+
+**Relevé le 2026-11-24** (régénération du parc, v1.6.1). La commande décide de sauter un film d'après la révision du décodeur rangée dans les vues `_latest` du journal des morts, des vies et du placement ; les révisions de la grammaire et du profil n'y entrent pas. Comparaison sur 30 films copiés (reprise forcée) : journal des morts identique ligne à ligne ; les vies (`match_lives`), le placement et les tirs (`weapon_shots`) n'ont pas été comparés. Pour reprendre : refaire la comparaison sur ces trois tables, puis décider si les révisions de la grammaire et du profil doivent entrer dans la décision de saut. Pièce : `.ai/annexes_decodeur_v160/l6_regeneration_reelle_resume.md`. **Effort : S. Priorité : basse.**
+
+---
+
+### [décodeur/profils] Un film écarté du journal des morts : profil de build `HI_1_5_1` absent
+
+**Relevé le 2026-11-24** (régénération du parc). Un film (`58e6f72a`) est écarté avec une clé de profil inconnue : le build `HI_1_5_1` n'est pas dans la table des profils. Pour reprendre : dire si ce build est lisible (ajouter son profil, avec preuve sur le film) ou s'il faut garder l'écart nommé et compté. **Effort : S. Priorité : basse.**
+
+---
+
+### [hygiène/tests] Trois noms de tests portent encore un pseudo de joueur
+
+**Relevé le 2026-11-24** (CI de la PR de la montée). Trois noms de tests de LevelUp, dans les paquets `platform/duckdb`, `service` et `sync`, contiennent un pseudo de joueur, alors que le dépôt est public (anonymisation du 2026-11-23). Pour reprendre : les renommer, avec leur ligne de la référence des tests (un sous-test renommé sans sa ligne fait rougir la CI). **Effort : S. Priorité : basse.**
+
+---
+
+### [décodeur/CI] Deux lots de CI de la brique frôlent leur délai
+
+**Relevé le 2026-11-24** (CI du dépôt du décodeur). Les lots `film-grammar-lourd` et `film-replay-reste` durent environ 8 minutes pour un délai de 10. Pour reprendre : si l'un rougit, recouper les lots avant d'allonger le délai. **Effort : S. Priorité : basse.**
+
+---
+
 ## 🎮 Backlog — Coach proactif × Prestige (post-V2)
 
 Référence : ADR 0020 — Coach proactif : pont vers Prestige. ADR 0021 — Synthèse dynamique de Template et Arc ad-hoc.
@@ -662,8 +686,6 @@ Source : journal du plan `.ai/PLAN_BACKLOG_2026-11-18.md`, section « Découvert
 - **Test qui écrit un nom de fichier avec un octet nul** : les tests unitaires de `sync/replayartifacts` écrivent sous `<racine>/data/cache/replays/halo_5/` un fichier dont le nom porte un octet nul ; le renommage échoue sous Windows. Préexistant.
 - **Sections « rencontres » et « némésis » de l'onglet d'équipe** : leur contenu diffère entre deux exécutions du même code (ordre non déterministe), préexistant.
 - **`ReplayPage.row.test.tsx`** : 508 lignes, au-dessus du plafond de 500.
-- **Rattrapage du coup d'envoi qui boucle sur un rejeu illisible** (P2, à corriger avant le premier démarrage de la version 8.3.0 ; proposé au user avec la montée du décodeur v1.6.0) : un rejeu durablement illisible relance le rattrapage à chaque démarrage, sans issue, la révision de ce rejeu n'étant jamais rangée (`apps/go-api/internal/sync/kickoff/backfill.go`).
-- **Rattrapage du coup d'envoi trop lent** (P2, à corriger avant le premier démarrage de la version 8.3.0 ; proposé au user avec la montée du décodeur v1.6.0) : il décompresse et décode chaque rejeu en entier pour un seul champ, soit 27 s à chaud et 85 s à froid pour 1 455 fichiers, contre 0,25 s par la lecture d'en-tête déjà en place.
 - **`rosterLogic.ts` au-delà du seuil** (P2) : `apps/web/src/lib/replay/rosterLogic.ts` passe de 769 à 781 lignes, au-dessus du plafond de 500.
 - **Fichier de test du rejeu au-dessus du seuil** (P2) : déjà consigné plus haut (`ReplayPage.row.test.tsx`, 508 lignes) ; à traiter avec le point précédent.
 - **Course étroite entre le rattrapage du coup d'envoi et une publication de rejeu** (P3).
