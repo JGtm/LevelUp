@@ -6,7 +6,34 @@
  * Chaque entrée est la réponse d'un hook de calque à « as-tu de quoi te peindre ? » ; aucune règle ne
  * se décide ici, ce module les range sous les clés que le panneau lit.
  */
-import type { FilmLayerAvailability } from './viewPresetLogic'
+
+/** Ce que le film porte, tel que le canvas le publie (les mêmes questions que le panneau). */
+export interface FilmLayerAvailability {
+  zones: boolean
+  placements: { drawable: boolean; unnamed: boolean; dropped: boolean }
+  weaponPads: boolean
+  groundWeapons: boolean
+  modeObjectives: boolean
+  flagCarries: boolean
+  vipCrown: boolean
+  skullCarrier: boolean
+  bombCarrier: boolean
+  vehicles: boolean
+  /**
+   * Les traces des vies : chaque calque se propose dès qu'il a au moins une marque à poser.
+   * `followedKnown` n'est pas un calque : il ne conditionne que l'option « Point de vue » de l'affinage.
+   */
+  lives: { spawns: boolean; deaths: boolean; killers: boolean; followedKnown: boolean }
+  /**
+   * La probabilité de réapparition : l'interrupteur se propose quand la réponse est prête (ou pas encore
+   * connue alors que le calque est éteint).
+   */
+  respawnForecast: boolean
+  /** Pourquoi aucune probabilité n'est servie, quand la réponse la refuse ; le panneau le dit à la place de l'interrupteur. */
+  respawnForecastRefusal?: string | null
+  /** Le fond retenu porte un plan des murs : il ne fait que conditionner l'affichage de sa bascule. */
+  wallPlan: boolean
+}
 
 /** Un calque qui sait s'il a de quoi se peindre. */
 interface Availability {

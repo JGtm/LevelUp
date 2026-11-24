@@ -50,7 +50,7 @@ export function useOccupationRelief(o: OccupationReliefOptions): OccupationRelie
   const reliefOffered = !!background?.reliefImage && !!background.reliefData
   // Le fond VOULU, avant tout échec de lecture : il décide des traits retenus et de ce qu'il faut charger.
   const wanted = resolveBackgroundVariant(style, planAvailable, { available: reliefOffered, failed: false })
-  const [linesOn, toggleLines] = useReliefLines(wanted)
+  const [linesOn, toggleLines] = useReliefLines()
   const [cut, onCut] = useScopedCut(mapId || matchId)
   const files = useMatchReliefSource(playerSlug, matchId, reliefOffered)
   const ink = useReliefInks()

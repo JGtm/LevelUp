@@ -5,7 +5,7 @@
  * Il branche la lecture commune des vues 2D (`useReliefView`) sur ce que la Tactique sait d'une carte : son sidecar
  * (une image plan ? un relief ?), le fond de base que `useTacticalFondVariante` charge (le plan, ou le rendu), et le
  * style de fond du rejeu 2D (`useMapViewPreferences`, une seule clé lue et écrite des deux côtés), les traits du
- * relief retenus par fond (`useReliefLines`, la clé du rejeu).
+ * relief (`useReliefLines`, une seule valeur pour tous les fonds, la clé du rejeu).
  *
  * CE QUE LA COUPE FAIT ICI : le fond la suit (relief teinté, ou plan/rendu modulé par son masque), les traits aussi,
  * et deux calques seulement portent une hauteur — les zones nommées de la lecture de placement et celles de la
@@ -46,7 +46,7 @@ export function useTacticalRelief(playerSlug: string, mapId: string, turns: Quar
   const planAvailable = !!planImage
   // Le fond VOULU, avant tout échec de lecture : il décide des traits retenus et de ce qu'il faut charger.
   const wanted = resolveBackgroundVariant(backgroundStyle, planAvailable, { available: reliefOffered, failed: false })
-  const [linesOn, toggleLines] = useReliefLines(wanted)
+  const [linesOn, toggleLines] = useReliefLines()
   const [cut, onCut] = useScopedCut(mapId)
   const base = useTacticalFondVariante(playerSlug, mapId)
   // Le fond de base se décode pour être modulé, seulement quand une coupe est choisie sur un fond qui n'est pas le relief.
