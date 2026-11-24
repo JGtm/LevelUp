@@ -12,7 +12,7 @@
       2. lancement avec LEVELUP_DATA_DIR sur une racine JETABLE (les donnees de l'utilisateur ne
          sont jamais touchees), attente de <DataRoot>\desktop\port, GET /health = 200 (le routeur
          est ouvert : le serveur a annonce `ready`) ;
-      3. fermeture par WM_CLOSE (CloseMainWindow), attente de la sortie de l'application ; le
+      3. fermeture par WM_CLOSE poste sur la fenetre principale (jamais sur la boite de mise a jour), attente de la sortie de l'application ; le
          journal porte une ligne `arret: termine` de plus avec clean=true, et AUCUN fichier *.wal
          ne reste sous la racine de donnees (hors backups) : l'observable d'un arret propre
          (contrat coquille/serveur, plan section 6, point 5) ;
@@ -148,6 +148,37 @@ function Assert-NoWal {
     if ($wal) { Fail ("fichier WAL residuel apres l'arret : " + (($wal | ForEach-Object FullName) -join ', ')) }
 }
 
+# Les fenetres de premier niveau d'un processus (WM_CLOSE doit viser LA fenetre principale, pas la boite de
+# dialogue de mise a jour, qui est un '#32770' sans proprietaire : `Process.MainWindowHandle` peut la designer, et
+# un WM_CLOSE poste sur elle vaut 'Plus tard' sans fermer l'application).
+Add-Type -Namespace E2e -Name Win -MemberDefinition @'
+public delegate bool EnumProc(IntPtr h, IntPtr l);
+[DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc p, IntPtr l);
+[DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+[DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+[DllImport("user32.dll")] public static extern IntPtr GetWindow(IntPtr h, uint cmd);
+[DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetClassName(IntPtr h, System.Text.StringBuilder s, int n);
+[DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint msg, IntPtr w, IntPtr l);
+'@
+
+function Get-MainWindow([int]$ProcessId) {
+    $found = New-Object System.Collections.Generic.List[IntPtr]
+    $callback = [E2e.Win+EnumProc] {
+        param([IntPtr]$h, [IntPtr]$l)
+        $owner = [uint32]0
+        [void][E2e.Win]::GetWindowThreadProcessId($h, [ref]$owner)
+        if ($owner -eq $ProcessId -and [E2e.Win]::IsWindowVisible($h) -and [E2e.Win]::GetWindow($h, 4) -eq [IntPtr]::Zero) {
+            $class = New-Object System.Text.StringBuilder 256
+            [void][E2e.Win]::GetClassName($h, $class, 256)
+            if ($class.ToString() -ne '#32770') { $found.Add($h) }
+        }
+        return $true
+    }
+    [void][E2e.Win]::EnumWindows($callback, [IntPtr]::Zero)
+    if ($found.Count -gt 0) { return $found[0] }
+    return [IntPtr]::Zero
+}
+
 function Invoke-Run([int]$Number) {
     $portFile = Join-Path $DataDir 'desktop\port'
     Step "lancement $Number"
@@ -161,9 +192,9 @@ function Invoke-Run([int]$Number) {
         if ($Number -gt 1 -and $port -ne $script:FirstPort) { Fail "le port n'est pas stable : $script:FirstPort puis $port" }
         if ($Number -eq 1) { $script:FirstPort = $port }
 
-        Wait-Until { $process.Refresh(); $process.MainWindowHandle -ne [IntPtr]::Zero } 'la fenetre principale' 60 | Out-Null
+        $window = Wait-Until { $handle = Get-MainWindow $process.Id; if ($handle -ne [IntPtr]::Zero) { $handle } } 'la fenetre principale' 60
         Step 'fermeture par WM_CLOSE'
-        if (-not $process.CloseMainWindow()) { Fail 'CloseMainWindow a refuse le message' }
+        if (-not [E2e.Win]::PostMessage($window, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)) { Fail 'PostMessage(WM_CLOSE) a refuse le message' }
         if (-not $process.WaitForExit($CloseBudgetSec * 1000)) { Fail "l'application ne s'est pas fermee dans les $CloseBudgetSec s apres WM_CLOSE" }
     }
     catch {
