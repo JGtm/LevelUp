@@ -261,6 +261,12 @@ Relevé le 2026-11-16 : `NAVPOINT_NAMES` de OpenSpartan/cartographer (MIT) liste
 
 ---
 
+### [rejeu/interface] Rationaliser les réglages d'affichage du rejeu (calques et informations sur la carte)
+
+**Demande de l'utilisateur (2026-11-24).** Le rejeu accumule les calques et les informations à afficher ou masquer sur la carte (fonds Plan, Rendu et Relief, coupe par étage, socles, équipements, objectifs, marqueurs, trajectoires, fil, et bientôt les répliques des Spartans avec leurs propres interrupteurs et filtres). Chaque ajout apporte ses réglages : il faut éviter l'usine à gaz. À faire, avant d'ajouter de nouveaux réglages : inventorier tous les réglages d'affichage existants du rejeu (où ils sont, ce qu'ils commandent, lesquels sont réellement utilisés) ; proposer une organisation unique (peu de réglages visibles, des préréglages nommés plutôt qu'une case par calque, des défauts sensés, le détail rangé dans un seul panneau) ; faire valider une maquette interactive avant toute implémentation. Les réglages des répliques (voir l'entrée suivante) entrent dans cette organisation au lieu d'ajouter un panneau de plus. **Effort : moyen. Priorité : moyenne, à traiter avant l'affichage des répliques.**
+
+---
+
 ### [décodeur/répliques] Répliques des Spartans : affichage (textes, voix, maquette)
 
 **Demande de l'utilisateur (2026-11-16), très basse priorité. Reprise du plan du décodeur v1.6.0, items D.5 et D.6, reportés ici à sa clôture le 2026-11-24 : ce sont des travaux d'écran côté application, pas du décodeur.** Ce que le décodeur publie déjà (v1.6.1, schéma 127) : `chatter[]` (chaque réplique avec son instant, son joueur et son `name`, nom court prouvé par hachage sur les builds `HI_1_12_0` et `HI_1_13_0`, 291 noms ; sans nom, comptée, ailleurs), `announcements[]`, et le paquet public `chattername`. Le film ne dit pas quelle variante audio a joué.
