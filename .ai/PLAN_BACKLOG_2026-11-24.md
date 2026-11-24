@@ -198,11 +198,11 @@ Gates communs. Go : `go build ./... && go vet ./...`, tests des paquets touchés
 
 Dans le dépôt de la brique (`halo-infinite-film-decoder`), sur une branche et un worktree dédiés.
 
-- [ ] F.1 Instruction : les 22 cas sur 4 films, cause dans le choix du porteur par voisinage de place.
-- [ ] F.2 Correctif par une règle générale, mesuré sur les 4 films et sur le banc (aucun cas neuf).
-- [ ] F.3 Version de la brique : empreintes `replay-equiv` refigées, gate du corpus, notes de version qui
+- [x] F.1 (2026-11-24, mesure du parc régénéré : 0 pièce à plus de 15 m sur 2 619, 191 films ; 0 sur les 4 films nommés ; recontrôlé par le pilote sur un film) Instruction : les 22 cas sur 4 films, cause dans le choix du porteur par voisinage de place.
+- [~] F.2 (sans objet : défaut corrigé par la v1.5.0 du décodeur, qui lit le porteur dans le film ; F.1) Correctif par une règle générale, mesuré sur les 4 films et sur le banc (aucun cas neuf).
+- [~] F.3 (sans objet, F.1 : aucune version de la brique) Version de la brique : empreintes `replay-equiv` refigées, gate du corpus, notes de version qui
       disent le changement de sortie, tag et release GitHub.
-- [ ] F.4 Montée du `require` dans LevelUp ; régénération des seuls films touchés, le user prévenu avant.
+- [~] F.4 (sans objet, F.1 : ni montée ni régénération) Montée du `require` dans LevelUp ; régénération des seuls films touchés, le user prévenu avant.
 - **Gate F :** tests et gates de la brique verts, 0 pièce montée à plus de 15 m sur les 4 films, CI de la
   brique et de la release vertes.
 
@@ -325,3 +325,8 @@ dépendance est close.
   référence (retirés, `4eeba506c6`) ; garde de taille des fonctions du front à 244 pour 243 (`SessionMatrix`,
   corrigé par l'agent, `89243f758e`). Leçon : les gardes globaux (`src/lib` côté web, référence des tests
   côté Go) tournent avant chaque fusion de piste, pas seulement les tests ciblés.
+- 2026-11-24 — PISTE F close sans code. Le « 22 cas sur 4 films » du backlog était un compteur de voisins
+  refusés, pas une distance ; il vaut 0 partout. Sur le parc au schéma 127 : 2 619 pièces montées, 2 614
+  porteurs lus dans le film, 0 à plus de 15 m, repli par voisinage jamais déclenché. Aucune version du
+  décodeur, aucune montée, aucune régénération. Reste au backlog : 5 pièces sans porteur sur 3 films. Worktree
+  du décodeur retiré.

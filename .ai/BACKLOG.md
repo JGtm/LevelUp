@@ -401,9 +401,9 @@ Relevé le 2026-11-10, mis à jour le 2026-11-16 (montée du décodeur v1.4.0). 
 
 ---
 
-### [rejeu/ti=40] Pièces montées à plus de 15 m de leur porteur
+### [décodeur/véhicules] Cinq pièces montées publiées sans porteur, sur trois films
 
-Relevé le 2026-11-10, mesuré le 2026-11-16 (phase C du décodeur). La bande `ti=40` n'a pas de défaut : les 249 parents d'occupation exclus sont des slots qui ont porté un autre archétype. La vraie anomalie est ailleurs : 44 montées sur 9 533 rattachent une pièce à un porteur à plus de 15 m, parce que le porteur est choisi par voisinage de slot (exemple : `58d09c44`). **Condition de reprise :** correction générale côté décodeur, chantier suivant la phase C. **Effort : M.** Contrôlé le 2026-11-18 : `58d09c44` ne se reproduit plus (19 pièces, 0 écart), mais le compteur du document en compte encore 22 sur le parc, sur 4 films (`56ebfc53`, `af43b0c8`, `a26dbcdb`, `cf5d83d5`). Traité par l'item J.8 de `.ai/V8.3/PLAN_DECODEUR_2026-11-18.md`.
+**Relevé le 2026-11-24** (mesure du parc régénéré, plan `.ai/PLAN_BACKLOG_2026-11-24.md`, piste F). Sur 2 619 pièces montées du parc, 5 sont publiées sans porteur (`turretParentUnknown`), sur 3 films : leur parent lu ne désigne aucun châssis connu. Elles ne sont pas dessinées ; aucune n'a de porteur faux. Cause non cherchée. L'ancien défaut « pièces montées à plus de 15 m de leur porteur » est clos : 0 cas sur le parc au schéma 127, le porteur est lu dans le film depuis la v1.5.0 du décodeur. **Effort : S. Priorité : basse.**
 
 ---
 
