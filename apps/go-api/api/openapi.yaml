@@ -16471,6 +16471,7 @@ components:
       additionalProperties: false
       properties:
         radiusM:
+          description: Rayon de la zone en unités du jeu (1 unité = 3,048 m), pas en mètres.
           format: float
           type: number
         resetSeconds:
@@ -20432,17 +20433,20 @@ components:
       additionalProperties: false
       properties:
         avg_distance_m:
+          description: 'Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l''écran la convertit.'
           format: double
           type: number
         label:
           type: string
         max_distance_m:
+          description: 'Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l''écran la convertit.'
           format: double
           type: number
         measured_kills:
           format: int64
           type: integer
         min_distance_m:
+          description: 'Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l''écran la convertit.'
           format: double
           type: number
         weapon_key:
@@ -20929,12 +20933,14 @@ components:
         gamertag:
           type: string
         lobby_delta_m:
+          description: 'Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l''écran la convertit.'
           format: double
           type: number
         measured:
           format: int64
           type: integer
         median_m:
+          description: 'Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l''écran la convertit.'
           format: double
           type: number
         xuid:
@@ -20952,6 +20958,7 @@ components:
           format: int64
           type: integer
         lobby_median_m:
+          description: 'Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l''écran la convertit.'
           format: double
           type: number
         map_name:
@@ -25131,6 +25138,7 @@ components:
           format: int64
           type: integer
         period_median_delta_m:
+          description: 'Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l''écran la convertit.'
           format: double
           type: number
         profiles:
@@ -25140,9 +25148,11 @@ components:
             - array
             - "null"
         role_high_m:
+          description: 'Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l''écran la convertit.'
           format: double
           type: number
         role_low_m:
+          description: 'Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l''écran la convertit.'
           format: double
           type: number
       required:
@@ -31190,6 +31200,7 @@ components:
           format: int64
           type: integer
         median_m:
+          description: 'Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l''écran la convertit.'
           format: double
           type: number
       required:
@@ -31203,6 +31214,7 @@ components:
           format: double
           type: number
         median_m:
+          description: 'Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l''écran la convertit.'
           format: double
           type: number
         "n":
@@ -31458,9 +31470,11 @@ components:
           format: int64
           type: integer
         median_deaths_m:
+          description: 'Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l''écran la convertit.'
           format: double
           type: number
         median_kills_m:
+          description: 'Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l''écran la convertit.'
           format: double
           type: number
         opening:
@@ -31566,9 +31580,11 @@ components:
           format: int64
           type: integer
         mediane_plus_proche_m:
+          description: 'Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l''écran la convertit.'
           format: double
           type: number
         mediane_tueur_m:
+          description: 'Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l''écran la convertit.'
           format: double
           type: number
         rose:
@@ -31675,9 +31691,11 @@ components:
         dans_le_rayon:
           type: boolean
         distance_mort_m:
+          description: 'Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l''écran la convertit.'
           format: double
           type: number
         distance_tueur_m:
+          description: 'Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l''écran la convertit.'
           format: double
           type: number
         gamertag:
@@ -31759,6 +31777,7 @@ components:
             - array
             - "null"
         rayon_m:
+          description: Portée du radar en vrais mètres (18 en arène, 24 en Grande bataille), pas en unités du jeu.
           format: double
           type: number
         statut:
@@ -31820,6 +31839,7 @@ components:
           format: int64
           type: integer
         pas_m:
+          description: 'Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l''écran la convertit.'
           format: double
           type: number
         sous_plancher:
@@ -31895,6 +31915,7 @@ components:
       additionalProperties: false
       properties:
         distance_m:
+          description: 'Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l''écran la convertit.'
           format: double
           type: number
         seul:
@@ -31972,6 +31993,7 @@ components:
           format: int64
           type: integer
         pas_m:
+          description: 'Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l''écran la convertit.'
           format: double
           type: number
         points_ignores:
@@ -31982,6 +32004,7 @@ components:
         qui:
           type: string
         rayons_radar_m:
+          description: Portée du radar en vrais mètres (18 en arène, 24 en Grande bataille), pas en unités du jeu.
           items:
             format: double
             type: number
@@ -32134,6 +32157,7 @@ components:
           format: int64
           type: integer
         rayon_m:
+          description: Portée du radar en vrais mètres (18 en arène, 24 en Grande bataille), pas en unités du jeu.
           format: double
           type: number
         traine_ms:
@@ -35079,11 +35103,13 @@ components:
           format: int64
           type: integer
         median_m:
+          description: 'Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l''écran la convertit.'
           format: double
           type: number
         record:
           $ref: '#/components/schemas/WeaponRecordFrag'
         record_m:
+          description: 'Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l''écran la convertit.'
           format: double
           type: number
         weapon_key:
@@ -35216,21 +35242,26 @@ components:
           format: double
           type: number
         max_m:
+          description: 'Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l''écran la convertit.'
           format: double
           type: number
         measured:
           format: int64
           type: integer
         median:
+          description: 'Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l''écran la convertit.'
           format: double
           type: number
         min_m:
+          description: 'Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l''écran la convertit.'
           format: double
           type: number
         p10:
+          description: 'Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l''écran la convertit.'
           format: double
           type: number
         p90:
+          description: 'Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l''écran la convertit.'
           format: double
           type: number
       required:

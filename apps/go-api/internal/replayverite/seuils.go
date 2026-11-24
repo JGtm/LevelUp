@@ -10,6 +10,10 @@ package replayverite
 // Tout seuil temporel est une DUREE en millisecondes : le document dit son pas
 // (`frameIntervalMs`) et [Document.images] la convertit en images. Aucun nombre d'images n'est
 // ecrit ici (garde-rail `archlint/no_seuil_en_images_go_test.go`) : changer de cadence ne change aucun seuil.
+//
+// Toute distance ou vitesse est en UNITES DU JEU (les positions du film, 1 unite = 3,048 m) : le « m » et le
+// « m/s » des noms et des commentaires disent une unite du jeu, pas un metre. Les seuils ont ete regles sur
+// ces unites ; les convertir changerait le banc.
 
 const (
 	// vitesseSautMaxMPS : au-dela, deux points consecutifs d'une piste sont un SAUT (V-1).

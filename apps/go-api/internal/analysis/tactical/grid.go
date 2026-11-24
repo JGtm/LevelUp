@@ -8,7 +8,7 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
-// PasParDefautM est le pas de la grille, en metres — 0,5 m, valeur mesuree par
+// PasParDefautM est le pas de la grille, en unites du jeu — 0,5 unite (1,5 m), valeur mesuree par
 // cmd/mappos-build (cf. doc.go) et arretee par le plan tactique.
 const PasParDefautM = 0.5
 
@@ -37,7 +37,7 @@ func NouvelleGrille(pasM float64) (Grille, error) {
 	return Grille{pasM: pasM}, nil
 }
 
-// GrilleParDefaut rend la grille de 0,5 m.
+// GrilleParDefaut rend la grille de 0,5 unite du jeu.
 func GrilleParDefaut() Grille {
 	return Grille{pasM: PasParDefautM}
 }

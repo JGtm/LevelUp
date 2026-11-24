@@ -38,11 +38,11 @@ type WeaponDistanceRecordRow struct {
 	// couleur côté web (famille `frag-*`, la même que le sunburst voisin). Vide si le registre
 	// ne connaît pas la clé — le web retombe sur la couleur neutre, jamais une classe inventée.
 	Class string `json:"class,omitempty"`
-	// Measured est le nombre de frags mesurés de l'arme ; MedianM leur médiane en mètres.
+	// Measured est le nombre de frags mesurés de l'arme ; MedianM leur médiane en unités du jeu.
 	Measured int     `json:"measured"`
-	MedianM  float64 `json:"median_m"`
-	// RecordM est la distance du frag le plus lointain, en mètres ; Record l'identifie.
-	RecordM float64          `json:"record_m"`
+	MedianM  float64 `json:"median_m" doc:"Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit."`
+	// RecordM est la distance du frag le plus lointain, en unités du jeu ; Record l'identifie.
+	RecordM float64          `json:"record_m" doc:"Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit."`
 	Record  WeaponRecordFrag `json:"record"`
 }
 

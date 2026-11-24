@@ -72,9 +72,10 @@ import type { ReplayTrackReady } from '../../../lib/replay/replayNormalize'
 export const WALL_PANEL_IDS: readonly string[] = ['0x528fce46', '0x686b40c9']
 
 /**
- * Rayon du MUR, en mètres monde. 1,6 m avec une ouverture de 110° donne une corde de 2,6 m —
- * l'ordre de grandeur du mur du jeu. C'est un choix d'ÉCRAN calibré sur la carte, pas une
- * mesure : le film ne porte ni les dimensions de l'objet ni son orientation.
+ * Rayon du MUR, en unités du jeu (coordonnées monde). 1,6 unité avec une ouverture de 110° donne une corde
+ * de 2,6 — l'ordre de grandeur du mur du jeu. C'est un choix d'ÉCRAN calibré sur la carte, pas une
+ * mesure : le film ne porte ni les dimensions de l'objet ni son orientation. Le « m » du nom dit une UNITÉ
+ * DU JEU, pas un mètre.
  */
 export const WALL_RADIUS_M = 1.6
 

@@ -13,15 +13,16 @@ import type { XY } from '../../../lib/replay/replayLogic'
 import type { ShapeStyle } from './placementShapes'
 
 /**
- * Rayon de l'écran occultant, en mètres monde. VALEUR DÉCLARÉE, PAS MESURÉE, PAS OFFICIELLE —
- * même statut que celui du champ de réparation, et il faut le dire aussi franchement.
+ * Rayon de l'écran occultant, en unités du jeu (coordonnées monde). VALEUR DÉCLARÉE, PAS MESURÉE, PAS OFFICIELLE —
+ * même statut que celui du champ de réparation, et il faut le dire aussi franchement. Le « m » du nom dit
+ * une UNITÉ DU JEU, pas un mètre : la valeur est réglée à l'œil sur ces unités.
  *
  * LES TROIS SOURCES SONT VIDES, ET C'EST LA RAISON D'ÊTRE DU BORD FLOU. Le film ne porte
- * aucune portée pour cet objet ; la source officielle qui chiffre le détecteur (4,25 m) ne
- * chiffre pas cet écran ; et rien n'a été mesuré dans le corpus. 6 m — 12 m de diamètre — est
+ * aucune portée pour cet objet ; la source officielle qui chiffre le détecteur (4,25 wu) ne
+ * chiffre pas cet écran ; et rien n'a été mesuré dans le corpus. 6 unités — 12 de diamètre — est
  * un choix d'ÉCRAN, calibré sur ce que la bulle du jeu couvre en pratique (un couloir, un
  * passage étroit), et volontairement DEUX FOIS le champ de réparation pour que les trois
- * disques du calque (capteur 4,25 m, champ 3 m, écran 6 m) ne se confondent jamais.
+ * disques du calque (capteur 4,25, champ 3, écran 6 unités) ne se confondent jamais.
  *
  * LE BORD FLOU PORTE CETTE RÉSERVE À L'ÉCRAN, comme le pointillé la porte pour le champ. Deux
  * conventions différentes pour la même réserve, et c'est voulu : le champ a une BORNE dont on

@@ -31,11 +31,11 @@ import (
 	"sort"
 )
 
-// MargeTrancheZM élargit la tranche d'une zone de part et d'autre, en mètres : un joueur debout
-// sur la dalle d'une salle a les pieds à quelques centimètres sous son plancher déclaré.
+// MargeTrancheZM élargit la tranche d'une zone de part et d'autre, en unités du jeu : un joueur debout
+// sur la dalle d'une salle a les pieds un peu sous son plancher déclaré.
 const MargeTrancheZM = 0.25
 
-// RayonZoneM est la distance au bord en deçà de laquelle une zone voisine nomme une cellule qui
+// RayonZoneM est, en unités du jeu, la distance au bord en deçà de laquelle une zone voisine nomme une cellule qui
 // tombe hors de toute forme (borne stricte).
 const RayonZoneM = 2.0
 

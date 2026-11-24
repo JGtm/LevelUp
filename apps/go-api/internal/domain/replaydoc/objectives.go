@@ -92,7 +92,7 @@ type FlagSpan struct {
 // `resetSeconds` est le delai que la variante du film ecrit (`rules.flagReturnS`) ; il est ABSENT quand la
 // variante ne l ecrit pas ou n a pas ete lue.
 type FlagReturnZone struct {
-	RadiusM      float32 `json:"radiusM"`
+	RadiusM      float32 `json:"radiusM" doc:"Rayon de la zone en unités du jeu (1 unité = 3,048 m), pas en mètres."`
 	ResetSeconds float32 `json:"resetSeconds,omitempty"`
 	SoloSeconds  float32 `json:"soloSeconds"`
 }

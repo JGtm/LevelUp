@@ -30,10 +30,10 @@ type MatchKillDistanceWeapon struct {
 	// 75,8 % plancher (G.0) — ce compte est TOUJOURS ≤ au total réel.
 	MeasuredKills int `json:"measured_kills"`
 	// AvgDistanceM / MinDistanceM / MaxDistanceM : distance tueur-victime en
-	// mètres monde (hypot 3D), calculée à la lecture — jamais stockée.
-	AvgDistanceM float64 `json:"avg_distance_m"`
-	MinDistanceM float64 `json:"min_distance_m"`
-	MaxDistanceM float64 `json:"max_distance_m"`
+	// unités du jeu (hypot 3D), calculée à la lecture — jamais stockée.
+	AvgDistanceM float64 `json:"avg_distance_m" doc:"Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit."`
+	MinDistanceM float64 `json:"min_distance_m" doc:"Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit."`
+	MaxDistanceM float64 `json:"max_distance_m" doc:"Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit."`
 }
 
 // MatchKillDistancePlayer — le regroupement par joueur (xuid) des armes

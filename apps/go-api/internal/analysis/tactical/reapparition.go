@@ -64,18 +64,21 @@ var NomsVariables = [NbVariables]string{
 	"distance_au_barycentre_ennemi_10m",
 }
 
-// Seuils du modele.
+// Seuils du modele. TOUTES LES DISTANCES DE CE MODELE SONT EN UNITES DU JEU (les positions du film, 1
+// unite = 3,048 m) : le suffixe « M » de ces noms, et le « m » des commentaires et des noms de variables
+// (`..._10m`), disent des unites du jeu, pas des metres. Les valeurs ont ete reglees sur ces unites ;
+// les convertir changerait le modele.
 const (
 	// MatchsMinCandidat : matchs distincts qui ont vu un point pour qu'il soit candidat.
 	MatchsMinCandidat = 2
 	// DistanceMaxM plafonne la distance a l'ennemi ou a l'equipier le plus proche quand il n'y
-	// en a aucun : « personne » vaut 40 m.
+	// en a aucun : « personne » vaut 40 unites.
 	DistanceMaxM = 40.0
 	// DistanceMaxMortM plafonne la distance au lieu de la mort et au barycentre ennemi.
 	DistanceMaxMortM = 60.0
 	// RayonEnnemisProchesM : le rayon du compte d'ennemis proches.
 	RayonEnnemisProchesM = 20.0
-	// DizaineM convertit des metres en unites de variable.
+	// DizaineM convertit des unites du jeu en unites de variable (dizaines).
 	DizaineM = 10.0
 )
 
