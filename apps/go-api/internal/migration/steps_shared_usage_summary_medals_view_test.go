@@ -178,3 +178,31 @@ func TestMedalsEarnedView_Idempotente(t *testing.T) {
 		}
 	}
 }
+
+// TestMedalsEarnedView_PasseMesureeSansLigneDeJoueur : « dérivé » se décide sur l'existence d'une passe
+// de LevelUp mesurée pour le match (levelup_rev rangée), pas sur la présence d'une ligne de joueur.
+// Une passe mesurée qui n'a produit aucune ligne de joueur dit « zéro Vengeur » : l'ancien Vengeur
+// hérité ne revient pas. Une passe non mesurée (levelup_rev vide) laisse l'hérité.
+func TestMedalsEarnedView_PasseMesureeSansLigneDeJoueur(t *testing.T) {
+	db := baseMedailles(t, true)
+	if _, err := db.Exec(`INSERT INTO medals_earned VALUES
+		('m-mesure', 'A', 9000000001, 6, now()), ('m-mesure', 'A', 333, 2, now()),
+		('m-non-mesure', 'A', 9000000001, 6, now())`); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	poserFilm(t, db, "m-mesure", "p1", "0 seconds")
+	poserFilm(t, db, "m-non-mesure", "p1", "0 seconds")
+	if _, err := db.Exec(`UPDATE match_usage_films SET levelup_rev = 'lu2' WHERE match_id = 'm-mesure'`); err != nil {
+		t.Fatalf("levelup_rev: %v", err)
+	}
+
+	if _, ok := ligneMedaille(t, db, "m-mesure", "A", 9000000001); ok {
+		t.Errorf("passe mesurée sans ligne de joueur : le Vengeur hérité ne doit plus apparaître")
+	}
+	if n, ok := ligneMedaille(t, db, "m-mesure", "A", 333); !ok || n != 2 {
+		t.Errorf("médaille ordinaire = %d (présent %v), attendu 2", n, ok)
+	}
+	if n, ok := ligneMedaille(t, db, "m-non-mesure", "A", 9000000001); !ok || n != 6 {
+		t.Errorf("passe non mesurée : Vengeur hérité = %d (présent %v), attendu 6 (l'hérité reste)", n, ok)
+	}
+}

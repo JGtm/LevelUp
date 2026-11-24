@@ -33,8 +33,8 @@ func TestAttacherMesuresLevelUp_BouclierMesureZeroCompris(t *testing.T) {
 	s := &replay.UsageSummary{Players: []replay.UsagePlayerSummary{{XUID: "A"}, {XUID: "C"}, {XUID: "D"}}}
 	lu := AttacherMesuresLevelUp(s, docBouclier(), EntreesMesuresUsage{})
 
-	if lu.Rev != UsageLevelUpRev {
-		t.Fatalf("Rev = %q, attendu %q", lu.Rev, UsageLevelUpRev)
+	if lu.Rev != "" {
+		t.Fatalf("Rev = %q, attendu vide : le fil des morts et les équipes ne sont pas lus", lu.Rev)
 	}
 	a, c, d := lu.Players["A"], lu.Players["C"], lu.Players["D"]
 	if valeur(a.ShieldBreaks) != 1 || valeur(a.ShieldRecharges) != 1 {
@@ -124,5 +124,33 @@ func TestAttacherMesuresLevelUp_EntreesNilesNeProduisentRien(t *testing.T) {
 	}
 	if lu := AttacherMesuresLevelUp(&replay.UsageSummary{}, nil, EntreesMesuresUsage{}); lu.Rev != "" || lu.Players != nil {
 		t.Errorf("document nil : %+v", lu)
+	}
+}
+
+// La révision du calcul ne se pose que si le fil des morts ET les équipes ont été lus : sans eux les
+// vengeances ne sont pas mesurées, et poser la révision ferait sauter le match au rattrapage, qui le
+// croirait à jour pour toujours.
+func TestAttacherMesuresLevelUp_RevisionSeulementSiLecturesCompletes(t *testing.T) {
+	complet := EntreesMesuresUsage{
+		Frags:   replay.ShieldlessKillsInput{Read: true},
+		Equipes: map[string]int{"A": 0, "B": 1},
+	}
+	cas := []struct {
+		nom string
+		in  EntreesMesuresUsage
+		rev string
+	}{
+		{"lectures complètes", complet, UsageLevelUpRev},
+		{"fil des morts non lu", EntreesMesuresUsage{Equipes: complet.Equipes}, ""},
+		{"équipes non lues", EntreesMesuresUsage{Frags: complet.Frags}, ""},
+		{"rien de lu", EntreesMesuresUsage{}, ""},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			s := &replay.UsageSummary{Players: []replay.UsagePlayerSummary{{XUID: "A"}}}
+			if lu := AttacherMesuresLevelUp(s, docBouclier(), c.in); lu.Rev != c.rev {
+				t.Fatalf("Rev = %q, attendu %q", lu.Rev, c.rev)
+			}
+		})
 	}
 }

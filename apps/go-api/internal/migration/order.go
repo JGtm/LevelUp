@@ -344,6 +344,7 @@ var canonicalOrder = []string{
 	"shared_match_usage_players_shieldless_v1", // shared (frags sans bouclier, citation « Presque, ça ne compte pas »)
 	"shared_match_usage_levelup_v1",            // shared (bris, recharges de bouclier et vengeances calculés par LevelUp + révision du calcul)
 	"shared_medals_earned_view_v1",             // shared (vue v_medals_earned : medals_earned + médailles Vengeur et Cible difficile dérivées du film)
+	"shared_medals_earned_view_v2",             // shared (la décision « dérivé » se prend sur la passe de LevelUp mesurée, plus sur une ligne de joueur)
 	// Ressource vehicules de l Emprise (plan vehicules L7.2, 2026-09-30) : position dictee par l ordre
 	// d init (steps_shared_vehicle_takes.go trie apres steps_shared_usage_summary.go et avant
 	// steps_shared_weapon_*.go) — exigence de TestSortByCanonicalIsNoOpOnCurrentRegistry.
