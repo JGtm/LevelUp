@@ -50,6 +50,8 @@
  */
 import { useEffect, useState, type RefObject } from 'react'
 
+import { observeSize } from '@/lib/layout/observeSize'
+
 import {
   CANVAS_HEIGHT_CEILING,
   CANVAS_HEIGHT_DEFAULT,
@@ -171,13 +173,12 @@ export function useReplayViewport(
     }
 
     measure()
-    // L'observateur est optionnel (jsdom ne le fournit pas) : sans lui, `resize` et la mesure initiale restent.
-    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(settle)
-    ro?.observe(el)
+    // Sans observateur (jsdom), `resize` et la mesure initiale restent.
+    const stopObserving = observeSize(el, settle)
     window.addEventListener('resize', settle)
     return () => {
       window.clearTimeout(timer)
-      ro?.disconnect()
+      stopObserving()
       window.removeEventListener('resize', settle)
     }
   }, [ref, canvasRef, origin])

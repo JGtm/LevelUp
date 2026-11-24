@@ -21,7 +21,7 @@ import {
 } from './playerNowReadings'
 import { formatSeconds, frameToMs } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import type { PlayerState } from '../../../lib/replay/rosterLogic'
+import type { PlayerState } from '../../../lib/replay/playerState'
 
 /**
  * respawnText — CE QUE LA LIGNE D'UN JOUEUR MORT ÉCRIT À LA PLACE DES JAUGES : « Réapparition dans

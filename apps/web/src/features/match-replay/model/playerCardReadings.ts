@@ -24,14 +24,8 @@ import type { ReplayText } from '../i18n/i18nContract'
 import type { PlacementWindowTime } from '../layers/equipmentPlacementsLayer'
 import { positionAt, trackWindow } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import {
-  playerName,
-  playerStateAt,
-  rosterEntryKey,
-  type PlayerState,
-  type ReplayPlayer,
-  type VitalityPresence,
-} from '../../../lib/replay/rosterLogic'
+import { playerName, rosterEntryKey, type ReplayPlayer } from '../../../lib/replay/rosterLogic'
+import { playerStateAt, type PlayerState, type VitalityPresence } from '../../../lib/replay/playerState'
 
 /**
  * Ce que les EFFETS d'une fiche lisent en dehors d'elle-même : la scène des zones (poses +

@@ -6,9 +6,9 @@
  * que SA zone offre au plan : c'est cette largeur, et non celle de la fenêtre. Le hook rend un `ref` de
  * rappel (état d'élément) : il suit une zone qui n'est montée qu'après coup (une vue qui rend `null` tant
  * que ses données manquent) sans que la mesure reste à zéro. La mesure est lue avant la première peinture,
- * puis suivie par un `ResizeObserver` (optionnel : jsdom ne le fournit pas, la mesure initiale reste).
+ * puis suivie par `useObservedWidth` (`lib/layout`), qui ne diffère de la mesure du corps du cadre que par ce qu'il lit.
  */
-import { useLayoutEffect, useState } from 'react'
+import { useObservedWidth } from '@/lib/layout/useObservedWidth'
 
 /** La largeur du contenu de `el` : `clientWidth` (bordures exclues) moins les marges intérieures gauche et droite. */
 function contentWidthOf(el: HTMLElement): number {
@@ -18,16 +18,5 @@ function contentWidthOf(el: HTMLElement): number {
 }
 
 export function useContentWidth(): { width: number; ref: (el: HTMLElement | null) => void } {
-  const [el, setEl] = useState<HTMLElement | null>(null)
-  const [width, setWidth] = useState(0)
-  useLayoutEffect(() => {
-    if (!el) return
-    const read = () => setWidth(contentWidthOf(el))
-    read()
-    if (typeof ResizeObserver === 'undefined') return
-    const observer = new ResizeObserver(read)
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [el])
-  return { width, ref: setEl }
+  return useObservedWidth(contentWidthOf)
 }

@@ -36,14 +36,9 @@ import {
 import { weaponFullIcon, type FullWeaponIcon } from './weaponFullIcon'
 import { formatSeconds, frameToMs } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import {
-  abilityAt,
-  LOADOUT_SRC_BIRTH,
-  playerStateAt,
-  type PlayerState,
-  type ReplayPlayer,
-  type VitalityPresence,
-} from '../../../lib/replay/rosterLogic'
+import { type ReplayPlayer } from '../../../lib/replay/rosterLogic'
+import { playerStateAt, type PlayerState, type VitalityPresence } from '../../../lib/replay/playerState'
+import { abilityAt, LOADOUT_SRC_BIRTH } from '../../../lib/replay/slotReadings'
 
 /** Une jauge lue : le pour-cent du plein (entier, borné à 0..100) et l'âge de la mesure, en images. */
 export interface NowGauge {

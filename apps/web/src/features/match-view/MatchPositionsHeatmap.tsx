@@ -44,6 +44,7 @@ import { resolveToken } from '@/lib/accessibility/resolveToken'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 import type { MatchPlayerPosition } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
+import { observeSize } from '@/lib/layout/observeSize'
 import { useReplayDrag } from '@/features/match-replay/hooks/useReplayDrag'
 import { useReplayWheelZoom } from '@/features/match-replay/hooks/useReplayWheelZoom'
 import { useReplayZoom } from '@/features/match-replay/hooks/useReplayZoom'
@@ -197,12 +198,8 @@ export function MatchPositionsHeatmap({
     if (!canvas) return
     const lire = () => setSize({ width: canvas.clientWidth, height: canvas.clientHeight })
     lire()
-    // Le patron du dépôt (`carousel.tsx`, `combat-yield-display.tsx`) : l'observateur est
-    // optionnel — jsdom ne le fournit pas, et une mesure unique suffit alors.
-    if (typeof ResizeObserver === 'undefined') return
-    const ro = new ResizeObserver(lire)
-    ro.observe(canvas)
-    return () => ro.disconnect()
+    // Le suivi de taille est celui du rejeu (`observeSize`) : sans observateur (jsdom), la mesure unique reste.
+    return observeSize(canvas, lire)
   }, [frame])
 
   // LES TROIS GESTES DU REJEU 2D, TELS QUELS — `useReplayZoom` (paliers + centre reborné),

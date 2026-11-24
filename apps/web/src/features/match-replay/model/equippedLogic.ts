@@ -21,7 +21,7 @@
 import { inventoryAt } from './inventoryReading'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { trackWindow } from '../../../lib/replay/replayLogic'
-import { currentLifeOf, loadoutAt } from '../../../lib/replay/rosterLogic'
+import { currentLifeOf, loadoutAt } from '../../../lib/replay/slotReadings'
 
 /** Une arme de la rangée : son identifiant de famille, et si elle est EN MAIN. */
 export interface EquippedWeapon {

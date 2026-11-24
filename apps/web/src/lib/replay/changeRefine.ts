@@ -184,7 +184,7 @@ export interface AbilityRankReading {
  * n'a pas le droit de s'en servir.
  *
  * `lifeStart` BORNE AUSSI LE PASSÉ (correctif du 2026-09-06) — SITE FRÈRE DU MÊME DÉFAUT QUE
- * `nearestReading` (`rosterLogic.ts`) : avant ce correctif, seul `c.t <= frame` bornait la
+ * `nearestReading` (`slotReadings.ts`) : avant ce correctif, seul `c.t <= frame` bornait la
  * recherche, et un `spent` de la vie PRÉCÉDENTE du même slot (recyclé) restait « le dernier
  * changement », faisant DISPARAÎTRE la vignette d'une vie neuve qui n'avait pourtant rien
  * consommé. `lifeStart` (le début de la vie couvrant `frame`) écarte tout changement antérieur

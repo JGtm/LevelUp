@@ -11,7 +11,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 
 import { NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
-import { buildPlayers, vitalityPresence } from '@/lib/replay/rosterLogic'
+import { buildPlayers } from '@/lib/replay/rosterLogic'
+import { vitalityPresence } from '@/lib/replay/playerState'
 
 import { ReplayCompactCard, type CompactForm } from './ReplayCompactCard'
 import { ReplayPlayerNow } from './ReplayPlayerNow'

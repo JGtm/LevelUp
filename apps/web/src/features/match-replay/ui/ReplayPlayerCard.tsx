@@ -57,7 +57,8 @@ import { playerScoreAt, type InstantScoreSeries } from '../model/playerInstantSc
 import type { TileActions } from '../model/playerTileActions'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import type { PlayerState, ReplayPlayer, VitalityPresence } from '../../../lib/replay/rosterLogic'
+import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
+import type { PlayerState, VitalityPresence } from '../../../lib/replay/playerState'
 
 /** La tuile : chrome, marges, rayon. */
 const TILE = 'relative flex shrink-0 flex-col rounded-md border px-1.5 py-1.5'

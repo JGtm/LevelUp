@@ -4,22 +4,9 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import type { ReplayTrackReady } from './replayNormalize'
 import { testReplayDoc as doc } from '../../features/match-replay/test/testDoc'
-import {
-  abilityAt,
-  buildPlayers,
-  buildSlotOwnership,
-  campResolver,
-  colorResolver,
-  colorResolverOrLast,
-  currentLifeOf,
-  loadoutAt,
-  markResolver,
-  nameResolver,
-  playerName,
-  playerStateAt,
-  rosterEntryKey,
-  vitalityPresence,
-} from './rosterLogic'
+import { buildPlayers, buildSlotOwnership, campResolver, colorResolver, colorResolverOrLast, markResolver, nameResolver, playerName, rosterEntryKey } from './rosterLogic'
+import { playerStateAt, vitalityPresence } from './playerState'
+import { abilityAt, currentLifeOf, loadoutAt } from './slotReadings'
 
 /** Présence standard : le document porte les deux champs (cas Halo Infinite décodé). */
 const BOTH = { shield: true, health: true }

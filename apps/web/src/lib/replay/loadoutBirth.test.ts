@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { ReplayTrackReady } from './replayNormalize'
 import { testReplayDoc as doc } from '../../features/match-replay/test/testDoc'
-import { loadoutAt } from './rosterLogic'
+import { loadoutAt } from './slotReadings'
 
 /** Une vie [start, end] sur un slot : deux points suffisent à la borner. */
 function track(slot: number, xuid: string, start: number, end: number): ReplayTrackReady {

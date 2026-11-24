@@ -43,7 +43,8 @@ import { GRENADE_THROW_HOLD_MS, grenadeThrowActive } from '../model/grenadeFx'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { formatSeconds, frameToMs, freshness, msToFrames, READING_FADE } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import { LOADOUT_SRC_BIRTH, type PlayerState } from '../../../lib/replay/rosterLogic'
+import { type PlayerState } from '../../../lib/replay/playerState'
+import { LOADOUT_SRC_BIRTH } from '../../../lib/replay/slotReadings'
 import { MIRROR_STYLE, weaponFullIcon } from '../model/weaponFullIcon'
 
 /** Durée de l'animation d'échange — celle du POC, calée sur la rémanence des lancers. */
