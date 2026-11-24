@@ -8,10 +8,12 @@ import "time"
 
 // FilmArchiveSettings : ce que app_settings.json et GET /settings portent de l'archive.
 type FilmArchiveSettings struct {
-	// ArchiveFilms : conserver les chunks des films après leur cuisson. Défaut OUI (clé absente
-	// = vrai) : un film expire côté serveur Halo, l'archive est la seule copie. Non : les faits
-	// et le rejeu sont produits, les chunks sont retirés après la cuisson, et la rétention des
-	// rejeux est forcée illimitée (la purge suppose une recuisson depuis l'archive).
+	// ArchiveFilms : conserver les chunks des films après leur lecture. Clé absente : la valeur du profil de
+	// déploiement (capacité ArchiveFilmsByDefault) — OUI sur le bureau, en développement et en démo (un film
+	// expire côté serveur Halo, l'archive est la seule copie), NON sur un serveur hébergé. Une valeur écrite
+	// gagne toujours. Non : la source des frags n'écrit aucun film, les faits et le rejeu sont produits, les
+	// chunks que la passe des rejeux a écrits sont retirés après la cuisson, et la rétention des rejeux est
+	// forcée illimitée (la purge suppose une recuisson depuis l'archive).
 	ArchiveFilms bool `json:"archive_films" doc:"Conserver les films (chunks) après la cuisson du rejeu. Non : les chunks sont retirés après cuisson et la rétention des rejeux est illimitée."`
 	// FilmArchiveDir : dossier de l'archive, chemin absolu. Vide = <données>/cache. Changé à chaud
 	// tant que l'archive est vide ; sinon le changement est refusé (commande de déplacement).
