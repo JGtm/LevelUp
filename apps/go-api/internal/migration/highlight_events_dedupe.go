@@ -17,8 +17,9 @@ package migration
 //     exemplaire unique : il n'est pas touché.
 //
 // Ce n'est PAS un dédoublonnage par clé : deux faits identiques d'un même instant existent pour de
-// bon (10 médailles et 28 temps forts « mode » hors des matchs doublés, au parc du 2026-11-24 ; sur
-// Halo 5, des milliers). La règle ne retire que ce qu'une des deux passes explique.
+// bon (224 groupes de médailles identiques sur 133 matchs, dont 214 portent un code sans `raw_json`, et
+// 28 groupes de temps forts « mode » sur la base du poste le 2026-11-24 ; sur Halo 5, des milliers). La
+// règle ne retire que ce qu'une des deux passes explique.
 //
 // SANS DELETE : `highlight_events` porte des index ART (PK, idx_highlight_match,
 // idx_events_match_type) ; un DELETE y est le déclencheur du bug DuckDB ART #23645 (ADR 0019). La

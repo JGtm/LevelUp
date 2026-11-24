@@ -239,14 +239,12 @@ func (p *EventsCompletionPersister) MarkEventsEmptyDefinitive(ctx context.Contex
 // INSERT-only (pas de DELETE — table ART-indexée, cf. en-tête). La colonne id
 // est auto-générée (seq). Retourne le nombre de rows effectivement insérées.
 //
-// UNE LIGNE DÉJÀ PRÉSENTE N'EST PAS RÉINSÉRÉE : c'est ce qui rend la complétion (et le
-// rejeu des événements, qui la rappelle sur un match rempli) idempotente. Le même fait
-// est la même (match, type, instant, joueur, code, identité) ; une ligne de l'ancienne
-// forme (code et identité NULL tous deux, écrite avant le 2026-09-02) tient lieu de la
-// ligne du film pour ce couple, sinon un rejeu doublerait ces matchs. Deux médailles
-// distinctes au même instant restent deux faits : leur identité les sépare.
-// La clé n'a pas de contrainte en base (la clé primaire est un `id` auto-généré) : sans ce
-// contrôle, rien n'empêche la répétition.
+// LE SURPLUS SEUL S'INSÈRE : c'est ce qui rend la complétion (et le rejeu des événements, qui la
+// rappelle sur un match rempli) idempotente. Par clé, le nombre de lignes du lot moins le nombre déjà en
+// base ; deux lignes identiques d'un même lot sont deux faits et s'écrivent toutes les deux à la première
+// passe. La clé, les formes reconnues (document, ancienne forme sans code, complétion) et le traitement
+// des médailles sont décrits dans events_completion_surplus.go. La clé n'a pas de contrainte en base (la
+// clé primaire est un `id` auto-généré) : sans ce compte, rien n'empêche la répétition.
 //
 // INSERT OR IGNORE : parité avec la complétion legacy (sync.InsertHighlightEvents) pour les
 // schémas à clé composite ; sur la base réelle il ne retire rien de plus.
@@ -254,25 +252,25 @@ func insertCompletionHighlightEvents(ctx context.Context, tx *sql.Tx, matchID st
 	if len(events) == 0 {
 		return 0, nil
 	}
+	existing, err := loadExistingHighlights(ctx, tx, matchID)
+	if err != nil {
+		return 0, err
+	}
+	surplus := highlightSurplus(events, existing)
+	if len(surplus) == 0 {
+		return 0, nil
+	}
 	stmt, err := tx.PrepareContext(ctx, `
 		INSERT OR IGNORE INTO highlight_events (match_id, event_type, time_ms, xuid, type_hint, raw_json)
-		SELECT ?, ?, ?, ?, ?, ?
-		WHERE NOT EXISTS (
-			SELECT 1 FROM highlight_events e
-			WHERE e.match_id = ? AND e.event_type = ? AND e.time_ms = ? AND e.xuid = ?
-			  AND ((e.type_hint IS NULL AND e.raw_json IS NULL)
-			       OR (e.type_hint IS NOT DISTINCT FROM ? AND e.raw_json IS NOT DISTINCT FROM ?))
-		)`)
+		VALUES (?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return 0, fmt.Errorf("persist: EventsCompletion prepare highlight_events %s: %w", matchID, err)
 	}
 	defer func() { _ = stmt.Close() }()
 
 	inserted := 0
-	for _, e := range events {
-		res, execErr := stmt.ExecContext(ctx,
-			matchID, e.EventType, e.TimeMS, e.XUID, e.TypeHint, e.RawJSON,
-			matchID, e.EventType, e.TimeMS, e.XUID, e.TypeHint, e.RawJSON)
+	for _, e := range surplus {
+		res, execErr := stmt.ExecContext(ctx, matchID, e.EventType, e.TimeMS, e.XUID, e.TypeHint, e.RawJSON)
 		if execErr != nil {
 			return 0, fmt.Errorf("persist: EventsCompletion insert highlight_events %s: %w", matchID, execErr)
 		}
