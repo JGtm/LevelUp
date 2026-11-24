@@ -57,6 +57,33 @@ if (typeof window !== 'undefined' && typeof window.matchMedia !== 'function') {
   })
 }
 
+// ─── Mock lecture média (gap jsdom) ──────────────────────────────────────────
+// jsdom n'implémente ni play(), ni pause(), ni load() d'un élément média, ni getContext() d'un canvas
+// (sans le paquet canvas), ni scrollTo() : chaque appel écrit « Not implemented » sur la console du
+// worker. Ces écritures partent par le canal du worker vers le processus principal ; celles encore en vol à la fermeture du worker font échouer tout le lot
+// (EnvironmentTeardownError « Closing rpc while onUserConsoleLog was pending »). Stub sans effet :
+// aucun test ne dépend du comportement natif (les tests déclenchent eux-mêmes les événements) ; getContext
+// rend null, comme jsdom.
+if (typeof HTMLMediaElement !== 'undefined') {
+  Object.defineProperty(HTMLMediaElement.prototype, 'play', {
+    configurable: true, writable: true, value: () => Promise.resolve(),
+  })
+  Object.defineProperty(HTMLMediaElement.prototype, 'pause', {
+    configurable: true, writable: true, value: () => {},
+  })
+  Object.defineProperty(HTMLMediaElement.prototype, 'load', {
+    configurable: true, writable: true, value: () => {},
+  })
+}
+if (typeof HTMLCanvasElement !== 'undefined') {
+  Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
+    configurable: true, writable: true, value: () => null,
+  })
+}
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, 'scrollTo', { configurable: true, writable: true, value: () => {} })
+}
+
 // ─── MSW ─────────────────────────────────────────────────────────────────────
 
 export const server = setupServer(...handlers)
