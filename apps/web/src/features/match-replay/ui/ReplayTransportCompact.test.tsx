@@ -277,7 +277,7 @@ describe('Le menu de la caméra : posé par les cadres à barre d’une ligne, �
     renderSlot('cinema', { cameraFollow: { player: { xuid: 'x1', lives: [] }, onFollow } })
     const trigger = screen.getByRole('button', { name: 'Caméra : suivre JGtm' })
     fireEvent.click(trigger)
-    fireEvent.click(within(screen.getByRole('group', { name: 'Suivre' })).getByRole('button', { name: 'Aucun' }))
+    fireEvent.click(within(screen.getByRole('group', { name: 'Caméra : suivre' })).getByRole('button', { name: 'Aucun' }))
     expect(onFollow).toHaveBeenCalledWith(null)
   })
 

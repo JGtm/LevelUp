@@ -54,7 +54,7 @@ describe('ReplayTimelineTracks — les quatre pistes sont nommées', () => {
    */
   it('porte le menu de point de vue, puis les étiquettes Coéquipiers, Dominance et Médias', () => {
     renderTracks()
-    expect(screen.getByLabelText('Joueur suivi')).toBeTruthy()
+    expect(screen.getByLabelText('Point de vue')).toBeTruthy()
     expect(screen.queryByText('Toi')).toBeNull()
     for (const label of ['Coéquipiers', 'Dominance', 'Médias']) {
       expect(screen.getByText(label)).toBeTruthy()
@@ -307,7 +307,7 @@ describe('ReplayTimelineTracks — la piste médias', () => {
     expect(screen.queryByText('Médias')).toBeNull()
     expect(screen.queryByText('Aucun média sur ce match')).toBeNull()
     // Les trois autres pistes et le curseur restent intacts.
-    expect(screen.getByLabelText('Joueur suivi')).toBeTruthy()
+    expect(screen.getByLabelText('Point de vue')).toBeTruthy()
     for (const label of ['Coéquipiers', 'Dominance']) {
       expect(screen.getByText(label)).toBeTruthy()
     }
@@ -324,7 +324,7 @@ describe('ReplayTimelineTracks — le repli des pistes', () => {
   it('REPLIÉ : plus une seule piste, mais le curseur et son temps restent', () => {
     const ref = createRef<HTMLSpanElement>()
     renderTracks({ tracksExpanded: false, media: [placed()], clockRef: ref })
-    expect(screen.queryByLabelText('Joueur suivi')).toBeNull()
+    expect(screen.queryByLabelText('Point de vue')).toBeNull()
     for (const label of ['Coéquipiers', 'Dominance', 'Médias']) {
       expect(screen.queryByText(label)).toBeNull()
     }
@@ -396,7 +396,7 @@ describe('ReplayTimelineTracks — le repli des pistes', () => {
  */
 describe('ReplayTimelineTracks — le menu de point de vue', () => {
   function menu(): HTMLSelectElement {
-    return screen.getByLabelText('Joueur suivi') as HTMLSelectElement
+    return screen.getByLabelText('Point de vue') as HTMLSelectElement
   }
 
   it('s’ouvre sur le joueur REGARDÉ — au montage, celui de la page (décision 8)', () => {

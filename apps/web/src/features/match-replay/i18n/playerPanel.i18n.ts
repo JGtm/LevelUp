@@ -12,7 +12,7 @@
 
 /** Les actions d'une tuile ou d'une ligne : Suivre, l'œil, et « Tout afficher » en tête de la colonne. */
 interface PlayerTileText {
-  /** Le titre de l'infobulle de chaque geste ; il sert aussi d'intitulé de la liste « Suivre » du menu de caméra. */
+  /** Le titre de l'infobulle de chaque geste ; il sert aussi d'intitulé de la liste « Caméra : suivre » du menu de caméra. */
   follow: string
   unfollow: string
   hide: string
@@ -52,6 +52,8 @@ export interface PlayerPanelText {
   tile: PlayerTileText
   /** « Seul », dans la fiche. */
   solo: PlayerSoloText
+  /** « Prendre le point de vue », dans la fiche : le geste du menu de la frise, posé sur le joueur ouvert. */
+  viewpoint: { label: string; hint: string }
   /** La fiche du cadre Standard : le retour à la colonne des équipes (et du fil), le titre de l'extrait du fil et son lien. */
   backToTeams: string
   extractTitle: string
@@ -63,12 +65,12 @@ export const FR_PLAYER_PANEL = {
   labelFmt: (name) => `Fiche de ${name}`,
   cardOpenFmt: (name) => `Ouvrir la fiche de ${name}`,
   tile: {
-    follow: 'Suivre',
+    follow: 'Caméra : suivre',
     unfollow: 'Ne plus suivre',
     hide: 'Masquer',
     show: 'Afficher',
-    followLabelFmt: (name) => `Suivre ${name}`,
-    unfollowLabelFmt: (name) => `Ne plus suivre ${name}`,
+    followLabelFmt: (name) => `Suivre ${name} (caméra)`,
+    unfollowLabelFmt: (name) => `Ne plus suivre ${name} (caméra)`,
     hideLabelFmt: (name) => `Masquer ${name}`,
     showLabelFmt: (name) => `Afficher ${name}`,
     followHintFmt: (name) => `La caméra cadre la carte sur ${name}.`,
@@ -84,6 +86,10 @@ export const FR_PLAYER_PANEL = {
     hint: "Masque tous les autres joueurs. L'œil d'une tuile en réaffiche un.",
     hintActive: 'Réaffiche tous les joueurs.',
   },
+  viewpoint: {
+    label: 'Prendre le point de vue',
+    hint: 'La carte, la frise et les camps se lisent par les yeux de ce joueur. La lecture ne bouge pas.',
+  },
   backToTeams: 'Équipes',
   extractTitle: 'Éliminations',
   fullFeed: 'Fil complet',
@@ -94,12 +100,12 @@ export const EN_PLAYER_PANEL = {
   labelFmt: (name) => `${name}'s card`,
   cardOpenFmt: (name) => `Open ${name}'s card`,
   tile: {
-    follow: 'Follow',
+    follow: 'Camera: follow',
     unfollow: 'Stop following',
     hide: 'Hide',
     show: 'Show',
-    followLabelFmt: (name) => `Follow ${name}`,
-    unfollowLabelFmt: (name) => `Stop following ${name}`,
+    followLabelFmt: (name) => `Follow ${name} (camera)`,
+    unfollowLabelFmt: (name) => `Stop following ${name} (camera)`,
     hideLabelFmt: (name) => `Hide ${name}`,
     showLabelFmt: (name) => `Show ${name}`,
     followHintFmt: (name) => `The camera frames the map on ${name}.`,
@@ -114,6 +120,10 @@ export const EN_PLAYER_PANEL = {
     labelActive: 'Solo · show all',
     hint: "Hides every other player. A tile's eye shows one again.",
     hintActive: 'Shows every player again.',
+  },
+  viewpoint: {
+    label: 'Take the viewpoint',
+    hint: 'The map, the timeline and the camps read through this player’s eyes. Playback does not move.',
   },
   backToTeams: 'Teams',
   extractTitle: 'Kills',

@@ -105,6 +105,8 @@ export interface ReplayCaptureOptions {
   /** La piste sonore du rejeu et son volume, pour le mixage hors ligne (`useReplaySound`). */
   soundTrack?: ReplayExportOptions['soundTrack']
   soundVolume?: number
+  /** Le son de la page est allumé : la case « Inclure le son » de l'export s'ouvre sur cet état. */
+  soundOn?: boolean
   /** Le palier de zoom de l'écran, pour le choix du cadrage de l'export (cf. `useReplayExport`). */
   zoomLevel?: number
 }
@@ -330,6 +332,7 @@ function useExportSeam(o: ReplayCaptureOptions): ReplayExport | null {
     locale: o.locale ?? DEFAULT_LOCALE,
     soundTrack: o.soundTrack,
     soundVolume: o.soundVolume,
+    soundOn: o.soundOn,
     zoomLevel: o.zoomLevel,
   })
   return redraw ? exportable : null

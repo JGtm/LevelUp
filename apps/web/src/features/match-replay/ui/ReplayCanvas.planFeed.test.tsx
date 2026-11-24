@@ -92,7 +92,10 @@ describe('ReplayCanvas : le fil des éliminations du plan (`planFeed`)', () => {
         <ReplayCanvas {...baseProps(doc)} transport={slots.transport} blockOverlays={slots.blockOverlays} planFeed={planFeed} />,
       )
     }
-    const ouvrirLaVue = () => fireEvent.click(screen.getByRole('button', { name: /^Vue / }))
+    const ouvrirLaVue = () => {
+      fireEvent.click(screen.getByRole('button', { name: /^Vue / }))
+      fireEvent.click(screen.getByRole('tab', { name: /^Fil/ }))
+    }
 
     it("éteinte, le fil du plan n'est pas rendu et la légende de la chaleur retrouve le bas ; allumée, il l'est", () => {
       localStorage.setItem('replay-show-heatmap', 'true')
@@ -125,7 +128,7 @@ describe('ReplayCanvas : le fil des éliminations du plan (`planFeed`)', () => {
     it("sans `planFeed` (Standard, repli), l'option n'est pas dans le panneau", () => {
       montage(false)
       ouvrirLaVue()
-      expect(screen.getByRole('region', { name: T.viewButton })).toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: T.viewButton })).toBeInTheDocument()
       expect(screen.queryByRole('switch', { name: T.frames.planFeed })).toBeNull()
     })
   })

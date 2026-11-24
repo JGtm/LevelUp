@@ -23,6 +23,7 @@ function makeExport(over: Partial<ReplayExport> = {}): ReplayExport {
     clockOf: (f) => `frame:${f}`,
     lengthClock: (b) => `${b.startFrame}-${b.endFrame}`,
     zoomLevel: 1,
+    soundOn: true,
     ...over,
   }
 }
@@ -145,6 +146,28 @@ describe('ReplayExportDialog — le cadrage (D6)', () => {
     cleanup()
     setup({ zoomLevel: 2 })
     expect((screen.getByLabelText('Carte entière') as HTMLInputElement).checked).toBe(true)
+  })
+})
+
+describe('ReplayExportDialog — le son suit le son de la page', () => {
+  it('son de la page allumé : « Inclure le son » est coché, et le clip part avec son', async () => {
+    const user = userEvent.setup()
+    const { exporter } = setup({ soundOn: true })
+    expect((screen.getByLabelText('Inclure le son') as HTMLInputElement).checked).toBe(true)
+    await user.click(screen.getByRole('button', { name: 'Exporter' }))
+    expect(exporter.run).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ sound: true }))
+  })
+
+  it('son de la page coupé : la case s’ouvre décochée et le clip part muet, sauf choix contraire', async () => {
+    const user = userEvent.setup()
+    const { exporter } = setup({ soundOn: false })
+    const case_ = screen.getByLabelText('Inclure le son') as HTMLInputElement
+    expect(case_.checked).toBe(false)
+    await user.click(screen.getByRole('button', { name: 'Exporter' }))
+    expect(exporter.run).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ sound: false }))
+    await user.click(case_)
+    await user.click(screen.getByRole('button', { name: 'Exporter' }))
+    expect(exporter.run).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ sound: true }))
   })
 })
 

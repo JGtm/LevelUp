@@ -45,6 +45,7 @@ import { playerMatchTotals } from '../model/playerMatchTotals'
 import type { ReplayAntagonists } from '../model/replayAntagonists'
 import { displayClockMs, type ReplayWindowBounds } from '../model/replayWindow'
 import { FicheActions } from './fiche/FicheActions'
+import type { FicheViewpoint } from './fiche/ficheViewpoint'
 import { FicheAntagonistes } from './fiche/FicheAntagonistes'
 import { FicheDepuisDebut } from './fiche/FicheDepuisDebut'
 import { FicheEliminations } from './fiche/FicheEliminations'
@@ -79,6 +80,8 @@ export interface ReplayPlayerPanelBodyProps {
   weaponIcons: WeaponIconsByKey
   /** La fabrique des antagonistes du match (`ReplayFrameView.antagonists`) : la fiche lit l'index de son joueur. */
   antagonists: ReplayAntagonists
+  /** « Prendre le point de vue » : ce que la page sait du point de vue pour ce joueur ; absent = pas de bouton. */
+  takeViewpoint?: FicheViewpoint
   /** Ce que le conteneur pose à droite de l'identité (retour, fermeture) ; rien par défaut. */
   headEnd?: ReactNode
   /**
@@ -96,7 +99,7 @@ const LOWER_CLASS: Record<NonNullable<ReplayPlayerPanelBodyProps['scroll']>, str
 
 export function ReplayPlayerPanelBody({
   player, solo, onSolo, doc, frame, nowMs, playWindow, allegiance, locale,
-  players, feed, weaponIcons, antagonists, headEnd, scroll = 'internal',
+  players, feed, weaponIcons, antagonists, takeViewpoint, headEnd, scroll = 'internal',
 }: ReplayPlayerPanelBodyProps) {
   const t = REPLAY_TEXT[locale]
   const name = cardName(player, t)
@@ -120,7 +123,7 @@ export function ReplayPlayerPanelBody({
         locale={locale}
         headEnd={headEnd}
       />
-      <FicheActions name={name} solo={solo} onSolo={onSolo} locale={locale} />
+      <FicheActions name={name} solo={solo} onSolo={onSolo} locale={locale} takeViewpoint={takeViewpoint} />
       <div className={LOWER_CLASS[scroll]} style={{ gap: COTES_FICHE_INSTANT.ecartSectionsPx[scroll] }}>
         <ReplayPlayerNow player={player} doc={doc} frame={frame} clock={clock} ages={ages} locale={locale} />
         <FicheAntagonistes player={player} antagonists={antagonists} players={players} allegiance={allegiance} nowMs={nowMs} locale={locale} />

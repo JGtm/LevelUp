@@ -70,6 +70,7 @@ function exporteur(state: ReplayExportState): ReplayExport {
     defaultBounds: vi.fn(),
     run: vi.fn(),
     zoomLevel: 1,
+    soundOn: true,
     cancel: vi.fn(),
     clockOf: () => '0:00',
     lengthClock: () => '0:00',
@@ -183,7 +184,7 @@ describe('ReplayTransport — fixation de la zone de lecture', () => {
     // Les éléments attendus sont là : sans eux la fixture comparerait un rendu vide ou partiel.
     expect(vue.getByRole('button', { name: 'Pause' })).toBeTruthy()
     expect(vue.getByRole('button', { name: /^Recommencer/ })).toBeTruthy()
-    expect(vue.getByLabelText('Joueur suivi')).toBeTruthy()
+    expect(vue.getByLabelText('Point de vue')).toBeTruthy()
     expect(vue.getByText('Médias')).toBeTruthy()
     const { actuel, ancien } = comparables(vue.container, avantNormal)
     expect(actuel).toBe(ancien)

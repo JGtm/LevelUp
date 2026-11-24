@@ -1,439 +1,529 @@
 /**
- * ReplayViewPanel.test.tsx — LE PANNEAU DE LA VUE : les préréglages en tête, puis chaque section
- * n'apparaît que si elle a quelque chose à commander, chaque bascule appelle EXACTEMENT son
- * callback (jamais une voisine), et le panneau se ferme par son bouton comme par Échap (même
- * contrat que les autres panneaux du dépôt — AlertDialog, AssetDrawer).
+ * ReplayViewPanel.test.tsx — LE PANNEAU « VUE » en onglets verticaux, sur les vrais réglages : sa structure
+ * (rôles, onglets, clavier, fermeture), le contenu de chaque rubrique selon ce que le match propose, les interrupteurs
+ * maîtres et leur « N sur M », les épingles, la remise à zéro. Les vues (préréglages souples, Mes vues) sont dans
+ * `ReplayViewPanel.views.test.tsx`.
  */
-import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, screen, within } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { ReplayHeatmapLegend } from '../ui/ReplayHeatmapLegend'
-import {
-  makePlacements,
-  makeWeaponPads,
-  makeFlagCarries,
-  makeModeObjectives,
-  makeHeatmap,
-  makeSound,
-  renderPanel,
-} from './replayViewPanelFixtures'
+import { makeReplayRelief, THREE_FLOORS } from '../test/reliefFixtures'
+import { FULL_FILM, SLAYER_FILM } from '../test/settingsContextFixtures'
+import { makeSound } from '../test/soundFixtures'
+import { renderOpenPanel } from './replayViewPanelHarness'
 
-describe('ReplayViewPanel — les deux formes de commande (2026-08-29)', () => {
-  // UN OUI/NON EST UN INTERRUPTEUR, UN CHOIX EXCLUSIF RESTE UN BOUTON PRESSÉ. La demande
-  // utilisateur (« je préfère un toggle plutôt que des boutons ») porte sur les réglages
-  // oui/non ; un interrupteur sur « Par équipe » promettrait un « tout éteint » que le
-  // réglage n'accepte pas. Ce test épingle la frontière, qui se perdrait à la relecture.
-  it('les calques et les catégories de son sont des interrupteurs', () => {
-    renderPanel({ heatmap: makeHeatmap({ show: true }) })
-    for (const nom of ['Visée', 'Traînée', 'Zones', 'Carte de chaleur', 'Armes']) {
-      expect(screen.getByRole('switch', { name: nom })).toBeTruthy()
+const tab = (name: string | RegExp) => screen.getByRole('tab', { name })
+const sw = (name: string | RegExp) => screen.getByRole('switch', { name })
+const radio = (name: string) => screen.getByRole('radio', { name })
+
+beforeEach(() => window.localStorage.clear())
+
+describe('la structure du panneau', () => {
+  it('s’ouvre en dialogue « Vue » avec cinq rubriques en onglets verticaux, la première retenue', () => {
+    renderOpenPanel()
+    expect(screen.getByRole('dialog', { name: 'Vue' })).toBeInTheDocument()
+    const tablist = screen.getByRole('tablist')
+    expect(tablist).toHaveAttribute('aria-orientation', 'vertical')
+    expect(within(tablist).getAllByRole('tab').map((t) => t.textContent)).toEqual([
+      'Joueurs5 sur 8', 'Carte2 sur 3', 'Objets7 sur 10', 'Fil1 sur 1',
+    ])
+    expect(tab(/Joueurs/)).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getAllByRole('tabpanel')).toHaveLength(1)
+  })
+
+  it('le son est la cinquième rubrique quand la piste en porte', () => {
+    renderOpenPanel({ sound: makeSound() })
+    expect(screen.getAllByRole('tab').map((t) => t.textContent?.replace(/\d+ sur \d+/, ''))).toEqual(['Joueurs', 'Carte', 'Objets', 'Fil', 'Son'])
+  })
+
+  it('une rubrique à la fois : choisir Carte montre ses lignes et cache celles de Joueurs', () => {
+    renderOpenPanel()
+    expect(screen.getByRole('switch', { name: 'Visée' })).toBeInTheDocument()
+    fireEvent.click(tab(/Carte/))
+    expect(tab(/Carte/)).toHaveAttribute('aria-selected', 'true')
+    expect(screen.queryByRole('switch', { name: 'Visée' })).toBeNull()
+    expect(sw('Zones nommées')).toBeInTheDocument()
+  })
+
+  it('les flèches changent de rubrique et lui rendent le focus, Début et Fin vont aux bouts, le tour se referme', () => {
+    renderOpenPanel({ sound: makeSound() })
+    tab(/Joueurs/).focus()
+    fireEvent.keyDown(tab(/Joueurs/), { key: 'ArrowDown' })
+    expect(tab(/Carte/)).toHaveAttribute('aria-selected', 'true')
+    expect(tab(/Carte/)).toHaveFocus()
+    fireEvent.keyDown(tab(/Carte/), { key: 'End' })
+    expect(tab(/Son/)).toHaveAttribute('aria-selected', 'true')
+    fireEvent.keyDown(tab(/Son/), { key: 'ArrowDown' })
+    expect(tab(/Joueurs/)).toHaveAttribute('aria-selected', 'true')
+    fireEvent.keyDown(tab(/Joueurs/), { key: 'ArrowUp' })
+    expect(tab(/Son/)).toHaveAttribute('aria-selected', 'true')
+    fireEvent.keyDown(tab(/Son/), { key: 'Home' })
+    expect(tab(/Joueurs/)).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('seul l’onglet retenu se tabule, les autres s’atteignent aux flèches', () => {
+    renderOpenPanel()
+    expect(tab(/Joueurs/)).toHaveAttribute('tabindex', '0')
+    expect(tab(/Carte/)).toHaveAttribute('tabindex', '-1')
+  })
+
+  it('retient la dernière rubrique ouverte pour la prochaine ouverture', () => {
+    const view = renderOpenPanel()
+    fireEvent.click(tab(/Objets/))
+    view.unmount()
+    renderOpenPanel()
+    expect(tab(/Objets/)).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('la rubrique retenue qui n’existe pas pour ce match laisse la place à la première', () => {
+    window.localStorage.setItem('replay-view-tab', 'son')
+    renderOpenPanel()
+    expect(tab(/Joueurs/)).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('le bouton de fermeture, Échap et un clic dehors ferment ; un clic dedans ne ferme rien', () => {
+    renderOpenPanel()
+    fireEvent.click(sw('Visée'))
+    expect(screen.getByRole('dialog', { name: 'Vue' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Fermer la vue' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /^Vue\b/ }))
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /^Vue\b/ }))
+    fireEvent.pointerDown(document.body)
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('le focus entre au panneau à l’ouverture, et revient au bouton à la fermeture', () => {
+    renderOpenPanel()
+    expect(screen.getByRole('dialog', { name: 'Vue' })).toHaveFocus()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.getByRole('button', { name: /^Vue\b/ })).toHaveFocus()
+  })
+
+  it('déclare la couche d’Échap pour que le Plein cadre ne parte pas avant le panneau', () => {
+    renderOpenPanel()
+    expect(screen.getByRole('dialog', { name: 'Vue' })).toHaveAttribute('data-replay-escape-layer')
+  })
+})
+
+describe('la rubrique Joueurs', () => {
+  it('range les lignes dans l’ordre : regard, traînée, couleur, effets, puis le sous-titre Vies', () => {
+    renderOpenPanel()
+    const panel = screen.getByRole('tabpanel')
+    const names = within(panel).getAllByRole('switch').map((s) => s.getAttribute('aria-label'))
+    expect(names).toEqual([
+      'Tout activer ou désactiver : Joueurs', 'Visée', 'Traînée', 'Effets de tirs', 'Effets de mort',
+      'Apparitions', 'Morts', 'Tueurs', 'Probabilité de réapparition',
+    ])
+    expect(within(panel).getByText('Vies')).toBeInTheDocument()
+    expect(within(panel).getByRole('radiogroup', { name: 'Couleur des points' })).toBeInTheDocument()
+  })
+
+  it('« qui » et « quand » ne se montrent qu’avec une trace allumée, « point de vue » sous leur nom neuf', () => {
+    renderOpenPanel()
+    expect(screen.queryByRole('radiogroup', { name: 'Qui' })).toBeNull()
+    fireEvent.click(sw('Morts'))
+    const qui = screen.getByRole('radiogroup', { name: 'Qui' })
+    expect(within(qui).getAllByRole('radio').map((r) => r.textContent)).toEqual(['Tous', 'Mon équipe', 'Point de vue'])
+    expect(screen.getByRole('radiogroup', { name: 'Quand' })).toBeInTheDocument()
+  })
+
+  it('« point de vue » n’est proposé que s’il y a un joueur suivi dans ce match', () => {
+    renderOpenPanel({ film: { ...FULL_FILM, lives: { ...FULL_FILM.lives, followedKnown: false } } })
+    fireEvent.click(sw('Morts'))
+    expect(within(screen.getByRole('radiogroup', { name: 'Qui' })).getAllByRole('radio').map((r) => r.textContent)).toEqual(['Tous', 'Mon équipe'])
+  })
+
+  it('le dessin de la probabilité suit son interrupteur et propose Teintes et points, Teintes, Points', () => {
+    renderOpenPanel()
+    const dessin = screen.getByRole('radiogroup', { name: 'Dessin' })
+    expect(within(dessin).getAllByRole('radio').map((r) => r.textContent)).toEqual(['Teintes et points', 'Teintes', 'Points'])
+    expect(radio('Teintes et points')).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(radio('Points'))
+    expect(radio('Points')).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(sw('Probabilité de réapparition'))
+    expect(screen.queryByRole('radiogroup', { name: 'Dessin' })).toBeNull()
+  })
+
+  it('un interrupteur écrit son réglage, qui garde sa clé d’avant', () => {
+    renderOpenPanel()
+    expect(sw('Visée')).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(sw('Visée'))
+    expect(sw('Visée')).toHaveAttribute('aria-checked', 'false')
+    expect(window.localStorage.getItem('replay-show-aim')).toBe('false')
+    fireEvent.click(sw('Morts'))
+    expect(window.localStorage.getItem('replay-show-deaths')).toBe('true')
+  })
+
+  it('cliquer le libellé bascule aussi', () => {
+    renderOpenPanel()
+    fireEvent.click(screen.getByText('Traînée'))
+    expect(sw('Traînée')).toHaveAttribute('aria-checked', 'false')
+  })
+
+  it('sur un Assassin : ni vies ni probabilité, mais regard, traînée et effets', () => {
+    renderOpenPanel({ film: SLAYER_FILM })
+    const names = within(screen.getByRole('tabpanel')).getAllByRole('switch').map((s) => s.getAttribute('aria-label'))
+    expect(names).toEqual(['Tout activer ou désactiver : Joueurs', 'Visée', 'Traînée', 'Effets de tirs', 'Effets de mort'])
+    expect(screen.queryByText('Vies')).toBeNull()
+  })
+
+  it('la probabilité refusée dit son motif dans un bloc pointillé, sans interrupteur', () => {
+    renderOpenPanel({ film: { ...FULL_FILM, respawnForecast: false, respawnForecastRefusal: 'Cette carte n’a pas de zones nommées.' } })
+    expect(screen.queryByRole('switch', { name: 'Probabilité de réapparition' })).toBeNull()
+    expect(screen.getByText('Cette carte n’a pas de zones nommées.')).toBeInTheDocument()
+  })
+})
+
+describe('l’interrupteur maître d’une rubrique', () => {
+  const master = () => sw('Tout activer ou désactiver : Joueurs')
+
+  it('dit tout, une partie ou rien, et le compte « N sur M » suit', () => {
+    renderOpenPanel()
+    expect(master()).toHaveAttribute('aria-checked', 'mixed')
+    expect(within(screen.getByRole('tabpanel')).getByText('5 sur 8')).toBeInTheDocument()
+    fireEvent.click(master())
+    expect(master()).toHaveAttribute('aria-checked', 'true')
+    expect(within(screen.getByRole('tabpanel')).getByText('8 sur 8')).toBeInTheDocument()
+    fireEvent.click(master())
+    expect(master()).toHaveAttribute('aria-checked', 'false')
+    expect(within(screen.getByRole('tabpanel')).getByText('0 sur 8')).toBeInTheDocument()
+    expect(sw('Visée')).toHaveAttribute('aria-checked', 'false')
+  })
+
+  it('n’écrit que ce que le match propose : sur un Assassin, il ne touche pas aux objets', () => {
+    window.localStorage.setItem('replay-show-vehicles', 'false')
+    renderOpenPanel({ film: SLAYER_FILM })
+    fireEvent.click(master())
+    expect(window.localStorage.getItem('replay-show-vehicles')).toBe('false')
+    // Tout était allumé : le maître éteint les quatre interrupteurs que ce match propose, et rien d'autre.
+    expect(sw('Visée')).toHaveAttribute('aria-checked', 'false')
+    expect(window.localStorage.getItem('replay-show-zones')).toBeNull()
+    expect(window.localStorage.getItem('replay-show-weapon-pads')).toBeNull()
+  })
+})
+
+describe('la rubrique Carte', () => {
+  const relief = (over = {}) =>
+    makeReplayRelief({
+      options: ['plan', 'rendu', 'relief'], selected: 'plan', meshPercent: 46,
+      lines: { available: true, show: true, onToggle: vi.fn() },
+      floor: { state: { state: 'ready', chips: THREE_FLOORS, min: 0, max: 4.4 }, cut: null, selectAll: vi.fn(), selectRank: vi.fn(), setHeight: vi.fn(), follow: { available: false, on: false, onToggle: vi.fn() } },
+      ...over,
+    })
+  const open = (o = {}) => {
+    const view = renderOpenPanel({ relief: relief(), orientation: { retained: null, setTurns: vi.fn(), available: true }, ...o })
+    fireEvent.click(tab(/Carte/))
+    return view
+  }
+
+  it('propose Plan, Rendu, Relief dans cet ordre, le fond retenu pressé, l’infobulle du Relief dit le maillage', () => {
+    open()
+    const fond = screen.getByRole('radiogroup', { name: 'Fond' })
+    expect(within(fond).getAllByRole('radio').map((r) => r.textContent)).toEqual(['Plan', 'Rendu', 'Relief'])
+    expect(radio('Plan')).toHaveAttribute('aria-checked', 'true')
+    expect(radio('Relief').title).toContain('46 % de la carte')
+  })
+
+  it('un clic sur un fond le retient dans la clé globale partagée avec la Tactique', () => {
+    open()
+    fireEvent.click(radio('Relief'))
+    expect(window.localStorage.getItem('replay-background-style')).toBe('relief')
+  })
+
+  it('sans choix de fond : pas de segmenté', () => {
+    open({ relief: relief({ options: [] }) })
+    expect(screen.queryByRole('radiogroup', { name: 'Fond' })).toBeNull()
+  })
+
+  it('« Traits du relief » (celui du fond affiché) se lit sous le fond ; « Plan des murs » n’est pas proposé sur le fond Plan', () => {
+    const { unmount } = open({ drawn: 'plan' })
+    expect(sw('Traits du relief')).toBeInTheDocument()
+    expect(screen.queryByRole('switch', { name: 'Plan des murs' })).toBeNull()
+    unmount()
+    open({ drawn: 'rendu' })
+    expect(sw('Plan des murs')).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('l’étage : Tout puis un rang par étage, sans curseur tant qu’aucune coupe n’est active', () => {
+    const r = relief()
+    open({ relief: r })
+    const etage = screen.getByRole('radiogroup', { name: 'Étage' })
+    expect(within(etage).getAllByRole('radio').map((x) => x.textContent)).toEqual(['Tout', 'Bas', 'Étage 1', 'Étage 2'])
+    expect(radio('Tout')).toHaveAttribute('aria-checked', 'true')
+    expect(screen.queryByRole('slider', { name: 'Hauteur de la coupe' })).toBeNull()
+    fireEvent.click(radio('Étage 1'))
+    expect(r.floor.selectRank).toHaveBeenCalledWith(2.2)
+  })
+
+  it('une coupe active montre le curseur « Hauteur », qui dit le rang le plus proche', () => {
+    const r = relief({ floor: { ...relief().floor, cut: 2.2 } })
+    open({ relief: r })
+    const curseur = screen.getByRole('slider', { name: 'Hauteur de la coupe' })
+    expect(curseur).toHaveAttribute('step', '0.25')
+    expect(screen.getByText('Étage 1', { selector: 'output' })).toBeInTheDocument()
+    fireEvent.change(curseur, { target: { value: '3' } })
+    expect(r.floor.setHeight).toHaveBeenCalledWith(3)
+    expect(radio('Étage 1')).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('carte sans maillage : un bloc d’explication, aucun choix d’étage', () => {
+    open({ relief: relief({ floor: { ...relief().floor, state: { state: 'noMesh' } } }) })
+    expect(screen.queryByRole('radiogroup', { name: 'Étage' })).toBeNull()
+    expect(screen.getByText(/sans maillage de navigation/)).toBeInTheDocument()
+    expect(screen.queryByRole('switch', { name: 'Étage de la fiche ouverte' })).toBeNull()
+  })
+
+  it('« Étage de la fiche ouverte » : grisé et expliqué sans fiche, actif avec une fiche, la note dit le rang suivi', () => {
+    const off = relief()
+    const { unmount } = open({ relief: off })
+    expect(sw('Étage de la fiche ouverte')).toBeDisabled()
+    expect(screen.getByText(/Aucun joueur ouvert/)).toBeInTheDocument()
+    unmount()
+    const on = relief({ floor: { ...relief().floor, cut: 2.2, follow: { available: true, on: true, onToggle: vi.fn() } } })
+    open({ relief: on })
+    expect(sw('Étage de la fiche ouverte')).toBeEnabled()
+    expect(screen.getByText('Étage suivi : Étage 1')).toBeInTheDocument()
+    fireEvent.click(sw('Étage de la fiche ouverte'))
+    expect(on.floor.follow.onToggle).toHaveBeenCalledTimes(1)
+  })
+
+  it('l’orientation : Auto puis les quatre quarts de tour ; Auto efface le choix retenu', () => {
+    const setTurns = vi.fn()
+    open({ orientation: { retained: 1, setTurns, available: true } })
+    const groupe = screen.getByRole('radiogroup', { name: 'Orientation' })
+    expect(within(groupe).getAllByRole('radio').map((r) => r.textContent)).toEqual(['Auto', '0°', '90°', '180°', '270°'])
+    expect(radio('90°')).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(radio('Auto'))
+    expect(setTurns).toHaveBeenLastCalledWith(null)
+    fireEvent.click(radio('270°'))
+    expect(setTurns).toHaveBeenLastCalledWith(3)
+  })
+
+  it('sans carte connue, pas d’orientation', () => {
+    open({ orientation: { retained: null, setTurns: vi.fn(), available: false } })
+    expect(screen.queryByRole('radiogroup', { name: 'Orientation' })).toBeNull()
+  })
+
+  it('la carte de chaleur : Mesure et Durée sous elle, allumée seulement ; pas d’« éliminations » sans mort localisable', () => {
+    open({ heatKillsAvailable: false })
+    expect(screen.queryByRole('radiogroup', { name: 'Durée' })).toBeNull()
+    fireEvent.click(sw('Carte de chaleur'))
+    expect(screen.getByRole('radiogroup', { name: 'Durée' })).toBeInTheDocument()
+    expect(screen.queryByRole('radiogroup', { name: 'Mesure' })).toBeNull()
+  })
+
+  it('la mesure propose Présence et Éliminations quand une mort est localisable, et la choisit', () => {
+    open()
+    fireEvent.click(sw('Carte de chaleur'))
+    expect(within(screen.getByRole('radiogroup', { name: 'Mesure' })).getAllByRole('radio').map((r) => r.textContent)).toEqual(['Présence', 'Éliminations'])
+    fireEvent.click(radio('Éliminations'))
+    expect(window.localStorage.getItem('replay-heatmap-mode')).toBe('kills')
+  })
+})
+
+describe('la rubrique Objets', () => {
+  const open = (o = {}) => {
+    const view = renderOpenPanel(o)
+    fireEvent.click(tab(/Objets/))
+    return view
+  }
+
+  it('les filles se lisent sous leur mère, et disparaissent quand elle est éteinte', () => {
+    open()
+    expect(sw('Armes spéciales seulement')).toBeInTheDocument()
+    expect(sw('Y compris les armes de départ')).toBeInTheDocument()
+    expect(sw('Objets lâchés')).toBeInTheDocument()
+    expect(sw('Objets non identifiés')).toBeInTheDocument()
+    fireEvent.click(sw('Armes au sol'))
+    fireEvent.click(sw('Équipements posés'))
+    for (const fille of ['Armes spéciales seulement', 'Y compris les armes de départ', 'Objets lâchés', 'Objets non identifiés']) {
+      expect(screen.queryByRole('switch', { name: fille })).toBeNull()
     }
   })
 
-  it('les choix exclusifs ne sont JAMAIS des interrupteurs', () => {
-    renderPanel({ heatmap: makeHeatmap({ show: true }) })
-    for (const nom of ['Présence', 'Éliminations', 'Par équipe', 'Par joueur']) {
+  it('« Drapeaux » reste atteignable quand « Objectifs du mode » est éteint : sa couche reste dessinée', () => {
+    open()
+    fireEvent.click(sw('Objectifs du mode'))
+    expect(sw('Drapeaux')).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(sw('Drapeaux'))
+    expect(window.localStorage.getItem('replay-show-flag-carries')).toBe('false')
+  })
+
+  it('un film qui porte un VIP, un crâne et une bombe les propose sous les objectifs', () => {
+    open({ film: { ...FULL_FILM, vipCrown: true, skullCarrier: true, bombCarrier: true } })
+    for (const nom of ['VIP', 'Porteur du crâne', 'Bombe']) expect(sw(nom)).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('un film sans pose dessinable : ni le calque ni ses filles ; sans socle : pas de bascule', () => {
+    open({ film: { ...FULL_FILM, placements: { drawable: false, unnamed: true, dropped: true }, weaponPads: false } })
+    for (const nom of ['Équipements posés', 'Objets lâchés', 'Objets non identifiés', 'Emplacements d’arme']) {
       expect(screen.queryByRole('switch', { name: nom })).toBeNull()
     }
   })
 
-  // LES DEUX AXES DE LA CHALEUR SONT PASSÉS EN SEGMENTÉ le 2026-09-02 : un choix parmi N
-  // s'annonce en radiogroup/radio, pas comme une grappe de boutons pressés. C'est la forme
-  // qui porte la contrainte — des options empilées laissaient croire qu'on pouvait en allumer
-  // deux. Les couleurs de marqueur, elles, restent des boutons : leur liste n'a pas bougé.
-  it('les axes de la chaleur sont un choix radio, pas une grappe de boutons', () => {
-    renderPanel({ heatmap: makeHeatmap({ show: true }) })
-    for (const nom of ['Présence', 'Éliminations']) {
-      expect(screen.getByRole('radio', { name: nom })).toBeTruthy()
-    }
-    expect(screen.getAllByRole('radiogroup').length).toBeGreaterThanOrEqual(2)
+  it('un Assassin n’a pas de rubrique Objets', () => {
+    renderOpenPanel({ film: SLAYER_FILM })
+    expect(screen.queryByRole('tab', { name: /Objets/ })).toBeNull()
   })
 })
 
-describe('ReplayViewPanel — calques', () => {
-  it('bascule Visée : reflète showAim et appelle onToggleAim au clic, jamais onToggleZones', () => {
-    const { onToggleAim, onToggleZones } = renderPanel({ showAim: true })
-    const btn = screen.getByRole('switch', { name: 'Visée' })
-    expect(btn).toHaveAttribute('aria-checked', 'true')
-    fireEvent.click(btn)
-    expect(onToggleAim).toHaveBeenCalledTimes(1)
-    expect(onToggleZones).not.toHaveBeenCalled()
+describe('la rubrique Fil', () => {
+  const open = (o = {}) => {
+    const view = renderOpenPanel(o)
+    fireEvent.click(tab(/^Fil/))
+    return view
+  }
+
+  it('le filtre du fil est une liste avec le nombre de lignes de chaque filtre ; Objectifs n’y est pas sans ligne d’objectif', () => {
+    open()
+    const liste = screen.getByRole('combobox', { name: 'Filtre du fil' })
+    const options = within(liste).getAllByRole('option').map((o) => o.textContent)
+    expect(options[0]).toBe('Tout (0)')
+    expect(options.join(' ')).not.toContain('Objectifs')
   })
 
-  // LE CALQUE DES NOMS N'A PLUS DE BASCULE (2026-09-02) : il est toujours allumé. Le test
-  // garde l'ABSENCE — sans lui, une revue future la réintroduirait par symétrie avec les
-  // autres calques, et le panneau reprendrait la ligne qu'on vient de lui faire rendre.
-  it('aucune bascule « Noms » : le calque est toujours allumé', () => {
-    renderPanel({ zonesAvailable: false })
-    expect(screen.queryByRole('switch', { name: 'Noms' })).toBeNull()
+  it('choisir un filtre le retient pour la colonne du fil, et la liste le relit', () => {
+    open()
+    fireEvent.change(screen.getByRole('combobox', { name: 'Filtre du fil' }), { target: { value: 'kills' } })
+    expect(window.localStorage.getItem('replay-feed-filter')).toBe('kills')
+    expect(screen.getByRole('combobox', { name: 'Filtre du fil' })).toHaveValue('kills')
   })
 
-  // V1 (2026-08-18) : la TRAÎNÉE devient un calque comme les autres — toujours proposée (elle
-  // n'a aucune condition de disponibilité : une vie a toujours un passé), allumée par défaut.
-  it('bascule Traînée : toujours proposée, reflète showTrail, appelle onToggleTrail au clic', () => {
-    const { onToggleTrail, onToggleAim } = renderPanel({ showTrail: false, zonesAvailable: false })
-    const btn = screen.getByRole('switch', { name: 'Traînée' })
-    expect(btn).toHaveAttribute('aria-checked', 'false')
-    fireEvent.click(btn)
-    expect(onToggleTrail).toHaveBeenCalledTimes(1)
-    expect(onToggleAim).not.toHaveBeenCalled()
-  })
-
-  it('bouton Zones absent quand la carte n a pas de zones nommées', () => {
-    renderPanel({ zonesAvailable: false })
-    expect(screen.queryByRole('switch', { name: 'Zones' })).toBeNull()
-  })
-
-  it('bouton Zones présent, reflète showZones, appelle onToggleZones au clic', () => {
-    const { onToggleZones } = renderPanel({ zonesAvailable: true, showZones: false })
-    const btn = screen.getByRole('switch', { name: 'Zones' })
-    expect(btn).toHaveAttribute('aria-checked', 'false')
-    fireEvent.click(btn)
-    expect(onToggleZones).toHaveBeenCalledTimes(1)
+  it('« Fil posé sur le plan » est proposé là où le cadre le pose, sinon une phrase dit où le régler', () => {
+    const { unmount } = open({ planFeedAvailable: true })
+    expect(sw('Fil posé sur le plan')).toHaveAttribute('aria-checked', 'true')
+    unmount()
+    open({ planFeedAvailable: false })
+    expect(screen.queryByRole('switch', { name: 'Fil posé sur le plan' })).toBeNull()
+    expect(screen.getByText('Le fil posé sur le plan se règle au Cinéma et au Plein cadre.')).toBeInTheDocument()
   })
 })
 
-describe('ReplayViewPanel — poses d équipement', () => {
-  it('film sans pose dessinable : ni le calque ni les objets non identifiés', () => {
-    renderPanel({ placements: makePlacements({ available: false }) })
-    expect(screen.queryByRole('switch', { name: 'Équipements posés' })).toBeNull()
-    expect(screen.queryByRole('switch', { name: 'Objets non identifiés' })).toBeNull()
+describe('la rubrique Son', () => {
+  const open = (sound = makeSound()) => {
+    const view = renderOpenPanel({ sound })
+    fireEvent.click(tab(/Son/))
+    return { view, sound }
+  }
+
+  it('sans piste sonore : ni rubrique ni commande', () => {
+    renderOpenPanel()
+    expect(screen.queryByRole('tab', { name: /Son/ })).toBeNull()
   })
 
-  it('bascule Équipements posés : reflète son état et appelle SON callback', () => {
-    const onToggle = vi.fn()
-    const { onToggleAim } = renderPanel({ placements: makePlacements({ show: false, onToggle }) })
-    const btn = screen.getByRole('switch', { name: 'Équipements posés' })
-    expect(btn).toHaveAttribute('aria-checked', 'false')
-    fireEvent.click(btn)
-    expect(onToggle).toHaveBeenCalledTimes(1)
-    expect(onToggleAim).not.toHaveBeenCalled()
+  it('l’interrupteur du son, le volume et les quatre catégories, au même état que la barre', () => {
+    const { sound } = open()
+    expect(sw('Son')).toHaveAttribute('aria-checked', 'false')
+    fireEvent.click(sw('Son'))
+    expect(sound.toggle).toHaveBeenCalledTimes(1)
+    for (const c of ['Armes', 'Grenades', 'Mêlée', 'Équipements']) expect(sw(c)).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(sw('Mêlée'))
+    expect(sound.toggleCategory).toHaveBeenCalledWith('melee')
   })
 
-  it('calque éteint : la bascule des objets non identifiés ne commanderait rien, elle est absente', () => {
-    renderPanel({ placements: makePlacements({ show: false }) })
-    expect(screen.queryByRole('switch', { name: 'Objets non identifiés' })).toBeNull()
+  it('le volume est grisé et à zéro tant que le son est coupé ; allumé, il écrit le niveau', () => {
+    const { view, sound } = open()
+    expect(screen.getByRole('slider', { name: /Volume/ })).toBeDisabled()
+    expect(screen.getByText('0 %')).toBeInTheDocument()
+    view.unmount()
+    const on = makeSound({ on: true, volume: 0.4 })
+    open(on)
+    const curseur = screen.getByRole('slider', { name: /Volume/ })
+    expect(curseur).toBeEnabled()
+    expect(curseur).toHaveValue('40')
+    fireEvent.change(curseur, { target: { value: '65' } })
+    expect(on.setVolume).toHaveBeenCalledWith(0.65)
+    expect(sound.setVolume).not.toHaveBeenCalled()
   })
 
-  it('toutes les poses nommées : rien à révéler, la bascule n est pas proposée', () => {
-    renderPanel({ placements: makePlacements({ unnamedAvailable: false }) })
-    expect(screen.getByRole('switch', { name: 'Équipements posés' })).toBeTruthy()
-    expect(screen.queryByRole('switch', { name: 'Objets non identifiés' })).toBeNull()
-  })
-
-  it('bascule Objets non identifiés : éteinte par défaut, appelle SON callback', () => {
-    const onToggleUnnamed = vi.fn()
-    const onToggle = vi.fn()
-    renderPanel({ placements: makePlacements({ onToggle, onToggleUnnamed }) })
-    const btn = screen.getByRole('switch', { name: 'Objets non identifiés' })
-    expect(btn).toHaveAttribute('aria-checked', 'false')
-    fireEvent.click(btn)
-    expect(onToggleUnnamed).toHaveBeenCalledTimes(1)
-    expect(onToggle).not.toHaveBeenCalled()
+  it('le maître du son compte l’interrupteur du son et les quatre catégories', () => {
+    open()
+    expect(within(screen.getByRole('tabpanel')).getByText('4 sur 5')).toBeInTheDocument()
   })
 })
 
-describe('ReplayViewPanel — emplacements d arme', () => {
-  it('film sans socle publié : pas de bascule (elle ne commanderait rien)', () => {
-    renderPanel({ weaponPads: makeWeaponPads({ available: false }) })
-    expect(screen.queryByRole('switch', { name: "Emplacements d'arme" })).toBeNull()
+describe('la barre de lecture fine', () => {
+  it('absente quand le cadre ne peut pas poser la barre sur le plan', () => {
+    renderOpenPanel({ thinBarAvailable: false })
+    expect(screen.queryByRole('switch', { name: 'Barre de lecture fine' })).toBeNull()
   })
 
-  it('bascule Emplacements d arme : reflète son état et appelle SON callback', () => {
-    const onToggle = vi.fn()
-    const { onToggleAim } = renderPanel({
-      weaponPads: makeWeaponPads({ show: false, onToggle }),
-      placements: makePlacements({ onToggle: vi.fn() }),
+  it('au Plein cadre : une ligne « Lecture » au pied du panneau, avec l’état retenu, qui bascule', () => {
+    renderOpenPanel({ thinBarAvailable: true })
+    expect(screen.getByText('Lecture')).toBeInTheDocument()
+    expect(sw('Barre de lecture fine')).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(sw('Barre de lecture fine'))
+    expect(window.localStorage.getItem('replay-thin-bar-full-frame')).toBe('false')
+  })
+})
+
+describe('l’accès rapide : épingler depuis une ligne', () => {
+  it('les épingles d’usine sont posées ; la punaise d’une ligne l’épingle ou la retire', () => {
+    renderOpenPanel()
+    expect(screen.getByRole('button', { name: 'Retirer « Visée » de l’accès rapide' })).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(screen.getByRole('button', { name: 'Retirer « Visée » de l’accès rapide' }))
+    expect(screen.getByRole('button', { name: 'Épingler « Visée » à l’accès rapide' })).toHaveAttribute('aria-pressed', 'false')
+    expect(JSON.parse(window.localStorage.getItem('replay-pins') ?? '[]')).toEqual(['trail', 'heatmap', 'planFeed'])
+  })
+
+  it('une cinquième épingle passe, une sixième est refusée avec la raison', () => {
+    renderOpenPanel()
+    fireEvent.click(screen.getByRole('button', { name: 'Épingler « Effets de tirs » à l’accès rapide' }))
+    expect(JSON.parse(window.localStorage.getItem('replay-pins') ?? '[]')).toHaveLength(5)
+    fireEvent.click(screen.getByRole('button', { name: 'Épingler « Effets de mort » à l’accès rapide' }))
+    expect(screen.getByRole('status')).toHaveTextContent('5 réglages au plus dans l’accès rapide')
+    expect(JSON.parse(window.localStorage.getItem('replay-pins') ?? '[]')).toHaveLength(5)
+  })
+
+  it('les filles ne s’épinglent pas : pas de punaise sur « Armes spéciales seulement »', () => {
+    renderOpenPanel()
+    fireEvent.click(tab(/Objets/))
+    expect(screen.queryByRole('button', { name: /Armes spéciales seulement.*accès rapide/ })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Épingler « Armes au sol » à l’accès rapide' })).toBeInTheDocument()
+  })
+})
+
+describe('réinitialiser', () => {
+  it('demande confirmation, remet les réglages d’usine, garde Mes vues et les épingles', () => {
+    renderOpenPanel()
+    fireEvent.click(sw('Visée'))
+    fireEvent.click(screen.getByRole('button', { name: 'Épingler « Effets de tirs » à l’accès rapide' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Réinitialiser' }))
+    expect(screen.getByText('Remettre les réglages d’usine ?')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmer' }))
+    expect(sw('Visée')).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('status')).toHaveTextContent('Vos vues et vos épingles sont conservées')
+    expect(JSON.parse(window.localStorage.getItem('replay-pins') ?? '[]')).toContain('shotFx')
+  })
+
+  it('Annuler et Échap défont la confirmation sans rien changer ; Échap ne ferme pas le panneau cette fois', () => {
+    renderOpenPanel()
+    fireEvent.click(sw('Visée'))
+    fireEvent.click(screen.getByRole('button', { name: 'Réinitialiser' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Annuler' }))
+    expect(screen.queryByText('Remettre les réglages d’usine ?')).toBeNull()
+    expect(sw('Visée')).toHaveAttribute('aria-checked', 'false')
+    fireEvent.click(screen.getByRole('button', { name: 'Réinitialiser' }))
+    act(() => {
+      fireEvent.keyDown(screen.getByRole('button', { name: 'Confirmer' }), { key: 'Escape' })
     })
-    const btn = screen.getByRole('switch', { name: "Emplacements d'arme" })
-    expect(btn).toHaveAttribute('aria-checked', 'false')
-    fireEvent.click(btn)
-    expect(onToggle).toHaveBeenCalledTimes(1)
-    expect(onToggleAim).not.toHaveBeenCalled()
+    expect(screen.queryByText('Remettre les réglages d’usine ?')).toBeNull()
+    expect(screen.getByRole('dialog', { name: 'Vue' })).toBeInTheDocument()
   })
 })
 
-describe('ReplayViewPanel — objectifs du mode (2026-09-18)', () => {
-  /** Les objets PORTÉS tous indisponibles : ce qu'un film sans drapeau, VIP, crâne ni bombe publie. */
-  const sansObjetsPortes = () => ({
-    flagCarries: makeFlagCarries({ available: false }),
-    vipCrown: makeFlagCarries({ available: false }),
-    skullCarrier: makeFlagCarries({ available: false }),
-    bombCarrier: makeFlagCarries({ available: false }),
-  })
-
-  it('bascule Objectifs du mode : reflète son état et appelle SON callback, jamais les drapeaux', () => {
-    const onToggle = vi.fn()
-    const onToggleFlags = vi.fn()
-    renderPanel({
-      modeObjectives: makeModeObjectives({ show: false, onToggle }),
-      flagCarries: makeFlagCarries({ onToggle: onToggleFlags }),
-    })
-    const btn = screen.getByRole('switch', { name: 'Objectifs du mode' })
-    expect(btn).toHaveAttribute('aria-checked', 'false')
-    fireEvent.click(btn)
-    expect(onToggle).toHaveBeenCalledTimes(1)
-    expect(onToggleFlags).not.toHaveBeenCalled()
-  })
-
-  it('elle ouvre le groupe Objectifs, EN PREMIER, avant les drapeaux', () => {
-    renderPanel()
-    const titre = screen.getByText('Objectifs')
-    const groupe = titre.parentElement
-    expect(groupe).not.toBeNull()
-    const bascules = Array.from(groupe!.querySelectorAll('[role="switch"]')).map((b) =>
-      b.getAttribute('aria-label') ?? b.textContent,
-    )
-    expect(bascules[0]).toContain('Objectifs du mode')
-    expect(bascules.findIndex((n) => n?.includes('Drapeaux'))).toBeGreaterThan(0)
-  })
-
-  it('le groupe Objectifs existe même sans drapeau, VIP, crâne ni bombe : le terrain de l enjeu suffit', () => {
-    renderPanel(sansObjetsPortes())
-    expect(screen.getByText('Objectifs')).toBeTruthy()
-    expect(screen.getByRole('switch', { name: 'Objectifs du mode' })).toBeTruthy()
-    expect(screen.queryByRole('switch', { name: 'Drapeaux' })).toBeNull()
-  })
-
-  it('film sans objectif de mode ni objet porté : ni la bascule, ni le titre du groupe', () => {
-    renderPanel({ ...sansObjetsPortes(), modeObjectives: makeModeObjectives({ available: false }) })
-    expect(screen.queryByRole('switch', { name: 'Objectifs du mode' })).toBeNull()
-    expect(screen.queryByText('Objectifs')).toBeNull()
-  })
-})
-
-describe('ReplayViewPanel — carte de chaleur', () => {
-  it('calque éteint : la bascule est là, le choix de lecture ne l est pas', () => {
-    renderPanel({ heatmap: makeHeatmap({ show: false }) })
-    expect(screen.getByRole('switch', { name: 'Carte de chaleur' })).toHaveAttribute(
-      'aria-checked',
-      'false',
-    )
-    expect(screen.queryByRole('button', { name: 'Présence' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Éliminations' })).toBeNull()
-  })
-
-  it('calque allumé : les deux lectures, la courante pressée (choix exclusif)', () => {
-    renderPanel({ heatmap: makeHeatmap({ show: true, mode: 'kills' }) })
-    expect(screen.getByRole('radio', { name: 'Présence' })).toHaveAttribute('aria-checked', 'false')
-    expect(screen.getByRole('radio', { name: 'Éliminations' })).toHaveAttribute('aria-checked', 'true')
-  })
-
-  it('cliquer une lecture appelle onSetMode avec SA clé, jamais la bascule du calque', () => {
-    const onSetMode = vi.fn()
-    const onToggle = vi.fn()
-    renderPanel({ heatmap: makeHeatmap({ show: true, onSetMode, onToggle }) })
-    fireEvent.click(screen.getByRole('radio', { name: 'Éliminations' }))
-    expect(onSetMode).toHaveBeenCalledTimes(1)
-    expect(onSetMode).toHaveBeenCalledWith('kills')
-    expect(onToggle).not.toHaveBeenCalled()
-  })
-
-  it('aucune mort localisée : la lecture éliminations n est pas proposée', () => {
-    renderPanel({ heatmap: makeHeatmap({ show: true, killsAvailable: false }) })
-    expect(screen.queryByRole('button', { name: 'Éliminations' })).toBeNull()
-    // Et le choix disparaît entièrement : une seule lecture ne se choisit pas.
-    expect(screen.queryByRole('button', { name: 'Présence' })).toBeNull()
-  })
-
-  it('la bascule appelle onToggle, jamais un calque voisin', () => {
-    const onToggle = vi.fn()
-    const { onToggleZones } = renderPanel({ heatmap: makeHeatmap({ onToggle }) })
-    fireEvent.click(screen.getByRole('switch', { name: 'Carte de chaleur' }))
-    expect(onToggle).toHaveBeenCalledTimes(1)
-    expect(onToggleZones).not.toHaveBeenCalled()
-  })
-})
-
-describe('ReplayViewPanel — couleur des points', () => {
-  it('propose les deux lectures, la courante pressée (choix exclusif)', () => {
-    renderPanel({ markerColors: 'player' })
-    expect(screen.getByRole('button', { name: 'Par équipe' })).toHaveAttribute('aria-pressed', 'false')
-    expect(screen.getByRole('button', { name: 'Par joueur' })).toHaveAttribute('aria-pressed', 'true')
-  })
-
-  it('cliquer une lecture appelle onSetMarkerColors avec SON mode', () => {
-    const { onSetMarkerColors } = renderPanel({ markerColors: 'team' })
-    fireEvent.click(screen.getByRole('button', { name: 'Par joueur' }))
-    expect(onSetMarkerColors).toHaveBeenCalledWith('player')
-  })
-})
-
-describe('ReplayViewPanel — son (le filtre par catégorie seul : l’interrupteur vit à la barre de lecture)', () => {
-  it('aucune commande de son ni de catégorie quand le match n a aucun son', () => {
-    renderPanel({ sound: makeSound({ available: false }) })
-    expect(screen.queryByText('Sons par catégorie')).toBeNull()
-    expect(screen.queryByRole('switch', { name: 'Armes' })).toBeNull()
-    expect(screen.queryByRole('switch', { name: 'Son' })).toBeNull()
-  })
-
-  it('l’interrupteur du son n’est PLUS dans le panneau, même quand le son est disponible', () => {
-    renderPanel()
-    expect(screen.queryByRole('switch', { name: 'Son' })).toBeNull()
-    expect(screen.getByText('Sons par catégorie')).toBeTruthy()
-  })
-
-  it('les quatre catégories sont affichées, chacune avec son état', () => {
-    renderPanel({
-      sound: makeSound({
-        categories: { weapon: true, grenade: false, melee: true, equipment: false, objective: false },
-      }),
-    })
-    expect(screen.getByRole('switch', { name: 'Armes' })).toHaveAttribute('aria-checked', 'true')
-    expect(screen.getByRole('switch', { name: 'Grenades' })).toHaveAttribute('aria-checked', 'false')
-    expect(screen.getByRole('switch', { name: 'Mêlée' })).toHaveAttribute('aria-checked', 'true')
-    expect(screen.getByRole('switch', { name: 'Équipements' })).toHaveAttribute('aria-checked', 'false')
-  })
-
-  it('cliquer une catégorie appelle toggleCategory avec SA clé, jamais une voisine', () => {
-    const toggleCategory = vi.fn()
-    renderPanel({ sound: makeSound({ toggleCategory }) })
-    fireEvent.click(screen.getByRole('switch', { name: 'Grenades' }))
-    expect(toggleCategory).toHaveBeenCalledTimes(1)
-    expect(toggleCategory).toHaveBeenCalledWith('grenade')
-  })
-})
-
-describe('ReplayViewPanel — effets d événement', () => {
-  it('les deux effets ont leur bascule, chacune avec son état', () => {
-    renderPanel({ showShotFx: true, showKillFx: false })
-    expect(screen.getByRole('switch', { name: 'Effets de tirs' })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    )
-    expect(screen.getByRole('switch', { name: 'Effets de mort' })).toHaveAttribute(
-      'aria-checked',
-      'false',
-    )
-  })
-
-  it('chaque bascule appelle SON callback, jamais celui de l autre effet', () => {
-    const { onToggleShotFx, onToggleKillFx } = renderPanel()
-    fireEvent.click(screen.getByRole('switch', { name: 'Effets de mort' }))
-    expect(onToggleKillFx).toHaveBeenCalledTimes(1)
-    expect(onToggleShotFx).not.toHaveBeenCalled()
-  })
-
-  it('le (i) des effets de tir dit ce qui est dessiné, jamais une couverture', () => {
-    // Le (i) demandé le 16/08 dit la règle du dessin (un tir qui applique un dégât) ; depuis le
-    // 2026-10-09, il ne parle plus de couverture (aucun inconnu à l'écran).
-    renderPanel()
-    const mark = screen.getByRole('img', { name: /tir s'affiche lorsqu'il applique un dégât/i })
-    expect(mark.getAttribute('title') ?? '').not.toMatch(/couverture/i)
-  })
-})
-
-describe('ReplayViewPanel — cohabitation avec la légende de la carte de chaleur', () => {
-  // LE PANNEAU A QUITTÉ LE CADRE le 2026-09-02 : il n'est plus `absolute right-0` dans la carte
-  // mais un portail `fixed`, placé par `useAnchoredPanel`. Ce que le test garde n'est donc plus
-  // sa position — elle est calculée, pas déclarée — mais les DEUX invariants qui survivent au
-  // changement : il flotte hors du flux, et il passe AU-DESSUS de la légende si un écran étroit
-  // les rapproche (un panneau ouvert prime une légende ; ce n'est pas une collision).
-  it('le panneau flotte hors du flux et prime la légende, qui garde son coin bas-GAUCHE', () => {
-    const panel = renderPanel().getByRole('region', { name: 'Vue' })
-    expect(panel.className).toContain('fixed')
-    expect(panel.className).toContain('z-50')
-    // Hors du cadre = hors du sous-arbre de la carte : il se rend sur `body`.
-    expect(panel.closest('body')).toBeTruthy()
-    const legend = render(<ReplayHeatmapLegend locale="fr" mode="presence" />)
-    const box = legend.container.firstElementChild as HTMLElement
-    expect(box.className).toContain('left-3')
-    expect(box.className).toContain('bottom-2')
-  })
-})
-
-describe('ReplayViewPanel — préréglages de vue', () => {
-  it('les quatre préréglages viennent EN PREMIER, avant les calques', () => {
-    renderPanel()
-    const titres = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)
-    expect(titres[0]).toBe('Préréglages')
-    expect(titres.indexOf('Calques')).toBeGreaterThan(0)
-    for (const nom of ['Complet', 'Combat', 'Déplacements', 'Objectif']) {
-      expect(screen.getByRole('button', { name: nom })).toBeTruthy()
-    }
-  })
-
-  it('le préréglage actif est pressé, les autres non', () => {
-    renderPanel({ view: { active: 'combat', onSelect: vi.fn() } })
-    expect(screen.getByRole('button', { name: 'Combat' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: 'Complet' })).toHaveAttribute('aria-pressed', 'false')
-  })
-
-  it('cliquer un préréglage appelle onSelect avec SON identifiant', () => {
-    const { onSelect } = renderPanel()
-    fireEvent.click(screen.getByRole('button', { name: 'Déplacements' }))
-    expect(onSelect).toHaveBeenCalledTimes(1)
-    expect(onSelect).toHaveBeenCalledWith('deplacements')
-  })
-
-  it('Personnalisé : aucun préréglage pressé, et une phrase dit pourquoi', () => {
-    renderPanel({ view: { active: 'personnalise', onSelect: vi.fn() } })
-    for (const nom of ['Complet', 'Combat', 'Déplacements', 'Objectif']) {
-      expect(screen.getByRole('button', { name: nom })).toHaveAttribute('aria-pressed', 'false')
-    }
-    expect(screen.getByText(/ne correspondent à aucun préréglage/)).toBeTruthy()
-  })
-
-  it('un préréglage actif ne montre pas la phrase de Personnalisé', () => {
-    renderPanel()
-    expect(screen.queryByText(/ne correspondent à aucun préréglage/)).toBeNull()
-  })
-
-  it('en anglais : Full, Combat, Movement, Objective, et Custom', () => {
-    renderPanel({ locale: 'en', view: { active: 'personnalise', onSelect: vi.fn() } })
-    for (const nom of ['Full', 'Combat', 'Movement', 'Objective']) {
-      expect(screen.getByRole('button', { name: nom })).toBeTruthy()
-    }
-    expect(screen.getByText('Custom')).toBeTruthy()
-  })
-})
-
-describe('ReplayViewPanel — rien ne disparaît du tiroir d’avant', () => {
-  it('les effets, la chaleur, la couleur des points et le son sont toujours là', () => {
-    renderPanel({ heatmap: makeHeatmap({ show: true }) })
-    expect(screen.getByRole('switch', { name: 'Effets de tirs' })).toBeTruthy()
-    expect(screen.getByRole('switch', { name: 'Carte de chaleur' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Par équipe' })).toBeTruthy()
-    expect(screen.getByRole('switch', { name: 'Armes' })).toBeTruthy()
-  })
-})
-
-describe('ReplayViewPanel — fermeture et focus', () => {
-  it('le bouton de fermeture appelle onClose', () => {
-    const { onClose } = renderPanel()
-    fireEvent.click(screen.getByRole('button', { name: 'Fermer la vue' }))
-    expect(onClose).toHaveBeenCalledTimes(1)
-  })
-
-  it('Échap appelle onClose', () => {
-    const { onClose } = renderPanel()
-    fireEvent.keyDown(window, { key: 'Escape' })
-    expect(onClose).toHaveBeenCalledTimes(1)
-  })
-
-  it('un clic DEHORS ferme le panneau (il recouvre la carte : on doit pouvoir en sortir)', () => {
-    const { onClose } = renderPanel()
-    fireEvent.pointerDown(document.body)
-    expect(onClose).toHaveBeenCalledTimes(1)
-  })
-
-  it('un clic DEDANS ne ferme rien — sinon régler quoi que ce soit refermerait le panneau', () => {
-    const { onClose } = renderPanel()
-    fireEvent.pointerDown(screen.getByRole('switch', { name: 'Visée' }))
-    expect(onClose).not.toHaveBeenCalled()
-  })
-
-  it('le DÉCLENCHEUR est exclu du clic dehors : sinon il fermerait puis rouvrirait', () => {
-    const trigger = document.createElement('button')
-    document.body.appendChild(trigger)
-    const { onClose } = renderPanel({ triggerRef: { current: trigger } })
-    fireEvent.pointerDown(trigger)
-    expect(onClose).not.toHaveBeenCalled()
-    trigger.remove()
-  })
-
-  it('le focus entre au panneau à l ouverture (il recouvre les commandes de la carte)', () => {
-    renderPanel()
-    expect(document.activeElement).toBe(screen.getByRole('region', { name: 'Vue' }))
+describe('en anglais', () => {
+  it('les rubriques, les lignes renommées et le pied portent leur libellé anglais', () => {
+    renderOpenPanel({ locale: 'en', sound: makeSound() })
+    expect(screen.getByRole('dialog', { name: 'View' })).toBeInTheDocument()
+    expect(screen.getAllByRole('tab').map((t) => t.textContent?.replace(/\d+ of \d+/, ''))).toEqual(['Players', 'Map', 'Objects', 'Feed', 'Sound'])
+    expect(sw('Aim')).toBeInTheDocument()
+    expect(sw('Turn all on or off: Players')).toBeInTheDocument()
+    fireEvent.click(tab(/Map/))
+    expect(sw('Named zones')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reset' })).toBeInTheDocument()
   })
 })

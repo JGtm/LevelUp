@@ -1,407 +1,134 @@
 /**
- * useReplayViewMenu.test.tsx — LE BOUTON « VUE » branché sur les vrais réglages : choisir un
- * préréglage bascule les calques qui diffèrent (et eux seuls), la vue active se déduit de
- * l'état, une bascule à la main la passe en « Personnalisé », et rien d'autre que les calques
- * n'est touché.
+ * useReplayViewMenu.test.tsx — LE BOUTON « VUE » branché sur les vrais réglages, sans rendu du panneau : les clés
+ * `replay-*` d'avant restent lues telles quelles, la reprise des préférences d'avant passe avant la première lecture,
+ * le contexte du match est composé de ce que le canvas publie, et l'ouverture d'un rejeu applique sa vue une fois.
  */
 import { act, renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
+import { buildFilmAllegiance } from '@/lib/replay/filmAllegiance'
 
-import type { ReplayRelief } from '../hooks/useReplayRelief'
-import { VIEW_PRESET_KEY } from './replayPreferences'
+import { makeReplayRelief, THREE_FLOORS } from '../test/reliefFixtures'
+import { FULL_FILM, SLAYER_FILM } from '../test/settingsContextFixtures'
+import { testReplayDoc } from '../test/testDoc'
+import type { FilmLayerAvailability } from './filmLayerAvailability'
+import { makeSound, NO_SOUND } from '../test/soundFixtures'
 import { useReplaySettings } from './useReplaySettings'
-import { useReplayViewMenu } from './useReplayViewMenu'
-import type { FilmLayerAvailability } from './viewPresetLogic'
-import type { ReplaySound } from '../sound/useReplaySound'
-import { makeReplayRelief } from '../test/reliefFixtures'
+import { useReplayViewMenu, type ReplayViewMenuOptions } from './useReplayViewMenu'
 
-const FULL_FILM: FilmLayerAvailability = {
-  zones: true,
-  placements: { drawable: true, unnamed: true, dropped: true },
-  weaponPads: true,
-  groundWeapons: true,
-  modeObjectives: true,
-  flagCarries: true,
-  vipCrown: true,
-  skullCarrier: true,
-  bombCarrier: true,
-  vehicles: true,
-  wallPlan: true,
-  lives: { spawns: true, deaths: true, killers: true, followedKnown: true },
-  respawnForecast: true,
+const DOC = testReplayDoc()
+const ALLEGIANCE = buildFilmAllegiance([], null)
+
+function mount(over: Partial<ReplayViewMenuOptions> = {}, film: FilmLayerAvailability = FULL_FILM) {
+  return renderHook(
+    (props: { matchKey: string }) => {
+      const settings = useReplaySettings()
+      const menu = useReplayViewMenu({
+        settings,
+        orientation: { retained: null, setTurns: vi.fn(), available: true },
+        sound: NO_SOUND,
+        available: film,
+        heat: { mode: 'presence', killsAvailable: true },
+        relief: makeReplayRelief(),
+        drawn: 'rendu',
+        planFeedAvailable: false,
+        locale: 'fr',
+        feed: { doc: DOC, entries: [], allegiance: ALLEGIANCE },
+        matchKey: props.matchKey,
+        ...over,
+      })
+      return { settings, menu }
+    },
+    { initialProps: { matchKey: 'm1' } },
+  )
 }
 
-/** Un Assassin : ni zone, ni socle, ni objectif ; la visée et la traînée restent. */
-const SLAYER_FILM: FilmLayerAvailability = {
-  zones: false,
-  placements: { drawable: false, unnamed: false, dropped: false },
-  weaponPads: false,
-  groundWeapons: false,
-  modeObjectives: false,
-  flagCarries: false,
-  vipCrown: false,
-  skullCarrier: false,
-  bombCarrier: false,
-  vehicles: false,
-  wallPlan: false,
-  lives: { spawns: false, deaths: false, killers: false, followedKnown: false },
-  respawnForecast: false,
-}
-
-const SOUND = { available: false, categories: {} } as unknown as ReplaySound
-const HEAT = { mode: 'presence' as const, killsAvailable: true }
-const ORIENTATION = { retained: 0 as const, setTurns: () => {}, available: true }
-const NO_RELIEF = makeReplayRelief()
-
-function mount(available: FilmLayerAvailability, relief: ReplayRelief = NO_RELIEF, drawn: MapBackgroundVariant = 'rendu') {
-  return renderHook(() => {
-    const settings = useReplaySettings()
-    const menu = useReplayViewMenu({ settings, orientation: ORIENTATION, sound: SOUND, available, heat: HEAT, locale: 'fr', relief, drawn, planFeedAvailable: false })
-    return { settings, menu }
-  })
-}
+beforeEach(() => window.localStorage.clear())
 
 describe('useReplayViewMenu', () => {
-  beforeEach(() => {
-    window.localStorage.clear()
-  })
-
-  it('à l’ouverture par défaut, la vue est Complet (les défauts des calques sont tous allumés)', () => {
-    const { result } = mount(FULL_FILM)
-    expect(result.current.menu.active).toBe('complet')
-  })
-
-  it('le panneau est fermé par défaut, le bouton l’ouvre et le referme', () => {
-    const { result } = mount(FULL_FILM)
+  it('le panneau est fermé par défaut ; le bouton l’ouvre et le referme, la fermeture rend le focus', () => {
+    const { result } = mount()
     expect(result.current.menu.open).toBe(false)
     act(() => result.current.menu.toggle())
     expect(result.current.menu.open).toBe(true)
-    act(() => result.current.menu.toggle())
+    act(() => result.current.menu.close())
     expect(result.current.menu.open).toBe(false)
   })
 
-  it('choisir Combat éteint zones, socles, armes au sol et poses ; garde visée, traînée, véhicules, objectifs', () => {
-    const { result } = mount(FULL_FILM)
-    act(() => result.current.menu.panel.view.onSelect('combat'))
-    const s = result.current.settings
-    expect([s.showAim, s.showTrail, s.showVehicles, s.showModeObjectives, s.showFlagCarries]).toEqual([
-      true, true, true, true, true,
-    ])
-    expect([s.showZones, s.showWeaponPads, s.showGroundWeapons, s.showPlacements]).toEqual([
-      false, false, false, false,
-    ])
-    expect(s.showDroppedPlacements).toBe(false)
-    expect(result.current.menu.active).toBe('combat')
+  it('la vue d’ouverture par défaut est Complet, sans écart sur un navigateur neuf', () => {
+    const { result } = mount()
+    expect(result.current.menu.label).toEqual({ name: 'Complet', hint: expect.any(String), modified: false })
   })
 
-  it('basculer un calque à la main passe en Personnalisé, le rebasculer rend le préréglage', () => {
-    const { result } = mount(FULL_FILM)
-    act(() => result.current.menu.panel.view.onSelect('objectif'))
-    expect(result.current.menu.active).toBe('objectif')
-    act(() => result.current.settings.toggleAim())
-    expect(result.current.menu.active).toBe('personnalise')
-    act(() => result.current.settings.toggleAim())
-    expect(result.current.menu.active).toBe('objectif')
-  })
-
-  it('un préréglage ne touche ni les effets, ni la chaleur, ni la couleur des points, ni les affinages', () => {
-    const { result } = mount(FULL_FILM)
-    act(() => result.current.settings.toggleHeatmap())
-    act(() => result.current.settings.toggleKillFx())
-    act(() => result.current.settings.setMarkerColors('player'))
-    act(() => result.current.settings.toggleUnnamedPlacements())
-    const avant = result.current.settings
-    const attendu = {
-      heatmap: avant.showHeatmap,
-      killFx: avant.showKillFx,
-      shotFx: avant.showShotFx,
-      colors: avant.markerColors,
-      unnamed: avant.showUnnamedPlacements,
-      special: avant.showGroundWeaponsSpecialOnly,
-      starting: avant.showGroundWeaponsStarting,
-    }
-    act(() => result.current.menu.panel.view.onSelect('deplacements'))
-    const s = result.current.settings
-    expect({
-      heatmap: s.showHeatmap,
-      killFx: s.showKillFx,
-      shotFx: s.showShotFx,
-      colors: s.markerColors,
-      unnamed: s.showUnnamedPlacements,
-      special: s.showGroundWeaponsSpecialOnly,
-      starting: s.showGroundWeaponsStarting,
-    }).toEqual(attendu)
-  })
-
-  it('un calque indisponible n’est jamais activé ni effacé : sa préférence reste', () => {
-    const { result } = mount(SLAYER_FILM)
-    // Le drapeau est mémorisé éteint (préférence d'un match précédent) ; Complet ne l'allume pas.
-    act(() => result.current.settings.toggleFlagCarries())
-    expect(result.current.settings.showFlagCarries).toBe(false)
-    act(() => result.current.menu.panel.view.onSelect('complet'))
-    expect(result.current.settings.showFlagCarries).toBe(false)
-    // Et l'inverse : Déplacements n'éteint pas un calque que le match ne porte pas.
-    act(() => result.current.settings.toggleVipCrown())
-    act(() => result.current.settings.toggleVipCrown())
-    act(() => result.current.menu.panel.view.onSelect('deplacements'))
-    expect(result.current.settings.showVipCrown).toBe(true)
-  })
-
-  it('sur un Assassin, la vue se lit sur les seuls calques disponibles', () => {
-    const { result } = mount(SLAYER_FILM)
-    expect(result.current.menu.active).toBe('complet')
-    act(() => result.current.settings.toggleAim())
-    expect(result.current.menu.active).toBe('deplacements')
-  })
-
-  it('retient le dernier préréglage choisi, qui départage deux préréglages égaux', () => {
-    const { result } = mount(SLAYER_FILM)
-    // Sur un Assassin, Complet et Combat se confondent : le choisi gagne, et il est retenu.
-    act(() => result.current.menu.panel.view.onSelect('combat'))
-    expect(result.current.menu.active).toBe('combat')
-    expect(window.localStorage.getItem(VIEW_PRESET_KEY)).toBe('combat')
-    const reouvert = mount(SLAYER_FILM)
-    expect(reouvert.result.current.menu.active).toBe('combat')
-  })
-
-  it('les préférences de calques d’avant ce lot restent lues telles quelles', () => {
-    window.localStorage.setItem('replay-show-aim', 'false')
+  it('les clés d’avant sont relues telles quelles : un calque éteint l’était, la vue le dit modifiée', () => {
     window.localStorage.setItem('replay-show-zones', 'false')
-    const { result } = mount(FULL_FILM)
+    window.localStorage.setItem('replay-show-vehicles', 'false')
+    const { result } = mount()
+    expect(result.current.menu.model.values).toMatchObject({ zones: false, vehicles: false, aim: true })
+    expect(result.current.menu.label.modified).toBe(true)
+    expect(result.current.menu.model.views.changed).toEqual(['zones', 'vehicles'])
+  })
+
+  it('un état d’avant les préréglages souples reste sa propre vue : Combat retenu, ses morts et tueurs repris', () => {
+    window.localStorage.setItem('replay-view-preset', 'combat')
+    for (const k of ['aim', 'trail', 'vehicles', 'mode-objectives', 'flag-carries', 'vip-crown', 'skull-carrier', 'bomb-carrier']) {
+      window.localStorage.setItem(`replay-show-${k}`, 'true')
+    }
+    for (const k of ['zones', 'weapon-pads', 'ground-weapons', 'placements', 'dropped-placements']) {
+      window.localStorage.setItem(`replay-show-${k}`, 'false')
+    }
+    const { result } = mount()
+    expect(result.current.settings.showDeaths).toBe(true)
+    expect(result.current.settings.showKillers).toBe(true)
+    expect(result.current.settings.showSpawns).toBe(false)
+    expect(result.current.menu.model.views.state.activeId).toBe('combat')
+  })
+
+  it('un réglage écrit par le modèle garde sa clé d’avant', () => {
+    const { result } = mount()
+    act(() => result.current.menu.model.set('aim', false))
     expect(result.current.settings.showAim).toBe(false)
-    expect(result.current.settings.showZones).toBe(false)
-    expect(result.current.menu.active).toBe('personnalise')
+    expect(window.localStorage.getItem('replay-show-aim')).toBe('false')
+    act(() => result.current.menu.model.set('heatSpan', 'live'))
+    expect(window.localStorage.getItem('replay-heatmap-span')).toBe('live')
   })
 
-  it('une valeur retenue invalide est ignorée : la vue se déduit de l’état', () => {
-    window.localStorage.setItem(VIEW_PRESET_KEY, 'n-importe-quoi')
-    const { result } = mount(FULL_FILM)
-    expect(result.current.menu.active).toBe('complet')
-  })
-
-  it('le fond : les options et la valeur viennent du relief rendu, le choix est retenu', () => {
-    const sans = mount(FULL_FILM)
-    expect(sans.result.current.menu.panel.background.options).toEqual([])
-    const relief = makeReplayRelief({ options: ['plan', 'rendu', 'relief'], selected: 'relief', meshPercent: 46 })
-    const { result } = mount(FULL_FILM, relief)
-    expect(result.current.menu.panel.background).toMatchObject({ options: ['plan', 'rendu', 'relief'], value: 'relief', meshPercent: 46 })
-    act(() => result.current.menu.panel.background.onSelect('plan'))
-    expect(window.localStorage.getItem('replay-background-style')).toBe('plan')
-  })
-
-  it('le relief du fond est transporté tel quel : traits et commande d’étage', () => {
+  it('compose le contexte du match : fond posé, étage, fil, filtres, son, mode', () => {
     const relief = makeReplayRelief({
-      lines: { available: true, show: true, onToggle: () => {} },
-      floor: { state: { state: 'noMesh' }, cut: null, selectAll: () => {}, selectRank: () => {}, setHeight: () => {}, follow: { available: false, on: false, onToggle: () => {} } },
+      options: ['plan', 'rendu'],
+      floor: { ...makeReplayRelief().floor, state: { state: 'ready', chips: THREE_FLOORS, min: 0, max: 4.4 } },
     })
-    const { result } = mount(FULL_FILM, relief)
-    expect(result.current.menu.panel.relief.lines).toMatchObject({ available: true, show: true })
-    expect(result.current.menu.panel.relief.floor.state).toEqual({ state: 'noMesh' })
+    const { result } = mount({ relief, drawn: 'plan', planFeedAvailable: true, thinBarAvailable: true, sound: makeSound(), heat: { mode: 'presence', killsAvailable: false } })
+    const { ctx } = result.current.menu.model
+    expect(ctx).toMatchObject({
+      drawn: 'plan', backgroundOptions: ['plan', 'rendu'], floor: 'ready', planFeedAvailable: true, thinBarAvailable: true,
+      soundAvailable: true, heatKillsAvailable: false, orientationAvailable: true,
+    })
+    expect(ctx.feedFilters).toEqual(['tout', 'kills', 'pickups', 'vehicles', 'medals', 'assists'])
   })
 
-  it('le plan des murs est désactivé quand le fond posé est le plan, et seulement alors', () => {
-    expect(mount(FULL_FILM, NO_RELIEF, 'rendu').result.current.menu.panel.wallPlan.inPlan).toBe(false)
-    expect(mount(FULL_FILM, NO_RELIEF, 'plan').result.current.menu.panel.wallPlan.inPlan).toBe(true)
+  it('la lecture de la chaleur est celle qui est servie', () => {
+    const { result } = mount({ heat: { mode: 'kills', killsAvailable: true } })
+    expect(result.current.menu.model.values.heatMode).toBe('kills')
   })
 
-  it('UN PRÉRÉGLAGE CHOISI AVANT LES CALQUES DES VIES RESTE RECONNU : Combat et Déplacements ne passent pas en Personnalisé', () => {
-    // L'état enregistré par une version d'avant : douze calques à l'état du préréglage, les trois
-    // clés des vies ABSENTES.
-    const avant = (cles: Record<string, boolean>, preset: string) => {
-      window.localStorage.clear()
-      window.localStorage.setItem(VIEW_PRESET_KEY, preset)
-      for (const [cle, valeur] of Object.entries(cles)) window.localStorage.setItem(cle, String(valeur))
-    }
-    avant(
-      {
-        'replay-show-zones': false,
-        'replay-show-weapon-pads': false,
-        'replay-show-ground-weapons': false,
-        'replay-show-placements': false,
-        'replay-show-dropped-placements': false,
-      },
-      'combat',
-    )
-    const combat = mount(FULL_FILM)
-    expect(combat.result.current.menu.active).toBe('combat')
-    expect([combat.result.current.settings.showDeaths, combat.result.current.settings.showKillers]).toEqual([true, true])
+  it('applique la vue d’ouverture au montage d’un rejeu, et une seule fois par rejeu', () => {
+    window.localStorage.setItem('replay-view-default', 'objectif')
+    const { result, rerender } = mount()
+    expect(result.current.menu.model.views.state.activeId).toBe('objectif')
+    expect(result.current.settings.showAim).toBe(false)
+    act(() => result.current.menu.model.set('aim', true))
+    rerender({ matchKey: 'm1' })
+    expect(result.current.settings.showAim).toBe(true)
+    rerender({ matchKey: 'm2' })
+    expect(result.current.settings.showAim).toBe(false)
+  })
+
+  it('sur un Assassin, la vue d’ouverture n’écrit que ce que le match propose', () => {
+    window.localStorage.setItem('replay-view-default', 'combat')
+    const { result } = mount({}, SLAYER_FILM)
+    expect(result.current.menu.model.views.state.activeId).toBe('combat')
+    expect(window.localStorage.getItem('replay-show-zones')).toBeNull()
     expect(window.localStorage.getItem('replay-show-deaths')).toBeNull()
-
-    avant(
-      {
-        'replay-show-aim': false,
-        'replay-show-vehicles': false,
-        'replay-show-weapon-pads': false,
-        'replay-show-ground-weapons': false,
-        'replay-show-placements': false,
-        'replay-show-dropped-placements': false,
-        'replay-show-mode-objectives': false,
-        'replay-show-flag-carries': false,
-        'replay-show-vip-crown': false,
-        'replay-show-skull-carrier': false,
-        'replay-show-bomb-carrier': false,
-      },
-      'deplacements',
-    )
-    const deplacements = mount(FULL_FILM)
-    expect(deplacements.result.current.menu.active).toBe('deplacements')
-    expect(deplacements.result.current.settings.showSpawns).toBe(true)
-  })
-
-  it('UN PRÉRÉGLAGE QUITTÉ À LA MAIN NE PROLONGE PAS SES DÉFAUTS AUX VIES : Personnalisé le reste', () => {
-    // Combat retenu, puis un calque basculé à la main (la vue passe en Personnalisé sans effacer le
-    // préréglage retenu) : les treize calques ne sont plus ceux de Combat.
-    const combatQuitte = {
-      'replay-show-zones': false,
-      'replay-show-weapon-pads': false,
-      'replay-show-ground-weapons': false,
-      'replay-show-placements': false,
-      'replay-show-dropped-placements': false,
-      'replay-show-aim': false,
-    }
-    window.localStorage.clear()
-    window.localStorage.setItem(VIEW_PRESET_KEY, 'combat')
-    for (const [cle, valeur] of Object.entries(combatQuitte)) window.localStorage.setItem(cle, String(valeur))
-    const combat = mount(FULL_FILM)
-    expect([combat.result.current.settings.showDeaths, combat.result.current.settings.showKillers]).toEqual([false, false])
-    expect(combat.result.current.menu.active).toBe('personnalise')
-
-    // Déplacements retenu, puis les zones éteintes à la main.
-    window.localStorage.clear()
-    window.localStorage.setItem(VIEW_PRESET_KEY, 'deplacements')
-    for (const cle of ['aim', 'vehicles', 'weapon-pads', 'ground-weapons', 'placements', 'dropped-placements', 'mode-objectives', 'flag-carries', 'vip-crown', 'skull-carrier', 'bomb-carrier', 'zones']) {
-      window.localStorage.setItem('replay-show-' + cle, 'false')
-    }
-    const deplacements = mount(FULL_FILM)
-    expect(deplacements.result.current.settings.showSpawns).toBe(false)
-    expect(deplacements.result.current.menu.active).toBe('personnalise')
-  })
-
-  it('un état d’avant sans préréglage retenu, ou retenu Complet ou Objectif, garde les vies éteintes', () => {
-    window.localStorage.clear()
-    expect(mount(FULL_FILM).result.current.settings.showDeaths).toBe(false)
-    for (const preset of ['complet', 'objectif']) {
-      window.localStorage.setItem(VIEW_PRESET_KEY, preset)
-      const s = mount(FULL_FILM).result.current.settings
-      expect([s.showSpawns, s.showDeaths, s.showKillers]).toEqual([false, false, false])
-    }
-  })
-
-  it('un interrupteur des vies écrit à la main prime sur le préréglage retenu', () => {
-    window.localStorage.setItem(VIEW_PRESET_KEY, 'combat')
-    for (const cle of ['zones', 'weapon-pads', 'ground-weapons', 'placements', 'dropped-placements']) {
-      window.localStorage.setItem('replay-show-' + cle, 'false')
-    }
-    window.localStorage.setItem('replay-show-deaths', 'false')
-    const s = mount(FULL_FILM).result.current.settings
-    expect([s.showDeaths, s.showKillers]).toEqual([false, true])
-  })
-
-  it('les trois calques des vies sont éteints à l’ouverture : Complet est l’état d’ouverture', () => {
-    const { result } = mount(FULL_FILM)
-    const s = result.current.settings
-    expect([s.showSpawns, s.showDeaths, s.showKillers]).toEqual([false, false, false])
-    expect(result.current.menu.active).toBe('complet')
-  })
-
-  it('Combat allume morts et tueurs, Déplacements les apparitions, Complet et Objectif les éteignent', () => {
-    const { result } = mount(FULL_FILM)
-    const vies = () => {
-      const s = result.current.settings
-      return [s.showSpawns, s.showDeaths, s.showKillers]
-    }
-    act(() => result.current.menu.panel.view.onSelect('combat'))
-    expect(vies()).toEqual([false, true, true])
-    act(() => result.current.menu.panel.view.onSelect('deplacements'))
-    expect(vies()).toEqual([true, false, false])
-    act(() => result.current.menu.panel.view.onSelect('combat'))
-    act(() => result.current.menu.panel.view.onSelect('objectif'))
-    expect(vies()).toEqual([false, false, false])
-    act(() => result.current.menu.panel.view.onSelect('combat'))
-    act(() => result.current.menu.panel.view.onSelect('complet'))
-    expect(vies()).toEqual([false, false, false])
-    expect(result.current.menu.active).toBe('complet')
-  })
-
-  it('un calque des vies sans marque n’est jamais activé par un préréglage', () => {
-    const { result } = mount({ ...FULL_FILM, lives: { spawns: false, deaths: false, killers: false, followedKnown: false } })
-    act(() => result.current.menu.panel.view.onSelect('combat'))
-    act(() => result.current.menu.panel.view.onSelect('deplacements'))
-    const s = result.current.settings
-    expect([s.showSpawns, s.showDeaths, s.showKillers]).toEqual([false, false, false])
-  })
-
-  it('les affinages des vies ne sont pas des calques : un préréglage ne les touche pas, la vue non plus', () => {
-    const { result } = mount(FULL_FILM)
-    act(() => result.current.settings.setLivesWho('team'))
-    act(() => result.current.settings.setLivesWhen('sofar'))
-    act(() => result.current.menu.panel.view.onSelect('combat'))
-    expect([result.current.settings.livesWho, result.current.settings.livesWhen]).toEqual(['team', 'sofar'])
-    expect(result.current.menu.active).toBe('combat')
-  })
-
-  it('le panneau expose le groupe des vies : disponibilité, état, et « joueur suivi » seulement avec un joueur suivi', () => {
-    const { result } = mount(FULL_FILM)
-    expect(result.current.menu.panel.lives).toMatchObject({
-      spawns: { available: true, show: false },
-      deaths: { available: true, show: false },
-      killers: { available: true, show: false },
-      who: 'all',
-      when: 'all',
-      followedAvailable: true,
-    })
-    const sans = mount({ ...FULL_FILM, lives: { ...FULL_FILM.lives, followedKnown: false } })
-    expect(sans.result.current.menu.panel.lives.followedAvailable).toBe(false)
-  })
-
-  it('« joueur suivi » mémorisé retombe sur « tous » dans un match sans joueur suivi, sans effacer la préférence', () => {
-    window.localStorage.setItem('replay-lives-who', 'followed')
-    const sans = mount({ ...FULL_FILM, lives: { ...FULL_FILM.lives, followedKnown: false } })
-    expect(sans.result.current.menu.panel.lives.who).toBe('all')
-    expect(sans.result.current.settings.livesWho).toBe('followed')
-    const avec = mount(FULL_FILM)
-    expect(avec.result.current.menu.panel.lives.who).toBe('followed')
-  })
-
-  it('la probabilité de réapparition : ALLUMÉE par défaut, retenue, proposée selon le film, hors préréglages', () => {
-    const { result } = mount(FULL_FILM)
-    expect(result.current.settings.showRespawnForecast).toBe(true)
-    expect(result.current.menu.panel.lives.respawnForecast).toMatchObject({ available: true, show: true })
-    // Ce n'est pas un calque de préréglage : ni « Combat » ni « Objectif » ne la touchent, la vue active non plus.
-    act(() => result.current.menu.panel.view.onSelect('combat'))
-    expect(result.current.settings.showRespawnForecast).toBe(true)
-    expect(result.current.menu.active).toBe('combat')
-    act(() => result.current.menu.panel.lives.respawnForecast.onToggle())
-    expect(result.current.menu.panel.lives.respawnForecast.show).toBe(false)
-    expect(window.localStorage.getItem('replay-show-respawn-forecast')).toBe('false')
-    expect(result.current.menu.active).toBe('combat')
-    expect(mount(FULL_FILM).result.current.settings.showRespawnForecast).toBe(false)
-    // Le choix du dessin : « Zones et points » par défaut, retenu, une valeur invalide est ignorée.
-    expect(result.current.menu.panel.lives.respawnForecast).toMatchObject({ draw: 'both' })
-    act(() => result.current.menu.panel.lives.respawnForecast.onSelectDraw('points'))
-    expect(result.current.menu.panel.lives.respawnForecast.draw).toBe('points')
-    expect(window.localStorage.getItem('replay-respawn-forecast-draw')).toBe('points')
-    expect(mount(FULL_FILM).result.current.settings.respawnForecastDraw).toBe('points')
-    window.localStorage.setItem('replay-respawn-forecast-draw', 'n-importe-quoi')
-    expect(mount(FULL_FILM).result.current.settings.respawnForecastDraw).toBe('both')
-    expect(mount(SLAYER_FILM).result.current.menu.panel.lives.respawnForecast.available).toBe(false)
-  })
-
-  it('les affinages et calques des vies sont retenus, et une valeur invalide est ignorée', () => {
-    const { result } = mount(FULL_FILM)
-    act(() => result.current.settings.toggleDeaths())
-    act(() => result.current.settings.setLivesWho('team'))
-    act(() => result.current.settings.setLivesWhen('sofar'))
-    expect(window.localStorage.getItem('replay-show-deaths')).toBe('true')
-    expect(window.localStorage.getItem('replay-lives-who')).toBe('team')
-    expect(window.localStorage.getItem('replay-lives-when')).toBe('sofar')
-    const reouvert = mount(FULL_FILM)
-    expect([reouvert.result.current.settings.showDeaths, reouvert.result.current.settings.livesWho, reouvert.result.current.settings.livesWhen]).toEqual([true, 'team', 'sofar'])
-    window.localStorage.setItem('replay-lives-who', 'n-importe-quoi')
-    window.localStorage.setItem('replay-lives-when', '')
-    const invalide = mount(FULL_FILM)
-    expect([invalide.result.current.settings.livesWho, invalide.result.current.settings.livesWhen]).toEqual(['all', 'all'])
   })
 })

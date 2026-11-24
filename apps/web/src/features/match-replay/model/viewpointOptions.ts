@@ -41,6 +41,11 @@
 import { stripBotSuffix } from '@/lib/players/displayName'
 import { groupByTeam, playerName, type ReplayPlayer, type ReplayTeamGroup } from '@/lib/replay/rosterLogic'
 
+/** La valeur du point de vue d'un joueur : son xuid de la BASE dès que la jointure a abouti, la clé du film sinon (règle 1). */
+export function viewpointValueOf(p: ReplayPlayer): string {
+  return p.board?.xuid ?? p.xuid
+}
+
 /** Une entrée du menu : un joueur qu'on peut (ou non) regarder. */
 export interface ViewpointOption {
   /** Le xuid à passer au point de vue — celui de la BASE dès que la jointure a abouti. */
@@ -99,7 +104,7 @@ export function buildViewpointOptions(
       const disabled = !p.board
       options.push({
         // LE PIÈGE DES BOTS EST ICI, EN UNE LIGNE (cf. l'en-tête, règle 1).
-        value: p.board?.xuid ?? p.xuid,
+        value: viewpointValueOf(p),
         rosterKey: p.xuid,
         label,
         disabled,

@@ -16,7 +16,7 @@ export interface RosterText {
   camera: string
   cameraNone: string
   cameraViewpointHeading: string
-  /** La mention à côté du nom du joueur suivi (le joueur regardé), sur sa ligne. */
+  /** La mention à côté du nom du joueur dont on prend le point de vue (le joueur regardé), sur sa ligne. */
   followed: string
   /** L'en-tête des colonnes de la ligne d'un joueur : texte court et nom entier (infobulle). */
   colWeapon: string
@@ -40,7 +40,7 @@ export const FR_ROSTER = {
   camera: 'Caméra',
   cameraNone: 'Aucun',
   cameraViewpointHeading: 'Point de vue',
-  followed: 'suivi',
+  followed: 'point de vue',
   colWeapon: 'Arme',
   colWeaponTitle: 'Arme en main',
   colGrenades: 'Gr.',
@@ -60,7 +60,7 @@ export const EN_ROSTER = {
   camera: 'Camera',
   cameraNone: 'None',
   cameraViewpointHeading: 'Viewpoint',
-  followed: 'followed',
+  followed: 'viewpoint',
   colWeapon: 'Weapon',
   colWeaponTitle: 'Weapon in hand',
   colGrenades: 'Gr.',

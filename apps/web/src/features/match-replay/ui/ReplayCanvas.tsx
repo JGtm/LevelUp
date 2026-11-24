@@ -580,6 +580,7 @@ export function ReplayCanvas({
   // viennent des calques, les bascules de `useReplaySettings`, et l'ouverture du hook lui-même.
   const viewMenu = useReplayViewMenu({
     settings, orientation, sound, locale, planFeedAvailable: planFeed,
+    feed: { doc, entries: feedEntries, allegiance }, matchKey: `${playerSlug ?? ''}/${matchId ?? ''}`,
     // LE FOND ET SON RELIEF : les fonds proposés, les traits, la commande d'étage ; le plan posé retire le calque des murs.
     relief, drawn: mapImage?.variante ?? 'rendu',
     heat: { mode: heat.mode, killsAvailable: heat.killsAvailable },
@@ -594,7 +595,7 @@ export function ReplayCanvas({
   // HORLOGE et sa lecture. `play` reçoit `togglePlay` — appelé sur une PAUSE seule, il vaut lecture.
   const capture = useReplayCapture({
     canvasRef, doc, frameRef, playing: playback.playing, play: playback.togglePlay,
-    audioTrack: sound.recordingTrack, soundTrack: sound.exportTrack, soundVolume: sound.volume,
+    audioTrack: sound.recordingTrack, soundTrack: sound.exportTrack, soundVolume: sound.volume, soundOn: sound.on,
     redraw, playWindow, scoreboard, allegiance, outcome, viewpoint, locale, zoomLevel: zoom.level,
   })
 

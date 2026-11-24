@@ -9,6 +9,15 @@
  * `replayPreferences` le réexporte ; les clés propres au rejeu y restent.
  */
 
+/** Lit une valeur persistée telle quelle ; absente ou storage indisponible -> `null`. */
+export function readStoredRaw(key: string): string | null {
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
 /** Lit un booléen persisté ; absent ou storage indisponible -> `fallback`. */
 export function readStoredFlag(key: string, fallback: boolean): boolean {
   try {

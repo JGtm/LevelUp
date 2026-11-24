@@ -22,6 +22,7 @@ import type { PlayerInstantText } from './playerInstant.i18n'
 import type { PlayerPanelText } from './playerPanel.i18n'
 import type { RespawnForecastText } from './respawnForecast.i18n'
 import type { RosterText } from './roster.i18n'
+import type { SettingsText } from './settings.i18n'
 import type { PadEquipmentFamilyKey } from '../model/weaponPadFamilies'
 
 /**
@@ -201,8 +202,10 @@ export interface ReplayText {
   roster: RosterText
   /** La fiche du joueur à l'instant lu : `playerInstant.i18n.ts`. */
   playerInstant: PlayerInstantText
-  /** Le groupe « Vies » du panneau de la vue : ses textes vivent dans `lives.i18n.ts`. */
+  /** Les traces des vies du panneau de la vue (apparitions, morts, tueurs, qui, quand) : `lives.i18n.ts`. */
   lives: LivesText
+  /** Le panneau de la vue (rubriques, préréglages souples, Mes vues, accès rapide, pied) : `settings.i18n.ts`. */
+  settings: SettingsText
   /** Le fond « Relief », ses traits et la commande d'étage du panneau de la vue : `relief.i18n.ts`. */
   relief: ReliefText
   /** La probabilité de réapparition (interrupteur du groupe « Vies » et textes du calque) : `respawnForecast.i18n.ts`. */
@@ -257,8 +260,6 @@ export interface ReplayText {
   soundVolumeMutedHint: string
   /** Le son est activé mais tu par la vitesse de lecture — le dire, pas le cacher. */
   soundFastHint: string
-  /** Filtre des sons par catégorie (tiroir de réglages, phase 2, décision du 16/08). */
-  soundCategoriesTitle: string
   soundCategory: Record<'weapon' | 'grenade' | 'melee' | 'equipment', string>
   /**
    * LA CAPTURE D'IMAGE (2026-08-26) : un bouton en icône dans la barre de lecture, qui
@@ -304,12 +305,6 @@ export interface ReplayText {
    */
   viewButton: string
   viewClose: string
-  viewPresetsTitle: string
-  /** Le nom d'un préréglage, et ce qu'il montre en une phrase courte (infobulle comprise). */
-  viewPreset: Record<'complet' | 'combat' | 'deplacements' | 'objectif' | 'personnalise', string>
-  viewPresetHint: Record<'complet' | 'combat' | 'deplacements' | 'objectif', string>
-  /** Dit pourquoi la vue est « Personnalisé » : un calque a été basculé à la main. */
-  viewCustomNote: string
   /**
    * LE MODE PLEIN ÉCRAN (bouton de la barre de lecture : le plein écran du système ; la touche F ouvre le Plein cadre) : un bouton à état, comme
    * lecture/pause — le nom accessible dit ce que le CLIC va faire. L'infobulle y ajoute le
@@ -328,8 +323,6 @@ export interface ReplayText {
    */
   autoPlay: string
   autoPlayHint: string
-  /** Calques que le lecteur peut éteindre. */
-  layers: string
   layerAim: string
   layerAimHint: string
   /** Libellé accessible du groupe de commandes de zoom du cadrage de la carte. */
@@ -343,16 +336,11 @@ export interface ReplayText {
   panDown: string
   panLeft: string
   panRight: string
-  layerGroupPlayers: string
-  layerGroupTerrain: string
-  layerGroupObjectives: string
   layerZones: string
   layerZonesHint: string
   /** « Plan des murs » : le trait fin des murs de la carte sur son fond (n'existe qu'avec un plan). */
   layerWallPlan: string
   layerWallPlanHint: string
-  /** Désactivé en mode plan : les murs sont déjà dans l'image du fond. */
-  layerWallPlanInPlanHint: string
   /** « Fond : Rendu / Plan » : l'image posée sous la carte (le plan n'existe que pour les fonds qui en ont un). */
   layerBackground: string
   layerBackgroundRender: string
@@ -370,12 +358,6 @@ export interface ReplayText {
    */
   layerTrail: string
   layerTrailHint: string
-  /**
-   * EFFETS D'ÉVÉNEMENT, réglables séparément (décision utilisateur du 16/08) : les éclairs
-   * de bouche de TOUS les tirs, et le trait tueur -> victime des éliminations. Le premier dit
-   * ce qu'il dessine (un tir qui applique un dégât), jamais ce qu'il ne dessine pas.
-   */
-  effects: string
   layerShotFx: string
   layerShotFxHint: string
   layerShotFxCoverage: string
@@ -787,7 +769,7 @@ export interface ReplayText {
   /**
    * LE MENU DE POINT DE VUE (2026-09-07, lot L3), à la place du libellé de la première piste.
    *
-   * `viewpointLabel` est le NOM ACCESSIBLE de la commande : « Joueur suivi », pas « Toi ». Le
+   * `viewpointLabel` est le NOM ACCESSIBLE de la commande : « Point de vue », pas « Toi ». Le
    * texte visible du menu est un gamertag, qui ne dit pas de quoi il est la réponse — sans ce
    * nom, un lecteur d'écran annoncerait une liste déroulante anonyme au milieu d'une frise.
    *

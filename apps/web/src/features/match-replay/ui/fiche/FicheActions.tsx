@@ -1,14 +1,17 @@
 /**
- * FicheActions — L'ACTION « SEUL » de la fiche d'un joueur : un bouton à bascule (`aria-pressed`) pleine
+ * FicheActions — LES ACTIONS DE LA FICHE d'un joueur. « SEUL » : un bouton à bascule (`aria-pressed`) pleine
  * largeur, qui masque tous les autres joueurs ; actif, il se lit « Seul · tout réafficher » et réaffiche tout. Suivre
  * et Masquer ne sont plus dans la fiche : ils sont sur les tuiles et les lignes (`ReplayTileActionButtons`).
  * « Actif » se lit sur l'ensemble des joueurs masqués (`isSolo`) : réafficher un joueur à la main sort de « Seul ».
- * Le bouton est accessible au clavier : le focus se voit par un anneau.
+ * « PRENDRE LE POINT DE VUE » (quand la page le donne) pose ce joueur comme point de vue, comme le menu de la frise ; absent
+ * pour le joueur déjà regardé, grisé et expliqué pour un joueur sans ligne de tableau de score (cf. `ficheViewpoint`).
+ * Les boutons sont accessibles au clavier : le focus se voit par un anneau.
  *
  * La souris ne prend pas le focus et Espace reste « Lecture » (`PRESS_GUARDS`), comme pour tout bouton du rejeu.
  */
 import { REPLAY_TEXT, type ReplayLocale } from '../../i18n/i18n'
 import { PRESS_GUARDS } from '../replayPressGuards'
+import type { FicheViewpoint } from './ficheViewpoint'
 
 /** Le contour : une colonne pleine largeur, 32 px, texte de 12 px, anneau de focus. */
 const BUTTON_CLASS =
@@ -26,10 +29,13 @@ interface FicheActionsProps {
   /** « Seul » sur ce joueur, ou tout réafficher s'il l'est déjà. */
   onSolo: () => void
   locale: ReplayLocale
+  /** Le point de vue de la page, pour ce joueur ; absent = pas de bouton. */
+  takeViewpoint?: FicheViewpoint
 }
 
-export function FicheActions({ name, solo, onSolo, locale }: FicheActionsProps) {
-  const text = REPLAY_TEXT[locale].playerPanel.solo
+export function FicheActions({ name, solo, onSolo, locale, takeViewpoint }: FicheActionsProps) {
+  const t = REPLAY_TEXT[locale]
+  const text = t.playerPanel.solo
   return (
     <div role="group" aria-label={name} data-replay-fiche-actions="">
       <button
@@ -42,6 +48,18 @@ export function FicheActions({ name, solo, onSolo, locale }: FicheActionsProps) 
       >
         {solo ? text.labelActive : text.label}
       </button>
+      {takeViewpoint && !takeViewpoint.current && (
+        <button
+          type="button"
+          className={`${BUTTON_CLASS} ${IDLE_CLASS} mt-1.5 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-background`}
+          disabled={takeViewpoint.inert}
+          title={takeViewpoint.inert ? t.viewpointNoData : t.playerPanel.viewpoint.hint}
+          {...PRESS_GUARDS}
+          onClick={takeViewpoint.onTake}
+        >
+          {t.playerPanel.viewpoint.label}
+        </button>
+      )}
     </div>
   )
 }

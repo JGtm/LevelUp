@@ -13,6 +13,7 @@ import { useCallback, useState } from 'react'
 
 import type { HeatmapMode, HeatmapSpan } from '../../../lib/replay/heatPaint'
 import { persistPreference, PLAN_FEED_DEFAULT, PLAN_FEED_KEY, readStoredChoice, readStoredNumber, THIN_BAR_DEFAULT, THIN_BAR_KEY } from './replayPreferences'
+import { migrateReplayPreferences } from './settingsMigration'
 import { usePersistedFlag } from './usePersistedFlag'
 import { useReplayLivesFlags, type ReplayLivesFlags } from './useReplayLivesFlags'
 import { useReplayTerrainFlags, type ReplayTerrainFlags } from './useReplayTerrainFlags'
@@ -180,6 +181,8 @@ export interface ReplaySettings extends ReplayTerrainFlags, ReplayLivesFlags {
 
 
 export function useReplaySettings(): ReplaySettings {
+  // LA REPRISE DES PRÉFÉRENCES D'AVANT passe AVANT toute lecture : les interrupteurs ci-dessous lisent leur clé au montage.
+  useState(migrateReplayPreferences)
   const [showAim, toggleAim] = usePersistedFlag(SHOW_AIM_KEY, true)
   const [showZones, toggleZones] = usePersistedFlag(SHOW_ZONES_KEY, true)
   const [showTrail, toggleTrail] = usePersistedFlag(SHOW_TRAIL_KEY, true)
@@ -189,14 +192,7 @@ export function useReplaySettings(): ReplaySettings {
   const [showPlanFeed, togglePlanFeed] = usePersistedFlag(PLAN_FEED_KEY, PLAN_FEED_DEFAULT)
   const [thinBarAtFullFrame, toggleThinBarAtFullFrame] = usePersistedFlag(THIN_BAR_KEY, THIN_BAR_DEFAULT)
   const terrain = useReplayTerrainFlags()
-  // L'état des treize calques d'avant le lot : il décide si le préréglage retenu prolonge ses défauts aux vies.
-  const lives = useReplayLivesFlags({
-    aim: showAim, trail: showTrail, zones: showZones, weaponPads: terrain.showWeaponPads,
-    groundWeapons: terrain.showGroundWeapons, vehicles: terrain.showVehicles, placements: terrain.showPlacements,
-    droppedPlacements: terrain.showDroppedPlacements, modeObjectives: terrain.showModeObjectives,
-    flagCarries: terrain.showFlagCarries, vipCrown: terrain.showVipCrown, skullCarrier: terrain.showSkullCarrier,
-    bombCarrier: terrain.showBombCarrier,
-  })
+  const lives = useReplayLivesFlags()
   const [heatmapMode, setHeatmapModeState] = useState(() =>
     readStoredChoice(HEATMAP_MODE_KEY, HEATMAP_MODE_DEFAULT, HEATMAP_MODES),
   )

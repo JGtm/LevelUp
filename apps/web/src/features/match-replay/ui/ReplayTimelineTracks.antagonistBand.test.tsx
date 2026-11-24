@@ -18,7 +18,7 @@ describe('ReplayTimelineTracks — l emplacement de la bande des titres', () => 
   it('pose la bande avant le menu de point de vue', () => {
     const { getByTestId, getByLabelText } = renderTracks({ antagonistBand: BANDE })
     const bande = getByTestId('bande-test')
-    const menu = getByLabelText('Joueur suivi')
+    const menu = getByLabelText('Point de vue')
     // DOCUMENT_POSITION_FOLLOWING : le menu suit la bande dans l'ordre du document.
     expect(bande.compareDocumentPosition(menu) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })

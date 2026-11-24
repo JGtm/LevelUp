@@ -5,6 +5,7 @@ import type { ReplayText } from './i18nContract'
 import { FR_FEED_LINES } from './feedLines.i18n'
 import { FR_HILL_SEQUENCE } from './hillSequence.i18n'
 import { FR_LIVES } from './lives.i18n'
+import { FR_SETTINGS } from './settings.i18n'
 import { FR_RELIEF } from './relief.i18n'
 import { FR_RESPAWN_FORECAST } from './respawnForecast.i18n'
 import { FR_PLAYER_PANEL } from './playerPanel.i18n'
@@ -99,6 +100,7 @@ export const FR_TEXT = {
   roster: FR_ROSTER,
   playerInstant: FR_PLAYER_INSTANT,
   lives: FR_LIVES,
+  settings: FR_SETTINGS,
   relief: FR_RELIEF,
   respawnForecast: FR_RESPAWN_FORECAST,
   hillSequence: FR_HILL_SEQUENCE,
@@ -135,7 +137,6 @@ export const FR_TEXT = {
     'Son coupé : le volume est à zéro. Rallumer le son rend le niveau réglé précédemment.',
   soundFastHint:
     'À cette vitesse de lecture les sons se chevaucheraient : ils reviennent à 2× ou moins.',
-  soundCategoriesTitle: 'Sons par catégorie',
   soundCategory: {
     weapon: 'Armes',
     grenade: 'Grenades',
@@ -151,27 +152,11 @@ export const FR_TEXT = {
   // pour la première — c'est le mot qu'on cherche du regard sur un bouton d'enregistrement.
   viewButton: 'Vue',
   viewClose: 'Fermer la vue',
-  viewPresetsTitle: 'Préréglages',
-  viewPreset: {
-    complet: 'Complet',
-    combat: 'Combat',
-    deplacements: 'Déplacements',
-    objectif: 'Objectif',
-    personnalise: 'Personnalisé',
-  },
-  viewPresetHint: {
-    complet: 'Tous les calques, sauf le groupe Vies',
-    combat: 'Visée, traînées, véhicules, objectifs, morts et tueurs',
-    deplacements: 'Traînées, zones et apparitions',
-    objectif: 'Traînées, zones, objectifs',
-  },
-  viewCustomNote: 'Les calques ne correspondent à aucun préréglage.',
   fullscreenEnter: 'Plein écran',
   fullscreenExit: 'Quitter le plein écran',
   autoPlay: 'Lecture automatique',
   autoPlayHint:
     "Allumé, le rejeu démarre tout seul à l'ouverture de la page. Éteint — le réglage par défaut — il s'ouvre en pause au coup d'envoi et attend le bouton Lecture. Le choix est retenu d'un match à l'autre ; il ne met ni en lecture ni en pause le rejeu déjà ouvert.",
-  layers: 'Calques',
   layerAim: 'Visée',
   layerAimHint:
     "Cône de regard : la direction où le joueur regarde, décodée du même enregistrement que la position. Le jeu ne la retransmet que lorsqu'elle change : une mesure ancienne pâlit au lieu de disparaître, et rien n'est dessiné au-delà de cinq secondes. Un trait court se pose à la POINTE du cône quand la visée n'est pas à plat : vers l'extérieur si le joueur lève la tête, vers l'intérieur s'il pique. Le cône raccourcit dans les deux cas — sa longueur seule ne les distinguerait pas.",
@@ -184,16 +169,12 @@ export const FR_TEXT = {
   panDown: 'Déplacer vers le bas (Maj + flèche bas)',
   panLeft: 'Déplacer vers la gauche (Maj + flèche gauche)',
   panRight: 'Déplacer vers la droite (Maj + flèche droite)',
-  layerGroupPlayers: 'Joueurs',
-  layerGroupTerrain: 'Terrain',
-  layerGroupObjectives: 'Objectifs',
-  layerZones: 'Zones',
+  layerZones: 'Zones nommées',
   layerZonesHint:
     'Zones nommées officielles de la carte, extraites du jeu. Les grandes zones pavent le terrain ; les contours pointillés sont des étages imbriqués.',
   layerWallPlan: 'Plan des murs',
   layerWallPlanHint:
     "Le dessin exact des murs de la carte, en traits fins par-dessus son image. Disponible pour les cartes dont le plan a pu être extrait du jeu.",
-  layerWallPlanInPlanHint: 'Déjà dans le plan',
   layerBackground: 'Fond',
   layerBackgroundRender: 'Rendu',
   layerBackgroundRenderHint: 'Le fond de la carte, en image rendue.',
@@ -206,7 +187,6 @@ export const FR_TEXT = {
   layerTrail: 'Traînée',
   layerTrailHint:
     "Les sept dernières secondes parcourues, derrière chaque marqueur. L'opacité monte vers la tête : la trace la plus visible est celle de l'instant, et c'est ce qui donne le sens du déplacement.",
-  effects: 'Effets',
   layerShotFx: 'Effets de tirs',
   layerShotFxHint:
     'Éclair de bouche sur chaque tir décodé, dans la teinte de la décharge (cinétique, plasma, énergie).',
@@ -218,7 +198,7 @@ export const FR_TEXT = {
   layerPlacements: 'Équipements posés',
   layerPlacementsHint:
     "Les objets qu'un joueur a DÉPLOYÉS en cours de vie : mur de protection, capteur de menaces, traqueur de menaces, écran occultant, balise du translocateur quantique, champ de réparation. La BALISE est le point de retour que pose le translocateur quantique — ce n'est pas le marquage d'un ennemi, que le jeu appelle « ping ». Le champ de réparation porte une croix qui respire : elle dit que l'objet soigne, elle ne compte rien — le film ne publie aucune cadence de soin, et son cercle pointillé garde la réserve sur sa portée. Ce que la mesure classe autrement ne se dessine pas — près de neuf poses sur dix sont en réalité l'équipement et les grenades qu'un joueur lâche en mourant, et ce n'est pas un usage. Le capteur, le traqueur, l'écran occultant et le champ de réparation se dessinent là où l'objet s'est posé, lu dans son vol (l'écran, là où naît sa bulle quand le film l'écrit) ; un objet dont le film ne donne pas le lieu de repos ne se dessine pas. Le film écrit la suppression du capteur, du champ de réparation et du mur, et celle de la bulle de l'écran occultant : ils restent affichés jusqu'à cette suppression (de l'atterrissage pour le capteur et le champ, de la pose pour le mur, de la naissance de la bulle pour l'écran). Sans suppression lue, le capteur se tient à ses 15 s officielles, le mur à environ douze secondes et demie et l'écran à 7,5 s. Le film ne date rien d'autre : les autres poses restent affichées jusqu'à la fin du rejeu. L'arc du mur est orienté par le regard du poseur ; quand la pose ne porte pas ce cap (un peu plus d'une fois sur huit), il suit la dernière direction de déplacement du poseur, et à défaut sa dernière visée connue — un arc déduit se trace alors en pointillé. Le capteur balaie sa portée toutes les 1,8 s — chiffres officiels du jeu, le film n'en porte aucun — et marque brièvement les adversaires du poseur qui s'y trouvent au passage de l'onde ; le traqueur, lui, n'émet qu'une seule impulsion.",
-  layerPlacementsDropped: 'Objets lâchés au sol',
+  layerPlacementsDropped: 'Objets lâchés',
   layerPlacementsDroppedHint:
     "Les objets de PUISSANCE qu'un joueur laisse au sol en mourant : power-ups (surbouclier, camouflage) et équipements déployables (mur de protection, capteur, traqueur, balise, champ de réparation). Ils sont RAMASSABLES — savoir qu'ils traînent change la lecture de l'échange suivant. Un anneau pointillé et atténué, jamais la forme de l'objet actif : au sol, l'objet n'exerce ni portée ni effet. Les grenades et les capacités lâchées restent hors carte : elles représentent près de neuf poses sur dix et ne diraient rien du terrain. Allumé par défaut.",
   layerPlacementsUnnamed: 'Objets non identifiés',
@@ -281,7 +261,7 @@ export const FR_TEXT = {
   layerGroundWeaponsSpecialOnly: 'Armes spéciales seulement',
   layerGroundWeaponsSpecialOnlyHint:
     "N'affiche que les armes de puissance, de précision longue et hors gabarit (fusil de précision, épée, marteau, roquettes, empaleur, crémateur, aiguiseur, faisceau sentinelle...) : ce qu'un socle distribue et qu'un adversaire a intérêt à ramasser. Une arme dont le rôle n'est pas connu reste visible bascule éteinte, et disparaît bascule allumée — un rôle manquant ne s'affirme jamais spécial.",
-  layerGroundWeaponsStarting: 'Afficher aussi les armes de départ au sol',
+  layerGroundWeaponsStarting: 'Y compris les armes de départ',
   layerGroundWeaponsStartingHint:
     "Par défaut, une arme lâchée qui est une arme de départ du match (celle que tout le monde porte à l'apparition) n'est pas dessinée. Les armes posées par la carte restent toujours visibles.",
   groundWeaponSpawned: 'apparue',
@@ -373,7 +353,7 @@ export const FR_TEXT = {
   victoryScoreLabel: 'Score final',
   trackTeammates: 'Coéquipiers',
   trackDominance: 'Dominance',
-  viewpointLabel: 'Joueur suivi',
+  viewpointLabel: 'Point de vue',
   viewpointNoData: 'Aucune donnée de match pour ce joueur',
   dominanceOfFmt: (team) => `${team} mène aux frags`,
   dominanceTied: 'Égalité aux frags',

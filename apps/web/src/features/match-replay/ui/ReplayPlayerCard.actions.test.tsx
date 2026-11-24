@@ -72,7 +72,7 @@ describe('ReplayPlayerCard — les actions sont à la demande de la page', () =>
   it('avec `tileActions`, chaque tuile d’un joueur présent porte deux boutons nommés, un bot compris', () => {
     setup(actions())
     for (const nom of ['Alpha', 'Bravo', 'Marc']) {
-      expect(screen.getByRole('button', { name: `Suivre ${nom}` })).toBeTruthy()
+      expect(screen.getByRole('button', { name: `Suivre ${nom} (caméra)` })).toBeTruthy()
       expect(screen.getByRole('button', { name: `Masquer ${nom}` })).toBeTruthy()
     }
   })
@@ -82,7 +82,7 @@ describe('ReplayPlayerCard — les gestes', () => {
   it('Suivre : un clic demande à suivre ce joueur, sans ouvrir la fiche', () => {
     const tile = actions()
     const { onCard } = setup(tile)
-    fireEvent.click(screen.getByRole('button', { name: 'Suivre Alpha' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Suivre Alpha (caméra)' }))
     expect(tile.onFollow).toHaveBeenCalledTimes(1)
     expect(tile.onFollow).toHaveBeenCalledWith('A')
     expect(onCard).not.toHaveBeenCalled()
@@ -110,9 +110,9 @@ describe('ReplayPlayerCard — les gestes', () => {
   it('le joueur suivi : « Ne plus suivre », enfoncé ; un clic arrête le suivi', () => {
     const tile = actions({ followedXuid: 'B' })
     setup(tile)
-    const bouton = screen.getByRole('button', { name: 'Ne plus suivre Bravo' })
+    const bouton = screen.getByRole('button', { name: 'Ne plus suivre Bravo (caméra)' })
     expect(bouton.getAttribute('aria-pressed')).toBe('true')
-    expect(screen.getByRole('button', { name: 'Suivre Alpha' }).getAttribute('aria-pressed')).toBe('false')
+    expect(screen.getByRole('button', { name: 'Suivre Alpha (caméra)' }).getAttribute('aria-pressed')).toBe('false')
     fireEvent.click(bouton)
     expect(tile.onFollow).toHaveBeenCalledWith(null)
   })
@@ -138,7 +138,7 @@ describe('ReplayPlayerCard — les gestes', () => {
 describe('ReplayPlayerCard — clavier et souris (PRESS_GUARDS)', () => {
   it('Entrée et Espace sur un bouton d’action ne rouvrent pas la fiche', () => {
     const { onCard } = setup(actions())
-    const bouton = screen.getByRole('button', { name: 'Suivre Alpha' })
+    const bouton = screen.getByRole('button', { name: 'Suivre Alpha (caméra)' })
     fireEvent.keyDown(bouton, { key: 'Enter' })
     fireEvent.keyDown(bouton, { key: ' ' })
     expect(onCard).not.toHaveBeenCalled()
@@ -155,14 +155,14 @@ describe('ReplayPlayerCard — clavier et souris (PRESS_GUARDS)', () => {
 
   it('la souris ne prend pas le focus sur un bouton d’action', () => {
     setup(actions())
-    expect(fireEvent.mouseDown(screen.getByRole('button', { name: 'Suivre Alpha' }))).toBe(false)
+    expect(fireEvent.mouseDown(screen.getByRole('button', { name: 'Suivre Alpha (caméra)' }))).toBe(false)
     expect(fireEvent.mouseDown(screen.getByRole('button', { name: 'Masquer Alpha' }))).toBe(false)
   })
 
   it('les deux boutons sont dans l’ordre de tabulation, après la tuile', () => {
     setup(actions())
     const tuile = screen.getByRole('button', { name: 'Ouvrir la fiche de Alpha' })
-    const suivre = screen.getByRole('button', { name: 'Suivre Alpha' })
+    const suivre = screen.getByRole('button', { name: 'Suivre Alpha (caméra)' })
     const oeil = screen.getByRole('button', { name: 'Masquer Alpha' })
     expect(suivre.tabIndex).toBe(0)
     expect(oeil.tabIndex).toBe(0)
@@ -174,19 +174,19 @@ describe('ReplayPlayerCard — clavier et souris (PRESS_GUARDS)', () => {
 
 describe('ReplayPlayerCard — les infobulles', () => {
   it.each([
-    ['fr', 'Suivre', 'La caméra cadre la carte sur Alpha.', 'Masquer', 'Retire Alpha de la carte : pion, traînée, nom.'],
-    ['en', 'Follow', 'The camera frames the map on Alpha.', 'Hide', 'Removes Alpha from the map: marker, trail, name.'],
+    ['fr', 'Caméra : suivre', 'La caméra cadre la carte sur Alpha.', 'Masquer', 'Retire Alpha de la carte : pion, traînée, nom.'],
+    ['en', 'Camera: follow', 'The camera frames the map on Alpha.', 'Hide', 'Removes Alpha from the map: marker, trail, name.'],
   ] as const)('%s : titre puis phrase, à l’état de repos', (locale, suivre, phraseSuivre, masquer, phraseMasquer) => {
     setup(actions(), vi.fn(), locale)
-    const nom = locale === 'fr' ? 'Suivre Alpha' : 'Follow Alpha'
+    const nom = locale === 'fr' ? 'Suivre Alpha (caméra)' : 'Follow Alpha (camera)'
     const nomOeil = locale === 'fr' ? 'Masquer Alpha' : 'Hide Alpha'
     expect(screen.getByRole('button', { name: nom }).getAttribute('title')).toBe(`${suivre}\n${phraseSuivre}`)
     expect(screen.getByRole('button', { name: nomOeil }).getAttribute('title')).toBe(`${masquer}\n${phraseMasquer}`)
   })
 
   it.each([
-    ['fr', 'Ne plus suivre Alpha', 'Ne plus suivre\nLa carte revient en vue entière.', 'Afficher Bravo', 'Afficher\nBravo réapparaît sur la carte.'],
-    ['en', 'Stop following Alpha', 'Stop following\nThe map goes back to the full view.', 'Show Bravo', 'Show\nBravo reappears on the map.'],
+    ['fr', 'Ne plus suivre Alpha (caméra)', 'Ne plus suivre\nLa carte revient en vue entière.', 'Afficher Bravo', 'Afficher\nBravo réapparaît sur la carte.'],
+    ['en', 'Stop following Alpha (camera)', 'Stop following\nThe map goes back to the full view.', 'Show Bravo', 'Show\nBravo reappears on the map.'],
   ] as const)('%s : titre puis phrase, à l’état actif', (locale, nomSuivi, titreSuivi, nomMasque, titreMasque) => {
     setup(actions({ followedXuid: 'A', hidden: new Set(['B']) }), vi.fn(), locale)
     expect(screen.getByRole('button', { name: nomSuivi }).getAttribute('title')).toBe(titreSuivi)
@@ -197,7 +197,7 @@ describe('ReplayPlayerCard — les infobulles', () => {
 describe('ReplayPlayerCard — la visibilité des actions', () => {
   it('au repos : cachées, visibles au survol et au focus de la tuile, à 60 % sans survol', () => {
     setup(actions())
-    for (const nom of ['Suivre Alpha', 'Masquer Alpha']) {
+    for (const nom of ['Suivre Alpha (caméra)', 'Masquer Alpha']) {
       const classes = screen.getByRole('button', { name: nom }).className
       expect(classes).toContain('opacity-0')
       expect(classes).toContain('group-hover:opacity-100')
@@ -208,7 +208,7 @@ describe('ReplayPlayerCard — la visibilité des actions', () => {
 
   it('une action active reste visible', () => {
     setup(actions({ followedXuid: 'A', hidden: new Set(['B']) }))
-    for (const nom of ['Ne plus suivre Alpha', 'Afficher Bravo']) {
+    for (const nom of ['Ne plus suivre Alpha (caméra)', 'Afficher Bravo']) {
       const classes = screen.getByRole('button', { name: nom }).className
       expect(classes).toContain('opacity-100')
       expect(classes).not.toContain('opacity-0')
@@ -242,7 +242,7 @@ describe('ReplayPlayerCard — la tuile d’un joueur masqué', () => {
 describe('ReplayPlayerCard — les icônes', () => {
   it('chaque bouton porte une icône en ligne, sans couleur écrite en dur', () => {
     setup(actions({ followedXuid: 'A', hidden: new Set(['B']) }))
-    for (const nom of ['Ne plus suivre Alpha', 'Masquer Alpha', 'Afficher Bravo']) {
+    for (const nom of ['Ne plus suivre Alpha (caméra)', 'Masquer Alpha', 'Afficher Bravo']) {
       const svg = screen.getByRole('button', { name: nom }).querySelector('svg')
       expect(svg, nom).not.toBeNull()
       expect(svg?.getAttribute('aria-hidden')).toBe('true')

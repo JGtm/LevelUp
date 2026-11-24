@@ -13,19 +13,19 @@ import { DEFAULT_EXPORT_FORMAT_ID, EXPORT_FORMAT_IDS, type ExportFormatId } from
 import { DEFAULT_FEED_FILTER, FEED_FILTER_IDS, type FeedFilterId } from '../model/feedFilterLogic'
 import { DEFAULT_MAP_BACKGROUND_VARIANT, MAP_BACKGROUND_VARIANTS, type MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
 import { normalizeTurns, QUARTER_TURNS, type QuarterTurns } from '@/lib/replay/orientation'
-import { VIEW_PRESET_IDS, type ViewPresetId } from './viewPresetLogic'
 import {
   persistPreference,
   readStoredChoice,
   readStoredFlag,
   readStoredNumber,
+  readStoredRaw,
   removePreference,
   subscribePreference,
 } from '@/lib/replay/preferenceStore'
 
 // Le patron de stockage (lecture sous try, abonnés par clé) vit dans `lib/replay/preferenceStore`, partagé avec les
 // autres vues 2D ; ce module reste l'unique porte des préférences du rejeu et le réexporte.
-export { persistPreference, readStoredChoice, readStoredFlag, readStoredNumber, removePreference, subscribePreference }
+export { persistPreference, readStoredChoice, readStoredFlag, readStoredNumber, readStoredRaw, removePreference, subscribePreference }
 
 /**
  * LE FORMAT DE L'EXPORT VIDÉO (plan « formats vidéo standard », décision D4, 2026-09-16) :
@@ -82,26 +82,6 @@ export const PLAN_FEED_DEFAULT = true
  */
 export const THIN_BAR_KEY = 'replay-thin-bar-full-frame'
 export const THIN_BAR_DEFAULT = true
-
-/**
- * LE PRÉRÉGLAGE DE VUE CHOISI en dernier (plan « maquettes du rejeu », lot 3) : retenu dans CE
- * navigateur. La vue active se DÉDUIT de l'état des calques (`activeView`) ; cette valeur ne
- * sert qu'à départager deux préréglages égaux sur les calques d'un match. Les clés `replay-*`
- * des calques restent lues telles quelles. La lecture est VALIDÉE contre la liste fermée :
- * absente, inconnue (« personnalise » compris, il se déduit et ne se retient pas) ou écrite
- * par une autre version -> `undefined`.
- */
-export const VIEW_PRESET_KEY = 'replay-view-preset'
-
-/** Le préréglage retenu, ou `undefined`. */
-export function readViewPreset(): ViewPresetId | undefined {
-  return readStoredChoice<ViewPresetId | ''>(VIEW_PRESET_KEY, '', VIEW_PRESET_IDS) || undefined
-}
-
-/** Retient le préréglage choisi. Stockage refusé : le choix vaut pour la session, sans erreur. */
-export function persistViewPreset(id: ViewPresetId): void {
-  persistPreference(VIEW_PRESET_KEY, id)
-}
 
 /**
  * L'ORIENTATION DE LA CARTE (`lib/replay/orientation`) est un réglage PAR CARTE : retenue dans CE

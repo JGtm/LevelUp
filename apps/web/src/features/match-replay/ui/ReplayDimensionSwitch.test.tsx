@@ -15,7 +15,7 @@ describe('ReplayDimensionSwitch', () => {
 
   it('disponible : deux positions exclusives, la vue choisie cochée', () => {
     render(<ReplayDimensionSwitch available value="3d" onChange={vi.fn()} locale="fr" />)
-    const groupe = screen.getByRole('radiogroup', { name: 'Vue du rejeu' })
+    const groupe = screen.getByRole('radiogroup', { name: 'Dimension du rejeu' })
     expect(groupe.querySelectorAll('[role="radio"]')).toHaveLength(2)
     expect(screen.getByRole('radio', { name: '3D' })).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByRole('radio', { name: '2D' })).toHaveAttribute('aria-checked', 'false')
@@ -32,7 +32,7 @@ describe('ReplayDimensionSwitch', () => {
 
   it('en anglais seul le nom du groupe change', () => {
     render(<ReplayDimensionSwitch available value="2d" onChange={vi.fn()} locale="en" />)
-    expect(screen.getByRole('radiogroup', { name: 'Replay view' })).toBeTruthy()
+    expect(screen.getByRole('radiogroup', { name: 'Replay dimension' })).toBeTruthy()
     expect(screen.getByRole('radio', { name: '2D' })).toBeTruthy()
     expect(screen.getByRole('radio', { name: '3D' })).toBeTruthy()
   })

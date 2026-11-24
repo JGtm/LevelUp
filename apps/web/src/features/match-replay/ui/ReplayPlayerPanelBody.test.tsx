@@ -128,7 +128,7 @@ describe('ReplayPlayerPanelBody — l’action Seul', () => {
     const buttons = within(group).getAllByRole('button')
     expect(buttons.map((b) => b.textContent)).toEqual(['Seul · tout réafficher'])
     expect(buttons.map((b) => b.getAttribute('aria-pressed'))).toEqual(['true'])
-    expect(screen.queryByRole('button', { name: 'Suivre' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Caméra : suivre' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Masquer' })).toBeNull()
   })
 
