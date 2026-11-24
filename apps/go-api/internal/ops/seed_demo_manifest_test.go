@@ -108,7 +108,7 @@ func strSliceEqual(a, b []string) bool {
 // Le manifeste émis est versionné : il ne porte ni l'identifiant réel du joueur source ni aucun
 // champ d'identifiant de joueur, quel que soit le xuid des options.
 func TestNewEmittedManifest_NEcritAucunIdentifiantDeJoueur(t *testing.T) {
-	const xuidReel = "2533860000000001"
+	const xuidReel = "2534182457688434"
 	opts := SeedDemoOptions{TitleSlug: "halo_infinite", SourceLabel: "JGtm", SourceXUID: xuidReel}
 	dc := dynamicCorpus{solo: []string{"a"}, squad: []string{"b"}, ranked: []string{"c"}, media: []string{"d"}}
 
