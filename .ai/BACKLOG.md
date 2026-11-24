@@ -102,7 +102,7 @@ Reste ouvert :
 - **Apparence enregistrée des Spartans** (armure, revêtement) : recherche bornée à faire (item E.4), à remettre à la session du rejeu 3D.
 - **Nom des options de variante** : le film ne porte que le hachage (vérifié sur deux films, tous les décalages de bit) ; les archives lisibles du jeu ne rendent aucun des 30 hachages testés ; les noms sont probablement dans l'exécutable du jeu, non lu. Reprise : établir cette source (item E.3).
 - **Licence** : ses sources citent des fichiers de notre décodeur (AGPL-3.0) en « référence épinglée », son paquet est sous MIT ou Apache-2.0 ; portage ou relecture du format, non établi ; la suite est une décision du user.
-- **Crédit à nuzzles** pour les méthodes reprises : à la release du décodeur et aux crédits de LevelUp.
+- **Crédit à nuzzles** pour les méthodes reprises : fait côté décodeur le 2026-11-24 (fichier de crédits, README, release v1.6.0) ; reste les crédits de LevelUp, à la montée.
 
 **Effort : S à M. Priorité : basse.**
 
@@ -264,7 +264,7 @@ Relevé le 2026-11-16 (phase C du décodeur, C7). **Mis à jour le 2026-11-23** 
 
 ### [rejeu/dégâts] Auteur d'un dégât lu sur l'index brut du film
 
-Relevé le 2026-11-16 (phase C du décodeur, Découvertes). **Reformulée le 2026-11-17.** Constat sur pièces : l'auteur d'un dégât est déjà résolu à l'instant ; seule l'arme de la touche se lit encore par index brut. Sort : chantier décodeur (décision D-6 du plan). Visible dès que la 8.3.0 affiche les dégâts. **Condition de reprise :** prochain chantier du décodeur, avec l'affichage des dégâts de la 8.3.0 au plus tard. **Effort : S à M.**
+Relevé le 2026-11-16 (phase C du décodeur, Découvertes). **Reformulée le 2026-11-17.** Constat sur pièces : l'auteur d'un dégât est déjà résolu à l'instant ; seule l'arme de la touche se lit encore par index brut. **Réglé côté décodeur le 2026-11-24** (v1.6.0) : l'arme d'une touche et d'une ligne de dégât se cherche sous le tireur publié, l'index du message ne sert que sans joueur résolu ; sur 19 films le nombre de touches armées ne baisse jamais (un film passe de 2 005 à 2 307, sur 19 films aucune arme changée). **Pour reprendre :** relire le parc après la régénération (v1.6.0 dans LevelUp) ; entrée à clore si l'arme des touches s'y voit. Pièce : `.ai/annexes_decodeur_v160/l1b_enquete_corpus_causes.md`. **Effort : vérification seule.**
 
 ---
 
@@ -476,6 +476,48 @@ Relevé le 2026-11-23. La 8.2.2 (rattrapage de l'historique, issue #213) est dan
 ### [décodeur/répliques] Nom court des répliques sur les versions du jeu d'avant HI_1_12_0
 
 **Relevé le 2026-11-23** (plan du décodeur v1.6.0, item D.2 ; décision du user du 2026-11-23 : pas dans la 1.6.0). Le nom court d'une réplique est publié pour les films des builds `HI_1_12_0` et `HI_1_13_0`, où il est prouvé par hachage (291 noms, 98 % des répliques nommées sur trois films récents). Sur `HI_1_10_0` et `HI_1_11_0`, la table est décalée par un bloc de 205 entrées inséré plus tôt : le décalage se mesure par la priorité (781 répliques sur 808, 400 sur 426, 489 sur 496) mais n'est pas prouvé par hachage, donc ces films sont publiés sans nom et comptés. Les autres builds ne sont pas mesurés. Restent aussi sans nom : les indices hors de 0-914 et 2732-2956 (ordre des deuxième et troisième tables non établi) et six répliques de ramassage d'arme. Pour reprendre : prouver le décalage par build (table de dialogue d'une ancienne installation, ou accord de priorité à 100 % sur un échantillon large), puis ouvrir la garde de build. **Effort : S à M. Priorité : basse.**
+
+---
+
+### [décodeur/pistes] Une vie sans tracé : un joueur à 18 morts pour 17 tracés de vie
+
+**Relevé le 2026-11-24** (contrôle D.1 des répliques contre le témoin tiers). Sur un film, un joueur compte 18 morts pour 17 tracés de vie : la vie qui se termine à la trame 12 998 n'a pas de tracé, la suivante commence à 13 303. Une réplique tombe dans cette vie et reste publiée sans joueur (1 sur 948 répliques contrôlées). La lecture de la réplique est juste ; c'est une vie manquante dans les pistes. Cause non cherchée. Pour reprendre : lister, sur le parc, les joueurs dont le nombre de morts dépasse le nombre de tracés de vie, puis chercher pourquoi la naissance de cette vie n'ouvre pas de tracé. Pièce : `.ai/annexes_decodeur_v160/d1_controle_repliques_contre_temoin.md`. **Effort : S à M. Priorité : basse.**
+
+---
+
+### [décodeur/journal] « Vies publiées sans identité » : une alerte sur 4 films du banc sur 13
+
+**Relevé le 2026-11-24** (relecture finale de la v1.6.0). Le journal du décodeur lève l'alerte « vies publiées sans identité » sur 4 films du banc de 13, à l'identique en v1.5.0 et en v1.6.0 : ce n'est pas une régression de la version. Cause non cherchée (déduit : des vies de bots ou d'unités sans joueur, à confirmer). Pour reprendre : compter ces vies par film et par type d'occupant, et dire si c'est une absence de lecture ou un état normal du jeu. **Effort : S. Priorité : basse.**
+
+---
+
+### [décodeur/tests] Les jeux d'entrées figés ne portent pas les canaux neufs
+
+**Relevé le 2026-11-24** (neuvième intégration de la v1.6.0). Les 8 jeux d'entrées figés des tests du décodeur sont le blob de base ; répliques, gestes, vitalités, collages et apparence vivent dans le complément du fichier de faits, que ce format ne contient pas. Ces canaux ne sont donc tenus que par le rendu complet du document (un compte et une empreinte par champ) et les tests par calque ; régénérés par le pipeline, les 8 jeux sortent identiques sauf un octet. Pour reprendre : étendre le format du fixture pour porter le complément, ce qui change les 8 fichiers et le budget de 11 Mio des fixtures de contrat. **Effort : M. Priorité : basse.**
+
+---
+
+### [décodeur/corpus] Le contrôle du corpus compte les socles toutes familles confondues
+
+**Relevé le 2026-11-24** (gates finals de la v1.6.0). `padDating.uncovered`, `padDating.ambiguous` et `groundWeapons.unknown` additionnent toutes les familles de socle : chaque famille ajoutée (ici les équipements, 15 socles neufs sur un film) fait rougir 15 témoins sur 19 sans qu'aucun socle d'arme ne régresse (vérifié sur 4 films : les socles anciens sont identiques). Il a fallu trois décisions du manifeste. Pour reprendre : lire ces compteurs par famille de socle (armes, power-ups, équipements), ou comparer sur le sous-ensemble ancien. Pièce : `.ai/annexes_decodeur_v160/l1b_enquete_corpus_causes.md`. **Effort : S. Priorité : basse.**
+
+---
+
+### [décodeur/drapeau] `gaugeReads` et les compteurs de rejet de la jauge ne sont pas sur la même base
+
+**Relevé le 2026-11-24** (dixième intégration de la v1.6.0). `gaugeReads` ne compte que la passe ; les compteurs de rejet de la jauge du drapeau additionnent la passe et la marche, et les échantillons posés avant allégement ne sont pas dans le document : l'égalité lues = publiées + écartées ne se lit pas sur le seul document. Elle est tenue par un test (mutation vérifiée) et sur 3 films à drapeau par un recoupement des comptes. Pour reprendre : poser les deux sur la même base (passe plus marche) avec une version du schéma, ou nommer la base dans la description publiée. **Effort : S. Priorité : basse.**
+
+---
+
+### [décodeur/vitesse] La borne de fils est `Fils` plus 3 au plus
+
+**Relevé le 2026-11-24** (neuvième intégration de la v1.6.0, relecture du parallélisme). Pour `Fils` demandés, jusqu'à `Fils` + 3 goroutines calculent en même temps (chaîne principale, voie du monde, voie des sièges, ouvriers du pré-calcul) : tenir `Fils` strictement coûtait 4 à 17 % de temps à 4 fils. Un hôte qui dimensionne ses cuissons simultanées sur `Fils` emploie donc quelques cœurs de plus. Écart assumé, dit dans les notes de la release. Pour reprendre : si un hôte multi-cuisson le demande, partager un seul jeu de fils entre les voies. **Effort : M. Priorité : basse.**
+
+---
+
+### [décodeur/grammaire] Genres de message 13, 27, 93 et 117 : charges ouvertes build par build, abstentions à reprendre
+
+**Relevé le 2026-11-24** (correction de la relecture de la v1.6.0, mesure sur 1 000 films avec la carte). Les charges de ces quatre genres ne sont ouvertes que là où la fermeture de la trame au bit est prouvée : genre 13 sur 1.11 ; 27 sur 1.11 et 1.13 ; 93 sur 1.11, 1.12 et 1.13 ; 117 sur 1.12 et 1.13. Restent en abstention : genre 27 en 1.12 (2 messages, moins de cinq), genre 117 en 1.11 (36 fermées sur 37, une trame non fermée) ; les builds 1.10 et 1.9 restent fermés (1.10 : 23 à 34 % d'arrêts au message suivant selon le genre, donc charge non prouvée). Ailleurs le genre arrête la trame, arrêt compté. Pour reprendre : mesurer d'autres films 1.12 et 1.11 pour lever les deux abstentions ; chercher les largeurs exactes en 1.10 (build à des milliers de trames arrêtées). **Effort : M. Priorité : basse.**
 
 ---
 

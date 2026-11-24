@@ -1,3 +1,9 @@
+## [2026-11-24] Décodeur 1.6.0 : relecture finale, gates, publication — En cours
+
+- **Décision** : la v1.6.0 du décodeur est publiée (PR 34 fusionnée, tag `v1.6.0`, release GitHub) après trois relectures indépendantes, deux passages de gates et des corrections ; les quatre écarts voulus du corpus sont acceptés par le user et inscrits en décisions.
+- **Résultats** : 14 constats recevables à la relecture, dont deux chiffres faux d'un relecteur (mesure sans la carte du film) ; lint de 18 défauts à 0 ; trois défauts trouvés par le corpus et corrigés (jauge du drapeau, tir de véhicule, arme des touches) ; second passage : 4 454 tests passés sans racine, 4 602 avec, sortie identique à 1 et 4 fils ; vitesse sur 13 films 71,6 s en v1.5.0 puis 35,8 / 30,1 / 27,8 / 26,7 s à 1 / 2 / 4 / 8 fils ; contrôle des répliques égal au témoin tiers sur 3 films. Pièces sous `.ai/annexes_decodeur_v160/`. Sept entrées de backlog ajoutées, deux raccourcies.
+- **Suite** : montée dans LevelUp (L.4, branche `chore/830-decodeur-v160`), gates de LevelUp, puis régénération du parc, une seule fois.
+
 ## [2026-11-24] Décodeur 1.6.0 : intégrations 7 et 8, nom des répliques, apparence brute — En cours
 
 - **Décision** : le nom court des répliques est publié quand il est prouvé par hachage (builds HI_1_12_0 et HI_1_13_0 seulement) ; l'apparence des joueurs est publiée en codes bruts, sans table de noms (décision du user du 2026-11-23, la table est construite par le contributeur de son côté).
