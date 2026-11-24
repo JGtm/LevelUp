@@ -134,17 +134,17 @@ Gates communs. Go : `go build ./... && go vet ./...`, tests des paquets touchés
 
 ### Piste A — données et fil (Go ; `-tags=integration` au gate)
 
-- [ ] A.1 Éliminations en double dans `highlight_events` : trouver l'écrivain qui double, corriger, dédoublonner
+- [x] A.1 (`f245776240`, revue `edab899e0b` : la complétion n'insère que le surplus ; migration `shared_highlight_events_dedupe_v1`, 38 573 lignes retirées sur la base du poste, aucune ligne légitime touchée) Éliminations en double dans `highlight_events` : trouver l'écrivain qui double, corriger, dédoublonner
       par la voie d'écriture prévue (règles anti-ART), compter la prod en lecture seule.
-- [ ] A.2 Temps forts « mode » en double et sans code (76 matchs) : écrivain, repassage, retrait des doubles ;
+- [x] A.2 (avec A.1 : même défaut ; la citation des captures ne compte qu'en Bases, une fois par joueur et par instant) Temps forts « mode » en double et sans code (76 matchs) : écrivain, repassage, retrait des doubles ;
       sens de ces temps forts lu par le nom de l'action de score.
-- [ ] A.3 Match dit « film absent » alors que son film est archivé ; deux rejeux dont le coup d'envoi tombe
+- [x] A.3 (`062777bb67`, revue `6c96986189`, `e3935f552d`, `5376f0eec0`, `fae8dd8095` : marque « film absent » retirée des films complets, 34 sur 616 ; fenêtre du match bornée par le plus long temps de jeu humain au-delà de 10 s ; Mainmise sur la même fenêtre) Match dit « film absent » alors que son film est archivé ; deux rejeux dont le coup d'envoi tombe
       après la fin du match.
-- [ ] A.4 Coup d'envoi, trois points : course entre rattrapage et publication, contrôle du coup d'envoi « film »
+- [x] A.4 (`21039ed233`, revue `26368c3dd0` : résolution sous le segment d'écriture, coup d'envoi « film » contrôlé, compteur des résolutions) Coup d'envoi, trois points : course entre rattrapage et publication, contrôle du coup d'envoi « film »
       contre la fenêtre du match, compteur incrémenté avant l'insertion.
-- [ ] A.5 Médailles du bouclier, trois défauts : tri sans départage, révision posée sans lecture complète,
+- [x] A.5 (`775068f07c` : tri à départage, révision `lu2` seulement si tout est lu, vue des médailles v2) Médailles du bouclier, trois défauts : tri sans départage, révision posée sans lecture complète,
       vue qui décide « dérivé » sur la présence d'une ligne.
-- [ ] A.6 Écriture concurrente du catalogue de cartes perdue (test instable).
+- [x] A.6 (`434ddce143` : un accès refusé sur le verrou est un verrou tenu ; l'instabilité d'origine n'a pas été reproduite, cause déduite) Écriture concurrente du catalogue de cartes perdue (test instable).
 - **Gate A :** gates Go, `go test -tags=integration ./internal/persist/... ./internal/sync/... ./internal/migration/...`,
   comptes avant / après des doubles (0 attendu après), revue adversariale du diff de la piste (écritures).
 
@@ -164,7 +164,7 @@ Gates communs. Go : `go build ./... && go vet ./...`, tests des paquets touchés
       garde-rail ; noms internes trompeurs (`metersPerPixel` et voisins) laissés si aucun affichage n'en
       dépend, renommage noté en découverte sinon.
 
-- [ ] B.7 Emprise (D-16) : portée du radar convertie avant d'être transmise au décodeur ; lecteurs de
+- [x] B.7 (`27a9de07e0` : portée convertie en un point, `radar_m` reste en vrais mètres, rapport médiane sur portée corrigé à la lecture, `PlacementRev` montée ; recalcul par `levelup backfill-killsource`, non lancé) Emprise (D-16) : portée du radar convertie avant d'être transmise au décodeur ; lecteurs de
       `radar_m` et `beyond_ms` relus ; la prochaine passe sur le parc recalcule l'existant.
 
 ### Piste C — rejeu (web, un peu de Go)
@@ -361,3 +361,13 @@ dépendance est close.
   marge de 10 s), test discriminant, fenêtre de la Mainmise, commentaires du compteur. En découverte : 524
   temps de jeu écrêtés sur la base du poste par la révision non publiée du 22/11.
 - 2026-11-24 — D-16 : le user retient la recommandation sur l'Emprise ; B.7 lancé dans le worktree de la piste B.
+- 2026-11-24 — décision du user : le temps de jeu écrêté (35 matchs, environ 550 joueurs sur le poste) va au backlog, hors du plan. Emprise avant la passe sur le parc : les valeurs anciennes restent affichées (recommandation du pilote, non contestée).
+- 2026-11-25 — PISTE A fusionnée (`e706b720ed`) après UNE ronde de revue adversariale : 11 constats recevables,
+  aucun P0, un P1 corrigé (surplus à la complétion), six autres corrections faites, un constat au backlog
+  (temps de jeu écrêté). À la fusion avec la piste D, `postsync.go` passait à 501 lignes : ses requêtes vont
+  dans `postsync_requetes.go`. B.7 (Emprise) fusionnée par-dessus. Gates du pilote sur la branche intégrée :
+  build, vet avec et sans intégration, contrat frais, gofmt, tests de `archlint`, `sync`, `analysis`,
+  `persist`, `migration`, `service`, `platform/duckdb`, `games`, `mapcatalog`, contrat, et intégration de
+  `persist`, `migration`, `sync`, `halo_infinite` : tout à 0, sauf le test de poste déjà en découverte.
+  Révisions montées : `kickoff-2026-11-24b`, `perf-2026-11-24b`, `lusr-2026-11-24b`, `lu2`,
+  `placement-2026-11-24`. Gestes de production inscrits.

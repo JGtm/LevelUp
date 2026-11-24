@@ -85,6 +85,14 @@
 ## 📋 Backlog
 
 ---
+### [données/temps de jeu] Temps de jeu écrêté sur les matchs dont la durée au registre est fausse
+
+**Relevé le 2026-11-24** (revue du plan `.ai/PLAN_BACKLOG_2026-11-24.md`, piste données). Sur la base du poste, 35 matchs ont une durée au registre plus courte que le jeu réel (par exemple 201 s pour un match d'environ 1 130 s). Sur ces matchs, le temps de jeu rangé d'environ 550 joueurs humains a été écrêté à cette durée fausse par une ancienne passe de rattrapage ; la sauvegarde du 2026-11-22 porte déjà ces valeurs. La 8.3.0 empêche que cela recommence mais ne répare pas : la valeur d'origine de l'API n'est gardée nulle part en local. Effets : temps de jeu faux dans les notes de ces matchs, et fenêtre de la Mainmise parfois trop courte. Production non regardée.
+
+**Pour reprendre :** écrire une commande de reprise qui relit les statistiques de ces matchs auprès de Halo et réécrit le temps de jeu par la voie admise (`persist.KickoffPersister`, ADR 0050), puis rejouer la Mainmise sur ces matchs (`levelup backfill-lead-share --force --match …`). Écartée : la déduction depuis la durée de jeu du match, juste pour les seuls joueurs restés jusqu'au bout (environ 150 joueurs partis en cours de match resteraient faux). La durée du registre elle-même reste fausse sur ces matchs : à corriger dans le même geste. **Décision du user du 2026-11-24 : noté au backlog, hors du plan.** **Effort : M. Priorité : basse.**
+
+---
+
 
 ### [décodeur] Comparaison avec les parseurs voisins : ce qui reste après la v1.6.0
 

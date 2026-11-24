@@ -9,10 +9,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/analysis/gameunits"
 	"levelup/go-api/internal/analysis/squademprise"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
@@ -33,8 +35,11 @@ func (f *fakePlacement) LoadLifePlacement(_ context.Context, matchIDs, xuids []s
 
 var _ port.SquadLifePlacementRepository = (*fakePlacement)(nil)
 
+// vieDuPlacement : la médiane s'écrit ici en VRAIS mètres et la ligne la porte comme le sync, en unités du
+// jeu ; `radar_m` est la portée en vrais mètres.
 func vieDuPlacement(xuid string, start int64, medianM, radarM float64, kills int) squademprise.PlacementRow {
 	beyond := int64(3000)
+	medianM = gameunits.MetersToUnits(medianM)
 	return squademprise.PlacementRow{
 		MatchID: "m1", XUID: xuid, StartMS: start, EndMS: start + 30000, DurationMS: 30000,
 		MeasuredMS: 12000, MedianM: &medianM, BeyondMS: &beyond, RadarM: &radarM, Kills: kills,
@@ -95,7 +100,7 @@ func TestGetPage_Placement_UneLectureBorneeEtLaPorteeCourante(t *testing.T) {
 	if p == nil || len(p.Players) != 2 || p.Players[0].Gamertag != "Main" || p.Players[1].Gamertag != "Ally1" {
 		t.Fatalf("placement = %+v, attendu Main puis Ally1 (ordre des fiches)", p)
 	}
-	if v := p.Players[1].Lives[0]; v.RadarRatio != 1.5 || v.Quadrant != domain.EmprisePlacementIsolatedCostly {
+	if v := p.Players[1].Lives[0]; math.Abs(v.RadarRatio-1.5) > 1e-9 || v.Quadrant != domain.EmprisePlacementIsolatedCostly {
 		t.Errorf("vie d'Ally1 = %+v, attendu X 1,5 (27 m / 18 m) et « isolé et coûteux »", v)
 	}
 	if p.Coverage.MatchesTotal != 1 || p.Coverage.LivesMeasured != 2 || p.IsolatedFromRatio != 1 {

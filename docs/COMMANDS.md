@@ -207,6 +207,14 @@ re-decodes the whole park (about 1 600 films, resumable by `decoder_rev`). The p
 match: if the teammate rows of a match fail validation, nothing of that match is published for
 the pass (`match_lives` and `match_death_context` included).
 
+**Life placement recomputed (`placement-2026-11-24`).** The range of the radar (18 m, 24 m) used to be handed to the
+decoder in real meters although it compares game units: `beyond_ms` (time beyond the radar) was under-estimated by a
+radius three times too wide. `killcollector.PlacementRev` moved to `placement-2026-11-24`, so `backfill-killsource`
+selects every match whose placement carries an older revision (about 1 450 matches on the developer's copy). It needs the
+film in the local cache: a match without a cached film keeps its previous value and is counted apart.
+Nothing runs by itself: neither the post-sync backlog nor the server start read this revision. `radar_m` is
+unchanged (real meters); the old rows are told apart by their `decoder_rev`, no reader filters on it.
+
 **`--workers` (default 3) — N films decoded in parallel, only ONE touching the database.** The
 cost breakdown (lot 5.24.1) measures **93 to 99 % of a film's time as CPU outside the
 database**: that is the only reason parallelism helps here. Writes and both per-match reads go

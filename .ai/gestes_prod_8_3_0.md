@@ -205,3 +205,40 @@ Par `PATCH /settings`, après avoir vérifié que `replay_retention_months` vaut
 `pool: créé vide…` puis, à la fin de la résolution des comptes, le bilan avec `resolve_ms`. Un bilan « aucun
 compte résolu » demande d'authentifier un joueur. Aucun geste. Le gain de temps au démarrage n'a été mesuré que
 sur un banc simulé : relever le temps réel jusqu'à « serveur prêt » au premier déploiement.
+
+## Données, coup d'envoi et Emprise (backlog du 24 novembre, pistes données et mètres)
+
+Écrit le 2026-11-25 à l'intégration. Rien n'est exécuté.
+
+### B1. Ce que fait le premier démarrage, sans geste
+
+1. Deux étapes de schéma : `shared_highlight_events_dedupe_v1` (Halo Infinite seul ; reconstruit la table
+   des temps forts sans les lignes écrites deux fois ; sur la base du poste 415 921 lignes puis 377 348 ;
+   10,7 s mesurées sur 6,3 millions de lignes) et `shared_medals_earned_view_v2`.
+2. Rattrapage du coup d'envoi (révision `kickoff-2026-11-24b`), puis recalcul des notes joueur par joueur
+   (`perf-2026-11-24b`, `lusr-2026-11-24b`).
+3. Au premier cycle de films de chaque titre : la marque « film absent » est retirée des matchs dont le film
+   est complet à l'archive (ligne de journal « marques retirées »).
+
+Avant de déployer, compter en lecture seule sur la base de production les matchs à éliminations en double
+(requête 2.1 de `.ai/annexes_backlog_1124/temoins_avant.md`) : la migration n'a été vérifiée que sur la base
+du poste.
+
+### B2. Commandes à lancer après la bascule (serveur arrêté, une fenêtre, avec les passes de D3)
+
+- `levelup backfill-usage-summary` : une fois (révision `lu2`). Avant elle, une médaille Vengeur héritée peut
+  disparaître d'un match dont le fil des morts n'avait pas été lu : compter d'abord en production les passes
+  `lu1` sans `revenge_kills` sur un match qui porte la médaille 9000000001.
+- `levelup backfill --gamertag <joueur> --citations-recompute-all` : la citation des captures de zone change
+  de valeur sur les matchs de Bases qui étaient doublés.
+- `levelup backfill-lead-share --force --match <identifiants>` : Mainmise des matchs dont la durée au registre
+  est fausse (sur le poste : 2 matchs « fenêtre incohérente », 10 mesurés sur une fenêtre tronquée).
+- `levelup backfill-killsource` : recalcule la part « hors radar » des vies de l'Emprise (révision
+  `placement-2026-11-24`). Exige les films à l'archive : sans film, un match garde son ancienne valeur,
+  sous-estimée. Sur le serveur, où l'archive a été vidée le 2026-11-23, rien ne se recalcule. Sur le poste :
+  décodage de plus de 1 400 films, à lancer seulement avec l'accord du user.
+
+### B3. Non réparé par cette version
+
+Le temps de jeu écrêté des matchs à durée fausse (35 matchs, environ 550 joueurs sur le poste) : entrée du
+backlog « Temps de jeu écrêté sur les matchs dont la durée au registre est fausse ».

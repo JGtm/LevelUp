@@ -93,7 +93,7 @@ func TestToPlacementRows_TraduitSansRienInventer(t *testing.T) {
 			HorsRadarMS: &hors, RadarM: &radar, PorteurMS: 1_000, EquipeATerreMS: 500,
 			NonSitueMS: 300, CoequipierNonSitueMS: 200, Frags: 3},
 		{XUID: 222, DebutMS: 5, FinMS: 1_005, DureeMS: 1_000, MesureMS: 1_100},
-	})
+	}, &radar)
 	if len(rows) != 2 || nonMesurees != 1 {
 		t.Fatalf("%d lignes, %d non mesurees ; attendu 2 et 1", len(rows), nonMesurees)
 	}

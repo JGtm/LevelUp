@@ -348,13 +348,10 @@ func v2CalculPur(t *testing.T, ctx context.Context, col *KillSourceCollector, db
 	if m, ok := portee(faits.GameVariantName); ok {
 		radar = &m
 	}
-	vies, _ := replay.PlacementDesVies(replay.EntreePlacement{
-		Positions: p.mat.positions, Registre: p.mat.registre, Equipes: equipesNumeriques(p.ids.Equipes),
-		Journal: journalDuPlacement(p.fusionne), Portages: portages, RadarM: radar,
-	})
+	vies, _ := replay.PlacementDesVies(entreeDuPlacement(p.mat, p.ids, p.fusionne, portages, radar))
 	t.Logf("%s  calcul pur : variante %q, gardes %+v, %d portages", id[:8], faits.GameVariantName,
 		bilan.Gardes, bilan.Intervalles)
-	rows, _ := toPlacementRows(vies)
+	rows, _ := toPlacementRows(vies, radar)
 	sort.Slice(rows, func(i, j int) bool {
 		if rows[i].XUID != rows[j].XUID {
 			return rows[i].XUID < rows[j].XUID
