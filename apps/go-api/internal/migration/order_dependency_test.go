@@ -85,6 +85,8 @@ var stepDependencies = map[string]string{
 	"shared_registry_drop_integrity_columns_v1": "shared_registry_participants_bit_v1",
 	// Les deux reconstruisent match_registry sans la créer : son créateur DOIT précéder.
 	"shared_registry_participants_bit_v1": "create_base_shared_schema",
+	// shared_highlight_events_dedupe_v1 (2026-11-24) reconstruit highlight_events sans la créer : son créateur DOIT précéder.
+	"shared_highlight_events_dedupe_v1": "add_highlight_events_autoincrement",
 }
 
 // knownPreExistingInversions : inversions DÉJÀ présentes dans canonicalOrder à la

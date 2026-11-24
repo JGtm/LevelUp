@@ -1569,6 +1569,8 @@ func Steps() []migration.Migration {
 	steps = append(steps, stepDropWeaponKills())
 	// Records de précision rangés en pourcentage -> ratio (steps_records_accuracy_ratio.go).
 	steps = append(steps, stepAccuracyRecordsToRatio())
+	// Lignes de highlight_events écrites deux fois (steps_shared_highlight_events_dedupe.go).
+	steps = append(steps, stepHighlightEventsDedupe())
 	return steps
 }
 
