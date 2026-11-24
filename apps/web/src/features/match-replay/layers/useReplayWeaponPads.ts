@@ -35,6 +35,7 @@ import { useTitleSlug } from '@/lib/title-routing'
 
 import { catalogText } from '../i18n/catalogLabel'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
+import { equipmentFamilyLabel } from '../model/equipmentUsageColumns'
 import { applyPadPickupDating } from '../model/padPickupDating'
 import { refinePadPresence } from '../model/padPresenceRefine'
 import type { ReplayText } from '../i18n/i18nContract'
@@ -118,7 +119,10 @@ export function padScaleFor(weapon: string, labels: PadLabels): PadScale {
  *
  * 1. une famille d'équipement connue rend son libellé bilingue local (`padEquipmentFamily`) ;
  * 2. sinon le libellé bilingue du document, s'il nomme cet identifiant ;
- * 3. sinon l'identifiant lui-même — et c'est VOULU pour une arme hors catalogue du titre :
+ * 3. une famille d'équipement du manifeste que le décodeur v1.6.0 publie aussi sur les socles (mur, capteur,
+ *    translocateur...) n'est pas l'hexadécimal d'une arme : elle se nomme par la cascade des familles de pose
+ *    (`equipmentFamilyLabel`), l'identifiant brut en dernier recours ;
+ * 4. sinon l'identifiant lui-même — et c'est VOULU pour une arme hors catalogue du titre :
  *    l'hexadécimal est alors la seule chose vraie qu'on puisse écrire.
  *    L'EXEMPLE CITÉ ICI JUSQU'AU 2026-09-13 ÉTAIT FAUX. La famille `0xD7915565` (Mutilator)
  *    n'était pas une arme « hors catalogue » : elle était nommée depuis avril, et il ne
@@ -136,8 +140,13 @@ export function padNameFor(
 ): string {
   const family = padEquipmentFamilyOf(weapon)
   if (family) return t.padEquipmentFamily[family]
-  return catalogText(labels?.[weaponLabelKeyOf(weapon)], locale) ?? weapon
+  const catalogued = catalogText(labels?.[weaponLabelKeyOf(weapon)], locale)
+  if (catalogued) return catalogued
+  return WEAPON_FAMILY_HEX.test(weapon) ? weapon : equipmentFamilyLabel(weapon, t)
 }
+
+/** L'écriture d'une famille d'ARME dans le document : `0x` et huit chiffres hexadécimaux. */
+const WEAPON_FAMILY_HEX = /^0x[0-9a-f]{8}$/i
 
 /** Une vignette à charger : son URL, son mode (masque à teindre ou image finie), son sens. */
 export interface PadIconRef {

@@ -48,6 +48,19 @@ describe('scoreAtFrame — la valeur du palier courant', () => {
     { t: 656, v: 3 },
   ]
 
+  it('lit une courbe qui recule et un total négatif : une pénalité de suicide ou de trahison', () => {
+    const penalty = [
+      { t: 10, v: 100 },
+      { t: 20, v: 0 },
+      { t: 30, v: -50 },
+    ]
+    expect(scoreAtFrame(penalty, 15)).toBe(100)
+    expect(scoreAtFrame(penalty, 20)).toBe(0)
+    expect(scoreAtFrame(penalty, 29)).toBe(0)
+    expect(scoreAtFrame(penalty, 30)).toBe(-50)
+    expect(scoreAtFrame(penalty, 999)).toBe(-50)
+  })
+
   it('rend 0 avant le premier point : le match a commencé, pas le compteur', () => {
     expect(scoreAtFrame(points, 0)).toBe(0)
     expect(scoreAtFrame(points, 398)).toBe(0)

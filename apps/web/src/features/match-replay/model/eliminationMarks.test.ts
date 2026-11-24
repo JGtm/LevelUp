@@ -52,6 +52,34 @@ describe('attachEliminationMarks — ce qui se pose', () => {
   })
 })
 
+describe('attachEliminationMarks — un tueur sans identifiant', () => {
+  it('ne pose rien : les lignes de plusieurs bots ne se confondent pas sous une clé vide', () => {
+    const kills = [kill('', 'v1', 1000), kill('', 'v2', 5000)]
+    attachEliminationMarks(
+      kills,
+      doc([
+        { t: 10, xuid: '', victim: 'v1', headshot: true },
+        { t: 50, xuid: '', victim: 'v2', perfect: true },
+      ]),
+    )
+    expect(kills[0].fragMarks).toBeUndefined()
+    expect(kills[1].fragMarks).toBeUndefined()
+  })
+
+  it('ne gêne pas les marques d’un tueur identifié du même document', () => {
+    const kills = [kill('', 'v1', 1000), kill('a', 'v1', 1000)]
+    attachEliminationMarks(
+      kills,
+      doc([
+        { t: 10, xuid: '', victim: 'v1', headshot: true },
+        { t: 10, xuid: 'a', victim: 'v1', perfect: true },
+      ]),
+    )
+    expect(kills[0].fragMarks).toBeUndefined()
+    expect(kills[1].fragMarks).toEqual({ perfect: true })
+  })
+})
+
 describe('attachEliminationMarks — la jointure', () => {
   it('une victime différente écarte l’élimination, même à la même image', () => {
     const kills = [kill('a', 'v2', 1000)]

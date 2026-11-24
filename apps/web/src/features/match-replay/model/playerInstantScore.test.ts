@@ -84,6 +84,22 @@ describe('playerInstantScore — la tuile et la fiche lisent la même valeur', (
     expect(playerInstantEstimatesAt(fiche, alpha, 20).score).toBe(100)
   })
 
+  it('une pénalité fait reculer le score, et le total peut être négatif', () => {
+    const base = instantDoc()
+    const doc = instantDoc({
+      coverage: base.coverage,
+      scoreActions: [
+        { t: 20, xuid: 'A', name: 'kill', points: 100 },
+        { t: 60, xuid: 'A', name: 'betrayal', points: -150 },
+      ] as never,
+    })
+    const sheet = instantSheet().map((r) => (r.xuid === 'A' ? { ...r, score: -50 } : r))
+    const { players, tuiles } = lectures(doc, sheet)
+    const alpha = instantPlayer(players, 'A')
+    expect(playerScoreAt(tuiles, alpha, 30)).toBe(100)
+    expect(playerScoreAt(tuiles, alpha, 60)).toBe(-50)
+  })
+
   it('un joueur étranger au lobby n’a pas de score', () => {
     const { players, tuiles } = lectures()
     const etranger = { ...instantPlayer(players, 'A'), xuid: 'inconnu' }

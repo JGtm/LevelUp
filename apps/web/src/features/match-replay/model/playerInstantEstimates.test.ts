@@ -337,6 +337,20 @@ describe('playerInstantEstimates — tirs : valeurs', () => {
     ])
   })
 
+  // Depuis le décodeur v1.6.0 `damage` porte aussi les messages qui ne retirent aucun point (bouclier et corps à zéro).
+  // Le lecteur les laisse sans effet par construction : une arme sans tir ni dégât n'a pas de ligne, et un palier à zéro
+  // n'ajoute rien aux sommes. Ce test fige cette propriété.
+  it("une ligne de dégât à zéro point ne compte ni ne crée de ligne d'arme", () => {
+    const plain = at(A, 100).shots!
+    const zero = lobby(docWith({
+      damage: [...DAMAGE, dmg(7, 'A', 'B', 0, 0, 'W3'), dmg(8, 'B', 'A', 0, 0, 'W1')],
+    }))
+    const s = zero.at(A, 100).shots!
+    expect(s.damageDealt).toBeCloseTo(plain.damageDealt, 10)
+    expect(s.damageTaken).toBeCloseTo(plain.damageTaken, 10)
+    expect(s.byWeapon).toEqual(plain.byWeapon)
+  })
+
   it('la somme des armes égale le total, à chaque image', () => {
     for (let f = 0; f <= 199; f += 3) {
       const s = at(A, f).shots!
