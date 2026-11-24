@@ -64,7 +64,7 @@ func toReplayDocument(v replay.ReplayDocument) replaydoc.ReplayDocument {
 		NeutralDeaths:       sliceOf(v.NeutralDeaths, toNeutralDeath),
 		Medals:              sliceOf(v.Medals, toMedal),
 		MedalLabels:         mapOf(v.MedalLabels, toMedalLabel),
-		ScoreActions:        sliceOf(v.ScoreActions, toScoreAction),
+		ScoreActions:        sliceOfIdentified(v.ScoreActions, func(a replay.ScoreAction) string { return a.XUID }, toScoreAction),
 		Hits:                sliceOf(v.Hits, toHit),
 		Damage:              sliceOf(v.Damage, toDamage),
 		ShotStats:           sliceOf(v.ShotStats, toShotStat),
@@ -90,7 +90,7 @@ func toReplayDocument(v replay.ReplayDocument) replaydoc.ReplayDocument {
 		Rules:               ptrOf(v.Rules, toMatchRules),
 		Identity:            ptrOf(v.Identity, toIdentitySection),
 		Reloads:             sliceOf(v.Reloads, toReload),
-		Eliminations:        sliceOf(v.Eliminations, toElimination),
+		Eliminations:        sliceOfIdentified(v.Eliminations, func(e replay.Elimination) string { return e.XUID }, toElimination),
 		// `layers` VOYAGE TEL QUEL : une table de chaines courtes, dont les cles sont les balises
 		// JSON des calques et les valeurs des revisions de couche. Rien a traduire — et surtout pas
 		// a completer : une entree absente est une reponse (« ce calque n a pas ete produit »).

@@ -8,7 +8,7 @@ package replaydoc
 // vraie, fausse ou ABSENTE (inconnue) : un inconnu ne se lit jamais comme un faux. `perfect` ne vaut jamais faux.
 type Elimination struct {
 	T        int    `json:"t"`
-	XUID     string `json:"xuid"`
+	XUID     string `json:"xuid,omitempty" required:"true"`
 	Victim   string `json:"victim,omitempty"`
 	Headshot *bool  `json:"headshot,omitempty"`
 	Perfect  *bool  `json:"perfect,omitempty"`
