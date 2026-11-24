@@ -162,12 +162,12 @@ Gates communs. Go : `go build ./... && go vet ./...`, tests des paquets touchés
 ### Piste C — rejeu (web, un peu de Go)
 
 - [~] C.1 (livrée en 8.2.0 ; le fil affiche le lieu de la victime par décision de la refonte ; étape 0) Zone du tueur à chaque ligne du fil (si 0.2 ne la dit pas livrée).
-- [ ] C.2 Suite des collines jouées, et la prochaine quand elle est connue.
-- [ ] C.3 Gestes du joueur dans la fiche (section « En passant ») : champs publiés par le décodeur v1.6.
-- [ ] C.4 Éliminations et actions de score d'un bot désignées par place ; bots rouverts dans les antagonistes.
-- [ ] C.5 Fichiers au-dessus de 500 lignes (liste des joueurs, test de la page) ; quatre mesures de largeur
+- [x] C.2 (`83ace65640` : pastille « Collines A › B › C », prochaine après un cycle complet répété ; emplacement à juger à l'écran) Suite des collines jouées, et la prochaine quand elle est connue.
+- [x] C.3 (`3a66f1936e` : mêlée, lancers amorcés, accroupis, saut au bouton dans le groupe « Gestes » ; le contrat sert `gestures`) Gestes du joueur dans la fiche (section « En passant ») : champs publiés par le décodeur v1.6.
+- [x] C.4 (`0a18f92fb4` : lignes de bot rattachées par place, bots dans les antagonistes ; `xuid` facultatif sur les éliminations et actions de score) Éliminations et actions de score d'un bot désignées par place ; bots rouverts dans les antagonistes.
+- [x] C.5 (`042d0df614` : trois fichiers au lieu d'un de 781 lignes, test coupé, une seule mesure de largeur et son garde-rail ; 6 356 tests avant et après) Fichiers au-dessus de 500 lignes (liste des joueurs, test de la page) ; quatre mesures de largeur
       réunies en une, avec son garde-rail.
-- [ ] C.6 Compte des rejeux à l'ancien schéma dans la vue d'administration.
+- [x] C.6 (`2d9a7367ef` : panneau de la vue d'ensemble d'administration) Compte des rejeux à l'ancien schéma dans la vue d'administration.
 - **Gate C :** gates web et Go, vérification EN LECTURE sur deux rejeux, lignes ajoutées à l'artefact des
   vérifications.
 
@@ -255,6 +255,8 @@ dépendance est close.
 - (piste B) Le snapshot de surface du contrat est en retard sur des ajouts antérieurs.
 - (piste B) Séries temporelles des éliminations d'objectif : possibles en cumul par période, coût moyen.
 - (revue du pool) Le plafond du pool n'est pas tenu si un compte arrive pendant le remplissage (sans effet : la production ne pose pas de plafond) ; un retrait de consentement fait pendant une reconnexion peut être ignoré jusqu'au re-scan suivant (motif antérieur) ; deux tests du pool échouent quand on les répète sous détection de courses.
+- (pilote) `TestWeaponLabels_ArtefactReelDuPoste` (`internal/service`) échoue sur un poste qui a le rejeu : il lit le fichier compressé comme du texte. Antérieur au plan (test inchangé depuis la 8.2.0), invisible en CI et dans les worktrees, où il se saute.
+- (piste C) `MatchNemesisCards.logic.ts` dit encore qu'un bot n'est jamais un antagoniste (page du match) ; deux copies identiques d'un hook de largeur sur la liste datée du garde ; commentaire « 58 clés » périmé dans le schéma du document.
 
 ## 10. Journal d'exécution
 
@@ -330,3 +332,9 @@ dépendance est close.
   porteurs lus dans le film, 0 à plus de 15 m, repli par voisinage jamais déclenché. Aucune version du
   décodeur, aucune montée, aucune régénération. Reste au backlog : 5 pièces sans porteur sur 3 films. Worktree
   du décodeur retiré.
+- 2026-11-24 — PISTE C fusionnée (`c7a86b82ee`). Gates du pilote sur la branche intégrée (pistes B, C, D, E
+  réunies) : build, vet, contrat frais, `archlint`, `api`, `replaybuild`, `domain`, tests de contrat à 0 ;
+  typecheck à 0 ; vitest de `src/lib` (tous les gardes globaux), `match-replay`, `squad`, `match-view`,
+  `admin` : 10 899 tests, 0 échec. Un test de `service` échoue sur ce poste pour une cause antérieure
+  (découverte). Changements de contrat retenus : champ `gestures`, `xuid` facultatif sur deux types, deux
+  plafonds datés montés (80 champs de tête, surface 341). Quatre lignes à l'artefact des vérifications.
