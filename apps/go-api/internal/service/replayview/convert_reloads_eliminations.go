@@ -1,8 +1,8 @@
 package replayview
 
 // convert_reloads_eliminations.go — les rechargements et les éliminations du document, leurs couvertures, et la
-// couverture de la commande de déplacement. Jumeaux de `domain/replaydoc/reloads.go`,
-// `domain/replaydoc/eliminations.go` et `domain/replaydoc/coverage_stances.go`.
+// couverture de la commande de déplacement, les gestes et leur couverture. Jumeaux de `domain/replaydoc/reloads.go`,
+// `domain/replaydoc/eliminations.go`, `domain/replaydoc/gestures.go` et `domain/replaydoc/coverage_stances.go`.
 
 import (
 	"levelup/go-api/internal/domain/replaydoc"
@@ -45,6 +45,14 @@ func toElimination(v replay.Elimination) replaydoc.Elimination {
 
 func toEliminationCoverage(replay.EliminationCoverage) replaydoc.EliminationCoverage {
 	return replaydoc.EliminationCoverage{}
+}
+
+func toGesture(v replay.Gesture) replaydoc.Gesture {
+	return replaydoc.Gesture{T: v.T, Place: v.Place, Kind: v.Kind}
+}
+
+func toGestureCoverage(v replay.GestureCoverage) replaydoc.GestureCoverage {
+	return replaydoc.GestureCoverage{Gated: v.Gated, StoppedFrames: v.StoppedFrames, WithoutPlayer: v.WithoutPlayer}
 }
 
 func toStanceControlCoverage(v replay.StanceControlCoverage) replaydoc.StanceControlCoverage {

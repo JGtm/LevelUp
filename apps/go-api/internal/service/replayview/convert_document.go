@@ -91,6 +91,7 @@ func toReplayDocument(v replay.ReplayDocument) replaydoc.ReplayDocument {
 		Identity:            ptrOf(v.Identity, toIdentitySection),
 		Reloads:             sliceOf(v.Reloads, toReload),
 		Eliminations:        sliceOfIdentified(v.Eliminations, func(e replay.Elimination) string { return e.XUID }, toElimination),
+		Gestures:            sliceOf(v.Gestures, toGesture),
 		// `layers` VOYAGE TEL QUEL : une table de chaines courtes, dont les cles sont les balises
 		// JSON des calques et les valeurs des revisions de couche. Rien a traduire — et surtout pas
 		// a completer : une entree absente est une reponse (« ce calque n a pas ete produit »).

@@ -123,6 +123,7 @@ export const replayDocumentSchema = z.strictObject({
   frameIntervalMs: z.number().optional(),
   geometry: calque<Elem<'geometry'>>(),
   geometryBounds: bornes.optional(),
+  gestures: calque<Elem<'gestures'>>(),
   grappleLines: calque<Elem<'grappleLines'>>(),
   grenadeLabels: calque<Elem<'grenadeLabels'>>(),
   grenadeReads: calque<Elem<'grenadeReads'>>(),

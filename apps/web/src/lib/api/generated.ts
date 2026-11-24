@@ -6677,6 +6677,7 @@ export interface components {
             /** Format: int64 */
             filmMajorVersion?: number;
             flagCarries?: components["schemas"]["FlagCarriesCoverage"];
+            gestures?: components["schemas"]["GestureCoverage"];
             grapple?: components["schemas"]["GrappleCoverage"];
             grenadeReads?: components["schemas"]["GrenadeReadCoverage"];
             grenades: components["schemas"]["LayerCoverage"];
@@ -8160,6 +8161,21 @@ export interface components {
             t: number;
             /** Format: float */
             v: number;
+        };
+        Gesture: {
+            kind: string;
+            /** Format: int64 */
+            place: number;
+            /** Format: int64 */
+            t: number;
+        };
+        GestureCoverage: {
+            /** Format: int64 */
+            gated: number;
+            /** Format: int64 */
+            stoppedFrames: number;
+            /** Format: int64 */
+            withoutPlayer: number;
         };
         GrappleCoverage: {
             /** Format: int64 */
@@ -12008,6 +12024,7 @@ export interface components {
             frameIntervalMs?: number;
             geometry?: components["schemas"]["MapObject"][] | null;
             geometryBounds?: components["schemas"]["Bounds"];
+            gestures?: components["schemas"]["Gesture"][] | null;
             grappleLines?: components["schemas"]["GrappleLine"][] | null;
             grenadeLabels?: components["schemas"]["Label"][] | null;
             grenadeReads?: components["schemas"]["GrenadeRead"][] | null;

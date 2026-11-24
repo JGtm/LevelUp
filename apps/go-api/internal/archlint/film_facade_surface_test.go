@@ -478,7 +478,10 @@ const plafondSurfaceFacade = 181 // 2026-11-22 — decodeur v1.5.0 : 182 - 2 (de
 //	339  decodeur v1.6.0 (2026-11-24)               base 338 re-mesuree. +1 : `replay.OptionsVitesse`, le porteur du
 //	                                           nombre de fils du decodeur (`replay.Options.Vitesse`), que
 //	                                           `replaybuild` pose depuis la configuration de l installation. Aucun retrait.
-const plafondSurfaceReplay = 339 // 2026-11-24 — decodeur v1.6.0 : 338 + 1 ; cf. l historique ci-dessus
+//	341  decodeur v1.6.1 (2026-11-24)               base 339 re-mesuree. +2 : `replay.Gesture` et `replay.GestureCoverage`,
+//	                                           les types des gestes du joueur (coup de melee, lancer amorce) que le
+//	                                           document servi projette (`service/replayview`). Aucun retrait.
+const plafondSurfaceReplay = 341 // 2026-11-24 — decodeur v1.6.1 : 339 + 2 ; cf. l historique ci-dessus
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

@@ -145,8 +145,8 @@ function sprintRuns(intervals: readonly { t0: number; t1: number }[]): SprintRun
 }
 
 /** Les intervalles d'un genre, rangés par joueur (clé = xuid de roster) et triés par début. */
-function intervalsByOwner(
-  doc: MovementSeriesSource,
+export function intervalsByOwner(
+  doc: Pick<ReplayDocumentReady, 'stances'>,
   kind: string,
   ownerAt: (slot: number, frame: number) => ReplayPlayer | null,
 ): Map<string, { t0: number; t1: number }[]> {

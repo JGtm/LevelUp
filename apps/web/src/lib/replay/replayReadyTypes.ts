@@ -212,6 +212,7 @@ export type ReplayDocumentReady = Omit<
   | 'grenadeReads'
   | 'damage'
   | 'eliminations'
+  | 'gestures'
   | 'grenades'
   | 'hits'
   | 'identity'
@@ -381,6 +382,7 @@ export type ReplayDocumentReady = Omit<
   grenadeReads: ReplayGrenadeReadReady[]
   damage: NonNullable<ReplayDocument['damage']>
   eliminations: NonNullable<ReplayDocument['eliminations']>
+  gestures: NonNullable<ReplayDocument['gestures']>
   grenades: NonNullable<ReplayDocument['grenades']>
   hits: NonNullable<ReplayDocument['hits']>
   inventory: ReplayInventoryReady[]

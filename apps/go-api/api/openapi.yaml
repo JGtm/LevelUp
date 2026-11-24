@@ -13397,6 +13397,8 @@ components:
           type: integer
         flagCarries:
           $ref: '#/components/schemas/FlagCarriesCoverage'
+        gestures:
+          $ref: '#/components/schemas/GestureCoverage'
         grapple:
           $ref: '#/components/schemas/GrappleCoverage'
         grenadeReads:
@@ -16730,6 +16732,39 @@ components:
       required:
         - t
         - v
+      type: object
+    Gesture:
+      additionalProperties: false
+      properties:
+        kind:
+          type: string
+        place:
+          format: int64
+          type: integer
+        t:
+          format: int64
+          type: integer
+      required:
+        - t
+        - place
+        - kind
+      type: object
+    GestureCoverage:
+      additionalProperties: false
+      properties:
+        gated:
+          format: int64
+          type: integer
+        stoppedFrames:
+          format: int64
+          type: integer
+        withoutPlayer:
+          format: int64
+          type: integer
+      required:
+        - gated
+        - stoppedFrames
+        - withoutPlayer
       type: object
     GrappleCoverage:
       additionalProperties: false
@@ -25879,6 +25914,12 @@ components:
             - "null"
         geometryBounds:
           $ref: '#/components/schemas/Bounds'
+        gestures:
+          items:
+            $ref: '#/components/schemas/Gesture'
+          type:
+            - array
+            - "null"
         grappleLines:
           items:
             $ref: '#/components/schemas/GrappleLine'

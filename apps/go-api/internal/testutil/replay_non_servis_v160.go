@@ -22,16 +22,16 @@ const (
 func init() {
 	for _, cle := range []string{
 		"Coverage.AmmoReads", "Coverage.Announcements", "Coverage.Appearance", "Coverage.Chatter",
-		"Coverage.ControlPlaces", "Coverage.DrawnWeapons", "Coverage.Gestures", "Coverage.Vitals",
+		"Coverage.ControlPlaces", "Coverage.DrawnWeapons", "Coverage.Vitals",
 		"ReplayDocument.AmmoReads", "ReplayDocument.Announcements", "ReplayDocument.Attachments", "ReplayDocument.Chatter",
-		"ReplayDocument.DrawnWeapons", "ReplayDocument.Gestures", "ReplayDocument.PadCandidates", "ReplayDocument.Vitals",
+		"ReplayDocument.DrawnWeapons", "ReplayDocument.PadCandidates", "ReplayDocument.Vitals",
 		"RosterEntry.Appearance", "ProjectileCoverage.Attach",
 	} {
 		ReplayChampsNonServis[cle] = motifV160Calque
 	}
 	for _, cle := range []string{
 		"Track.FullRate", "Shot.O", "Stance.Ms0", "Stance.Ms1", "Grenade.Deto", "Projectile.Z", "Projectile.FullRate",
-		"Projectile.Attach", "Reload.Ms", "Reload.Copies", "Damage.Slot", "Damage.By",
+		"Projectile.Attach", "Reload.Ms", "Reload.Copies", "Gesture.Ms", "Damage.Slot", "Damage.By",
 		"MapWeaponPadDTO.Forward", "MapWeaponPadDTO.Up", "MapWeaponPadDTO.Scale",
 	} {
 		ReplayChampsNonServis[cle] = motifV160ChampPose
@@ -46,6 +46,8 @@ func init() {
 		"FlagCarriesCoverage.GaugeReadsAmbiguous", "FlagCarriesCoverage.GaugeReadsOffDrops",
 		"FlagCarriesCoverage.GaugeReadsUnpublished", "FlagCarriesCoverage.GaugeSlotsFewReads",
 		"FlagCarriesCoverage.GaugeSlotsOffDrops", "FlagCarriesCoverage.GaugeSlotsTeamTaken",
+		"GestureCoverage.AfterEnd", "GestureCoverage.BeforeOrigin", "GestureCoverage.ClosedFrames", "GestureCoverage.Copies",
+		"GestureCoverage.Frames", "GestureCoverage.Published", "GestureCoverage.Read",
 		"GroundWeaponCoverage.Candidates", "GroundWeaponCoverage.PowerupCandidates",
 		"HitCoverage.DamagesZero", "HitCoverage.DamagesZeroOffUnit", "HitCoverage.DamagesZeroOutOfAxis",
 		"ProjectileCoverage.FullRateSamples", "ScoreActionCoverage.BotRecipient", "ScoreActionCoverage.BotTarget",
@@ -60,7 +62,7 @@ func init() {
 	for _, nom := range []string{
 		"AmmoRead", "AmmoReadCoverage", "Announcement", "AnnouncementCoverage", "Appearance", "AppearanceCoverage",
 		"Attachment", "Chatter", "ChatterCoverage", "ControlKindCoverage", "ControlPlaceCoverage", "DrawnWeapon",
-		"DrawnWeaponCoverage", "FullRateFlight", "FullRateTrack", "Gesture", "GestureCoverage", "GrenadeDetonation",
+		"DrawnWeaponCoverage", "FullRateFlight", "FullRateTrack", "GrenadeDetonation",
 		"ProjectileAttach", "ProjectileAttachCoverage", "ViseesSeulesCoverage", "Vital", "VitalCoverage",
 	} {
 		ReplayTypesNonServis[nom] = motifV160Calque

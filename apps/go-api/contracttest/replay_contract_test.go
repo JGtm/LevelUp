@@ -796,9 +796,14 @@ var replaySchemas = []struct {
 //	                      faire monter ce compte (types imbriques). `medalLabels`, resolu a la requete jusque-la
 //	                      servi seul, devient un champ jumeau : le decodeur le declare.
 //
-// Les vingt-neuf fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+//	80 (2026-11-24) : `gestures` (le coup de melee et le lancer amorce de chaque joueur, une ligne par geste, publies
+//	                      sur les films a pleine cadence des commandes) : un champ de tete, montee du decodeur de
+//	                      film (schema 127). `coverage.gestures` (GestureCoverage) nait au meme commit SANS faire
+//	                      monter ce compte (type imbrique).
+//
+// Les trente fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 79
+const wantReplayDocumentFields = 80
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

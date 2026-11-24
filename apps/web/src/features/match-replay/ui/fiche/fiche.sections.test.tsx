@@ -356,7 +356,7 @@ describe('FicheTotaux et FicheGestes', () => {
   })
 
   it('les gestes : l’instant lu à côté du titre, sprint, sauts avec la capsule « estimation »', () => {
-    const { container } = render(<FicheGestes gestures={{ sprintMs: 64_000, moveMs: null, moveEstimated: false, jumps: 12, reloads: null, reloadsMinimum: false }} clock="3:51" locale="fr" />)
+    const { container } = render(<FicheGestes gestures={{ sprintMs: 64_000, moveMs: null, moveEstimated: false, jumps: 12, jumpsEstimated: true, crouches: null, melee: null, throwStarts: null, gesturesMinimum: false, reloads: null, reloadsMinimum: false }} clock="3:51" locale="fr" />)
     const section = screen.getByRole('region', { name: 'Gestes' })
     expect(within(section).getByText('3:51')).toBeTruthy()
     expect(container.firstElementChild?.className).toContain('border-t')
@@ -365,7 +365,7 @@ describe('FicheTotaux et FicheGestes', () => {
   })
 
   it('le temps de déplacement et les rechargements : deux lignes, dans les deux langues, sans jargon', () => {
-    const g = { sprintMs: 64_000, moveMs: 125_000, moveEstimated: false, jumps: null, reloads: 18, reloadsMinimum: false }
+    const g = { sprintMs: 64_000, moveMs: 125_000, moveEstimated: false, jumps: null, jumpsEstimated: true, crouches: null, melee: null, throwStarts: null, gesturesMinimum: false, reloads: 18, reloadsMinimum: false }
     const fr = render(<FicheGestes gestures={g} clock="3:51" locale="fr" />)
     expect(lignes(fr.container)).toEqual([['Sprint, temps cumulé', '1:04'], ['Déplacement, temps cumulé', '2:05'], ['Rechargements', '18']])
     fr.unmount()
@@ -374,14 +374,14 @@ describe('FicheTotaux et FicheGestes', () => {
   })
 
   it('un compte de rechargements qui est un plancher porte la capsule « estimation » et son infobulle', () => {
-    const g = { sprintMs: null, moveMs: null, moveEstimated: false, jumps: null, reloads: 7, reloadsMinimum: true }
+    const g = { sprintMs: null, moveMs: null, moveEstimated: false, jumps: null, jumpsEstimated: true, crouches: null, melee: null, throwStarts: null, gesturesMinimum: false, reloads: 7, reloadsMinimum: true }
     const { container } = render(<FicheGestes gestures={g} clock="1:00" locale="fr" />)
     expect(lignes(container)).toEqual([['Rechargementsestimation', '7']])
     expect(screen.getByTitle('Le film ne montre pas tous les rechargements : ce compte est un minimum')).toBeTruthy()
   })
 
   it('un temps de déplacement estimé porte la capsule « estimation » et son infobulle, dans les deux langues', () => {
-    const g = { sprintMs: null, moveMs: 5000, moveEstimated: true, jumps: null, reloads: null, reloadsMinimum: false }
+    const g = { sprintMs: null, moveMs: 5000, moveEstimated: true, jumps: null, jumpsEstimated: true, crouches: null, melee: null, throwStarts: null, gesturesMinimum: false, reloads: null, reloadsMinimum: false }
     const fr = render(<FicheGestes gestures={g} clock="1:00" locale="fr" />)
     expect(lignes(fr.container)).toEqual([['Déplacement, temps cumuléestimation', '0:05']])
     expect(screen.getByTitle('Le film ne montre pas toutes les commandes de déplacement : ce temps est une estimation')).toBeTruthy()
@@ -390,8 +390,34 @@ describe('FicheTotaux et FicheGestes', () => {
     expect(screen.getByTitle('The film does not show every movement command: this time is an estimate')).toBeTruthy()
   })
 
+  it('mêlée, lancers amorcés et accroupissements : trois lignes de plus, dans les deux langues, entre les sauts et les rechargements', () => {
+    const g = {
+      sprintMs: null, moveMs: null, moveEstimated: false, jumps: 5, jumpsEstimated: false, crouches: 9, melee: 14,
+      throwStarts: 6, gesturesMinimum: false, reloads: 18, reloadsMinimum: false,
+    }
+    const fr = render(<FicheGestes gestures={g} clock="3:51" locale="fr" />)
+    expect(lignes(fr.container)).toEqual([
+      ['Sauts', '5'], ['Accroupissements', '9'], ['Coups de mêlée', '14'], ['Lancers amorcés', '6'], ['Rechargements', '18'],
+    ])
+    fr.unmount()
+    const en = render(<FicheGestes gestures={g} clock="3:51" locale="en" />)
+    expect(lignes(en.container)).toEqual([
+      ['Jumps', '5'], ['Crouches', '9'], ['Melee strikes', '14'], ['Throws started', '6'], ['Reloads', '18'],
+    ])
+  })
+
+  it('des sauts lus au bouton n’ont pas la capsule « estimation » ; un compte de mêlée plancher la porte', () => {
+    const g = {
+      sprintMs: null, moveMs: null, moveEstimated: false, jumps: 5, jumpsEstimated: false, crouches: null, melee: 14,
+      throwStarts: null, gesturesMinimum: true, reloads: null, reloadsMinimum: false,
+    }
+    const { container } = render(<FicheGestes gestures={g} clock="3:51" locale="fr" />)
+    expect(lignes(container)).toEqual([['Sauts', '5'], ['Coups de mêlée' + 'estimation', '14']])
+    expect(screen.getByTitle('Le film ne montre pas tous les gestes : ce compte est un minimum')).toBeTruthy()
+  })
+
   it('un geste absent n’a pas de ligne', () => {
-    const { container } = render(<FicheGestes gestures={{ sprintMs: null, moveMs: null, moveEstimated: false, jumps: 4, reloads: null, reloadsMinimum: false }} clock="0:10" locale="fr" />)
+    const { container } = render(<FicheGestes gestures={{ sprintMs: null, moveMs: null, moveEstimated: false, jumps: 4, jumpsEstimated: true, crouches: null, melee: null, throwStarts: null, gesturesMinimum: false, reloads: null, reloadsMinimum: false }} clock="0:10" locale="fr" />)
     expect(lignes(container)).toEqual([['Sautsestimation', '4']])
   })
 })
