@@ -228,7 +228,8 @@ func TestRun_LaJaugeDecroitSurDeuxCycles(t *testing.T) {
 	// Racine ISOLEE + manifestes du titre, cf. TestRun_RattrapeSansAucuneInsertion.
 	repoRoot := racineAvecTitres(t, titlePkg.DefaultSlug)
 	t0 := time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)
-	for i := 0; i < 9; i++ {
+	// Neuf matchs de plus que le garde-fou : c'est lui qui laisse du solde au premier cycle.
+	for i := 0; i < maxPerCycle+9; i++ {
 		inscrireAuRegistre(t, db, fmt.Sprintf("%08d-1111-4000-8000-000000000000", i),
 			t0.Add(time.Duration(i)*time.Hour), 0)
 	}
@@ -249,8 +250,8 @@ func TestRun_LaJaugeDecroitSurDeuxCycles(t *testing.T) {
 	second := observability.LoadCounterT("", CompteurRetard)
 
 	if premier <= 0 {
-		t.Fatalf("retard apres le 1er cycle = %d : le lot devait laisser du solde (9 matchs, plafond %d)",
-			premier, maxPerCycle)
+		t.Fatalf("retard apres le 1er cycle = %d : le lot devait laisser du solde (%d matchs, garde-fou %d)",
+			premier, maxPerCycle+9, maxPerCycle)
 	}
 	if second >= premier {
 		t.Errorf("retard : %d puis %d — la jauge ne decroit pas, le rattrapage ne converge pas",

@@ -19,6 +19,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 	"levelup/go-api/internal/i18n"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/sync/syncmeta"
 )
 
 // CareerRankData : alias vers domain.CareerRankSnapshot (type promu dans domain, K1k).
@@ -124,11 +125,11 @@ func saveCareerRank(ctx context.Context, db *sql.DB, data *CareerRankData) error
 	}
 
 	// Mettre à jour sync_meta (best-effort : le snapshot est déjà persisté ci-dessus).
-	if err := SetSyncMeta(ctx, db, "last_career_sync_at", now.Format(time.RFC3339)); err != nil {
-		slog.WarnContext(ctx, "saveCareerRank: SetSyncMeta last_career_sync_at échoué (best-effort)", "err", err)
+	if err := syncmeta.Set(ctx, db, "last_career_sync_at", now.Format(time.RFC3339)); err != nil {
+		slog.WarnContext(ctx, "saveCareerRank: syncmeta.Set last_career_sync_at échoué (best-effort)", "err", err)
 	}
-	if err := SetSyncMeta(ctx, db, "current_rank", fmt.Sprintf("%d", data.CurrentRank)); err != nil {
-		slog.WarnContext(ctx, "saveCareerRank: SetSyncMeta current_rank échoué (best-effort)", "err", err)
+	if err := syncmeta.Set(ctx, db, "current_rank", fmt.Sprintf("%d", data.CurrentRank)); err != nil {
+		slog.WarnContext(ctx, "saveCareerRank: syncmeta.Set current_rank échoué (best-effort)", "err", err)
 	}
 
 	return nil

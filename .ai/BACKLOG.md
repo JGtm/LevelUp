@@ -567,6 +567,12 @@ Relevé le 2026-11-23. La 8.2.2 (rattrapage de l'historique, issue #213) est dan
 
 ---
 
+### [sync] Choisir jusqu'où remonter l'historique d'un joueur : une date ou un nombre de matchs
+
+Relevé le 2026-11-22. Aujourd'hui (8.2.2) la synchronisation rattrape tout l'historique sans limite (décision du user, 2026-11-22).
+
+---
+
 ## 🎮 Backlog — Coach proactif × Prestige (post-V2)
 
 Référence : ADR 0020 — Coach proactif : pont vers Prestige. ADR 0021 — Synthèse dynamique de Template et Arc ad-hoc.

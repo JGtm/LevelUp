@@ -14099,10 +14099,6 @@
 {"Time":"2026-06-26T23:46:18.1268577+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5","Test":"TestCollectRecentMatches_HappyPath","Output":"=== RUN   TestCollectRecentMatches_HappyPath\n"}
 {"Time":"2026-06-26T23:46:18.1268577+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5","Test":"TestCollectRecentMatches_HappyPath","Output":"--- PASS: TestCollectRecentMatches_HappyPath (0.00s)\n"}
 {"Time":"2026-06-26T23:46:18.1268577+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_5","Test":"TestCollectRecentMatches_HappyPath","Elapsed":0}
-{"Time":"2026-06-26T23:46:18.1268577+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_5","Test":"TestCollectRecentMatches_DeltaStopOnKnown"}
-{"Time":"2026-06-26T23:46:18.1268577+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5","Test":"TestCollectRecentMatches_DeltaStopOnKnown","Output":"=== RUN   TestCollectRecentMatches_DeltaStopOnKnown\n"}
-{"Time":"2026-06-26T23:46:18.1268577+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5","Test":"TestCollectRecentMatches_DeltaStopOnKnown","Output":"--- PASS: TestCollectRecentMatches_DeltaStopOnKnown (0.00s)\n"}
-{"Time":"2026-06-26T23:46:18.1268577+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_5","Test":"TestCollectRecentMatches_DeltaStopOnKnown","Elapsed":0}
 {"Time":"2026-06-26T23:46:18.1268577+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_5","Test":"TestCollectRecentMatches_EventsFailureStillCollects"}
 {"Time":"2026-06-26T23:46:18.127378+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5","Test":"TestCollectRecentMatches_EventsFailureStillCollects","Output":"=== RUN   TestCollectRecentMatches_EventsFailureStillCollects\n"}
 {"Time":"2026-06-26T23:46:18.127378+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5","Test":"TestCollectRecentMatches_EventsFailureStillCollects","Output":"2026/06/26 23:46:18 WARN h5 capture: timeline indisponible (registry seul) match_id=m1 err=\"403 token expiré\"\n"}
@@ -51967,18 +51963,10 @@
 {"Time":"2026-06-26T23:54:01.2028678+02:00","Action":"output","Package":"levelup/go-api/internal/sync/v2","Test":"TestRunFetchShared_ParallelismZeroFallback","Output":"=== RUN   TestRunFetchShared_ParallelismZeroFallback\n"}
 {"Time":"2026-06-26T23:54:01.2028678+02:00","Action":"output","Package":"levelup/go-api/internal/sync/v2","Test":"TestRunFetchShared_ParallelismZeroFallback","Output":"--- PASS: TestRunFetchShared_ParallelismZeroFallback (0.00s)\n"}
 {"Time":"2026-06-26T23:54:01.2028678+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/v2","Test":"TestRunFetchShared_ParallelismZeroFallback","Elapsed":0}
-{"Time":"2026-06-26T23:54:01.2028678+02:00","Action":"run","Package":"levelup/go-api/internal/sync/v2","Test":"TestMatchListProviderV2_StopsAtFirstKnown"}
-{"Time":"2026-06-26T23:54:01.2028678+02:00","Action":"output","Package":"levelup/go-api/internal/sync/v2","Test":"TestMatchListProviderV2_StopsAtFirstKnown","Output":"=== RUN   TestMatchListProviderV2_StopsAtFirstKnown\n"}
-{"Time":"2026-06-26T23:54:01.2028678+02:00","Action":"output","Package":"levelup/go-api/internal/sync/v2","Test":"TestMatchListProviderV2_StopsAtFirstKnown","Output":"--- PASS: TestMatchListProviderV2_StopsAtFirstKnown (0.00s)\n"}
-{"Time":"2026-06-26T23:54:01.2028678+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/v2","Test":"TestMatchListProviderV2_StopsAtFirstKnown","Elapsed":0}
 {"Time":"2026-06-26T23:54:01.2028678+02:00","Action":"run","Package":"levelup/go-api/internal/sync/v2","Test":"TestMatchListProviderV2_XUIDFormat"}
 {"Time":"2026-06-26T23:54:01.2028678+02:00","Action":"output","Package":"levelup/go-api/internal/sync/v2","Test":"TestMatchListProviderV2_XUIDFormat","Output":"=== RUN   TestMatchListProviderV2_XUIDFormat\n"}
 {"Time":"2026-06-26T23:54:01.2028678+02:00","Action":"output","Package":"levelup/go-api/internal/sync/v2","Test":"TestMatchListProviderV2_XUIDFormat","Output":"--- PASS: TestMatchListProviderV2_XUIDFormat (0.00s)\n"}
 {"Time":"2026-06-26T23:54:01.2028678+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/v2","Test":"TestMatchListProviderV2_XUIDFormat","Elapsed":0}
-{"Time":"2026-06-26T23:54:01.2028678+02:00","Action":"run","Package":"levelup/go-api/internal/sync/v2","Test":"TestMatchListProviderV2_PaginatesUntilKnown"}
-{"Time":"2026-06-26T23:54:01.2028678+02:00","Action":"output","Package":"levelup/go-api/internal/sync/v2","Test":"TestMatchListProviderV2_PaginatesUntilKnown","Output":"=== RUN   TestMatchListProviderV2_PaginatesUntilKnown\n"}
-{"Time":"2026-06-26T23:54:01.2028678+02:00","Action":"output","Package":"levelup/go-api/internal/sync/v2","Test":"TestMatchListProviderV2_PaginatesUntilKnown","Output":"--- PASS: TestMatchListProviderV2_PaginatesUntilKnown (0.00s)\n"}
-{"Time":"2026-06-26T23:54:01.2028678+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/v2","Test":"TestMatchListProviderV2_PaginatesUntilKnown","Elapsed":0}
 {"Time":"2026-06-26T23:54:01.2028678+02:00","Action":"run","Package":"levelup/go-api/internal/sync/v2","Test":"TestMatchListProviderV2_MaxPagesSafetyStop"}
 {"Time":"2026-06-26T23:54:01.2028678+02:00","Action":"output","Package":"levelup/go-api/internal/sync/v2","Test":"TestMatchListProviderV2_MaxPagesSafetyStop","Output":"=== RUN   TestMatchListProviderV2_MaxPagesSafetyStop\n"}
 {"Time":"2026-06-26T23:54:01.2028678+02:00","Action":"output","Package":"levelup/go-api/internal/sync/v2","Test":"TestMatchListProviderV2_MaxPagesSafetyStop","Output":"--- PASS: TestMatchListProviderV2_MaxPagesSafetyStop (0.00s)\n"}

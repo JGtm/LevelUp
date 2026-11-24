@@ -297,19 +297,32 @@ func validerPasse(b persist.PadTiersBatch) error {
 // mapvarVec : une position d emplacement sur l axe X, les deux autres a zero.
 func mapvarVec(x float64) mapvar.Vec3 { return mapvar.Vec3{X: x} }
 
-// TestDeriver_LesAppelantsTransmettentLeSegmentDeLecture — les deux appelants de ce paquet
-// passent leur segment de lecture à Deriver (lot L4.1 ; le troisième, le dépôt d'ouvrier, est
-// gardé dans api/wire). Retirer le champ ramènerait la panne sans qu'aucun autre test ne rougisse
-// sur le chemin de la cuisson locale (revue du lot L4, constat C-2).
+// TestDeriver_LesAppelantsTransmettentLeSegmentDeLecture — les deux sites de ce paquet (la cuisson
+// du cycle et le rattrapage) dérivent par `deriverParLots`, qui passe son segment de lecture à
+// Deriver (lot L4.1 ; le troisième appelant, le dépôt d'ouvrier, est gardé dans api/wire). Retirer
+// le champ ramènerait la panne sans qu'aucun autre test ne rougisse sur le chemin de la cuisson
+// locale (revue du lot L4, constat C-2).
 func TestDeriver_LesAppelantsTransmettentLeSegmentDeLecture(t *testing.T) {
-	for _, f := range []string{"artifacts.go", "derivations_backlog.go"} {
+	lire := func(f string) string {
 		src, err := os.ReadFile(f)
 		if err != nil {
 			t.Fatalf("lecture de %s : %v", f, err)
 		}
-		if !strings.Contains(string(src), "WithRead: d.WithRead, AcquireWriter: d.AcquireWriter,") {
-			t.Errorf("%s n'appelle plus Deriver avec son segment de lecture : les niveaux d'armes ne "+
-				"liraient plus l'identite des matchs, et ne seraient ni ecrits ni marques", f)
+		return string(src)
+	}
+	if !strings.Contains(lire("derivations_backlog.go"), "WithRead: d.WithRead, AcquireWriter: d.AcquireWriter,") {
+		t.Error("deriverParLots n'appelle plus Deriver avec son segment de lecture : les niveaux d'armes ne " +
+			"liraient plus l'identite des matchs, et ne seraient ni ecrits ni marques")
+	}
+	for f, appel := range map[string]string{
+		"artifacts.go":           "deriverParLots(ctx, d, b.ranges)",
+		"derivations_backlog.go": "deriverParLots(ctx, d, candidats)",
+	} {
+		if !strings.Contains(lire(f), appel) {
+			t.Errorf("%s ne derive plus par deriverParLots : le segment de lecture ne serait plus transmis", f)
+		}
+		if strings.Contains(lire(f), "	Deriver(ctx, DerivationsDeps{") {
+			t.Errorf("%s appelle Deriver sans passer par deriverParLots : plus de lots, plus de budget de temps", f)
 		}
 	}
 }

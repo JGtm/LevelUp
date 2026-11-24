@@ -17,7 +17,9 @@ import (
 	"fmt"
 	"log/slog"
 
+	"levelup/go-api/internal/domain"
 	syncpkg "levelup/go-api/internal/sync"
+	"levelup/go-api/internal/sync/historyretry"
 )
 
 // HaloClient est l'interface narrow utilisée par les adapters V2. Sous-ensemble
@@ -51,6 +53,9 @@ type matchListProviderV2 struct {
 	matchType     string // "matchmaking" | "all" | "custom" | "local"
 	pageSize      int    // typique 25 (cf. V1 historyPageSize)
 	maxPages      int    // safety : stop après N pages si jamais aucun connu (typique 20)
+	// catchUp : un jeton, pris pendant la lecture de rattrapage d'un joueur (historyCatchUp) : les rattrapages
+	// d'un cycle se lisent un joueur à la fois, les deltas restent parallèles.
+	catchUp chan struct{}
 }
 
 // NewMatchListProvider construit un MatchListProvider prêt à être injecté
@@ -75,57 +80,110 @@ func NewMatchListProvider(factory HaloClientFactory, matchType string, pageSize,
 		matchType:     matchType,
 		pageSize:      pageSize,
 		maxPages:      maxPages,
+		catchUp:       make(chan struct{}, 1),
 	}
 }
 
-// ListUnknownMatches paginate /matches en delta mode : stop dès qu'un match
-// connu est rencontré. Format URL `xuid(NNN)` requis (anti-régression
-// incident mai 2026 — gamertag brut → réponse stale).
+// ListUnknownMatches liste les matchs inconnus d'un joueur, en ordre de l'API. Format URL
+// `xuid(NNN)` requis (anti-régression incident mai 2026 — gamertag brut → réponse stale).
 //
-// Différences avec V1 :
-//   - Pas de "cache fetch intermédiaire" (logique V1 spécifique à son flow).
-//   - Pas de stopAfterFlush imbriqué : on collecte les unknowns proprement
-//     et stop dès le 1er connu (ordre API préservé).
-//   - Garde-rail maxPages explicite (V1 n'en a pas, peut paginer 1000 pages
-//     en cas de bug known set vide).
-func (p *matchListProviderV2) ListUnknownMatches(ctx context.Context, prof PlayerProfile, known map[string]bool) ([]string, error) {
+// Deux modes, selon l'état de l'historique du joueur (hist) :
+//   - complet : delta. Pagination en ordre reverse-chronologique, arrêt après
+//     domain.DeltaKnownRun matchs connus d'affilée (ordre API préservé), au plus maxPages pages
+//     (garde-rail : V1 n'en a pas, peut paginer 1000 pages en cas de known set vide) ;
+//   - incomplet : le delta d'abord, puis le rattrapage (fetchers_history.go), qui saute les connus au lieu
+//     de s'arrêter dessus et reprend au marque-page ; une erreur de lecture du rattrapage ne retire pas les
+//     nouveaux matchs du delta.
+//
+// Chaque lecture de page passe par historyretry.Page (rejeu borné des 429 et du parc en pause).
+func (p *matchListProviderV2) ListUnknownMatches(ctx context.Context, prof PlayerProfile, known map[string]bool, hist HistoryState) (Listing, error) {
 	client := p.clientFactory(prof.Gamertag, prof.XUID)
 	if client == nil {
-		return nil, fmt.Errorf("HaloClient nil pour %s", prof.Gamertag)
+		return Listing{}, fmt.Errorf("HaloClient nil pour %s", prof.Gamertag)
 	}
 
-	// V1 anti-régression : xuid(NNN) requis, pas le gamertag brut.
-	histArg := fmt.Sprintf("xuid(%s)", prof.XUID)
-	unknown := make([]string, 0, p.pageSize)
+	if hist.Incomplete {
+		return p.listWithCatchUp(ctx, client, prof, known, hist)
+	}
+	top, err := p.listDelta(ctx, client, deltaArgs{prof: prof, known: known, skip: hist.skipped()})
+	if err != nil {
+		return Listing{}, err
+	}
+	unknown := top.unknown
+	if hist.Deferred && len(unknown) > catchUpMinBudget {
+		unknown = unknown[:catchUpMinBudget] // rattrapage reporté : un delta, pas un joueur neuf à 500 matchs en mémoire
+	}
+	return Listing{Unknown: unknown}, nil
+}
+
+// deltaArgs est ce que lit listDelta : le joueur, l'ensemble connu et les matchs à ne plus demander
+// (historystate.SkipSetKey).
+type deltaArgs struct {
+	prof  PlayerProfile
+	known map[string]bool
+	skip  map[string]bool
+	// limit : nombre d'inconnus à partir duquel la lecture s'arrête ; 0 = aucune borne (maxPages seul).
+	limit int
+}
+
+// deltaRead est le résultat de listDelta.
+type deltaRead struct {
+	unknown []string
+	// closed : la lecture s'est arrêtée sur domain.DeltaKnownRun connus d'affilée, donc les inconnus lus
+	// touchent la zone déjà connue : ce sont des matchs neufs, pas des matchs plus anciens du rattrapage.
+	closed bool
+}
+
+// listDelta pagine /matches et s'arrête après domain.DeltaKnownRun matchs connus d'affilée (les
+// inconnus rencontrés avant, y compris entre deux connus, sont pris : un match rangé par un
+// coéquipier ne cache pas les inconnus qui le suivent), à la fin de la liste, après maxPages pages ou
+// à a.limit inconnus. Un match de `skip` (introuvable, abandonné : historystate.SkipSetKey) est neutre,
+// comme une entrée écartée de Halo 5 : il n'est pas demandé, n'allonge pas la suite de connus et ne la
+// remet pas à zéro. Chaque page passe par historyretry.Page.
+// Format `xuid(NNN)` requis (anti-régression incident mai 2026 : gamertag brut, réponse périmée).
+func (p *matchListProviderV2) listDelta(ctx context.Context, client HaloClient, a deltaArgs) (deltaRead, error) {
+	gamertag, histArg := a.prof.Gamertag, fmt.Sprintf("xuid(%s)", a.prof.XUID)
+	out := deltaRead{unknown: make([]string, 0, p.pageSize)}
+	run := 0 // matchs connus d'affilée, jusqu'à l'entrée courante
 	for page := 0; page < p.maxPages; page++ {
 		start := page * p.pageSize
-		entries, err := client.GetMatchHistory(ctx, histArg, p.matchType, start, p.pageSize)
+		entries, err := historyretry.Page(ctx, gamertag, start, func() ([]syncpkg.MatchHistoryEntry, error) {
+			return client.GetMatchHistory(ctx, histArg, p.matchType, start, p.pageSize)
+		})
 		if err != nil {
-			return nil, fmt.Errorf("GetMatchHistory page %d for %s: %w", page, prof.Gamertag, err)
+			return deltaRead{}, fmt.Errorf("GetMatchHistory page %d for %s: %w", page, gamertag, err)
 		}
 		if len(entries) == 0 {
 			break // fin de l'historique
 		}
-		foundKnown := false
 		for _, e := range entries {
-			if known[e.MatchID] {
-				foundKnown = true
-				break
+			if a.known[e.MatchID] {
+				if run++; run >= domain.DeltaKnownRun {
+					break
+				}
+				continue
 			}
-			unknown = append(unknown, e.MatchID)
+			if a.skip[e.MatchID] {
+				continue
+			}
+			run = 0
+			out.unknown = append(out.unknown, e.MatchID)
 		}
-		if foundKnown {
+		if run >= domain.DeltaKnownRun {
+			out.closed = true
 			break
 		}
-		// Si on a consommé toute la page sans trouver de match connu et
-		// que la page est pleine, on continue à la suivante.
+		if a.limit > 0 && len(out.unknown) >= a.limit {
+			break
+		}
+		// Page partielle = fin de l'historique ; page pleine : on continue à la suivante.
 		if len(entries) < p.pageSize {
-			break // page partielle = fin de l'historique
+			break
 		}
 	}
 	slog.DebugContext(ctx, "v2 ListUnknownMatches",
-		"gamertag", prof.Gamertag, "unknown_count", len(unknown))
-	return unknown, nil
+		"gamertag", gamertag, "unknown_count", len(out.unknown))
+	return out, nil
 }
 
 // ─── SharedMatchFetcher ───────────────────────────────────────────────

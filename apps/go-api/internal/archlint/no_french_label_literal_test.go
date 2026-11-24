@@ -237,7 +237,7 @@ var frenchLabelAllowlist = map[string]int{
 	"games/halo_5/adapter_data_loaders.go":              2,
 	"games/halo_5/career_local.go":                      1,
 	"games/halo_5/commendation_totals.go":               1,
-	"games/halo_5/livesync/backfill.go":                 3,
+	"games/halo_5/livesync/backfill.go":                 2,
 	"games/halo_5/livesync/events_backfill_surfaces.go": 2,
 	"games/halo_5/livesync/kill_kind_backfill.go":       3,
 	"games/halo_5/livesync/resolver.go":                 1,

@@ -105,6 +105,33 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 - **Téléchargements de fond : plus le jeton d'un autre joueur** — le catalogue, la configuration des playlists et le manifeste d'un film prenaient le jeton du premier profil rafraîchissable, sans accord de mise en commun (ADR 0038). Le jeton vient maintenant de la source de lecture publique de la mise en commun ; sans compte consentant, rien n'est téléchargé et l'erreur typée `wire.ErrNoPublicReadToken` est journalisée, sans conseil de recapture. Un garde-rail interdit dans `internal/api/wire` un rafraîchissement de jeton combiné à un parcours des profils.
 - **Rareté d'une médaille lue dans un ordre fixe** — `medalLabelOf` parcourt les langues dans l'ordre de `i18n.Locales()`, là où il parcourait une table sans ordre. Un fichier tactique illisible a son propre compteur et son propre message dans `replayartifact/gate.go`.
 
+## [8.2.3] - 2026-11-23
+
+> Correctif de la synchronisation automatique du site hébergé : un Halo qui limite les requêtes n'empêche plus les nouveaux matchs d'arriver.
+
+### Corrigé
+- **Nouveaux matchs gardés pendant le rattrapage** — quand Halo répondait « trop de requêtes » (HTTP 429) pendant la lecture de l'historique ancien d'un joueur, toute la synchronisation automatique de ce joueur échouait et ses nouveaux matchs n'arrivaient pas. Les nouveaux matchs sont désormais lus et rangés en premier ; un échec de lecture de l'historique ancien ne fait que reporter ce rattrapage au cycle suivant. Chaque page de la liste des matchs est retentée quelques fois avant d'abandonner, et les rattrapages de plusieurs joueurs se lisent l'un après l'autre au lieu de tous en même temps.
+
+## [8.2.2] - 2026-11-23
+
+> Correctif de la synchronisation automatique : l'historique ancien revient, pas seulement les nouveaux matchs.
+
+### Corrigé
+- **Anciens matchs rapatriés par la synchronisation automatique** — en 8.2.1, la synchronisation automatique ne récupérait que les nouveaux matchs, et l'historique ancien d'un joueur restait hors d'atteinte (issue #213). Chaque synchronisation automatique rattrape désormais jusqu'à 200 matchs plus anciens par passe, une passe toutes les 10 minutes tant que l'historique n'est pas complet, pour Halo Infinite et Halo 5 ; ensuite, seuls les nouveaux matchs sont récupérés. Les parties personnalisées ne sont pas synchronisées. Un seul moteur rattrape l'historique (le cycle de l'ordonnanceur) ; chaque passe reprend là où la précédente s'est arrêtée ; 200 matchs au plus par cycle, partagés entre les joueurs qui rattrapent ; la cadence de 10 minutes ne tient que si le cycle progresse et reprend après un redémarrage.
+- **Matchs oubliés derrière une partie d'un coéquipier** — la récupération des nouveaux matchs s'arrêtait au premier match déjà connu ; une partie rangée d'abord par un coéquipier cachait les parties jouées juste avant. Elle s'arrête désormais après 25 matchs connus d'affilée.
+- **Matchs introuvables et échecs durables** — un match introuvable chez Halo n'est plus redemandé ni compté comme ajouté ; un match qui échoue trois passes de suite est mis de côté puis retenté après 24 heures ; une panne de l'API ne met plus aucun match de côté.
+- **Reprise après fermeture** — un cycle lancé juste après un redémarrage ne reste plus bloqué ; l'enregistrement d'un gros lot attend selon sa taille ; une lecture en échec de l'état de l'historique n'est plus prise pour un historique complet.
+- **Notifications** — la notification de fin de cycle n'annonce que les nouveaux matchs, pas ceux rattrapés.
+- **Halo 5** — la recherche des identités Xbox attend et réessaie quand elle est limitée, au lieu d'écarter des joueurs du match.
+
+### Ajouté
+- **« Synchroniser maintenant » et état de l'historique** dans Paramètres › Données & Médias (tous les joueurs) : lance la même synchronisation que l'automatique, avec un délai de 2 minutes entre deux lancements expliqué à l'écran ; par jeu, l'historique complet ou en rattrapage, les matchs enregistrés, le plus ancien, la dernière et la prochaine passe.
+- **Application Windows : films au fil du rattrapage** — le traitement des films n'est plus borné à 8 films et 5 rejeux par cycle mais par un budget de temps, et la cadence de 10 minutes tient tant qu'il reste des films à traiter. Le site hébergé garde l'ancien rythme.
+
+### Documentation
+- L'aide décrit le rattrapage, le bouton « Synchroniser maintenant » et la fréquence réelle de la synchronisation automatique (6 heures par défaut).
+- **Aide sur la synchronisation** — l'aide décrit ce comportement et ne parle plus d'une synchronisation complète dans les Paramètres.
+
 ## [8.2.1] - 2026-11-16
 
 > Le décodeur de film passe à la v1.3.9 (`SchemaVersion` 124) : médailles, tableau des scores, présence, horloges et fins de vie sont lus ; le web les type et les normalise ; seule la croix des morts sans cause s'ajoute à l'écran, dans le rejeu.

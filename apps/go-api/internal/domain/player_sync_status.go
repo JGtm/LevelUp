@@ -15,8 +15,4 @@ type PlayerSyncStatus struct {
 	// CooldownRetryAfterSec : secondes avant qu'un sync manuel de ce joueur soit de nouveau accepté ;
 	// 0 = accepté.
 	CooldownRetryAfterSec int `json:"cooldown_retry_after_s" doc:"Secondes avant qu'un sync manuel soit de nouveau accepté ; 0 = accepté."`
-	// HistoryComplete : la fin de l'historique du joueur chez ce titre a déjà été atteinte par une passe de
-	// synchronisation sans erreur. Faux tant que le rattrapage de l'historique n'est pas terminé (ou
-	// que l'état n'a pu être lu) : des matchs plus anciens peuvent encore manquer.
-	HistoryComplete bool `json:"history_complete" doc:"Vrai quand une synchronisation a atteint la fin de l'historique de ce joueur dans le titre courant ; faux tant que le rattrapage des matchs anciens n'est pas terminé."`
 }

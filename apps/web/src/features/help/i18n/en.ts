@@ -207,9 +207,9 @@ export const EN_TEXT = {
           {
             term: 'Sync',
             definition:
-              "Process that fetches matches from the Halo Waypoint API and writes them to the local DuckDB database. In delta mode (default), only new matches not yet recorded are fetched. Only matchmaking games are synchronised.\n\nHistory catch-up: for Halo Infinite as for Halo 5, it is automatic. Until the player's first match has been reached, each sync also retrieves up to 200 older matches. No full sync needs to be forced. The state (\"Catching up on the history\" or \"History complete\") is shown in Settings › Data & Media › Synchronisation.\n\nThree triggers coexist:\n\n• Manual sync: the \"Synchronise now\" button in Settings › Data & Media › Synchronisation, for the displayed player (only on a profile the account controls; after a start, a short delay passes before the next one). It is the reference method after a long session or to catch up on a one-off lag.\n\n• Scheduled sync: an internal scheduler triggers an incremental sync at a fixed interval (for example every 30 minutes). On the desktop app it is on by default and is not adjustable in Settings; on an online instance, the instance administrator turns it on and sets its interval (Admin › Sync & Jobs). Useful to keep the database up to date in the background while the application runs, whatever the current game activity.\n\n• Presence detection: a watcher listens to Xbox notifications in real time through an RTA channel (authenticated by an XSTS token) and automatically triggers a sync as soon as it detects the end of a match. Near-instant reaction, without waiting for the scheduler's next pass.\n\nXbox prerequisite: for RTA notifications to actually be received, the Xbox profile must allow public reading of the online status and of the current game activity (\"See if you're online\" and \"See what you're playing\" set to \"Everyone\"). If these settings are restricted (Friends only, Blocked), the RTA channel refuses the subscription and presence detection stays silent; scheduled and manual sync keep working normally.",
+              'Process that fetches matches from the Halo Waypoint API and writes them to the local DuckDB database. Once a player\'s history is complete, only new matches are fetched. Until then, each automatic sync catches up to 200 older matches, one pass every 10 minutes, until the whole history is stored. Custom games are not synced.',
             example:
-              "Halo is launched, 5 games are played, then the game is closed:\n• Presence detection on → each end of match triggers a sync, the 5 matches come in as they happen.\n• Scheduled sync alone (every 30 min) → the 5 matches come in over 1 or 2 passes, with a maximum delay of about 30 minutes.\n• Neither on → LevelUp is opened later and the \"Synchronise now\" button is pressed: the 5 matches are fetched at once, without touching the 500 already stored.",
+              'With 5 matches played since the last sync, delta sync fetches only those 5 matches, leaving the 500 already stored untouched.',
           },
           {
             term: 'Backfill',
@@ -229,7 +229,7 @@ export const EN_TEXT = {
             term: 'Refresh Frequencies',
             definition: 'LevelUp uses several data freshness levels depending on the page.',
             example:
-              'Live (every page open): Home, Last Match.\nQuery cache 5–10 min: Stats, Palmares, Squad.\nManual sync: triggered from the "Synchronise now" button in Settings › Data & Media › Synchronisation.\nAuto background: media is re-indexed after every sync.',
+              'Live (every page open): Home, Last Match.\nQuery cache 5–10 min: Stats, Palmares, Squad.\nManual sync: triggered by the "Sync now" button in Settings › Data & Media.\nAuto background: media is re-indexed after every sync.',
           },
         ],
       },

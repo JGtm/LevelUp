@@ -52,6 +52,18 @@
 - **Un rejeu à la demande plus fiable** — le bouton « Générer le rejeu » n'est plus proposé quand il échouerait (connexion à renouveler), une demande interrompue par un redémarrage est revérifiée, et un match qui vient de finir, dont le film n'est pas encore publié, dit « film pas encore disponible » au lieu de « film absent »
 - **Escouade : un trou plutôt qu'un zéro** — un coéquipier dont aucun chiffre n'est connu laisse un trou dans le graphe par minute au lieu d'un zéro
 
+**v8.2.3 — Les nouveaux matchs arrivent même quand Halo limite les requêtes**
+
+- **Les nouveaux matchs n'attendent plus l'historique ancien** — sur le site hébergé, une réponse « trop de requêtes » de Halo pendant la lecture d'un historique ancien bloquait la synchronisation automatique du joueur. Les nouveaux matchs arrivent désormais en premier, et l'historique ancien reprend au cycle suivant.
+
+**v8.2.2 — Les anciennes parties reviennent avec la synchronisation automatique**
+
+- **L'historique ancien est rattrapé** — la synchronisation automatique récupère aussi les parties plus anciennes, jusqu'à 200 par passe et une passe toutes les 10 minutes, jusqu'au premier match, pour Halo Infinite et Halo 5. Ensuite, seules les nouvelles parties sont récupérées. Les parties personnalisées ne sont pas synchronisées.
+- **Synchroniser maintenant et voir où on en est** — Paramètres › Données & Médias porte un bouton « Synchroniser maintenant » et, par jeu, l'état de l'historique : complet ou en rattrapage, matchs enregistrés, plus ancien match, dernière et prochaine passe.
+- **Plus de parties oubliées** — une partie jouée juste avant une partie déjà synchronisée par un coéquipier n'est plus sautée.
+- **Application Windows : les films suivent** — les films des parties rattrapées sont traités au fil des passes (« Analyse en cours ») ; l'historique ne s'affiche complet qu'une fois leur traitement à jour.
+- **Fermer l'application en pleine synchronisation ne bloque plus rien** — la reprise se fait au lancement suivant, sans perte ni doublon.
+
 **v8.2.1 — Le film lu plus complètement : médailles, tableau des scores, présence et bots**
 
 - **Toutes les médailles nommées** — les 157 médailles du jeu sont lues dans le film avec leur vrai nom. Le rejeu ne les affiche pas encore

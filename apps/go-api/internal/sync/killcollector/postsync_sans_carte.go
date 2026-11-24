@@ -40,8 +40,6 @@ import (
 	"sync"
 	"time"
 
-	"levelup/go-api/internal/observability"
-
 	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
@@ -205,12 +203,12 @@ func (r *registreSansCarte) taille() int {
 	return len(r.ids)
 }
 
-// publierSansCarte publie la jauge : la taille du registre, ou tout le backlog quand la carte
-// n est pas cablee ce cycle (aucun match ne peut alors etre decode).
-func publierSansCarte(reg *registreSansCarte, total int) {
-	n := total
-	if reg != nil {
-		n = min(reg.taille(), total)
+// nbSansCarte : le nombre de matchs du backlog constates sans carte resolue — la taille du registre,
+// ou tout le backlog (`total`) quand la carte n est pas cablee ce cycle (aucun match ne peut alors
+// etre decode).
+func nbSansCarte(reg *registreSansCarte, total int) int {
+	if reg == nil {
+		return total
 	}
-	observability.SetInt(CompteurPostSyncSansCarte, int64(n))
+	return min(reg.taille(), total)
 }

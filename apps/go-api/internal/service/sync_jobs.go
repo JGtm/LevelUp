@@ -44,12 +44,6 @@ type SyncJobStore interface {
 	SetStatus(jobID string, status domain.JobStatus, step *string) bool
 }
 
-// SyncHistoryReader dit si la fin de l'historique d'un joueur a déjà été atteinte pour un titre
-// (*duckdb.SyncHistoryRepo : clé de sync_meta de sa player DB).
-type SyncHistoryReader interface {
-	HistoryComplete(ctx context.Context, playerSlug, titleSlug string) (bool, error)
-}
-
 // SyncProfiles lit les profils suivis (db_profiles.json) ; titleFilter vide = tous les titres
 // (*config.AppConfig).
 type SyncProfiles interface {
@@ -89,7 +83,6 @@ type SyncJobService struct {
 	replayEnqueue replayartifacts.EnqueueFunc
 	engineBuilder EngineBuilder
 	liveRunner    LiveRunnerBuilder // nil : tous les titres passent par le moteur de sync
-	history       SyncHistoryReader // nil : l'état de l'historique n'est pas lu (servi comme non complet)
 
 	// syncGate déduplique les syncs entre sources : un job cède quand le joueur est déjà en vol
 	// (watcher ou auto-sync).
@@ -208,12 +201,6 @@ func (s *SyncJobService) WithEngineBuilder(b EngineBuilder) *SyncJobService {
 // par le moteur de sync (sync initiale). Nil : tous les titres reçoivent le moteur de sync.
 func (s *SyncJobService) WithLiveRunnerBuilder(b LiveRunnerBuilder) *SyncJobService {
 	s.liveRunner = b
-	return s
-}
-
-// WithSyncHistoryReader branche la lecture de l'état de l'historique servi par PlayerSyncStatus.
-func (s *SyncJobService) WithSyncHistoryReader(r SyncHistoryReader) *SyncJobService {
-	s.history = r
 	return s
 }
 
