@@ -72,8 +72,8 @@ qu'exige aujourd'hui `apps/go-api/go.mod`). Aucune base ne se copie : le dossier
 Point d'ordre à trancher : les notes de version et le plan demandent les rejeux au schéma 127 AVANT le premier
 démarrage de la 8.3.0, alors que la bascule de la 8.2.x se faisait APRÈS le démarrage. Option retenue par la
 consigne : serveur arrêté, bascule `--apply`, puis démarrage de la 8.3.0 (le dossier servi est au 127 dès le premier
-démarrage ; un ancien binaire arrêté ne le lit pas). Ce que fait le premier démarrage devant des rejeux périmés sans
-film n'est établi par aucune pièce : à vérifier avant le déploiement (essai sur une copie, ou lecture de `replaybuild`).
+démarrage ; un ancien binaire arrêté ne le lit pas). Ce que fait le premier démarrage devant des rejeux à l'ancien schéma sans
+film est ÉTABLI (vérifié le 2026-11-24 par lecture du code, non rejoué sur une copie) : rien. La 8.3.0 les sert tels quels (`apps/go-api/internal/service/replay_service.go`, `GetReplay` : aucune comparaison de schéma à la lecture, désérialisation tolérante, calques récents absents) ; la régénération à la demande est réservée au bureau et au développement (`apps/go-api/internal/config/deployment.go`, capacité `GenerateReplays`), donc sur le site hébergé rien n'est remis en file ni retéléchargé ; seul un administrateur voit le badge « à régénérer » (`apps/web/src/features/match-replay/ui/ReplaySchemaBadge.tsx`) ; `docs/RELEASE_NOTES.md` annonce que les anciens rejeux restent lisibles. Non bloquant ; ces rejeux n'auront jamais les calques neufs (entrée du backlog « Rejeux du site hébergé à l'ancien schéma, sans film »).
 
 **Voie (b), régénérer sur le serveur : impossible pour les matchs sans film.** L'archive des films du site hébergé a
 été vidée le 2026-11-23, et une tâche planifiée en retire chaque heure les films de plus de 24 h (backlog). Le serveur
@@ -160,7 +160,12 @@ levelup-purge-films.timer`. L'état du correctif à la clôture de la 8.3.0 est 
 5. Seulement ensuite : supprimer le dossier d'attente (`rm -rf /opt/levelup/data/replays-staging-v8.3.0`), puis, sur
    un second accord de l'utilisateur, le dossier de repli de D6.
 
+Plafond de mémoire des cuissons (`-plafond-gio`, réglage de l'hôte, pas du décodeur) : à 1 Gio le pic du plus gros film
+tombe à 1 161 Mio pour +1,3 % de temps (mesuré sur ce seul film, `.ai/annexes_decodeur_v160/profil2.md`, section 6.2) ;
+la régénération réelle du 2026-11-24 a donné un pic d'un enfant de 1,64 Gio pour un plafond de 3 Gio, sans aucun arrêt.
+À dimensionner d'après la mémoire du serveur.
+
 Points « à vérifier avant le déploiement » de cette section : faits de film du serveur (D1), recréation de
-`BASCULE.sh` et comportement du premier démarrage devant des rejeux périmés (D2), durée des passes et rôle de
+`BASCULE.sh` (D2, le comportement du premier démarrage devant des rejeux périmés est établi, voir plus haut), durée des passes et rôle de
 `backfill-killsource` sur le serveur (D3), lecture du profil hébergé (D4), état du correctif d'archivage (D5),
 comportement d'une 8.2.x devant le schéma 127 (D6), libellé du panneau d'administration (D7).

@@ -1,5 +1,15 @@
 # PLAN — Décodeur de film v1.6.0 : vitesse, backlog, canaux du lecteur 3D (2026-11-23)
 
+**CLOS le 2026-11-24.** Résumé :
+- Livré : décodeur v1.6.0 publiée (PR 34, tag `v1.6.0`, release GitHub), puis v1.6.1 (correctif d'hygiène, sortie identique) ; montée dans la release 8.3.0 (PR 216, CI verte) ; parc de 1 455 rejeux régénéré au schéma 127 (faits au schéma 31), zéro échec.
+- Vitesse : 13 films en 71,6 s en v1.5.0, puis 35,8 / 30,1 / 27,8 / 26,7 s à 1 / 2 / 4 / 8 fils, sortie identique à l'octet ; pic de mémoire du plus gros film 2 198 puis 1 624 Mio à un fil. Régénération du parc : 1 h 11 (1 h 42 avec les passes dérivées) contre 2 h 26 pour 1 455 films.
+- Scores : rejeux à score complet 944 puis 1 332 ; accord exact des points avec le score personnel 98,41 % puis 99,94 % sur les rejeux complets, Grande bataille complets 77,32 % puis 100 %. Temps de porteur du drapeau à 2 s de l'API : 86,07 % puis 92,71 % des joueurs, 143 devenus justes, 0 devenu faux. Tirs lus +21,8 %.
+- Poids : rejeux +39,8 % (médiane +47,9 %, total 1,98 puis 2,84 Go sur l'échantillon de mesure).
+- Un seul recul mesuré : un film de Grande bataille perd son calque de drapeau (backlog et registre).
+- Reporté : affichage des répliques (D.5, D.6) au backlog de LevelUp ; limites des calques neufs, drapeau en Grande bataille, noms de répliques des anciens builds, vies sans tracé ou sans identité, jeux d'entrées figés, contrôle du corpus par famille de socle, abstentions des genres de message, rejeux du site hébergé : backlog et `.ai/REGISTRE_REPORTS.md` (section « Reports du plan décodeur v1.6.0 »).
+- Reste à l'utilisateur : relire et envoyer la note de migration au contributeur (P.9), contrôles à l'écran (artefact des vérifications), geste de production de la 8.3.0 (`.ai/gestes_prod_8_3_0.md`).
+- Plan non archivé (geste ultérieur).
+
 **État : décisions tranchées et GO de l'utilisateur donnés le 2026-11-23 ; le coût de chaque vague est
 annoncé à son lancement.** (User, 2026-11-23 : « Tu as mon feu vert d'emblée. C'est bien de découper les
 morceaux en plus petit, ça permet de paralléliser et d'utiliser des modèles et des efforts moins coûteux en
@@ -741,7 +751,7 @@ Deux relevés, parce que la génération d'un rejeu dépend de la base de LevelU
       quelle. Format : TSV, une ligne par film et par niveau de fils (médiane et minimum de chaque phase,
       pic, empreintes, compte de relectures en séquence), en-tête commenté (version, commit, version de Go,
       système, processeur, cœurs, mémoire, `GOMAXPROCS`, date).
-- [ ] V0.4 **Relevé B, de bout en bout, dans LevelUp.** `replay-build` sur les 13 films, faits de 0.8,
+- [~] V0.4 (2026-11-24 : le relevé par film de `replay-build` n'a pas été produit sous cette forme (médiane de 5 passes, pic publié) ; le chiffre d'une génération de rejeu est couvert par la régénération réelle du parc, L.6 et L.7 : 1 455 rejeux en 1 h 11 contre 2 h 26 en v1.5.0, pic d'un enfant 1,64 Gio, voir `l6_regeneration_reelle_resume.md` et `l7_mesures_apres_regeneration.md` ; la vitesse du décodeur seul est au relevé A, I.3) **Relevé B, de bout en bout, dans LevelUp.** `replay-build` sur les 13 films, faits de 0.8,
       `-fils 1` : durée par film (5 passes, médiane) et pic publié par la commande ; rangé
       `.ai/annexes_decodeur_v160/releve_bout_en_bout.md`. C'est le chiffre d'une génération de rejeu
       (référence du 2026-11-13 : 3,5 s en médiane, 10,1 s au pire sur dix témoins).
@@ -855,7 +865,7 @@ Preuve commune à chaque item : empreintes de `film-bench` identiques au relevé
       Gain attendu : -8 à -20 % de durée murale à plusieurs fils (film06 : de 38 % à environ 19 %, borné par `decodeFilmVehicleScan` ; film01 : environ 20 %). Risque : moyen (état partagé du `FilmContext`, caches et verrous à vérifier ; les crochets publient). Fichiers : `replay/film_scan.go` (`balayerPositions`, `balayerMonde`, `balayerPont`, `balayerCapacites`). Preuve : celle de la piste.
 
 - [x] G.10 (2026-11-23 : intégré, `da3bd2c` ; positions par rangs, empreintes des 13 films identiques ; pic du plus gros film −294 Mio, contre −0,4 à −0,5 Gio visés) mémoire : `indexBySlot` sans copie des positions (index de positions de 4 octets au lieu d'une copie de 176 octets par position ; 37 usages de `.pts` dans 11 fichiers de `replay/`). Gain attendu : pic −0,4 à −0,5 Gio sur le plus gros film, alloué −4,8 Gio. Risque moyen ; preuve : empreintes des 13 films. Source : `.ai/annexes_decodeur_v160/profil2.md`, section 6.2 (M1).
-- [ ] G.11 : note à l'hôte sur le plafond souple de mémoire (`-plafond-gio`) : à 1 Gio, le pic du plus gros film tombe à 1 161 Mio pour +1,3 % de temps (mesuré sur ce seul film). Réglage de l'hôte, pas du décodeur ; à consigner dans la mise en production. Source : `.ai/annexes_decodeur_v160/profil2.md`, section 6.2 (M0).
+- [x] G.11 (2026-11-24 : consignée dans `.ai/gestes_prod_8_3_0.md` ; confirmée par la régénération réelle : pic d'un enfant 1,64 Gio pour un plafond de 3 Gio, aucun arrêt) note à l'hôte sur le plafond souple de mémoire (`-plafond-gio`) : à 1 Gio, le pic du plus gros film tombe à 1 161 Mio pour +1,3 % de temps (mesuré sur ce seul film). Réglage de l'hôte, pas du décodeur ; à consigner dans la mise en production. Source : `.ai/annexes_decodeur_v160/profil2.md`, section 6.2 (M0).
 
 Gate de la piste G : G-clone sur les paquets touchés (`-race` pour G.3) ; G-rev, empreinte refigée par le pilote à valeur constante (R-13) ; G-compat ; G-equiv-ref : 20 identiques contre les références de la v1.5.0 ; G-equiv-2p ; relevé complet de `film-bench` sur la machine au repos (fenêtre de mesure, R-8), comparé à `bench/releves/v1.5.0.tsv`.
 
@@ -915,7 +925,7 @@ Gate de la piste K : à tout niveau de fils, empreintes du document et des faits
 - [~] I.1 (2026-11-23 : V4 abandonnée par le user, V3 couverte par les pistes G et K (V3.4) ; les pistes G et K se sont intégrées une à une dans `feat/v1.6.0`, empreintes des 13 films identiques à chaque intégration) V4 puis V3 fusionnées dans `feat/v1.6.0`, une à une (V1 abandonnée le 2026-11-23 ; la piste G passe en premier) ; G-equiv-ref après chacune : aucun écart,
       références non refigées ; empreintes de révision refigées par leur porte, valeurs inchangées (R-13) ;
       G-façade.
-- [ ] I.2 Preuve d'identité complète, points 1 à 7 (gate du corpus au niveau `N`, pseudo-version désignée
+- [~] I.2 (2026-11-24 : couvert par L.1, deux passages sur la tête de `feat/v1.6.0` (équivalence : 20 films identiques aux références refigées et en double passe, gate du corpus : 19 témoins, écarts tous attribués et acceptés par l'utilisateur, pièces `l1_gates_finals_passage1.md` et `l1_gates_finals_passage2.md`) et par L.4 (montée sur la v1.6.1 publiée, sortie identique à la v1.6.0 sur 13 films à 1 et 4 fils) ; non rejoué tel quel : le gate du corpus sur la pseudo-version de la branche de montée, la v1.6.1 ayant été publiée avant) Preuve d'identité complète, points 1 à 7 (gate du corpus au niveau `N`, pseudo-version désignée
       par `chore/830-decodeur-v160`, `GOWORK=off`).
 - [~] I.3 (2026-11-24 : couvert par K.3 et par `annexes_decodeur_v160/l2_vitesse_v160_contre_v150.md` : relevés aux quatre niveaux de fils (35,8 / 30,1 / 27,8 / 26,7 s sur 13 films contre 71,6 s en v1.5.0), tableau dans les notes de la release v1.6.0 ; non prouvé par les pièces : sa présentation au user sous cette forme) Relevés intermédiaires A (`bench/releves/v1.6.0-vitesse.tsv`, quatre niveaux) et B ; tableau avant
       et après présenté au user, avec le pic par niveau.
@@ -1027,11 +1037,11 @@ ABANDONNÉE le 2026-11-23 sur analyse : le monde est unique pour tout le film, l
       plus.
 - [x] D.4 (2026-11-23 : `FORMAT.md`, `GLOSSARY.md` et `NOTICE.md` posés pour les répliques, les annonces et les gestes, `3faf1b4` ; 2026-11-24 : le nom court y figure aussi, relu à la tête `4d0e9b7` : `FORMAT.md` (publié pour HI_1_12_0 et HI_1_13_0, compté en `unnamed` sinon), `GLOSSARY.md` (ligne `chatter[].name`), `NOTICE.md` (les 291 lignes de `chattername/data/names.tsv`)) Fragments de documentation (R-15) : `FORMAT.md`, `GLOSSARY.md` ; crédit à Den (méthode et table de
       textes, libfilmshell, MIT) pour `NOTICE.md`.
-- [ ] D.5 (2026-11-23 au soir : le user a demandé la voix anglaise au contributeur ; le français se fait d'abord, l'anglais se branche à réception ; décision du user du 2026-11-23 : textes ET voix, en français et en anglais, versés au dépôt comme les sons d'armes ; estimation donnée au user : textes environ 40 Ko, voix 12 à 30 Mo pour les deux langues, à MESURER avant de verser ; deux inconnues à lever : nombre de voix de Spartan enregistrées par réplique, et la voix anglaise n'est pas installée sur le poste) HORS DÉCODEUR (DD-4) : côté LevelUp, à la montée, commande qui bâtit
+- [~] D.5 (reporté au backlog de LevelUp à la clôture le 2026-11-24, entrée « Répliques des Spartans : affichage » ; 2026-11-23 au soir : le user a demandé la voix anglaise au contributeur ; le français se fait d'abord, l'anglais se branche à réception ; décision du user du 2026-11-23 : textes ET voix, en français et en anglais, versés au dépôt comme les sons d'armes ; estimation donnée au user : textes environ 40 Ko, voix 12 à 30 Mo pour les deux langues, à MESURER avant de verser ; deux inconnues à lever : nombre de voix de Spartan enregistrées par réplique, et la voix anglaise n'est pas installée sur le poste) HORS DÉCODEUR (DD-4) : côté LevelUp, à la montée, commande qui bâtit
       la table des répliques depuis le jeu installé (identifiant du son vers textes français et anglais et
       fichiers de voix), faite comme celle des sons d'armes (`cmd/weapon-sounds`), derrière le tag
       `gamefiles` ; aucun fichier du jeu au dépôt.
-- [ ] D.6 HORS DÉCODEUR (DD-4) : UNE maquette interactive des trois idées du user (icône de son et
+- [~] D.6 (reporté au backlog de LevelUp à la clôture le 2026-11-24, entrée « Répliques des Spartans : affichage ») HORS DÉCODEUR (DD-4) : UNE maquette interactive des trois idées du user (icône de son et
       texte sur le joueur ; icône et son joué ; une variante au hasard dans le fil avec un filtre
       « Répliques »), sur un rejeu réel, inscrite à l'artefact des vérifications. Les zones de lieu de
       LevelUp servent telles quelles. L'affichage réel se fait dans un plan à part, après le choix du user
@@ -1207,7 +1217,7 @@ Non porté, et pourquoi :
 
 Décisions du user du 2026-11-23 qui s'y rattachent : aucune option dans le décodeur (tout est publié, pleine cadence comprise) ; dégâts à zéro point publiés ; série de santé et de bouclier par vie publiée ; purge de l'historique git abandonnée.
 
-- [ ] P.9 Note de migration remise au contributeur (en anglais), à la clôture. À dire dans la note : `roster[].appearance` (codes bruts, apparence portée pendant le match), `chatter[].name`.
+- [x] P.9 (2026-11-24 : note ÉCRITE, hors dépôt ; sa relecture et son envoi au contributeur sont le geste de l'utilisateur, non fait) Note de migration remise au contributeur (en anglais), à la clôture. À dire dans la note : `roster[].appearance` (codes bruts, apparence portée pendant le match), `chatter[].name`.
 - [x] P.10 (2026-11-24 : crédits posés des deux côtés : `NOTICE.md` cite llampwall pour les lectures reprises et son lecteur 3D, section Crédits du `README.md`, crédits nuzzles et Den, release v1.6.0 ; côté LevelUp, crédits de llampwall et de nuzzles dans `docs/ACKNOWLEDGMENTS.md` et notes de version, à la montée) Crédit au contributeur sous son pseudo GitHub llampwall : remerciements du décodeur à la clôture, crédits de LevelUp à la montée (page des crédits, fichier de crédits), pour le décodeur et surtout le rejeu 3D.
 
 ## Étape R — relecture, AVANT les gates finals
@@ -1259,7 +1269,7 @@ Ordre imposé : R.1, R.2, puis L.1, L.2, L.3. Toute correction après L.1 fait r
 - [x] L.8 Gestes de production inscrits à la liste de la release : dossier d'attente, bascule ; niveau de
       fils du serveur à 1.
       (2026-11-24 : gestes inscrits dans `.ai/gestes_prod_8_3_0.md`, non exécutés : ils se font au déploiement de la 8.3.0)
-- [ ] L.9 Clôture : tous les items statués ; recherches closes ou `[!]` avec leurs pièces et leur motif ;
+- [x] L.9 (2026-11-24 : voir le journal d'exécution, entrée de clôture) Clôture : tous les items statués ; recherches closes ou `[!]` avec leurs pièces et leur motif ;
       backlog mis à jour entrée par entrée (section 1.4) ; registre des reports (dont le report de
       la marche commune, déjà fait) ; items L.6, L.7 et R.3 du plan v1.5.0 statués `[~]` vers ce plan ;
       entrée de `.ai/thought_log.md` ; worktrees retirés un à un après recherche de jonction, dans un tour à
@@ -1269,6 +1279,7 @@ Ordre imposé : R.1, R.2, puis L.1, L.2, L.3. Toute correction après L.1 fait r
 
 ## Journal d'exécution
 
+- 2026-11-24 — CLÔTURE (L.9) : tous les items statués (0 case vide). Items clos à la clôture : D.5 et D.6 reportés au backlog de LevelUp (entrée « Répliques des Spartans : affichage »), V0.4 et I.2 couverts ailleurs (voir leurs lignes), G.11 consignée aux gestes de production, P.9 écrite (envoi = geste de l'utilisateur). Backlog revu entrée par entrée pour le décodeur : apparence des Spartans retirée de l'entrée des parseurs voisins (faite), mesures après régénération reportées aux entrées du drapeau et des tirs, entrée des rejeux du site hébergé corrigée (non bloquant : la 8.3.0 sert ces rejeux tels quels), entrée des répliques réécrite. Registre des reports complété (section v1.6.0), lignes faites retirées de la section v1.5.0 (régénération, rattrapage du coup d'envoi). L.6, L.7 et R.3 du plan v1.5.0 statués `[~]` vers ce plan. Outillage de mesure né du plan : `cmd/film-bench` et `bench/` vivent dans le dépôt du décodeur, gardés et documentés dans `bench/README.md` ; côté LevelUp, rien d'autre que l'option de fils de `replay-build` et `replay-worker` (réglage permanent, pas un outil de mesure). `CLAUDE.md` : la phrase « que LevelUp exige à `v1.0.1` » (ADR 0043) était fausse (les quatre briques n'ont pas la même version) ; remplacée par un renvoi à `apps/go-api/go.mod`. `make gate-push` pas lancé (avant `main` seulement).
 - 2026-11-24 — RÉGÉNÉRATION RÉELLE DU PARC (L.6, 11:35 à 13:17) : 1 455 rejeux au schéma 127 en 1 h 11, zéro échec, pic d'un enfant 1,64 Gio ; les six passes dérivées et le rattrapage du coup d'envoi ensuite (durées par passe dans l'annexe `l6_regeneration_reelle_resume.md`), au total 1 h 42 contre 3 h prévues. Poids des rejeux +39,8 %. Sauvegarde de la base partagée et des rejeux faite avant. Question du pilote : `backfill-killsource` saute un film sur la seule révision de sa couche ; comparaison sur 30 films copiés : morts identiques ligne à ligne (vies et tirs non comparés). Un film écarté du journal des morts pour un profil de build absent. Reste L.7 (mesures après), L.8, L.9.
 - 2026-11-24 — CI DE LA PR 216 : trois causes, toutes réglées avant la fusion : un lot de tests au délai (deux lots de la brique tournent autour de 8 minutes pour 10), l'audit d'une dépendance de la coquille de bureau, et la référence des tests (un sous-test de la brique remplacé ; sept sous-tests renommés par l'anonymisation du 2026-11-23, qui rougissaient la release depuis). PR 216 fusionnée en squash à 11:32 UTC, CI verte.
 - 2026-11-24 — CORRECTIF v1.6.1 DE LA BRIQUE : publié le 2026-11-24 (09:29 UTC), sans changement de sortie (document et faits identiques à la v1.6.0 sur 13 films, à 1 et 4 fils ; schémas 127 et 31 inchangés ; `gorelease` : aucune incompatibilité). Remet au vert les 7 garde-rails d'`archlint` (une conversion booléenne par paquet, nom de l'hôte dans une chronique, suivi des fils porté par le contexte du film au lieu d'une variable de paquet, une seule entrée de la marche d'images-clés, trois tests du registre des replis) et le catalogue de `filmcorpus` ; l'équivalence passe par une référence refigée (le filtre des formes déployées réduit `powerupKept` de deux films, voulu). Fixtures de contrat du web à re-miroiter côté LevelUp (fait). Incident : six fichiers de l'hôte réécrits quelques minutes par une commande de régénération, restaurés par chemin.

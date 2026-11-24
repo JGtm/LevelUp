@@ -96,10 +96,9 @@
 
 ### [décodeur] Comparaison avec les parseurs voisins : ce qui reste après la v1.6.0
 
-**Mis à jour le 2026-11-23** (plan du décodeur v1.6.0 ; relevé d'origine du 2026-11-22 sur `nuzzles/halo_api` 0.6.1 et libfilmshell de Den). Fait : le parallélisme du décodeur est intégré (un film récent passe de 1,12 s en v1.5.0 à 0,80 s à un fil, 0,53 s à deux, 0,48 s à quatre, 0,46 s à huit, sortie identique à l'octet). Abandonné : décompression sur plusieurs fils (gain de 0,1 à 0,8 %), lecture de plusieurs chunks à la fois (gain plafonné à 10-15 %), lecture au choix des canaux (abandonnée par le user le 2026-11-23).
+**Mis à jour le 2026-11-24** (clôture du plan du décodeur v1.6.0 ; relevé d'origine du 2026-11-22 sur `nuzzles/halo_api` 0.6.1 et libfilmshell de Den). L'apparence des Spartans est faite : publiée en codes bruts (`roster[].appearance`), sans table de noms. Fait : le parallélisme du décodeur est intégré (un film récent passe de 1,12 s en v1.5.0 à 0,80 s à un fil, 0,53 s à deux, 0,48 s à quatre, 0,46 s à huit, sortie identique à l'octet). Abandonné : décompression sur plusieurs fils (gain de 0,1 à 0,8 %), lecture de plusieurs chunks à la fois (gain plafonné à 10-15 %), lecture au choix des canaux (abandonnée par le user le 2026-11-23).
 
 Reste ouvert :
-- **Apparence enregistrée des Spartans** (armure, revêtement) : recherche bornée à faire (item E.4), à remettre à la session du rejeu 3D.
 - **Nom des options de variante** : le film ne porte que le hachage (vérifié sur deux films, tous les décalages de bit) ; les archives lisibles du jeu ne rendent aucun des 30 hachages testés ; les noms sont probablement dans l'exécutable du jeu, non lu. Reprise : établir cette source (item E.3).
 - **Licence** : ses sources citent des fichiers de notre décodeur (AGPL-3.0) en « référence épinglée », son paquet est sous MIT ou Apache-2.0 ; portage ou relecture du format, non établi ; la suite est une décision du user.
 - **Crédit à nuzzles** pour les méthodes reprises : fait des deux côtés le 2026-11-24 (décodeur : fichier de crédits, README, release v1.6.0 ; LevelUp : `docs/ACKNOWLEDGMENTS.md`).
@@ -121,9 +120,9 @@ Reste ouvert :
 
 ### [déploiement] Rejeux du site hébergé à l'ancien schéma, sans film
 
-**Relevé le 2026-11-24** (mesures après la régénération, étape L.7). Environ 2 080 rejeux du serveur n'ont pas d'équivalent local, et l'archive des films du serveur a été vidée le 2026-11-23 : ces rejeux ne peuvent être ni copiés ni régénérés. La 8.3.0 juge un rejeu à l'ancien schéma périmé et veut le refaire depuis son film, qui n'existe plus.
+**Relevé le 2026-11-24, instruit le même jour (priorité abaissée : non bloquant).** Environ 2 080 rejeux du serveur n'ont pas d'équivalent local, et l'archive des films du serveur a été vidée le 2026-11-23 : ces rejeux ne peuvent être ni copiés ni régénérés. Lecture du code (vérifié) : la 8.3.0 SERT un rejeu à l'ancien schéma tel quel. Aucune comparaison de schéma à la lecture (`apps/go-api/internal/service/replay_service.go`, `GetReplay`), désérialisation tolérante, calques récents simplement absents ; la régénération à la demande est réservée au bureau et au développement (`apps/go-api/internal/config/deployment.go`, capacité `GenerateReplays`), donc sur le site hébergé rien n'est remis en file ni retéléchargé ; seul un administrateur voit un badge « à régénérer » (`apps/web/src/features/match-replay/ui/ReplaySchemaBadge.tsx`) ; les notes de version disent que les anciens rejeux restent lisibles (`docs/RELEASE_NOTES.md`).
 
-**Pour reprendre :** établir le comportement de la 8.3.0 devant ces rejeux (page du match, génération à la demande, état affiché) AVANT le déploiement, puis décider : garder l'ancien rejeu servi, ou le marquer sans film. Voir `.ai/gestes_prod_8_3_0.md` (section du décodeur v1.6.1). **Effort : à estimer. Priorité : haute, bloquant pour le déploiement.**
+**Ce qui reste :** ces rejeux n'auront jamais les calques neufs (répliques, gestes, vitalités, apparence, collages) ; aucun écran d'administration ne les compte. Pour reprendre : un compte de ces rejeux dans la vue d'administration, ou une reconstitution des films si l'archive est un jour rétablie. Voir `.ai/gestes_prod_8_3_0.md` (section du décodeur v1.6.1). **Effort : S pour le compte. Priorité : basse.**
 
 ---
 
@@ -226,7 +225,7 @@ Tant que le verdict est faux dans ces modes, ne pas afficher le détail daté de
 
 ### [décodeur] Tirs, touches et dégâts lus dans le film : lecture suffisante pour 12 % des joueurs seulement
 
-**Relevé le 2026-11-17** (suites de l'audit des versions 8.2.0 à 8.3.0, `.ai/PLAN_SUITES_AUDIT_2026-11-16.md`). **Reformulée le 2026-11-17.** Constat sur pièces : l'échantillon de 8 fixtures était dominé par des builds anciens ; mesure du décodeur sur 193 films : lecture suffisante pour 23 % des joueurs, et le parc du poste est à environ 90 % au build 13. Les totaux de l'API restent la référence ; le film ne sert que pour les joueurs à lecture suffisante. Sort : à remesurer après la régénération du parc (étape T.0 du plan de refonte de la page du rejeu, `.ai/PLAN_REFONTE_UI_REJEU_2026-11-15.md`, E.4). Mesure : `.ai/annexes_suites_audit/sources.md`. **Effort : à estimer.**
+**Relevé le 2026-11-17** (suites de l'audit des versions 8.2.0 à 8.3.0, `.ai/PLAN_SUITES_AUDIT_2026-11-16.md`). **Reformulée le 2026-11-17.** Constat sur pièces : l'échantillon de 8 fixtures était dominé par des builds anciens ; mesure du décodeur sur 193 films : lecture suffisante pour 23 % des joueurs, et le parc du poste est à environ 90 % au build 13. Les totaux de l'API restent la référence ; le film ne sert que pour les joueurs à lecture suffisante. Remesuré le 2026-11-24 après la régénération : 2 673 085 tirs lus avant, 3 256 907 après (+21,8 %), voir l'entrée « Bilan des tirs par joueur après la régénération » et `.ai/annexes_decodeur_v160/l7_mesures_apres_regeneration.md` ; la part de joueurs à lecture suffisante n'a pas été recomptée. Mesure : `.ai/annexes_suites_audit/sources.md`. **Effort : à estimer.**
 
 ---
 
@@ -262,9 +261,17 @@ Relevé le 2026-11-16 : `NAVPOINT_NAMES` de OpenSpartan/cartographer (MIT) liste
 
 ---
 
-### [décodeur] Répliques des Spartans (chatter) et voix, en FR ou EN
+### [décodeur/répliques] Répliques des Spartans : affichage (textes, voix, maquette)
 
-**Demande de l'utilisateur (2026-11-16), très basse priorité.** **Mis à jour le 2026-11-23** (plan du décodeur v1.6.0) : le décodeur lit et publie les répliques (`chatter[]`) et les annonces (`announcements[]`), dans `feat/v1.6.0` ; le nom court d'une réplique est en cours de recherche (item D.2, jamais de nom inventé, une réplique sans nom prouvé est publiée sans nom et comptée). Le film ne dit pas quelle variante audio a joué. **Reste côté LevelUp** (items D.5 et D.6 du plan) : commande qui bâtit la table des répliques depuis le jeu installé (textes français et anglais, voix), faite comme celle des sons d'armes, et UNE maquette interactive des trois idées d'affichage (icône de son avec le texte sur le joueur ; icône et son joué ; une variante au hasard dans le fil avec un filtre « Répliques »), à faire valider par le user avant tout affichage. Crédit : méthode et table de textes de Den (libfilmshell, MIT). **Effort : à estimer.**
+**Demande de l'utilisateur (2026-11-16), très basse priorité. Reprise du plan du décodeur v1.6.0, items D.5 et D.6, reportés ici à sa clôture le 2026-11-24 : ce sont des travaux d'écran côté application, pas du décodeur.** Ce que le décodeur publie déjà (v1.6.1, schéma 127) : `chatter[]` (chaque réplique avec son instant, son joueur et son `name`, nom court prouvé par hachage sur les builds `HI_1_12_0` et `HI_1_13_0`, 291 noms ; sans nom, comptée, ailleurs), `announcements[]`, et le paquet public `chattername`. Le film ne dit pas quelle variante audio a joué.
+
+**Décisions de l'utilisateur :** 2026-11-23, textes ET voix, en français et en anglais, versés au dépôt comme les sons d'armes ; 2026-11-23 au soir, la voix anglaise est demandée au contributeur (llampwall), le français se fait d'abord et l'anglais se branche à réception.
+
+**Reste côté LevelUp :**
+- D.5 : une commande qui bâtit la table des répliques depuis le jeu installé (identifiant du son vers textes français et anglais et fichiers de voix), faite comme `cmd/weapon-sounds`, derrière l'étiquette `gamefiles` ; aucun fichier du jeu au dépôt. Poids estimé à l'utilisateur : textes environ 40 Ko, voix 12 à 30 Mo pour les deux langues, à MESURER avant de verser. Deux inconnues à lever : le nombre de voix de Spartan enregistrées par réplique, et la voix anglaise n'est pas installée sur le poste.
+- D.6 : UNE maquette interactive des trois idées de l'utilisateur (icône de son avec le texte sur le joueur ; icône et son joué ; une variante au hasard dans le fil avec un filtre « Répliques »), sur un rejeu réel, inscrite à l'artefact des vérifications, à faire valider avant tout affichage. Les zones de lieu de LevelUp servent telles quelles. L'affichage réel se fait dans un plan à part, après le choix sur la maquette.
+
+Crédit : méthode et table de textes de Den (libfilmshell, MIT). Noms sur les anciens builds : voir « Nom court des répliques sur les versions du jeu d'avant HI_1_12_0 ». **Effort : moyen. Priorité : très basse.**
 
 
 ---
@@ -292,7 +299,7 @@ Relevé le 2026-11-16 (montée du décodeur v1.4.1). **Reformulée le 2026-11-17
 
 ### [rejeu/drapeau] Porteurs du drapeau faux en grande bataille (au-delà de 8 sièges)
 
-Relevé le 2026-11-16 (phase C du décodeur, C7). **Mis à jour le 2026-11-23** (plan du décodeur v1.6.0, items B.1 et B.2, intégrés) : le drapeau lit désormais tous les sièges du film, une base neutre lue par le film fait un seul drapeau, la suite d'un siège se coupe au changement d'occupant, un porteur immobile garde sa position ; sur 218 joueurs de 13 films, justes à 2 s de l'API : 161 avant, 203 après, aucun juste devenu faux. Restent à instruire : un portage dont le porteur précédent est un bot arrivé en cours de match (piste sans identifiant), le premier occupant d'un siège que le pont par les morts ne nomme pas, un portage faux apparu sur un film à 6 socles (deux drapeaux publiés au lieu de six, risque sur les cartes à 6 socles). Mesure sur le parc entier (186 films à drapeau) non faite : à relever après la régénération. Pièce : `.ai/annexes_decodeur_v160/b1_causes_des_portages_faux.md`. **Effort : M.**
+Relevé le 2026-11-16 (phase C du décodeur, C7). **Mis à jour le 2026-11-23** (plan du décodeur v1.6.0, items B.1 et B.2, intégrés) : le drapeau lit désormais tous les sièges du film, une base neutre lue par le film fait un seul drapeau, la suite d'un siège se coupe au changement d'occupant, un porteur immobile garde sa position ; sur 218 joueurs de 13 films, justes à 2 s de l'API : 161 avant, 203 après, aucun juste devenu faux. Restent à instruire : un portage dont le porteur précédent est un bot arrivé en cours de match (piste sans identifiant), le premier occupant d'un siège que le pont par les morts ne nomme pas, un portage faux apparu sur un film à 6 socles (deux drapeaux publiés au lieu de six, risque sur les cartes à 6 socles). Mesure après la régénération du parc (2026-11-24) : temps de porteur à 2 s de l'API juste pour 86,07 % des joueurs avant, 92,71 % après (143 devenus justes, 0 devenu faux) ; au-delà de 8 joueurs 83,27 % puis 93,38 % ; reste l'entrée « Grande bataille : 45 films sans calque de portages du drapeau ». Pièce : `.ai/annexes_decodeur_v160/b1_causes_des_portages_faux.md`. **Effort : M.**
 
 
 ---
@@ -742,7 +749,7 @@ Source : journal du plan `.ai/PLAN_BACKLOG_2026-11-18.md`, section « Découvert
 - **Drapeau, état « au socle » faux avant un portage juste** : traité par les items B.1 et B.2 du plan v1.6.0 (203 joueurs justes sur 218 contre 161) ; ce qui reste est dans l'entrée « Porteurs du drapeau faux en grande bataille ».
 - **Tableau « Impact des coéquipiers » par session (revue du 2026-11-22, P2)** : (a) net par match faux sans signal si l'équipe alliée n'est pas lue (`teammates_squad_impact_sessions.go:30-45`, `squadimpact/sessions.go` `addMatch` : les matchs joués retombent sur les matchs avec rôle) — ne pas publier le bloc, raison journalisée ; (b) colonnes de match écrasées sur une longue session (`SessionMatrix.tsx:109-119`, largeur automatique) — largeur minimale par colonne de match, à juger à l'écran ; (c) sept ré-exports `SquadImpactSessions*` sans lecteur dans `lib/api/types.ts`, commentaire de `MatchesPlayed` incomplet.
 - **Compteur des émissions jetées gonflé hors Drapeau** : la passe du verdict de mode lit la table du Drapeau sur tout film et verse ses rejets au compteur du document (0 → 1 952 sur un film d'un autre mode), sans effet sur les compteurs publiés. Correction proposée : un enregistreur à part pour cette passe.
-- **Répliques des Spartans** : voir l'entrée « Répliques des Spartans (chatter) et voix » (lecture et publication faites, nom court en cours, table des textes et maquette côté LevelUp). Pièces de la recherche : `dec-v150-recup/h5/chatter/`.
+- **Répliques des Spartans** : voir l'entrée « Répliques des Spartans : affichage » (lecture, publication et nom court faits ; table des textes et maquette côté LevelUp). Pièces de la recherche : `dec-v150-recup/h5/chatter/`.
 - **Compteurs de zones sur d'anciens builds** (verdict du 2026-11-23, item B.4) : sur ces films le composant 21 côté A n'est pas un compteur (valeurs congrues à 8 modulo 32) ; la définition des emplacements du tableau n'existe dans le film que pour `HI_1_12_0` et `HI_1_13_0` ; sans effet aujourd'hui (`objectives[]` vide). Pour borner par build : un lecteur Go de ces définitions (Rust de Den en témoin, avec crédit).
 - **Coup d'envoi sur trois anciens builds** : environ 0,9 s plus tôt qu'avant, sous la tolérance d'une seconde, non vérifiable à l'API.
 - **Valeur de test non remesurée** (2026-11-23) : le test de l'ouvrier réel de la file de génération attend un coup d'envoi par cadence ; la valeur de la cadence de 100 ms n'a pas été remesurée après le passage à l'horloge du jeu (aucun test ne tourne à cette cadence).

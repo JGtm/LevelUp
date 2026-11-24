@@ -1,3 +1,9 @@
+## [2026-11-24] Clôture du plan du décodeur v1.6.0 — Complété
+
+- **Décision** : le plan est clos : tous les items statués (78 faits, 25 couverts ailleurs, 25 non traités avec motif, 0 case vide). Les travaux d'écran sur les répliques (table des textes et des voix, maquette) sortent du plan vers le backlog de LevelUp ; le reste des reports est au backlog et au registre des reports.
+- **Résultats** : décodeur v1.6.0 puis v1.6.1 publiés, montés dans la release 8.3.0, parc de 1 455 rejeux régénéré au schéma 127 sans échec (1 h 11) ; 13 films en 35,8 s à un fil contre 71,6 s en v1.5.0 ; temps de porteur du drapeau juste à 2 s de l'API pour 92,71 % des joueurs contre 86,07 % ; poids des rejeux +39,8 %. La lecture du code établit que la 8.3.0 sert les rejeux du site hébergé à l'ancien schéma tels quels : l'entrée du backlog correspondante passe à la priorité basse. `CLAUDE.md` : la version « v1.0.1 » exigée de toutes les briques était fausse, remplacée par un renvoi au `go.mod`.
+- **Suite** : l'utilisateur relit et envoie la note de migration au contributeur, fait les contrôles à l'écran, puis le geste de production de la 8.3.0 ; archivage du plan plus tard.
+
 ## [2026-11-24] Régénération du parc des rejeux au schéma 127 et clôture documentaire de la montée du décodeur — En cours
 
 - **Décision** : le parc des rejeux est régénéré une seule fois, sur le décodeur v1.6.1 (correctif sans changement de sortie, publié après que la v1.6.0 a fait rougir 7 garde-rails de la brique et 2 tests de l'hôte), après sauvegarde de la base partagée et des rejeux ; les passes dérivées et le rattrapage du coup d'envoi suivent dans la foulée. La PR de montée est fusionnée dans la release (squash, CI verte).

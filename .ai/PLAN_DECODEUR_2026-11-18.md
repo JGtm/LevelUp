@@ -426,8 +426,8 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       seuls » (gestes 13 à 15).
 - [x] L.5 (fait le 2026-11-23 : CI de la branche verte, suite web complète verte (15 658 tests), suite Go d'intégration `-p 1` verte (229 paquets), filet de poussée sans échec ; notes de version et changelog en français et en anglais) Gates de LevelUp sans `GOWORK`, suite complète du web, `make gate-push`, CI (geste 16) ; notes de
       version dans les deux langues, changelog, journal, backlog, registre des reports (geste 17).
-- [!] L.6 (reporté par décision du user du 2026-11-22 : une seule régénération, après la v1.6.0 ; voir le registre des reports) Régénération du parc, une fois, serveur arrêté, puis les dérivés (geste 18).
-- [~] L.7 (mesures après faites sur échantillons, voir le journal ; mesure sur le parc reportée avec L.6) Mesures APRÈS sur le parc régénéré, comparées à `avant.md` ; vérifications à l'écran inscrites à
+- [~] L.6 (reporté par décision du user du 2026-11-22 : une seule régénération, après la v1.6.0 ; FAIT le 2026-11-24 : voir L.6 de `.ai/PLAN_DECODEUR_V160_2026-11-23.md`) Régénération du parc, une fois, serveur arrêté, puis les dérivés (geste 18).
+- [~] L.7 (mesures après faites sur échantillons, voir le journal ; mesure sur le parc FAITE le 2026-11-24 : voir L.7 de `.ai/PLAN_DECODEUR_V160_2026-11-23.md`) Mesures APRÈS sur le parc régénéré, comparées à `avant.md` ; vérifications à l'écran inscrites à
       l'artefact des vérifications du user ; gestes de prod inscrits à la liste de la release (geste 19).
 - **Gate L** : chaque ligne du registre des changements de sortie retrouvée dans les mesures APRÈS.
 
@@ -437,7 +437,7 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       montée ; axes imposés : heuristique déguisée, repli neuf, identifiant réel, sortie changée sans ligne
       au registre.
 - [x] R.2 (2026-11-22 : aucun P0 ; P1 du décodeur corrigés, `fb90397` et `f72779d` ; P1 de la montée corrigés, `407109bec1` ; P2 au backlog sauf ceux corrigés en passant ; un P2 du décodeur reclassé bloquant par le gate du corpus et corrigé, `e703301`) P0 et P1 corrigés en une ronde ; P2 au backlog seulement s'ils valent le coup.
-- [~] R.3 (2026-11-23 : tous les items statués ; reports inscrits au registre ; worktrees de la v1.5.0 gardés tant que la montée n'est pas fusionnée ; backlog à jour) Tous les items statués ; recherches closes ou `[!]` avec leurs pièces ; backlog mis à jour entrée
+- [~] R.3 (clôture reprise par L.9 de `.ai/PLAN_DECODEUR_V160_2026-11-23.md`, 2026-11-24 ; 2026-11-23 : tous les items statués ; reports inscrits au registre ; worktrees de la v1.5.0 gardés tant que la montée n'est pas fusionnée ; backlog à jour) Tous les items statués ; recherches closes ou `[!]` avec leurs pièces ; backlog mis à jour entrée
       par entrée ; worktrees retirés un à un après recherche de jonction.
 
 ## Journal d'exécution

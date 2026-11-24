@@ -480,7 +480,7 @@ git commit -m "refactor(phase2): ..."
   précise 0023) ·
   `0043` **publication des briques** (quatre modules publiables, `halo-infinite-files-reader`, `halo-infinite-map-images`,
   `halo-infinite-film-decoder` et `halo-api` (`github.com/JGtm/<dépôt>`), d'abord depuis le dépôt unique (`libs/`), depuis la bascule du
-  2026-11-12 depuis leurs seuls dépôts dédiés, que LevelUp exige à `v1.0.1` (`halo-api` retire `v0.1.0` et `v1.0.0`) ; une nouvelle version = un tag sur le dépôt dédié, posé par l'utilisateur seul,
+  2026-11-12 depuis leurs seuls dépôts dédiés, que LevelUp exige aux versions de `apps/go-api/go.mod` (`halo-api` retire `v0.1.0` et `v1.0.0`) ; une nouvelle version = un tag sur le dépôt dédié, posé par l'utilisateur seul,
   puis une montée du `require` dans `apps/go-api/go.mod` ; pseudo-version permise sur une branche de travail, tag obligatoire avant `main` (amendement du 2026-11-13 : premier usage, ADR 0048) ;
   `v1.0.0` depuis le 2026-11-09 (promesse de compatibilité semver, changement cassant = `/v2`), un numéro par module ; un README modèle unique par brique, exemple compilé
   par `example_test.go` ; licences : `gamefiles` GPL-3.0 à cause de `ooz`, `himap`, `film` et `haloapi` AGPL-3.0 ;

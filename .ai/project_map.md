@@ -69,7 +69,7 @@
 
 > **Mise à jour 2026-11-14** : les chemins `internal/games/halo_infinite/film/` de ce tableau n'existent plus dans ce dépôt ; ils vivent
 > dans le dépôt dédié `halo-infinite-film-decoder` (voir « Briques Go » plus bas), et les nombres (`SchemaVersion` 62, façade de 166
-> symboles) sont ceux du 2026-09-18 : le schéma est à 115 avec le décodeur v1.3.6.
+> symboles) sont ceux du 2026-09-18 : le schéma est à 115 avec le décodeur v1.3.6 (127 avec le décodeur v1.6.1, au 2026-11-24).
 
 Chemins sous `apps/go-api/` sauf mention contraire.
 
@@ -112,7 +112,7 @@ Chemins sous `apps/go-api/` sauf mention contraire.
 
 | Rôle | Chemin réel |
 |---|---|
-| Quatre modules requis par `apps/go-api/go.mod` (versions du 2026-11-14 : `halo-api` v1.0.1, `halo-infinite-files-reader` v1.1.0, `halo-infinite-map-images` v1.1.0, `halo-infinite-film-decoder` v1.3.6) | `github.com/JGtm/{halo-api,halo-infinite-files-reader,halo-infinite-map-images,halo-infinite-film-decoder}` |
+| Quatre modules requis par `apps/go-api/go.mod` (versions du 2026-11-24 : `halo-api` v1.0.1, `halo-infinite-files-reader` v1.2.0, `halo-infinite-map-images` v1.4.0, `halo-infinite-film-decoder` v1.6.1) | `github.com/JGtm/{halo-api,halo-infinite-files-reader,halo-infinite-map-images,halo-infinite-film-decoder}` |
 | Résolveur unique du dossier d'une brique sur le disque (`go list -m -f {{.Dir}}`), pour les tests et les outils hors ligne ; le serveur ne l'importe pas | `apps/go-api/internal/briques/` |
 | Espace de travail LOCAL pour modifier une brique avant son tag (jamais versionné, désigné par `GOWORK`) | `scripts/briques-workspace.sh` -> `levelup-briques.work` ; garde-rail : `archlint/no_go_work_versionne_test.go` |
 | Frontières entre briques et LevelUp | `archlint/briques_imports_test.go`, `archlint/briques_notice_test.go` (chaque brique a un `NOTICE.md`) |
