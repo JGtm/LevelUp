@@ -19,7 +19,7 @@ package killcollector
 //
 // Les films EXPIRENT cote serveur Halo. Un film telecharge puis jete devrait etre
 // re-telecharge a chaque re-decodage, et le jour ou il expire il serait perdu alors qu on l a
-// EU. Chaque film lu est donc ecrit au cache par [filmarchive.Write] (chunks d abord, manifeste
+// EU. Chaque film lu est donc ecrit au cache (sauf reglage « archiver les films » coupe, [AvecArchivage]) par [filmarchive.Write] (chunks d abord, manifeste
 // en dernier : le manifeste est le marqueur de commit). Une passe suivante — decodeur revise,
 // nouvelle mesure — retombe alors sur [LocalCacheFilms] et ne paie plus le reseau.
 //
@@ -54,6 +54,9 @@ const (
 	CompteurFilmsTelecharges = "killsource_films_telecharges"
 	CompteurFilmsArchives    = "killsource_films_archives"
 	CompteurArchiveErreurs   = "killsource_films_archive_erreurs"
+	// CompteurFilmsNonArchives : films lus au reseau et decodes sans etre ecrits, parce que le
+	// reglage « archiver les films » est coupe.
+	CompteurFilmsNonArchives = "killsource_films_non_archives"
 )
 
 // RemoteFilms : le cache disque d abord, le reseau ensuite, et le reseau archive au passage.
@@ -65,6 +68,16 @@ type RemoteFilms struct {
 	local     *LocalCacheFilms
 	distant   filmChunkFetcher
 	cacheRoot string
+	// archive : relue a CHAQUE film (le reglage change a chaud). Nil = oui.
+	archive func(context.Context) bool
+}
+
+// AvecArchivage branche la decision « ecrire ce film au cache ? » sur le reglage de l'instance. Sans
+// elle la source archive tout ce qu'elle lit (outils d'operateur : `backfill-killsource --online`).
+// Coupee, le film est decode depuis la memoire, compte ([CompteurFilmsNonArchives]) et jamais ecrit.
+func (r *RemoteFilms) AvecArchivage(archive func(context.Context) bool) *RemoteFilms {
+	r.archive = archive
+	return r
 }
 
 // NewRemoteFilms construit la source.
@@ -129,6 +142,10 @@ func (r *RemoteFilms) GetFilmChunks(
 // (les octets sont en memoire) mais il est logge ET compte — sans quoi un disque plein
 // ferait payer le reseau a chaque passe sans que personne ne le sache.
 func (r *RemoteFilms) archiver(ctx context.Context, matchID string, chunks []filmfetch.FilmChunk) {
+	if r.archive != nil && !r.archive(ctx) {
+		observability.IncCounter(CompteurFilmsNonArchives)
+		return
+	}
 	if r.cacheRoot == "" {
 		slog.WarnContext(ctx, "killsource_film_non_archive_faute_de_cache",
 			"match_id", matchID,

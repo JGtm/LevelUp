@@ -229,6 +229,12 @@ type DeploymentCapabilities struct {
 	// cycle sur une lecture du retard de 64 matchs, et sa cadence ne suit que l'historique ; la démo ne
 	// synchronise rien ; le développement a la table du serveur hébergé, dont il est la répétition.
 	FilmCatchUp bool
+	// ArchiveFilmsByDefault : le réglage `archive_films` (conserver les films après leur lecture) est ACTIF tant que
+	// l'utilisateur n'a rien écrit (settings.Store.WithArchiveFilmsDefault). Vraie sur le bureau, en développement
+	// et en démo : le film d'un poste est la seule copie d'un film qui expire côté serveur Halo (ADR 0045 D-12).
+	// Fausse sur un serveur hébergé, dont le disque ne garde pas les films : il ne les cuit pas lui-même (ouvrier)
+	// et le serveur de frags les lit en mémoire. Une valeur écrite gagne toujours.
+	ArchiveFilmsByDefault bool
 }
 
 // DeploymentProfile est embarqué dans AppConfig : le profil résolu et ses capacités.
@@ -347,6 +353,7 @@ func capabilitiesOf(cfg *AppConfig) DeploymentCapabilities {
 		CompactPassesAtStartup: desktop,
 		DecoderThreads:         decoderThreadsOf(cfg.Deployment),
 		FilmCatchUp:            desktop,
+		ArchiveFilmsByDefault:  cfg.Deployment != DeploymentHosted,
 	}
 }
 

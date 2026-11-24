@@ -127,3 +127,48 @@ func TestLoad_AutoSyncDefault(t *testing.T) {
 		t.Error("le chargement ne doit pas réécrire le fichier")
 	}
 }
+
+// TestLoad_ArchiveFilmsDefault : « archiver les films » vaut oui par défaut, sauf sous un profil
+// qui ne le veut pas (site hébergé : WithArchiveFilmsDefault(false)). Une valeur écrite gagne dans
+// les deux sens, le fichier n'est pas réécrit, et sans archive la rétention reste illimitée.
+func TestLoad_ArchiveFilmsDefault(t *testing.T) {
+	muet := writeSettings(t, map[string]any{"show_records": true})
+	absent := filepath.Join(t.TempDir(), "app_settings.json")
+	for name, path := range map[string]string{"fichier muet": muet, "fichier absent": absent} {
+		t.Run(name, func(t *testing.T) {
+			cfg, err := settings.NewStore(path).Load()
+			if err != nil || !cfg.ArchiveFilms {
+				t.Fatalf("sans profil : archive attendue (err=%v)", err)
+			}
+			cfg, err = settings.NewStore(path).WithArchiveFilmsDefault(true).Load()
+			if err != nil || !cfg.ArchiveFilms {
+				t.Fatalf("profil qui archive : archive attendue (err=%v)", err)
+			}
+			cfg, err = settings.NewStore(path).WithArchiveFilmsDefault(false).Load()
+			if err != nil || cfg.ArchiveFilms {
+				t.Fatalf("profil qui n'archive pas : pas d'archive attendue (err=%v)", err)
+			}
+		})
+	}
+	garde := writeSettings(t, map[string]any{"archive_films": true})
+	before, _ := os.ReadFile(garde)
+	cfg, err := settings.NewStore(garde).WithArchiveFilmsDefault(false).Load()
+	if err != nil || !cfg.ArchiveFilms {
+		t.Fatalf("valeur écrite true : elle gagne (err=%v)", err)
+	}
+	if after, _ := os.ReadFile(garde); string(after) != string(before) {
+		t.Error("le chargement ne doit pas réécrire le fichier")
+	}
+	coupe := writeSettings(t, map[string]any{"archive_films": false})
+	cfg, err = settings.NewStore(coupe).WithArchiveFilmsDefault(true).Load()
+	if err != nil || cfg.ArchiveFilms {
+		t.Fatalf("valeur écrite false : elle gagne (err=%v)", err)
+	}
+	// Défaut coupé et rétention finie déjà écrite : la rétention est repliée sur illimitée.
+	fini := writeSettings(t, map[string]any{"replay_retention_months": 6})
+	cfg, err = settings.NewStore(fini).WithArchiveFilmsDefault(false).Load()
+	if err != nil || cfg.ArchiveFilms || cfg.ReplayRetentionMonths != 0 {
+		t.Fatalf("défaut coupé + rétention finie : archive=%v rétention=%d (err=%v), attendu coupé et 0",
+			cfg.ArchiveFilms, cfg.ReplayRetentionMonths, err)
+	}
+}

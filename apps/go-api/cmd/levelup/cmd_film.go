@@ -224,7 +224,9 @@ func filmArchiveMove(cfg *config.AppConfig, args []string, out io.Writer) error 
 
 // enregistrerDossierArchive ecrit film_archive_dir (vide pour l'emplacement par defaut).
 func enregistrerDossierArchive(cfg *config.AppConfig, o filmArchiveMoveOptions, cible string) error {
-	store := settings_platform.NewStore(cfg.AppSettingsPath)
+	// Le défaut d'archive du profil : sans lui, Save figerait l'ancien défaut (archiver) dans le fichier.
+	store := settings_platform.NewStore(cfg.AppSettingsPath).
+		WithArchiveFilmsDefault(cfg.Capabilities.ArchiveFilmsByDefault)
 	cur, err := store.Load()
 	if err != nil {
 		return err

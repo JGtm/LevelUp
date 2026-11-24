@@ -163,6 +163,25 @@ func (h *Hook) Archive() bool {
 	return h.ArchiveFilms()
 }
 
+// ArchiveFrags dit si la source des frags écrit à l'archive le film qu'elle vient de télécharger :
+// quand le réglage « archiver les films » le veut, ou quand ce serveur va cuire le rejeu LUI-MÊME dans le
+// même cycle (placement local) : il relit alors ce film depuis l'archive puis le retire
+// (retirerFilmNonArchive), au lieu de le télécharger deux fois. Un serveur qui ne cuit pas (ouvrier, rien :
+// le site hébergé) n'écrit rien quand le réglage est coupé. Hook ou réglage nils : oui, le film n'est
+// jamais jeté sans l'avoir demandé. La décision est prise sans journal : [Hook.Placement] journalise déjà,
+// une fois par cycle, une décision dégradée.
+func (h *Hook) ArchiveFrags(_ context.Context) bool {
+	if h == nil || h.ArchiveFilms == nil || h.ArchiveFilms() {
+		return true
+	}
+	setting := ""
+	if h.Location != nil {
+		setting = strings.TrimSpace(h.Location())
+	}
+	p, _ := replaybuild.DecidePlacement(setting, h.Env)
+	return p == replaybuild.PlacementLocal
+}
+
 // Months rend la fenêtre de rétention du cycle courant (0 = illimité), hook ou closure nils
 // compris.
 func (h *Hook) Months() int {

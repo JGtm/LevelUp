@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/filmarchive"
+	"levelup/go-api/internal/replaybuild"
 
 	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 	"github.com/JGtm/halo-infinite-film-decoder/finalise"
@@ -52,5 +53,49 @@ func TestHookArchive_ParDefautOui(t *testing.T) {
 	non := &Hook{ArchiveFilms: func() bool { return false }}
 	if non.Archive() {
 		t.Fatal("le reglage « ne pas archiver » n'est pas relayé")
+	}
+}
+
+// TestHookArchiveFrags : la source des frags écrit le film quand le réglage l'y autorise, ou
+// quand la cuisson locale du même cycle va le relire puis le retirer (sans quoi il serait
+// téléchargé deux fois). Un site qui ne cuit pas (ouvrier, rien) ne garde rien.
+func TestHookArchiveFrags(t *testing.T) {
+	for _, tc := range []struct {
+		nom      string
+		archive  bool
+		lieu     string
+		env      replaybuild.PlacementEnv
+		attendu  bool
+		nilHook  bool
+		nilArchi bool
+	}{
+		{nom: "archive active", archive: true, env: replaybuild.PlacementEnv{Production: true}, attendu: true},
+		{nom: "archive coupee, cuisson locale : le film sert de relais", lieu: "", attendu: true},
+		{nom: "archive coupee, hebergé sans ouvrier : rien n est garde",
+			env: replaybuild.PlacementEnv{Production: true}, attendu: false},
+		{nom: "archive coupee, hebergé avec ouvrier : rien n est garde",
+			env: replaybuild.PlacementEnv{Production: true, WorkerConfigured: true}, attendu: false},
+		{nom: "archive coupee, cuisson coupee", lieu: "off", attendu: false},
+		{nom: "archive coupee, cuisson locale refusee en production : rien n est garde",
+			lieu: "local", env: replaybuild.PlacementEnv{Production: true}, attendu: false},
+		{nom: "hook nil : defaut oui", nilHook: true, attendu: true},
+		{nom: "reglage non cable : defaut oui", nilArchi: true, attendu: true},
+	} {
+		t.Run(tc.nom, func(t *testing.T) {
+			h := &Hook{
+				ArchiveFilms: func() bool { return tc.archive },
+				Location:     func() string { return tc.lieu },
+				Env:          tc.env,
+			}
+			if tc.nilHook {
+				h = nil
+			}
+			if tc.nilArchi {
+				h.ArchiveFilms = nil
+			}
+			if got := h.ArchiveFrags(t.Context()); got != tc.attendu {
+				t.Fatalf("ArchiveFrags = %v, attendu %v", got, tc.attendu)
+			}
+		})
 	}
 }

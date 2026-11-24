@@ -2,6 +2,8 @@ package killcollector
 
 import (
 	"context"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -203,5 +205,41 @@ func TestRemoteFilms_ChunkTronqueSurDisqueRetelecharge(t *testing.T) {
 	}
 	if distant.appels != 1 {
 		t.Errorf("appels reseau = %d apres reparation, attendu 1 — le disque doit servir", distant.appels)
+	}
+}
+
+// TestRemoteFilms_ArchivageCoupe_RienNEstEcrit : le reglage « archiver les films » est relu a
+// chaque film. Coupe, le film est decode depuis la memoire et RIEN n est ecrit : ni manifeste ni
+// chunk (le site heberge ne garde pas les films).
+func TestRemoteFilms_ArchivageCoupe_RienNEstEcrit(t *testing.T) {
+	racine := cacheVide(t)
+	distant := &filmsEnMemoire{chunks: map[string][]filmfetch.FilmChunk{matchRemote: chunksTemoins()}}
+	archiver := false
+	src := NewRemoteFilms(NewLocalCacheFilms(filmfetch.NewLocalFilmCache(racine)), distant, racine).
+		AvecArchivage(func(context.Context) bool { return archiver })
+
+	avant := observability.LoadCounter(CompteurFilmsNonArchives)
+	got, found, err := src.GetFilmChunks(context.Background(), matchRemote)
+	if err != nil || !found || len(got) != 3 {
+		t.Fatalf("GetFilmChunks = (%d chunks, found=%v, err=%v), attendu les 3 chunks en memoire", len(got), found, err)
+	}
+	court := titlePkg.FilmShortMatchID(matchRemote)
+	if _, err := os.Stat(filmcache.ManifestPath(racine, court)); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("manifeste ecrit alors que l archivage est coupe (err=%v)", err)
+	}
+	if entrees, _ := os.ReadDir(filmcache.ChunkDir(racine, court)); len(entrees) != 0 {
+		t.Errorf("chunks ecrits alors que l archivage est coupe : %d", len(entrees))
+	}
+	if apres := observability.LoadCounter(CompteurFilmsNonArchives); apres != avant+1 {
+		t.Errorf("%s = %d, attendu %d", CompteurFilmsNonArchives, apres, avant+1)
+	}
+
+	// Le reglage est relu a CHAQUE film : rallume, le film suivant est ecrit.
+	archiver = true
+	if _, found, err := src.GetFilmChunks(context.Background(), matchRemote); err != nil || !found {
+		t.Fatalf("seconde lecture = (found=%v, err=%v)", found, err)
+	}
+	if _, err := os.Stat(filmcache.ManifestPath(racine, court)); err != nil {
+		t.Errorf("manifeste non ecrit apres rallumage du reglage : %v", err)
 	}
 }

@@ -214,11 +214,12 @@ func (e *SyncEngine) WithMediaScanHook(hook func(ctx context.Context)) *SyncEngi
 //
 // LE HOOK PORTE LA CAPACITÉ FilmCatchUp DU PROFIL (replayartifacts.NewHook) : les deux étapes film du
 // post-sync, celle des rejeux et la source des frags, prennent leurs bornes par cycle chez lui, pour
-// qu'un seul point de câblage les décide.
+// qu'un seul point de câblage les décide. Il porte aussi le réglage « archiver les films » : la source des
+// frags l'y relit (replayartifacts.Hook.ArchiveFrags) au lieu d'archiver tout ce qu'elle télécharge.
 func (e *SyncEngine) WithReplayArtifacts(h *replayartifacts.Hook) *SyncEngine {
 	e.replayArtifacts = h
 	if h != nil && e.killSource != nil {
-		e.killSource.WithFilmCatchUp(h.FilmCatchUp)
+		e.killSource.WithFilmCatchUp(h.FilmCatchUp).WithArchive(h.ArchiveFrags)
 	}
 	return e
 }
