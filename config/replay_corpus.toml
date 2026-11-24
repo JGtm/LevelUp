@@ -431,3 +431,59 @@ temoins  = ["a349fea8"]
 decodeur = "v1.5.0"
 date     = "2026-11-22"
 raison   = "Unique point de la courbe d equipe 1, a zero, porte par un faux enregistrement du tableau abandonne ; meme cause que coverage.score.points sur ce temoin. Inscrit par le pilote comme consequence de la decision acceptee le 2026-11-22, puis accepte par l utilisateur le meme jour (« J accepte l inscription pour la courbe d equipe »)."
+
+[[decision]]
+mesure   = "coverage.padDating.uncovered"
+temoins  = ["084a804d", "0a247154", "396cfc92", "4f77afc1", "50247b26", "51ebbc0f", "60ae07c4", "a349fea8", "a521164d", "bcb6d393", "bf15f7ab", "bfecd02b", "c75f33b8", "d9781168", "fb1a1a72"]
+decodeur = "v1.6.0"
+date     = "2026-11-24"
+raison   = "socles d equipement neufs dans la liste des socles (decodeur v1.6.0) : le perimetre compte grandit, aucun socle d arme ne regresse, la definition du compteur ne change pas. Accepte par l utilisateur le 2026-11-24 (« j accepte les 4 ecarts », en reponse au tableau des ecarts voulus)."
+
+[[decision]]
+mesure   = "coverage.padDating.ambiguous"
+temoins  = ["084a804d", "4f77afc1", "50247b26", "60ae07c4", "a349fea8", "d9781168", "fb1a1a72"]
+decodeur = "v1.6.0"
+date     = "2026-11-24"
+raison   = "socles d equipement neufs dans la liste des socles (decodeur v1.6.0) : le perimetre compte grandit, aucun socle d arme ne regresse, la definition du compteur ne change pas. Accepte par l utilisateur le 2026-11-24 (« j accepte les 4 ecarts », en reponse au tableau des ecarts voulus)."
+
+[[decision]]
+mesure   = "coverage.groundWeapons.unknown"
+temoins  = ["084a804d", "4f77afc1", "51ebbc0f", "60ae07c4", "a349fea8", "a521164d", "bfecd02b", "c75f33b8", "d9781168"]
+decodeur = "v1.6.0"
+date     = "2026-11-24"
+raison   = "socles d equipement neufs dans la liste des socles (decodeur v1.6.0) : le perimetre compte grandit, aucun socle d arme ne regresse, la definition du compteur ne change pas. Accepte par l utilisateur le 2026-11-24 (« j accepte les 4 ecarts », en reponse au tableau des ecarts voulus)."
+
+[[decision]]
+mesure   = "coverage.flagCarries.ambiguousReturns"
+temoins  = ["bcb6d393"]
+decodeur = "v1.6.0"
+date     = "2026-11-24"
+raison   = "portages du drapeau et lignes d objectif lus en plus (decodeur v1.6.0) : rien de lu avant n est perdu, les objets neufs sont comptes. Accepte par l utilisateur le 2026-11-24 (« j accepte les 4 ecarts », en reponse au tableau des ecarts voulus)."
+
+[[decision]]
+mesure   = "coverage.flagCarries.noBridge"
+temoins  = ["bcb6d393"]
+decodeur = "v1.6.0"
+date     = "2026-11-24"
+raison   = "portages du drapeau et lignes d objectif lus en plus (decodeur v1.6.0) : rien de lu avant n est perdu, les objets neufs sont comptes. Accepte par l utilisateur le 2026-11-24 (« j accepte les 4 ecarts », en reponse au tableau des ecarts voulus)."
+
+[[decision]]
+mesure   = "coverage.objectives.noSlot"
+temoins  = ["bcb6d393"]
+decodeur = "v1.6.0"
+date     = "2026-11-24"
+raison   = "portages du drapeau et lignes d objectif lus en plus (decodeur v1.6.0) : rien de lu avant n est perdu, les objets neufs sont comptes. Accepte par l utilisateur le 2026-11-24 (« j accepte les 4 ecarts », en reponse au tableau des ecarts voulus)."
+
+[[decision]]
+mesure   = "coverage.flagCarries.carrierTeamUnknown"
+temoins  = ["084a804d"]
+decodeur = "v1.6.0"
+date     = "2026-11-24"
+raison   = "portages du drapeau lus en plus (decodeur v1.6.0) : 23 sur 23 puis 41 sur 41, soit tous les portages avant comme apres ; le denominateur grandit, rien ne regresse. Accepte par l utilisateur le 2026-11-24 (« j accepte les 4 ecarts », en reponse au tableau des ecarts voulus)."
+
+[[decision]]
+mesure   = "R-1 repli repli_tireur_par_le_siege_de_la_place"
+temoins  = ["4f77afc1"]
+decodeur = "v1.6.0"
+date     = "2026-11-24"
+raison   = "repli neuf du tireur par le siege de sa place (decodeur v1.6.0) : six tirs du siege 2, attribues au joueur qui tient aussi cette place sur 329 autres tirs ; le nombre de replis suit (coverage.fallbacks/n). Accepte par l utilisateur le 2026-11-24 (« j accepte les 4 ecarts », en reponse au tableau des ecarts voulus)."
