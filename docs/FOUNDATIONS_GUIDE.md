@@ -352,6 +352,24 @@ Cartographer (Den, MIT); the algorithm is written in Go.
 Reference: `docs/adr/0048-map-backgrounds-held-by-navigation-mesh.md`, `docs/adr/0049-relief-map-background-and-floor-cut.md`,
 `docs/COMMANDS.md` section "mapfond-build".
 
+### 3.7 Distance units
+
+Replay positions and every distance computed from them (database, API, replay document) are in **game
+units**, not meters. One game unit is 10 feet, that is **3.048 m**. A field named `_m` that comes from a
+measurement in the film (`distance_mort_m`, `median_m`, `pas_m`, `lobby_delta_m`, ...) is therefore in game
+units: the field names are not renamed, and the contract documents them as such. The only real meters are the
+radar ranges announced by the game (18 m in Arena, 24 m in BTB; `regulation.toml [radar_range_m]`, served as
+`rayon_m` and `rayons_radar_m`).
+
+- **Display**: a distance written "m" goes through `formatGameDistance` (`apps/web/src/lib/formatters/distance.ts`),
+  which converts and rounds (one decimal under 10 m, the meter above). The string templates carry the unit "m" and
+  receive the already converted number.
+- **Comparison**: a real-meter value (the radar range) is brought back to game units with `gameunits.MetersToUnits`
+  (Go) or `metersToGameUnits` (web) before it is compared with a distance from the film.
+- **One home for the factor**: `internal/analysis/gameunits` (Go) and `lib/formatters/distance.ts` (web). The literal
+  `3.048` is forbidden elsewhere (guards `archlint/gameunits_factor_test.go` and `distance.guard.test.ts`), and a
+  parity test keeps the two values equal.
+
 ---
 
 ## 4. End-to-end example
