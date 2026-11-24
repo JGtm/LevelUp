@@ -98,6 +98,9 @@ export function useViewsController({ ctx, binding, mode, matchKey, newId = defau
     if (openedFor.current === matchKey) return
     openedFor.current = matchKey
     const id = openingViewId(state, mode)
+    // Appliquer une vue écrit des préférences : c'est une synchronisation avec le stockage à l'ouverture du rejeu, pas
+    // un état dérivé que l'on pourrait calculer au rendu.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (id !== null) apply(id)
     // Seul le rejeu ouvert déclenche l'ouverture ; l'état d'alors est celui du rendu qui l'a monté.
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -54,7 +54,7 @@ export const FR_RELIEF = {
   backgroundMeshFmt: (percent) => `Relief tiré du maillage de navigation sur ${percent} % de la carte.`,
   lines: 'Traits du relief',
   linesHint:
-    'Ruptures de hauteur, courbes de niveau sur les pentes et liseré de la zone jouable, nets à tout zoom. Allumés d’office sur le fond Relief, retenus pour chaque fond.',
+    'Ruptures de hauteur, courbes de niveau sur les pentes et liseré de la zone jouable, nets à tout zoom. Allumés d’office, une seule valeur pour tous les fonds.',
   floorTitle: 'Étage',
   floorInfo:
     'Coupe du terrain par hauteur : l’étage choisi s’affiche en plein, les étages du dessous pâles, ceux du dessus presque effacés. Aucun joueur n’est masqué.',
@@ -66,7 +66,7 @@ export const FR_RELIEF = {
   floorHeight: 'Hauteur',
   floorHeightAria: 'Hauteur de la coupe',
   floorNoMesh: 'Carte sans maillage de navigation : le relief est affiché en entier, sans coupe par étage.',
-  floorFollow: 'Suivre le joueur ouvert',
+  floorFollow: 'Étage de la fiche ouverte',
   floorFollowHint: 'La coupe prend l’étage du joueur dont la fiche est ouverte, à chaque instant.',
   floorFollowNone: 'Aucun joueur ouvert : ouvrir la fiche d’un joueur pour activer le suivi.',
   floorFollowOnFmt: (label) => `Étage suivi : ${label}`,
@@ -79,7 +79,7 @@ export const EN_RELIEF = {
   backgroundMeshFmt: (percent) => `Relief taken from the navigation mesh on ${percent}% of the map.`,
   lines: 'Relief lines',
   linesHint:
-    'Height breaks, contour lines on slopes and an outline of the playable area, sharp at any zoom. On by default with the Relief background, remembered for each background.',
+    'Height breaks, contour lines on slopes and an outline of the playable area, sharp at any zoom. On by default, one value for every background.',
   floorTitle: 'Floor',
   floorInfo:
     'Terrain cut by height: the chosen floor is drawn in full, floors below pale, floors above almost erased. No player is hidden.',
@@ -90,7 +90,7 @@ export const EN_RELIEF = {
   floorHeight: 'Height',
   floorHeightAria: 'Cut height',
   floorNoMesh: 'Map without a navigation mesh: the relief is shown whole, with no floor cut.',
-  floorFollow: 'Follow the open player',
+  floorFollow: 'Floor of the open card',
   floorFollowHint: 'The cut takes the floor of the player whose card is open, at every moment.',
   floorFollowNone: 'No player open: open a player’s card to turn following on.',
   floorFollowOnFmt: (label) => `Followed floor: ${label}`,

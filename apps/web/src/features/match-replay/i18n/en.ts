@@ -3,6 +3,7 @@ import type { ReplayText } from './i18nContract'
 import { EN_FEED_LINES } from './feedLines.i18n'
 import { EN_HILL_SEQUENCE } from './hillSequence.i18n'
 import { EN_LIVES } from './lives.i18n'
+import { EN_SETTINGS } from './settings.i18n'
 import { EN_RELIEF } from './relief.i18n'
 import { EN_RESPAWN_FORECAST } from './respawnForecast.i18n'
 import { EN_PLAYER_PANEL } from './playerPanel.i18n'
@@ -97,6 +98,7 @@ export const EN_TEXT = {
   roster: EN_ROSTER,
   playerInstant: EN_PLAYER_INSTANT,
   lives: EN_LIVES,
+  settings: EN_SETTINGS,
   relief: EN_RELIEF,
   respawnForecast: EN_RESPAWN_FORECAST,
   hillSequence: EN_HILL_SEQUENCE,
@@ -133,7 +135,6 @@ export const EN_TEXT = {
     'Sound is off: the volume sits at zero. Turning the sound back on restores the level you had set.',
   soundFastHint:
     'At this playback speed the sounds would overlap: they come back at 2× or below.',
-  soundCategoriesTitle: 'Sounds by category',
   soundCategory: {
     weapon: 'Weapons',
     grenade: 'Grenades',
@@ -147,27 +148,11 @@ export const EN_TEXT = {
     'Recording films the replay as it plays: changing speed or moving the cursor shows up in the file. Starting resumes playback if it is paused; pausing, or letting the film end, stops the recording and downloads the clip.',
   viewButton: 'View',
   viewClose: 'Close view',
-  viewPresetsTitle: 'Presets',
-  viewPreset: {
-    complet: 'Full',
-    combat: 'Combat',
-    deplacements: 'Movement',
-    objectif: 'Objective',
-    personnalise: 'Custom',
-  },
-  viewPresetHint: {
-    complet: 'All layers, except the Lives group',
-    combat: 'Aim, trails, vehicles, objectives, deaths and killers',
-    deplacements: 'Trails, zones and spawns',
-    objectif: 'Trails, zones, objectives',
-  },
-  viewCustomNote: 'The layers match none of the presets.',
   fullscreenEnter: 'Full screen',
   fullscreenExit: 'Exit full screen',
   autoPlay: 'Auto-play',
   autoPlayHint:
     'Turned on, the replay starts on its own when the page opens. Turned off — the default — it opens paused at kickoff and waits for the Play button. The choice is kept from one match to the next; it neither plays nor pauses a replay that is already open.',
-  layers: 'Layers',
   layerAim: 'Aim',
   layerAimHint:
     'Look cone: the direction the player is looking at, decoded from the same record as the position. The game only retransmits it when it changes: an older reading fades instead of vanishing, and nothing is drawn beyond five seconds. A short tick sits at the TIP of the cone when the aim is not level: outwards when the player looks up, inwards when they look down. The cone shortens either way — its length alone could not tell them apart.',
@@ -180,16 +165,12 @@ export const EN_TEXT = {
   panDown: 'Pan down (Shift + down arrow)',
   panLeft: 'Pan left (Shift + left arrow)',
   panRight: 'Pan right (Shift + right arrow)',
-  layerGroupPlayers: 'Players',
-  layerGroupTerrain: 'Terrain',
-  layerGroupObjectives: 'Objectives',
-  layerZones: 'Zones',
+  layerZones: 'Named zones',
   layerZonesHint:
     'Official named map zones, extracted from the game. Large zones tile the terrain; dashed outlines are nested floors.',
   layerWallPlan: 'Wall plan',
   layerWallPlanHint:
     'The exact outline of the map walls, as thin lines over its image. Available for maps whose plan could be extracted from the game.',
-  layerWallPlanInPlanHint: 'Already in the plan',
   layerBackground: 'Background',
   layerBackgroundRender: 'Render',
   layerBackgroundRenderHint: 'The map background, as a rendered image.',
@@ -202,7 +183,6 @@ export const EN_TEXT = {
   layerTrail: 'Trail',
   layerTrailHint:
     'The last seven seconds travelled, behind every marker. Opacity rises towards the head: the most visible trace is always the current one, and that is what gives the direction of travel.',
-  effects: 'Effects',
   layerShotFx: 'Shot effects',
   layerShotFxHint:
     'Muzzle flash on every decoded shot, in the tint of the discharge (kinetic, plasma, energy).',
@@ -214,7 +194,7 @@ export const EN_TEXT = {
   layerPlacements: 'Deployed equipment',
   layerPlacementsHint:
     'The objects a player actually DEPLOYED while alive: drop wall, threat sensor, threat seeker, shroud screen, quantum translocator beacon, repair field. The BEACON is the return point dropped by the quantum translocator — not the enemy marking the game calls a “ping”. The repair field carries a breathing cross: it says the object heals, it counts nothing — the film publishes no healing cadence, and its dashed circle keeps the reservation about its radius. Anything the measurement classes otherwise stays off the map — nearly nine placements out of ten are in fact the equipment and grenades a player drops on death, and that is not a gesture. The sensor, the seeker, the shroud screen and the repair field are drawn where the object comes to rest, read from its flight (the screen, where its bubble is born when the film writes it); an object whose resting place the film does not give is not drawn. The film writes the removal of the sensor, of the repair field and of the drop wall, and that of the shroud screen bubble: they stay on screen until that removal (from landing for the sensor and the field, from the placement for the wall, from the bubble birth for the screen). With no removal read, the sensor keeps to its official 15 s, the wall to about twelve and a half seconds and the screen to 7.5 s. The film dates nothing else: the other placements stay on screen until the end of the replay. The wall arc is oriented by where the deployer was looking; when the placement carries no such heading (a little more than once in eight), it follows the deployer’s last direction of travel, and failing that their last known aim — a deduced arc is then drawn dashed. The sensor sweeps its radius every 1.8 s — official game figures, the film carries none — and briefly marks the deployer’s opponents caught by the wave; the seeker emits a single pulse.',
-  layerPlacementsDropped: 'Objects dropped on the ground',
+  layerPlacementsDropped: 'Dropped objects',
   layerPlacementsDroppedHint:
     'The POWER objects a player leaves on the ground when they die: power-ups (overshield, camouflage) and deployable equipment (drop wall, sensor, seeker, beacon, repair field). They can be PICKED UP — knowing they are lying around changes how the next fight reads. A dashed, dimmed ring, never the shape of the active object: on the ground it exerts no radius and no effect. Dropped grenades and abilities stay off the map: they are nearly nine placements out of ten and would say nothing about the terrain. On by default.',
   layerPlacementsUnnamed: 'Unidentified objects',
@@ -277,7 +257,7 @@ export const EN_TEXT = {
   layerGroundWeaponsSpecialOnly: 'Special weapons only',
   layerGroundWeaponsSpecialOnlyHint:
     "Only shows power weapons, long-range precision weapons and out-of-class weapons (sniper rifle, energy sword, gravity hammer, rocket launcher, skewer, cindershot, mangler, sentinel beam...): what a spot distributes and an opponent has a reason to pick up. A weapon whose role is unknown stays visible while the toggle is off, and disappears once it's on — a missing role never asserts itself as special.",
-  layerGroundWeaponsStarting: 'Also show starting weapons on the ground',
+  layerGroundWeaponsStarting: 'Including starting weapons',
   layerGroundWeaponsStartingHint:
     'By default, a dropped weapon that is one of the match starting weapons (the ones everyone spawns with) is not drawn. Weapons placed by the map are always shown.',
   groundWeaponSpawned: 'appeared',

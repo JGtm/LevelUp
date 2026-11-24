@@ -1,51 +1,43 @@
 /**
  * useReplayViewMenu — LE BOUTON « VUE » et son panneau, assemblés en un objet.
  *
- * Le montage du panneau occupait une cinquantaine de lignes du canvas — trente réglages recopiés
- * un par un depuis `useReplaySettings`, plus les disponibilités lues des calques. Aucune de ces
- * lignes ne décide de quoi que ce soit : elles TRANSPORTENT. Le canvas garde le DESSIN ; ce hook
- * porte le formulaire, et il porte aussi l'état d'ouverture et la VUE (les préréglages).
+ * Le canvas garde le DESSIN ; ce hook porte le formulaire. Il ne réinvente aucun réglage : les états et leur
+ * persistance restent dans `useReplaySettings` (calques, effets, chaleur, couleur des points), `useReplayRelief` (fond,
+ * traits, étage), `useReplayOrientation`, `useReplaySound` (son, volume, catégories) et le filtre du fil. Il range ces
+ * états sous la table des réglages (`bindSettings`), compose ce que le match propose (`SettingsContext`), et branche
+ * les vues (`useViewsController`) : préréglages souples, Mes vues, épingles.
  *
- * IL NE RÉINVENTE AUCUN RÉGLAGE : les états et leur persistance restent dans `useReplaySettings`
- * (calques, effets, chaleur, couleur des points) et `useReplaySound` (son et catégories). Ce hook
- * ne fait que grouper, et brancher la table des préréglages (`viewPresetLogic`) sur les bascules
- * réelles des calques.
+ * LA VUE ACTIVE N'EST PAS UN ÉTAT DE RÉGLAGES : elle se déduit en comparant les réglages à la table de la vue
+ * (« modifié » sur les seuls réglages que le match propose). Une bascule à la main ne l'efface pas, elle la dit modifiée.
  *
- * LA VUE ACTIVE N'EST PAS UN ÉTAT : elle se déduit des calques (`activeView`), si bien qu'une
- * bascule à la main la fait passer en « Personnalisé » sans rien écrire, et que les clés `replay-*`
- * d'avant ce lot restent lues telles quelles. Seul le DERNIER préréglage choisi est retenu
- * (`replay-view-preset`) : il départage deux préréglages égaux sur les calques d'un match.
+ * LES « available » NE SONT PAS DÉCORATIFS : c'est la règle du dépôt « pas de commande quand il n'y a rien à
+ * commander » (un film sans socle publié ne montre pas la bascule des socles), et c'est ce qui interdit à un
+ * préréglage d'écrire un réglage que le match ne porte pas.
  *
- * LES « available » NE SONT PAS DÉCORATIFS : c'est la règle du dépôt « pas de commande quand il
- * n'y a rien à commander » (un film sans socle publié ne montre pas la bascule des socles), et
- * c'est ce qui interdit à un préréglage d'allumer un calque que le match ne porte pas.
- *
- * LE PANNEAU EST FERMÉ PAR DÉFAUT et s'ouvre par le bouton « Vue » de la carte. Les réglages qu'il
- * porte SURVIVENT à la page (persistés) ; seule l'ouverture repart de zéro.
+ * LE PANNEAU EST FERMÉ PAR DÉFAUT et s'ouvre par le bouton « Vue » de la carte. Les réglages qu'il porte SURVIVENT à
+ * la page (persistés) ; seule l'ouverture repart de zéro.
  */
-import { useCallback, useRef, useState, type ComponentProps, type RefObject } from 'react'
+import { useCallback, useMemo, useRef, useState, type RefObject } from 'react'
 
 import type { MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
 
+import { useFeedFilterChoice } from '../hooks/useFeedFilterChoice'
 import type { ReplayRelief } from '../hooks/useReplayRelief'
 import type { ReplayLocale } from '../i18n/i18n'
-import type { ReplayViewPanel } from './ReplayViewPanel'
-import { effectiveLivesWho } from '../model/livesMarks'
-import { persistViewPreset, readViewPreset } from './replayPreferences'
-import type { ReplaySettings } from './useReplaySettings'
+import type { FilmAllegiance } from '../../../lib/replay/filmAllegiance'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import type { ReplayFeedEntry } from '../model/killFeedLogic'
+import type { ReplaySound } from '../sound/useReplaySound'
+import type { FilmLayerAvailability } from './filmLayerAvailability'
+import { matchModeKey, type SettingsContext } from './settingsAvailability'
+import { bindSettings } from './settingsBinding'
+import { activeViewLabel, type ActiveViewLabel } from './viewLabel'
 import { useReplayDimension, type ReplayDimensionState } from './useReplayDimension'
 import type { ReplayOrientation } from './useReplayOrientation'
-import {
-  activeView,
-  layerAvailability,
-  layersToToggle,
-  type FilmLayerAvailability,
-  type LayerFlags,
-  type LayerKey,
-  type ViewId,
-  type ViewPresetId,
-} from './viewPresetLogic'
-import type { ReplaySound } from '../sound/useReplaySound'
+import type { ReplaySettings } from './useReplaySettings'
+import { useViewsController } from './useViewsController'
+import type { ReplayViewPanelModel } from './viewPanelModel'
+import { REPLAY_TEXT } from '../i18n/i18n'
 
 /** Ce que le canvas prête au panneau : les réglages, ce que le film porte, et les sorties. */
 export interface ReplayViewMenuOptions {
@@ -53,256 +45,83 @@ export interface ReplayViewMenuOptions {
   /** L'orientation de la carte, retenue par carte (`useReplayOrientation`). */
   orientation: ReplayOrientation
   sound: ReplaySound
-  /** Ce que le film porte réellement, calque par calque (cf. l'en-tête). */
+  /** Ce que le film porte réellement, calque par calque. */
   available: FilmLayerAvailability
-  /**
-   * Le fond de carte et son relief (`useReplayRelief`) : les fonds que la commande « Fond » propose, celui qui
-   * est retenu, les traits du relief et la commande d'étage.
-   */
+  /** Le fond de carte et son relief (`useReplayRelief`) : fonds proposés, fond retenu, traits, commande d'étage. */
   relief: ReplayRelief
-  /** Le fond RÉELLEMENT posé : le plan porte déjà les murs, leur calque se désactive alors. */
+  /** Le fond RÉELLEMENT posé : le plan porte déjà les murs, leur calque n'est alors pas proposé. */
   drawn: MapBackgroundVariant
-  /** Le cadre pose le fil des éliminations sur le plan : l'option « Fil des éliminations » n'est proposée qu'alors. */
+  /** Le cadre pose le fil des éliminations sur le plan : « Fil posé sur le plan » n'est proposé qu'alors. */
   planFeedAvailable: boolean
-  /** Le cadre peut poser la barre de lecture sur le plan : l'option « Barre fine » n'est proposée qu'alors. */
+  /** Le cadre peut poser la barre de lecture sur le plan : la barre fine n'est proposée qu'alors. */
   thinBarAvailable?: boolean
   /** La lecture de la carte de chaleur RÉELLEMENT servie, et si les morts sont localisables. */
-  heat: { mode: ReplayHeatmapMode; killsAvailable: boolean }
+  heat: { mode: 'presence' | 'kills'; killsAvailable: boolean }
   locale: ReplayLocale
+  /** Ce qu'il faut pour compter les lignes de chaque filtre du fil : le film, le fil aligné, l'allégeance. */
+  feed: { doc: ReplayDocumentReady; entries: readonly ReplayFeedEntry[]; allegiance: FilmAllegiance }
+  /** L'identité du rejeu ouvert : la vue d'ouverture ne s'applique qu'une fois par rejeu. */
+  matchKey: string
 }
-
-/** La lecture de la carte de chaleur, telle que `useReplayHeatmap` la publie. */
-type ReplayHeatmapMode = ComponentProps<typeof ReplayViewPanel>['heatmap']['mode']
-
-/** Les props du panneau, à répandre telles quelles quand il est ouvert. */
-export type ReplayViewPanelProps = ComponentProps<typeof ReplayViewPanel>
 
 /** Ce que le canvas reçoit : l'état du panneau, ce qui l'ouvre, et de quoi le peindre. */
 export interface ReplayViewMenuState {
   open: boolean
   /** Bascule d'ouverture, posée sur le bouton « Vue ». */
   toggle: () => void
+  /** Ferme le panneau et rend le focus au bouton. */
+  close: () => void
   /** Le bouton qui ouvre le panneau : exclu du « clic dehors », il reprend le focus. */
   buttonRef: RefObject<HTMLButtonElement | null>
-  /** La vue active : un préréglage, ou « Personnalisé ». Le bouton la nomme. */
-  active: ViewId
-  /** Les props du panneau, SANS son déclencheur : `ReplayViewMenu` y pose `buttonRef`. */
-  panel: ReplayViewPanelProps
+  /** Le nom de la vue active, et son état modifié : le bouton les porte. */
+  label: ActiveViewLabel
+  /** Tout ce que le panneau et l'accès rapide lisent. */
+  model: ReplayViewPanelModel
   /** Le commutateur 2D / 3D posé à gauche du bouton : n'existe que si le serveur offre la vue 3D. */
   dimension: ReplayDimensionState
 }
 
-/** L'état des seize calques, lu des réglages. */
-function layerFlagsOf(s: ReplaySettings): LayerFlags {
+/** Ce que le match, le cadre et le fond proposent, composé des disponibilités publiées par le canvas. */
+function settingsContextOf(o: ReplayViewMenuOptions, feedFilters: readonly string[]): SettingsContext {
+  const { relief } = o
   return {
-    aim: s.showAim,
-    trail: s.showTrail,
-    zones: s.showZones,
-    weaponPads: s.showWeaponPads,
-    groundWeapons: s.showGroundWeapons,
-    vehicles: s.showVehicles,
-    placements: s.showPlacements,
-    droppedPlacements: s.showDroppedPlacements,
-    modeObjectives: s.showModeObjectives,
-    flagCarries: s.showFlagCarries,
-    vipCrown: s.showVipCrown,
-    skullCarrier: s.showSkullCarrier,
-    bombCarrier: s.showBombCarrier,
-    spawns: s.showSpawns,
-    deaths: s.showDeaths,
-    killers: s.showKillers,
-  }
-}
-
-/** La bascule de chaque calque : celle-là même que le panneau pose sur son interrupteur. */
-function layerTogglesOf(s: ReplaySettings): Record<LayerKey, () => void> {
-  return {
-    aim: s.toggleAim,
-    trail: s.toggleTrail,
-    zones: s.toggleZones,
-    weaponPads: s.toggleWeaponPads,
-    groundWeapons: s.toggleGroundWeapons,
-    vehicles: s.toggleVehicles,
-    placements: s.togglePlacements,
-    droppedPlacements: s.toggleDroppedPlacements,
-    modeObjectives: s.toggleModeObjectives,
-    flagCarries: s.toggleFlagCarries,
-    vipCrown: s.toggleVipCrown,
-    skullCarrier: s.toggleSkullCarrier,
-    bombCarrier: s.toggleBombCarrier,
-    spawns: s.toggleSpawns,
-    deaths: s.toggleDeaths,
-    killers: s.toggleKillers,
-  }
-}
-
-/** Les entrées de l'assemblage du panneau (tout ce que le hook lui prête, hors ouverture). */
-interface PanelInput extends ReplayViewMenuOptions {
-  onClose: () => void
-  view: ReplayViewPanelProps['view']
-}
-
-/**
- * Les props du panneau, calque par calque. Aucune de ces lignes ne décide de quoi que ce soit :
- * elles TRANSPORTENT les états et les bascules de `useReplaySettings` vers les commandes.
- */
-function panelPropsOf(o: PanelInput): ReplayViewPanelProps {
-  const { settings: s, orientation, sound, available, heat, locale, onClose, view, relief, drawn, planFeedAvailable } = o
-  return {
-    locale,
-    onClose,
-    view,
-    showAim: s.showAim,
-    onToggleAim: s.toggleAim,
-    showZones: s.showZones,
-    onToggleZones: s.toggleZones,
-    showTrail: s.showTrail,
-    onToggleTrail: s.toggleTrail,
-    zonesAvailable: available.zones,
-    placements: {
-      available: available.placements.drawable,
-      show: s.showPlacements,
-      onToggle: s.togglePlacements,
-      unnamedAvailable: available.placements.unnamed,
-      showUnnamed: s.showUnnamedPlacements,
-      onToggleUnnamed: s.toggleUnnamedPlacements,
-      droppedAvailable: available.placements.dropped,
-      showDropped: s.showDroppedPlacements,
-      onToggleDropped: s.toggleDroppedPlacements,
-    },
-    weaponPads: {
-      available: available.weaponPads,
-      show: s.showWeaponPads,
-      onToggle: s.toggleWeaponPads,
-    },
-    groundWeapons: {
-      available: available.groundWeapons,
-      show: s.showGroundWeapons,
-      onToggle: s.toggleGroundWeapons,
-      showSpecialOnly: s.showGroundWeaponsSpecialOnly,
-      onToggleSpecialOnly: s.toggleGroundWeaponsSpecialOnly,
-      showStarting: s.showGroundWeaponsStarting,
-      onToggleStarting: s.toggleGroundWeaponsStarting,
-    },
-    modeObjectives: {
-      available: available.modeObjectives,
-      show: s.showModeObjectives,
-      onToggle: s.toggleModeObjectives,
-    },
-    flagCarries: {
-      available: available.flagCarries,
-      show: s.showFlagCarries,
-      onToggle: s.toggleFlagCarries,
-    },
-    vipCrown: {
-      available: available.vipCrown,
-      show: s.showVipCrown,
-      onToggle: s.toggleVipCrown,
-    },
-    skullCarrier: {
-      available: available.skullCarrier,
-      show: s.showSkullCarrier,
-      onToggle: s.toggleSkullCarrier,
-    },
-    bombCarrier: {
-      available: available.bombCarrier,
-      show: s.showBombCarrier,
-      onToggle: s.toggleBombCarrier,
-    },
-    vehicles: {
-      available: available.vehicles,
-      show: s.showVehicles,
-      onToggle: s.toggleVehicles,
-    },
-    wallPlan: {
-      available: available.wallPlan,
-      show: s.showWallPlan,
-      onToggle: s.toggleWallPlan,
-      inPlan: drawn === 'plan',
-    },
-    lives: {
-      spawns: { available: available.lives.spawns, show: s.showSpawns, onToggle: s.toggleSpawns },
-      deaths: { available: available.lives.deaths, show: s.showDeaths, onToggle: s.toggleDeaths },
-      killers: { available: available.lives.killers, show: s.showKillers, onToggle: s.toggleKillers },
-      respawnForecast: {
-        available: available.respawnForecast, show: s.showRespawnForecast, onToggle: s.toggleRespawnForecast,
-        draw: s.respawnForecastDraw, onSelectDraw: s.setRespawnForecastDraw,
-        refusal: available.respawnForecastRefusal ?? null,
-      },
-      // Le choix mémorisé 'joueur suivi' retombe sur 'tous' pour un match sans joueur suivi (la préférence reste).
-      who: effectiveLivesWho(s.livesWho, available.lives.followedKnown),
-      onSelectWho: s.setLivesWho,
-      followedAvailable: available.lives.followedKnown,
-      when: s.livesWhen,
-      onSelectWhen: s.setLivesWhen,
-    },
-    background: {
-      options: relief.options,
-      value: relief.selected,
-      onSelect: s.setBackgroundStyle,
-      meshPercent: relief.meshPercent,
-    },
-    relief: {
-      lines: relief.lines,
-      floor: {
-        state: relief.floor.state,
-        cut: relief.floor.cut,
-        onSelectAll: relief.floor.selectAll,
-        onSelectRank: relief.floor.selectRank,
-        onHeight: relief.floor.setHeight,
-        follow: relief.floor.follow,
-      },
-    },
-    orientation: { available: orientation.available, retained: orientation.retained, onSelect: orientation.setTurns },
-    planFeed: { available: planFeedAvailable, show: s.showPlanFeed, onToggle: s.togglePlanFeed },
-    thinBar: { available: o.thinBarAvailable ?? false, show: s.thinBarAtFullFrame, onToggle: s.toggleThinBarAtFullFrame },
-    heatmap: {
-      show: s.showHeatmap,
-      onToggle: s.toggleHeatmap,
-      // LA LECTURE SERVIE, pas celle demandée : sans mort localisable, la carte retombe sur
-      // « présence » et le panneau doit montrer CE QU'ON VOIT (cf. useReplayHeatmap).
-      mode: heat.mode,
-      onSetMode: s.setHeatmapMode,
-      span: s.heatmapSpan,
-      onSetSpan: s.setHeatmapSpan,
-      killsAvailable: heat.killsAvailable,
-    },
-    showShotFx: s.showShotFx,
-    onToggleShotFx: s.toggleShotFx,
-    showKillFx: s.showKillFx,
-    onToggleKillFx: s.toggleKillFx,
-    sound,
-    markerColors: s.markerColors,
-    onSetMarkerColors: s.setMarkerColors,
+    film: o.available,
+    planFeedAvailable: o.planFeedAvailable,
+    thinBarAvailable: o.thinBarAvailable ?? false,
+    drawn: o.drawn,
+    backgroundOptions: relief.options,
+    reliefLinesAvailable: relief.lines.available,
+    floor: relief.floor.state.state,
+    orientationAvailable: o.orientation.available,
+    soundAvailable: o.sound.available,
+    heatKillsAvailable: o.heat.killsAvailable,
+    feedFilters,
   }
 }
 
 export function useReplayViewMenu(o: ReplayViewMenuOptions): ReplayViewMenuState {
-  const { settings: s, available } = o
   const [open, setOpen] = useState(false)
-  const [remembered, setRemembered] = useState(readViewPreset)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const dimension = useReplayDimension()
+  const feed = useFeedFilterChoice(o.feed.doc, o.locale, o.feed.allegiance, o.feed.entries)
+  const feedFilters = useMemo(() => feed.options.map((f) => f.id), [feed.options])
+  const ctx = settingsContextOf(o, feedFilters)
+  const binding = bindSettings({
+    settings: o.settings, relief: o.relief, orientation: o.orientation, sound: o.sound,
+    feed: { value: feed.value, choose: feed.choose }, heatMode: o.heat.mode, followedKnown: o.available.lives.followedKnown,
+  })
+  const views = useViewsController({ ctx, binding, mode: matchModeKey(o.available), matchKey: o.matchKey })
   const toggle = useCallback(() => setOpen((v) => !v), [])
-  // LA FERMETURE REPREND LE FOCUS, et ce n'est pas un ornement : sans cela le focus retomberait
-  // au document et la navigation au clavier repartirait du haut de la page.
-  const onClose = useCallback(() => {
+  // LA FERMETURE REPREND LE FOCUS : sans cela le focus retomberait au document et la navigation au clavier repartirait
+  // du haut de la page.
+  const close = useCallback(() => {
     setOpen(false)
     buttonRef.current?.focus({ preventScroll: true })
   }, [])
-  const active = activeView(layerFlagsOf(s), layerAvailability(available), remembered)
-  // CHOISIR UN PRÉRÉGLAGE = basculer exactement les calques disponibles qui diffèrent, puis
-  // retenir le choix. Les effets, la chaleur, la couleur des points et le son ne sont pas touchés.
-  const onSelect = (id: ViewPresetId) => {
-    const toggles = layerTogglesOf(s)
-    for (const key of layersToToggle(id, layerFlagsOf(s), layerAvailability(available))) {
-      toggles[key]()
-    }
-    setRemembered(id)
-    persistViewPreset(id)
+  const model: ReplayViewPanelModel = {
+    locale: o.locale, ctx, values: binding.values, set: binding.set, views,
+    floor: o.relief.floor, meshPercent: o.relief.meshPercent, feedOptions: feed.options,
   }
-  // L'OBJET EST REFABRIQUÉ À CHAQUE RENDU : `useReplaySettings` rend un objet neuf à chaque fois,
-  // et le panneau n'est de toute façon monté que lorsqu'il est OUVERT.
-  const panel = panelPropsOf({ ...o, onClose, view: { active, onSelect } })
-  return { open, toggle, buttonRef, active, panel, dimension }
+  const label = activeViewLabel(REPLAY_TEXT[o.locale].settings, views)
+  return { open, toggle, close, buttonRef, label, model, dimension }
 }

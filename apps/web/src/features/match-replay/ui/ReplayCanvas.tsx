@@ -580,6 +580,7 @@ export function ReplayCanvas({
   // viennent des calques, les bascules de `useReplaySettings`, et l'ouverture du hook lui-même.
   const viewMenu = useReplayViewMenu({
     settings, orientation, sound, locale, planFeedAvailable: planFeed,
+    feed: { doc, entries: feedEntries, allegiance }, matchKey: `${playerSlug ?? ''}/${matchId ?? ''}`,
     // LE FOND ET SON RELIEF : les fonds proposés, les traits, la commande d'étage ; le plan posé retire le calque des murs.
     relief, drawn: mapImage?.variante ?? 'rendu',
     heat: { mode: heat.mode, killsAvailable: heat.killsAvailable },

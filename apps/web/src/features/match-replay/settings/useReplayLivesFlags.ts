@@ -3,10 +3,9 @@
  * morts, tueurs) et deux affinages COMMUNS (qui, quand). Chacun est une préférence persistée
  * (`replayPreferences.ts`) lue au montage ; `useReplaySettings` en reprend l'objet tel quel.
  *
- * LES TROIS CALQUES SONT ÉTEINTS PAR DÉFAUT (sauf préréglage retenu qui les allume, cf. `livesDefault`), et
- * ce n'est pas un chantier laissé en plan (CLAUDE.md n°11) : « Complet » est l'état d'OUVERTURE de la page (cf. `viewPresetLogic`), et ces traces
- * s'ajoutent à des pions déjà nombreux. Ils sont complets ; les préréglages « Combat »
- * (morts, tueurs) et « Déplacements » (apparitions) les allument.
+ * LES TROIS CALQUES SONT ÉTEINTS PAR DÉFAUT, et ce n'est pas un chantier laissé en plan (CLAUDE.md n°11) : ces traces
+ * s'ajoutent à des pions déjà nombreux. Ils sont complets ; les préréglages « Combat » (morts, tueurs) et
+ * « Déplacements » (apparitions) les allument.
  *
  * LES AFFINAGES NE SONT PAS DES CALQUES : ils restreignent ce que les trois montrent, et un
  * préréglage ne les touche pas. Leurs défauts (tous, toute la partie) sont le comportement le plus
@@ -28,9 +27,8 @@ import {
   type LivesWhen,
   type LivesWho,
 } from '../model/livesMarks'
-import { persistPreference, readStoredChoice, readViewPreset } from './replayPreferences'
+import { persistPreference, readStoredChoice } from './replayPreferences'
 import { usePersistedFlag } from './usePersistedFlag'
-import { LAYER_KEYS, PRESET_LAYERS, type LayerKey } from './viewPresetLogic'
 
 const SHOW_SPAWNS_KEY = 'replay-show-spawns'
 const SHOW_DEATHS_KEY = 'replay-show-deaths'
@@ -43,44 +41,12 @@ const RESPAWN_FORECAST_DRAW_KEY = 'replay-respawn-forecast-draw'
 /**
  * LA PROBABILITÉ DE RÉAPPARITION EST ALLUMÉE PAR DÉFAUT (maquette validée le 2026-11-16) : elle n'existe
  * que pendant le compte à rebours d'un joueur mort, puis s'efface — elle ne charge pas la carte le reste
- * du temps — et c'est elle qu'on vient lire. Ce n'est PAS un préréglage de la vue (`LAYER_KEYS`) : elle ne
- * change ni « Complet » ni les autres, et reste à son état quel que soit le préréglage choisi.
+ * du temps — et c'est elle qu'on vient lire. Allumée aussi dans « Complet », l'état d'ouverture.
  */
 const SHOW_RESPAWN_FORECAST_DEFAULT = true
 
-/** Les trois calques des vies ; les treize autres sont ceux d'avant le lot. */
-type LivesLayerKey = 'spawns' | 'deaths' | 'killers'
-const LEGACY_LAYER_KEYS = LAYER_KEYS.filter((k): k is Exclude<LayerKey, LivesLayerKey> => k !== 'spawns' && k !== 'deaths' && k !== 'killers')
-
-/** L'état, à l'ouverture, des treize calques d'avant le lot (lu des préférences par les autres hooks). */
-export type LegacyLayerFlags = Readonly<Record<Exclude<LayerKey, LivesLayerKey>, boolean>>
-
-/**
- * LE DÉFAUT D'UN CALQUE DES VIES, tant que son interrupteur n'a jamais été écrit : éteint, SAUF si le
- * préréglage retenu l'allume.
- *
- * POURQUOI (relecture du 2026-11-14). Avant ces trois calques, « Combat » et « Déplacements » ne les
- * connaissaient pas : un lecteur qui avait choisi l'un d'eux a ses treize autres calques à l'état du
- * préréglage et ces trois clés ABSENTES. Éteintes, elles ne correspondent plus au préréglage, et la
- * vue active passait à « Personnalisé » sans que le lecteur n'ait rien touché. On applique donc au
- * préréglage retenu ce que la table lui donne pour les nouveaux calques : sa vue reste la sienne, et
- * c'est la plus petite règle qui ne recopie aucun état (la clé n'est pas écrite, une bascule à la main
- * la fixe ensuite comme toute préférence). Sans préréglage retenu, ou pour « Complet » et
- * « Objectif » : éteints, l'état d'ouverture de la page.
- *
- * ELLE NE S'APPLIQUE QUE SI LES TREIZE CALQUES D'AVANT LE LOT SONT ENCORE À L'ÉTAT DU PRÉRÉGLAGE
- * (ronde 2 bis). Le préréglage retenu n'est pas effacé par une bascule à la main (la vue passe alors en
- * « Personnalisé ») : un lecteur qui a choisi Combat puis changé un calque n'a plus la vue Combat, et
- * lui allumer Morts et Tueurs à la première ouverture changerait une vue qu'il a lui-même quittée. Seul
- * un état qui correspond encore au préréglage est celui qu'on prolonge.
- */
-function livesDefault(layer: LayerKey, legacy: LegacyLayerFlags): boolean {
-  const remembered = readViewPreset()
-  if (remembered === undefined) return false
-  const table = PRESET_LAYERS[remembered]
-  const stillThePreset = LEGACY_LAYER_KEYS.every((k) => legacy[k] === table.includes(k))
-  return stillThePreset && table.includes(layer)
-}
+/** Les traces des vies (apparitions, morts, tueurs) sont éteintes tant que le lecteur ne les a pas allumées. */
+const SHOW_TRACE_DEFAULT = false
 
 /** Les interrupteurs et affinages du groupe « Vies » : un état et sa bascule (ou son setter). */
 export interface ReplayLivesFlags {
@@ -107,16 +73,10 @@ export interface ReplayLivesFlags {
   setRespawnForecastDraw: (draw: ForecastDraw) => void
 }
 
-export function useReplayLivesFlags(legacy: LegacyLayerFlags): ReplayLivesFlags {
-  // Lus UNE fois, au montage : `usePersistedFlag` ne s'en sert qu'à l'initialisation.
-  const [defaults] = useState(() => ({
-    spawns: livesDefault('spawns', legacy),
-    deaths: livesDefault('deaths', legacy),
-    killers: livesDefault('killers', legacy),
-  }))
-  const [showSpawns, toggleSpawns] = usePersistedFlag(SHOW_SPAWNS_KEY, defaults.spawns)
-  const [showDeaths, toggleDeaths] = usePersistedFlag(SHOW_DEATHS_KEY, defaults.deaths)
-  const [showKillers, toggleKillers] = usePersistedFlag(SHOW_KILLERS_KEY, defaults.killers)
+export function useReplayLivesFlags(): ReplayLivesFlags {
+  const [showSpawns, toggleSpawns] = usePersistedFlag(SHOW_SPAWNS_KEY, SHOW_TRACE_DEFAULT)
+  const [showDeaths, toggleDeaths] = usePersistedFlag(SHOW_DEATHS_KEY, SHOW_TRACE_DEFAULT)
+  const [showKillers, toggleKillers] = usePersistedFlag(SHOW_KILLERS_KEY, SHOW_TRACE_DEFAULT)
   const [showRespawnForecast, toggleRespawnForecast] = usePersistedFlag(
     SHOW_RESPAWN_FORECAST_KEY,
     SHOW_RESPAWN_FORECAST_DEFAULT,

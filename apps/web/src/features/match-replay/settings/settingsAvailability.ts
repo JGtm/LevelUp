@@ -16,7 +16,7 @@ import type { MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
 
 import type { FilmLayerAvailability } from './filmLayerAvailability'
 import {
-  defOf, defsOfRubric, SETTING_DEFS,
+  defOf, defsOfRubric, RUBRIC_IDS, SETTING_DEFS,
   type RubricId, type SettingDef, type SettingId, type SettingValue, type SettingValues,
 } from './settingsTable'
 
@@ -109,6 +109,16 @@ export function isShown(id: SettingId, c: SettingsContext, values: SettingValues
 /** Les lignes affichées d'une rubrique, dans l'ordre de la table. */
 export function shownOfRubric(rubric: RubricId, c: SettingsContext, values: SettingValues): readonly SettingDef[] {
   return defsOfRubric(rubric).filter((d) => isShown(d.id, c, values))
+}
+
+/** Les rubriques qui ont au moins une ligne à montrer pour ce match, dans l'ordre du panneau. */
+export function visibleRubrics(c: SettingsContext, values: SettingValues): readonly RubricId[] {
+  return RUBRIC_IDS.filter((r) => shownOfRubric(r, c, values).length > 0)
+}
+
+/** La rubrique à montrer : celle qu'on a retenue si elle existe pour ce match, sinon la première qui existe. */
+export function effectiveRubric(retained: RubricId, visible: readonly RubricId[]): RubricId | null {
+  return visible.includes(retained) ? retained : (visible[0] ?? null)
 }
 
 /** Les options d'un choix pour CE match (« éliminations » de la chaleur seulement avec une mort localisable). */

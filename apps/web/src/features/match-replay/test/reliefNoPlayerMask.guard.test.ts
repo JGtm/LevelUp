@@ -18,7 +18,7 @@ import { fichierNomme, lire } from './featureFiles'
 /** Ce qu'un module de la coupe ne doit jamais lire : de quoi masquer un joueur. */
 const DE_QUOI_MASQUER = /tracks|shownAtSlot|focusShown|playerFocus|useReplayPlayerFocus|useSlotIdentity|xuid|roster/
 
-const MODULES_DE_LA_COUPE = ['useReplayRelief.ts', 'reliefLogic.ts', 'ReplayFloorControls.tsx']
+const MODULES_DE_LA_COUPE = ['useReplayRelief.ts', 'reliefLogic.ts', 'ReplayFloorRow.tsx']
 
 /**
  * Les modules de « Suivre le joueur ouvert » (D.6) : ils lisent la piste du joueur de la fiche pour poser la

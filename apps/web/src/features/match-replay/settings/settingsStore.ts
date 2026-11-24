@@ -10,16 +10,17 @@
  * LA VUE ACTIVE vit sous `replay-view-preset`, la clé d'avant (« dernier préréglage choisi ») : un préréglage s'y lit
  * comme avant ; une vue enregistrée s'y lit par son identifiant.
  */
-import { persistPreference, readStoredRaw } from '@/lib/replay/preferenceStore'
+import { persistPreference, readStoredChoice, readStoredRaw } from '@/lib/replay/preferenceStore'
 
 import { DEFAULT_ACTIVE, readViews, viewExists, type ViewsState } from './savedViews'
 import { DEFAULT_PINS, readPins } from './quickAccess'
-import type { SettingId } from './settingsTable'
+import { RUBRIC_IDS, type RubricId, type SettingId } from './settingsTable'
 
 export const VIEW_ACTIVE_KEY = 'replay-view-preset'
 export const VIEWS_KEY = 'replay-views'
 export const VIEW_DEFAULT_KEY = 'replay-view-default'
 export const PINS_KEY = 'replay-pins'
+export const VIEW_TAB_KEY = 'replay-view-tab'
 
 function readJson(key: string): unknown {
   const raw = readStoredRaw(key)
@@ -59,4 +60,14 @@ export function readPinnedSettings(): readonly SettingId[] {
 /** Retient les réglages épinglés. */
 export function persistPinnedSettings(pins: readonly SettingId[]): void {
   persistPreference(PINS_KEY, JSON.stringify(pins))
+}
+
+/** La rubrique du panneau ouverte en dernier, ou la première. */
+export function readViewTab(): RubricId {
+  return readStoredChoice(VIEW_TAB_KEY, RUBRIC_IDS[0], RUBRIC_IDS)
+}
+
+/** Retient la rubrique ouverte. */
+export function persistViewTab(rubric: RubricId): void {
+  persistPreference(VIEW_TAB_KEY, rubric)
 }

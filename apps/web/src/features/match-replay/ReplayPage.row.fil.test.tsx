@@ -1,6 +1,6 @@
 /**
  * Tests — LE FIL DES ÉLIMINATIONS POSÉ SUR LE PLAN, quand la rangée des équipes est posée (Cinéma, Plein cadre), et
- * l'option « Fil des éliminations » du panneau Vue. Suite de `ReplayPage.row.test.tsx` (même kit : `test/replayRowKit`).
+ * l'option « Fil posé sur le plan » du panneau Vue. Suite de `ReplayPage.row.test.tsx` (même kit : `test/replayRowKit`).
  */
 import { fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -123,9 +123,12 @@ describe('ReplayPage : le fil des éliminations posé sur le plan', () => {
   })
 })
 
-describe("ReplayPage : l'option « Fil des éliminations » du panneau Vue", () => {
+describe("ReplayPage : l'option « Fil posé sur le plan » du panneau Vue", () => {
   const option = () => screen.queryByRole('switch', { name: T.frames.planFeed })
-  const ouvrirLaVue = () => fireEvent.click(screen.getByRole('button', { name: /^Vue / }))
+  const ouvrirLaVue = () => {
+    fireEvent.click(screen.getByRole('button', { name: /^Vue / }))
+    fireEvent.click(screen.getByRole('tab', { name: /^Fil/ }))
+  }
 
   it("Cinéma, rangée posée : l'option est proposée, allumée ; l'éteindre retire le fil du plan, le rallumer le rend", async () => {
     const { container } = await mount(match(4, 2, TROIS_ELIMINATIONS), L4)
@@ -156,7 +159,7 @@ describe("ReplayPage : l'option « Fil des éliminations » du panneau Vue", () 
   it("Standard : l'option n'est pas montrée (aucun effet à l'écran)", async () => {
     await mount(match(4, 2, TROIS_ELIMINATIONS), 4000)
     ouvrirLaVue()
-    expect(screen.getByRole('region', { name: T.viewButton })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: T.viewButton })).toBeInTheDocument()
     expect(option()).toBeNull()
   })
 
@@ -164,7 +167,7 @@ describe("ReplayPage : l'option « Fil des éliminations » du panneau Vue", () 
     await mount(match(4, 2, TROIS_ELIMINATIONS), L4 - 1)
     goToFrame('cinema')
     ouvrirLaVue()
-    expect(screen.getByRole('region', { name: T.viewButton })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: T.viewButton })).toBeInTheDocument()
     expect(option()).toBeNull()
   })
 

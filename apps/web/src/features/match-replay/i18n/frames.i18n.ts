@@ -67,8 +67,8 @@ export const FR_FRAMES = {
   rotatedPlanTip: "Plan tourné automatiquement pour mieux remplir la zone. Cliquer pour revenir à l'orientation d'origine.",
   orientationAuto: 'Auto',
   orientationAutoHint: "Le plan se tourne tout seul quand il y gagne de la place à l'écran. Aucun choix n'est retenu pour cette carte.",
-  dimensionGroup: 'Vue du rejeu',
-  planFeed: 'Fil des éliminations',
+  dimensionGroup: 'Dimension du rejeu',
+  planFeed: 'Fil posé sur le plan',
   planFeedHint: 'Les cinq dernières éliminations, posées en bas à gauche du plan.',
   thinBar: 'Barre de lecture fine',
   thinBarHint:
@@ -86,8 +86,8 @@ export const EN_FRAMES = {
   rotatedPlanTip: 'Map rotated automatically to fill the area better. Click to return to the original orientation.',
   orientationAuto: 'Auto',
   orientationAutoHint: 'The map turns by itself when it gains room on screen. No choice is remembered for this map.',
-  dimensionGroup: 'Replay view',
-  planFeed: 'Elimination feed',
+  dimensionGroup: 'Replay dimension',
+  planFeed: 'Feed on the map',
   planFeedHint: 'The last five eliminations, laid over the bottom left of the map.',
   thinBar: 'Thin playback bar',
   thinBarHint:

@@ -49,7 +49,7 @@ export interface RespawnForecastText {
 export const FR_RESPAWN_FORECAST = {
   title: 'Probabilité de réapparition',
   drawLabel: 'Dessin',
-  draw: { both: 'Zones et points', zones: 'Zones', points: 'Points' },
+  draw: { both: 'Teintes et points', zones: 'Teintes', points: 'Points' },
   drawHint: {
     both: 'Les zones se teintent légèrement selon leur probabilité, et les points de réapparition sont pesés par-dessus (le disque grossit avec la probabilité du point)',
     zones: 'Seule la teinte des zones, d’autant plus marquée que la zone est probable',
@@ -100,7 +100,7 @@ function englishOrdinal(n: number): string {
 export const EN_RESPAWN_FORECAST = {
   title: 'Respawn probability',
   drawLabel: 'Drawing',
-  draw: { both: 'Zones and points', zones: 'Zones', points: 'Points' },
+  draw: { both: 'Tints and points', zones: 'Tints', points: 'Points' },
   drawHint: {
     both: 'Zones are lightly tinted by their probability, with the respawn points weighted on top (a disc grows with the probability of its point)',
     zones: 'Only the zone tint, stronger the likelier the zone is',
