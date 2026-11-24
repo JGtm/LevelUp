@@ -56,6 +56,15 @@ var racines = []struct {
 	{"MapCalloutsEntry", reflect.TypeOf(replay.MapCalloutsEntry{}), reflect.TypeOf(replaydoc.MapCalloutsEntry{})},
 }
 
+// balisesServiesDifferentes : les champs dont la balise JSON servie differe de la stockee, avec la raison datee.
+// `xuid` est omis a vide cote stocke (un bot n'a pas d'identifiant et se designe par `place`) ; le servi ne porte que
+// les lignes d'un joueur identifie (`sliceOfIdentified`, depuis le decodeur v1.6.0, 2026-11-24), donc le champ y est
+// toujours present et le contrat le declare obligatoire.
+var balisesServiesDifferentes = map[string]bool{
+	"ScoreAction.XUID": true,
+	"Elimination.XUID": true,
+}
+
 // TestChaqueChampStockeAUneDecision : rien ne sort du contrat par omission.
 func TestChaqueChampStockeAUneDecision(t *testing.T) {
 	servis := indexerTypes(racines[0].servi, racines[1].servi, racines[2].servi)
@@ -91,7 +100,7 @@ func TestChaqueChampStockeAUneDecision(t *testing.T) {
 					"dans testutil.ReplayChampsNonServis — soit le contrat le porte, soit la decision s'ecrit", cle)
 				continue
 			}
-			if a, b := f.Tag.Get("json"), g.Tag.Get("json"); a != b {
+			if a, b := f.Tag.Get("json"), g.Tag.Get("json"); a != b && !balisesServiesDifferentes[cle] {
 				t.Errorf("%s : tag json %q cote stocke, %q cote servi — le client lirait un autre "+
 					"nom que celui que la cuisson ecrit", cle, a, b)
 			}

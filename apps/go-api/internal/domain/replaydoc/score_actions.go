@@ -7,7 +7,7 @@ package replaydoc
 // ses points (negatifs pour une penalite) et, quand son libelle nomme un joueur, le xuid de celui-ci.
 type ScoreAction struct {
 	T      int    `json:"t"`
-	XUID   string `json:"xuid,omitempty" required:"true"`
+	XUID   string `json:"xuid"`
 	Name   string `json:"name"`
 	Points int    `json:"points"`
 	Target string `json:"target,omitempty"`
