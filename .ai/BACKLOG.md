@@ -477,12 +477,6 @@ Relevé le 2026-11-23. `internal/sync/killcollector/remote_films.go` (`archiver`
 
 ---
 
-### [release] Reporter la 8.2.2 dans la 8.3.0
-
-Relevé le 2026-11-23. La 8.2.2 (rattrapage de l'historique, issue #213) est dans `main` ; `release/v8.3.0` a été créée avant. **Décision du user du 2026-11-23 :** fusionner `main` dans `release/v8.3.0` au début de la reprise de la 8.3.0. Un essai donne 16 conflits, dont `apps/go-api/internal/sync/engine.go`, `writes.go`, `internal/games/halo_5/livesync/runner.go` et `capture.go`, l'aide, `SettingsPage.tsx`, `openapi.yaml`, `generated.ts` et les changelogs. Conception de la refonte du rattrapage pour la 8.3.0 : `.ai/CONCEPTION_RATTRAPAGE_HISTORIQUE_8_3_0.md` (dans `main`).
-
----
-
 ### [décodeur/drapeau] Le compteur `carrierTeamUnknown` porte un nom trompeur
 
 **Relevé le 2026-11-23** (plan du décodeur v1.6.0, item B.3). Sur un film à 6 socles (3 par camp), `carrierTeamUnknown` vaut 32 sur 32 portages, alors que l'équipe du porteur est lue pour 25 joueurs sur 25. Le compteur mesure l'abstention des trois règles qui nomment le DRAPEAU pris par l'équipe (passage de main, retour crédité, chute créditée) : sur une carte à 3 drapeaux par camp « rien ne les départage ». Conséquence mesurable nulle (temps de porteur à 2 s de l'API pour 24 joueurs sur 25). À faire : renommer le compteur (nom publié du document, donc schéma) ou le retirer, avec une version du décodeur ; ne pas le lire comme « équipe inconnue ». Pièce : `.ai/V8.3/annexes_decodeur_v160/b_zones_verdicts_b3_b4_b6_b7.md`. **Effort : S. Priorité : basse.**

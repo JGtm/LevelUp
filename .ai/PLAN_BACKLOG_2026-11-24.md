@@ -79,7 +79,7 @@ Cible confirmée par le user le 2026-11-24 : la **8.3.0**.
 
 ## 3. Étape 1 — report de `main` dans `release/v8.3.0` (pilote)
 
-- [ ] 1.1 Fusionner `origin/main` dans `release/v8.3.0` (2 commits manquants le 2026-11-24 ; un essai passé
+- [x] 1.1 (2026-11-24, fusion `c1a72cad60`, contrôlée par le pilote : `main` est ancêtre de la release) Fusionner `origin/main` dans `release/v8.3.0` (2 commits manquants le 2026-11-24 ; un essai passé
       donnait 16 conflits). Chaque conflit résolu est listé sous cette ligne.
 - **Gate 1 :** `cd apps/go-api && go build ./... && go vet ./...` ; `make check-types` ; tests des paquets
   en conflit ; poussée ; `gh run list --branch release/v8.3.0 --workflow CI --limit 1` verte.
@@ -252,3 +252,12 @@ dépendance est close.
   de la Tactique comparé à des distances en unités). Gate 0 en attente des décisions du user : facteur de
   conversion, radar de la Tactique, champs d'API en `_m`, fenêtre du coup d'envoi, écart de B.1, périmètre
   de E.4.
+- 2026-11-24 — ÉTAPE 1 close. Fusion faite par un agent dans son worktree, relue par le pilote puis intégrée
+  (`c1a72cad60`). Choix de l'agent, retenu : sur l'historique de synchronisation, la forme publiée en 8.2.2 et
+  8.2.3 remplace le premier jet de la release (carte « Synchronisation », clé `history_complete_at`, lecteur
+  et dépôt de l'état de l'historique), incompatible avec elle ; l'arbre fusionné est identique à `main` sur ce
+  sujet (vérifié par `git diff origin/main`). Le premier jet se relit dans `221c50dcbb`. Contrat et types
+  régénérés, lots de CI en union. Gate de l'agent : build, vet, tests des paquets touchés, intégration de
+  `sync` et `halo_5`, typecheck, vitest ciblé, tous à 0 ; les tests de convergence de `cmd/server` restent
+  à la CI. Deux vérifications à l'écran mises à jour dans l'artefact (carte et aide de synchronisation).
+  Entrée « Reporter la 8.2.2 » retirée du backlog.
