@@ -20,15 +20,15 @@ des références dont nous avons appris, pas du code que nous embarquons, sauf l
   les principes du fond Relief (terrain teinté selon la hauteur, traits vectoriels, coupe par étage) ; licence MIT, aucun code repris.
 - **Den Delimarsky** ([dend](https://github.com/dend)) pour libfilmshell (OpenSpartan, licence MIT) — les tables des
   réponses de score, des médailles et des effets de dégât, et les largeurs de charge de certains messages du film, lues
-  par le décodeur de film (`halo-infinite-film-decoder`, v1.6.0) ; les en-têtes de crédit et les textes de licence se
+  par le décodeur de film (`halo-infinite-film-decoder`, v1.6.1) ; les en-têtes de crédit et les textes de licence se
   trouvent à côté des tables.
 - **llampwall** ([llampwall](https://github.com/llampwall)) pour le lecteur de rejeu 3D bâti sur le décodeur de film
   (`llampwall/installation-08`) et les lectures qu'il a apportées : gestes, commandes d'accroupi et de saut, tireur par
   place de contrôle, visées sans position, arme en main, munitions portées, positions à la cadence pleine du film,
-  projectiles collés, socles d'équipement. Elles ont été réécrites sous les règles du décodeur (v1.6.0) ; aucune ligne du
+  projectiles collés, socles d'équipement. Elles ont été réécrites sous les règles du décodeur (v1.6.1) ; aucune ligne du
   dépôt de départ n'est copiée.
 - **nuzzles** (l'analyseur Rust `halo_api`) — la méthode de lecture des morceaux d'un film sur plusieurs fils, derrière
-  l'option de fils du décodeur (v1.6.0, génération des rejeux deux à trois fois plus rapide) ; aucun code repris.
+  l'option de fils du décodeur (v1.6.1, génération des rejeux deux à trois fois plus rapide) ; aucun code repris.
 - **Gravemind2401** ([Gravemind2401](https://github.com/Gravemind2401)) pour [Reclaimer](https://github.com/Gravemind2401/Reclaimer) —
   sa lecture des formats de fichiers de cartes Halo est la référence derrière notre décodeur de
   géométrie (`halo-infinite-map-images/himap/` : sections SBSP, filtres de maillage, groupes SDDT).
