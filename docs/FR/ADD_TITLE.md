@@ -206,7 +206,7 @@ title_slug     = "halo_mcc"
 schema_version = 1
 
 [capabilities]
-"match.history"      = "supported"   # seulement si LoadMatchSummaries est réellement câblé
+"match.history"      = "supported"   # seulement si l'historique de matchs du titre est réellement servi
 "match.detail.core"  = "supported"
 "career.progression" = "supported"
 "analytics.timeseries" = "not_exposed"

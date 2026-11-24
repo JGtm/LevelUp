@@ -30,12 +30,11 @@ var titleSlugLiteralAllowlist = map[string]struct {
 	literals int
 	reason   string
 }{
-	"internal/analysis/campaign_exclusion.go":                      {1, "table des variantes de Campagne masquées par titre (campaignExcludedVariantIDs) : donnée par titre en Go, à migrer vers le manifeste (plan, Découvertes)"},
-	"internal/analysis/perfect_kills.go":                           {2, "table des médailles de frag parfait par titre (perfectKillMedalIDs) : même nature, à migrer vers le manifeste"},
-	"internal/analysis/world_stats.go":                             {1, "slug par défaut d'un agrégat monde (analysis pur, sans dépendance au package title) : à remplacer par title.DefaultSlug"},
-	"internal/platform/duckdb/media_repo_translations.go":          {1, "constante mediaStaticTitleSlug : titre par défaut des traductions média statiques"},
-	"internal/platform/duckdb/world_player_stats_repo.go":          {1, "constante defaultLeaderboardTitleSlug : titre par défaut du classement monde"},
-	"internal/platform/duckdb/halo5/halo5_match_history_source.go": {1, "masquage Campagne de la source Halo 5 (SQLExcludeCampaignVariants(\"halo_5\", ...)) : lié à campaign_exclusion.go"},
+	"internal/analysis/campaign_exclusion.go":             {1, "table des variantes de Campagne masquées par titre (campaignExcludedVariantIDs) : donnée par titre en Go, à migrer vers le manifeste (plan, Découvertes)"},
+	"internal/analysis/perfect_kills.go":                  {2, "table des médailles de frag parfait par titre (perfectKillMedalIDs) : même nature, à migrer vers le manifeste"},
+	"internal/analysis/world_stats.go":                    {1, "slug par défaut d'un agrégat monde (analysis pur, sans dépendance au package title) : à remplacer par title.DefaultSlug"},
+	"internal/platform/duckdb/media_repo_translations.go": {1, "constante mediaStaticTitleSlug : titre par défaut des traductions média statiques"},
+	"internal/platform/duckdb/world_player_stats_repo.go": {1, "constante defaultLeaderboardTitleSlug : titre par défaut du classement monde"},
 }
 
 // littérauxDeSlug rend la position de chaque littéral de slug de titre d'une source.

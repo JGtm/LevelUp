@@ -9,7 +9,7 @@ package halo_5
 //
 // L'interface est définie côté package consommateur (h5) et retourne un type
 // canonique : l'impl DuckDB (platform/duckdb) la satisfait STRUCTURELLEMENT, sans
-// import croisé (parité MatchHistorySource).
+// import croisé.
 
 import (
 	"context"

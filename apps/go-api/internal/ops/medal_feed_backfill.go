@@ -2,9 +2,9 @@
 //
 // LE TROU QUE CETTE PASSE COMBLE. Depuis la bascule Collect->Persist (avril 2026),
 // le collecteur ecrivait les events `medal` de highlight_events SANS `raw_json` :
-// 415 matchs, 22 031 events, aucune identite. Le fil des eliminations lit
-// `raw_json.medal_name` (platform/duckdb.medalNameFromRawJSON) — sans lui il
-// n affiche AUCUNE medaille. LES DEUX ECRIVAINS de la table sont repares depuis le
+// 415 matchs, 22 031 events, aucune identite. Plus aucun lecteur de
+// production ne lit `raw_json.medal_name` (le fil des eliminations ne sert plus le
+// nom de la medaille) : cette passe est a retirer avec le document. LES DEUX ECRIVAINS de la table sont repares depuis le
 // 2026-09-02 — le flux primaire (sync/collect.go) ET la voie
 // completion/convergence (sync/engine_highlight_events.go) ; cette passe rattrape
 // l existant.

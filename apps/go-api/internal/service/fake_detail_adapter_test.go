@@ -22,9 +22,6 @@ func (f *fakeDetailAdapter) LoadPlayerStats(_ context.Context, _ string, _ canon
 func (f *fakeDetailAdapter) LoadCareerSnapshot(_ context.Context, _ string, _ canonical.CareerOptions) (*canonical.CareerSnapshot, error) {
 	return nil, games.ErrCapabilityNotSupported
 }
-func (f *fakeDetailAdapter) LoadMatchSummaries(_ context.Context, _ []string) ([]canonical.MatchSummary, error) {
-	return nil, games.ErrCapabilityNotSupported
-}
 func (f *fakeDetailAdapter) LoadEncounters(_ context.Context, _ string) ([]canonical.EncounterRow, error) {
 	return nil, games.ErrCapabilityNotSupported
 }

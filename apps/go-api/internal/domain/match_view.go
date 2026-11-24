@@ -390,12 +390,6 @@ type MatchHighlightEvent struct {
 	VictimXUID     *string `json:"victim_xuid,omitempty"`
 	VictimGamertag *string `json:"victim_gamertag,omitempty"`
 	VictimTeamID   *int    `json:"victim_team_id,omitempty"`
-
-	// MedalName : le nom ANGLAIS de la médaille, lu dans le film (highlight_events.raw_json,
-	// champ medal_name) — events `medal` uniquement. C'est la quantité MESURÉE, elle ne
-	// dépend d'aucune table ; libellé, description et visuel se résolvent contre le
-	// référentiel, hors de cet event.
-	MedalName string `json:"medal_name,omitempty"`
 }
 
 // États de la lecture d'assistance d'un kill (MatchHighlightEvent.AssistState). L'état
@@ -456,7 +450,6 @@ type MatchCombatTab struct {
 	TugOfWar        []MatchTugOfWarBin     `json:"tug_of_war"`
 	ImpactBadges    []MatchImpactBadge     `json:"impact_badges"`
 	KDTimeline      []MatchKDTimelinePoint `json:"kd_timeline"`
-	NemesisDuels    []MatchNemesisRow      `json:"nemesis_duels"`
 
 	// KillerVictim : paires killer→victim agrégées pour le chart antagoniste
 	// (match_view.18). Vide si killer_victim_pairs n'est pas peuplé.
@@ -694,14 +687,6 @@ type MatchScoreboardObjective struct {
 	BombGrabs                *int     `json:"bomb_grabs,omitempty"`
 	TimeAsBombCarrierSeconds *float64 `json:"time_as_bomb_carrier_seconds,omitempty"`
 	BombCarriersKilled       *int     `json:"bomb_carriers_killed,omitempty"`
-}
-
-// MatchNemesisRow : adversaire fréquent (kills reçus de lui).
-type MatchNemesisRow struct {
-	XUID     string `json:"xuid"`
-	Gamertag string `json:"gamertag"`
-	KilledMe int    `json:"killed_me"`
-	IKilled  int    `json:"i_killed"`
 }
 
 // MatchRosterRow : ligne condensée du roster (tous les participants).

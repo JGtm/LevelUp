@@ -292,7 +292,6 @@
                     "OutcomeWin",
                     "OutcomeLoss",
                     "MatchTypeRanked",
-                    "LoadMatchSummaries",
                     "LoadMatchDetail",
                     "LoadPlayerStats",
                     "LoadCareerSnapshot"

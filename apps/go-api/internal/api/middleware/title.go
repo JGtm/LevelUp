@@ -25,7 +25,7 @@ const ResolvedTitleHeader = "X-LevelUp-Title-Resolved"
 // session) ET la locale UI depuis le header X-LevelUp-Locale, et les injecte dans
 // le contexte. La locale alimente les lectures localisées (noms de commendations,
 // etc.) qui résolvent via ctxkeys.Locale sans threader la locale dans chaque
-// signature (utile pour les chemins canoniques ID-keyés, ex. LoadMatchSummaries).
+// signature (utile pour les chemins canoniques ID-keyés).
 func TitleExtractor(registry *titlePkg.Registry) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -68,11 +68,10 @@ type MatchHistoryService struct {
 	repo           port.MatchHistoryRepository
 	waypointPlayer string
 	// dataAdapter (optionnel, Phase C+ multi-titres) : point d'extension pour
-	// router LoadMatchSummaries via la couche canonique quand elle évoluera
-	// pour porter tous les champs MatchHistoryRawRow. À ce jour, le service
-	// utilise le repo direct car canonical.MatchSummary ne couvre pas encore
-	// la totalité du payload (delta_mmr, performance_score, etc.). Le hook
-	// est en place pour permettre une bascule incrémentale.
+	// router l'historique via la couche canonique si elle porte un jour tous les
+	// champs MatchHistoryRawRow. À ce jour, le service utilise le repo direct car
+	// canonical.MatchSummary ne couvre pas la totalité du payload (delta_mmr,
+	// performance_score, etc.).
 	dataAdapter games.TitleDataAdapter
 	// playerMatchesRepo (optionnel) : utilisé pour charger les canonical rows
 	// nécessaires au calcul de BriefingKPIs (alimente <SessionBriefing> en haut
@@ -258,8 +257,8 @@ func (s *MatchHistoryService) OutcomeText(ctx context.Context, code int) string 
 	return outcomeText(outcomesOf(s.semantic), ctxkeys.Locale(ctx), code)
 }
 
-// WithDataAdapter injecte le DataAdapter multi-titres pour activer une
-// future bascule LoadMatchSummaries. Dégradation gracieuse si nil.
+// WithDataAdapter injecte le DataAdapter multi-titres (point d'extension du service).
+// Dégradation gracieuse si nil.
 func (s *MatchHistoryService) WithDataAdapter(a games.TitleDataAdapter) *MatchHistoryService {
 	s.dataAdapter = a
 	return s

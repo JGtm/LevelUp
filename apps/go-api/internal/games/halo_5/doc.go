@@ -19,6 +19,5 @@
 // + CSR par playlist (player DB) + LUSR (chaîne unique h5_arena). Métadonnées
 // (médailles/maps/armes/CSR) seedées par cmd/h5-metadata-fetch (API officielle).
 //
-// Phase 2 (différée) : LoadMatchSummaries (history = GetPlayerMatches player+page,
-// pas ID-based) ; CSR par saison réelle (seasonId) ; Champion (#N) ; outcome TIE.
+// Phase 2 (différée) : CSR par saison réelle (seasonId) ; Champion (#N) ; outcome TIE.
 package halo_5

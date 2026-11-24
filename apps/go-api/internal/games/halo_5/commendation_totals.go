@@ -7,7 +7,7 @@ package halo_5
 // (CommendationDefSource). Réponse PLATE (le handler groupe par catégorie).
 //
 // Interface définie côté package consommateur (h5), retour canonique : l'impl DuckDB
-// la satisfait structurellement, zéro cycle (parité MatchHistorySource).
+// la satisfait structurellement, zéro cycle.
 
 import (
 	"context"

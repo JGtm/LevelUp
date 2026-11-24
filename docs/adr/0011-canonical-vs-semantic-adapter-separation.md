@@ -30,7 +30,7 @@ ne couvre pas, en particulier :
 ne devraient PAS aller dans canonical. Ils relèvent de :
 
 - `TitleSemanticAdapter` pour les labels i18n (FR/EN, RankCatalog, OutcomeLabels)
-- `TitleAssetURLAdapter` pour les URLs (MapImageURL, MedalImageURL, CSRRankImageURL)
+- `TitleAssetURLAdapter` pour les URLs (MapImageURL, CSRRankImageURL, WeaponImageURL)
 - View-models côté service (formatage final pour le DTO HTTP)
 
 Si on étend `canonical` pour absorber ces champs, on pollue le contrat

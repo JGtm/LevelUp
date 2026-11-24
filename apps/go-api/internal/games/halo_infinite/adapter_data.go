@@ -260,11 +260,6 @@ func fallbackCapabilities() games.CapabilityMap {
 	}
 }
 
-// LoadMatchSummaries n'est pas câblée en Phase B. Elle remontera en Phase C.
-func (a *DataAdapter) LoadMatchSummaries(ctx context.Context, matchIDs []string) ([]canonical.MatchSummary, error) {
-	return nil, games.ErrCapabilityNotSupported
-}
-
 // LoadPlayerStats n'est pas câblée en Phase B.
 func (a *DataAdapter) LoadPlayerStats(ctx context.Context, xuid string, scope canonical.StatsScope) (*canonical.PlayerStats, error) {
 	return nil, games.ErrCapabilityNotSupported

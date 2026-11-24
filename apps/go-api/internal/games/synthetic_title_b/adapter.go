@@ -63,10 +63,6 @@ func (a *DataAdapter) Capabilities() games.CapabilityMap {
 	}
 }
 
-func (a *DataAdapter) LoadMatchSummaries(ctx context.Context, matchIDs []string) ([]canonical.MatchSummary, error) {
-	return []canonical.MatchSummary{}, nil
-}
-
 // LoadPlayerStats projette les FakePlayerStats injectées vers le canonique.
 func (a *DataAdapter) LoadPlayerStats(ctx context.Context, xuid string, scope canonical.StatsScope) (*canonical.PlayerStats, error) {
 	if a.stats == nil {

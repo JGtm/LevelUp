@@ -156,12 +156,8 @@ func registerHalo5Adapters(
 		commDefs = halo5db.NewHalo5CommendationDefSource(metaDB.SQLDb())
 	}
 
-	// Builder player-scoped : adapter live + source d'historique LOCAL (AXE A) +
-	// définitions natives des commendations (AXE B). Contrairement aux surfaces live
-	// (career, match detail), l'historique (LoadMatchSummaries) lit le shared h5 DÉJÀ
-	// synchronisé par le livesync (match_registry ⨝ match_participants →
-	// canonical.MatchSummary). La source d'historique porte l'identité du joueur
-	// (gamertag) fixée depuis le PlayerDB, et lit via le SharedReader title-aware.
+	// Builder player-scoped : adapter live + définitions natives des commendations
+	// (AXE B), puis les sources locales que le PlayerDB rend disponibles.
 	reg.RegisterPlayerDataBuilder(td.Slug, func(pdb *platform_duckdb.PlayerDB) games.TitleDataAdapter {
 		a := buildLiveData()
 		da, ok := a.(*halo5.DataAdapter)
@@ -169,8 +165,6 @@ func registerHalo5Adapters(
 			return a
 		}
 		if pdb != nil {
-			src := halo5db.NewHalo5MatchHistorySource(pdb.SharedReadDB(), pdb.Gamertag, td.ModeSource)
-			da = da.WithMatchHistorySource(src)
 			// Totaux à vie des commendations : keyés par XUID (≠ historique keyé
 			// gamertag) — match_commendations.xuid = l'xuid Xbox résolu au sync.
 			da = da.WithCommendationTotals(

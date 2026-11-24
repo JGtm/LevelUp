@@ -73,7 +73,7 @@ func TestHalo5_FineCapabilities(t *testing.T) {
 		t.Fatalf("CapabilityMapFromMappings (clé inconnue ?): %v", err)
 	}
 	want := map[games.CapabilityKey]games.CapabilityStatus{
-		games.CapMatchHistory:         games.CapSupported, // LoadMatchSummaries (shared h5 local → canonical)
+		games.CapMatchHistory:         games.CapSupported, // historique servi depuis le shared h5 local
 		games.CapMatchDetailCore:      games.CapSupported, // match view via le substrat DuckDB synchronisé (pas de fetch live)
 		games.CapScoreboardExtra:      games.CapNotExposed,
 		games.CapMatchSkillSnapshot:   games.CapNotExposed,

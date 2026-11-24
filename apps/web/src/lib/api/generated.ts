@@ -9383,7 +9383,6 @@ export interface components {
             kd_timeline: components["schemas"]["MatchKDTimelinePoint"][] | null;
             kill_distance_by_weapon?: components["schemas"]["MatchKillDistancePlayer"][] | null;
             killer_victim?: components["schemas"]["MatchKillerVictimPair"][] | null;
-            nemesis_duels: components["schemas"]["MatchNemesisRow"][] | null;
             tug_of_war: components["schemas"]["MatchTugOfWarBin"][] | null;
             weapon_tools?: components["schemas"]["SquadWeaponTools"];
         };
@@ -9549,7 +9548,6 @@ export interface components {
             headshot?: boolean;
             /** Format: int64 */
             killer_damage_pct?: number;
-            medal_name?: string;
             victim_gamertag?: string;
             /** Format: int64 */
             victim_team_id?: number;
@@ -9792,14 +9790,6 @@ export interface components {
             previous_match_id: string | null;
             /** Format: int64 */
             total_matches: number;
-        };
-        MatchNemesisRow: {
-            gamertag: string;
-            /** Format: int64 */
-            i_killed: number;
-            /** Format: int64 */
-            killed_me: number;
-            xuid: string;
         };
         MatchParticipant: {
             /** Format: double */

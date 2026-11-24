@@ -379,7 +379,6 @@ type TitleDataAdapter interface {
 	TitleSlug() string
 	Capabilities() CapabilityMap
 
-	LoadMatchSummaries(ctx context.Context, matchIDs []string) ([]canonical.MatchSummary, error)
 	LoadPlayerStats(ctx context.Context, xuid string, scope canonical.StatsScope) (*canonical.PlayerStats, error)
 	LoadCareerSnapshot(ctx context.Context, xuid string, opts canonical.CareerOptions) (*canonical.CareerSnapshot, error)
 	LoadEncounters(ctx context.Context, xuid string) ([]canonical.EncounterRow, error)

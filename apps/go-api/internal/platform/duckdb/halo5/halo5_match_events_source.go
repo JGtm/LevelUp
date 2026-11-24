@@ -12,7 +12,7 @@
 // KillKindWeapon par défaut (dégradation propre vs la voie live qui les porte).
 //
 // Satisfait STRUCTURELLEMENT halo_5.MatchEventsLocalSource (retour canonical, aucun
-// import du package halo_5 → pas de cycle ; parité Halo5MatchHistorySource).
+// import du package halo_5 → pas de cycle ; même pattern que les autres sources locales).
 package halo5
 
 import (

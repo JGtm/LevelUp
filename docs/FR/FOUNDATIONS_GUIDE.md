@@ -80,7 +80,6 @@ Deux interfaces séparées par responsabilité unique :
 ```go
 // TitleDataAdapter — charge les données canoniques depuis la DuckDB title-specific
 type TitleDataAdapter interface {
-    LoadMatchSummaries(ctx, []string) ([]canonical.MatchSummary, error)
     LoadMatchDetail(ctx, string) (*canonical.MatchDetail, error)
     LoadPlayerStats(ctx, string, StatsScope) (*canonical.PlayerStats, error)
     // ...
@@ -103,7 +102,7 @@ type MyService struct {
 }
 
 func (s *MyService) GetPage(ctx context.Context) (*domain.MyPage, error) {
-    summaries, err := s.data.LoadMatchSummaries(ctx, ids)
+    stats, err := s.data.LoadPlayerStats(ctx, xuid, canonical.StatsScope{})
     if errors.Is(err, games.ErrCapabilityNotSupported) {
         // dégradation gracieuse — réponse partielle, jamais panic
         return &domain.MyPage{HasData: false}, nil

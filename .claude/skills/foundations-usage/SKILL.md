@@ -62,7 +62,7 @@ func (s *MyService) Get(ctx) error {
 
 // ✅ Via adapter
 func (s *MyService) Get(ctx) error {
-    summaries, err := s.data.LoadMatchSummaries(ctx, ids)
+    stats, err := s.data.LoadPlayerStats(ctx, xuid, canonical.StatsScope{})
     if errors.Is(err, games.ErrCapabilityNotSupported) { /* dégrader */ }
 }
 ```

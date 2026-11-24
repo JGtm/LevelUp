@@ -13,7 +13,7 @@ import (
 // MatchEventsLocalSource lit le kill-feed d'un match depuis le substrat LOCAL et le
 // projette en canonical.MatchEventTimeline. Implémentée STRUCTURELLEMENT par
 // platform/duckdb.Halo5MatchEventsSource (retour canonical, aucun import croisé → pas
-// de cycle ; même pattern que MatchHistorySource). Injectée via WithMatchEventsSource.
+// de cycle). Injectée via WithMatchEventsSource.
 type MatchEventsLocalSource interface {
 	GetMatchEvents(ctx context.Context, matchID string, opts canonical.MatchEventOptions) (*canonical.MatchEventTimeline, error)
 }

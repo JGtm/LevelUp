@@ -51,7 +51,7 @@ func replayFixture() *countingMatchViewRepo {
 			events: []domain.EventRaw{
 				{EventType: highlightevent.EventTypeKill, TimeMS: ms(10_000), XUID: str(adv)}, // countdown : écarté
 				{EventType: highlightevent.EventTypeKill, TimeMS: ms(20_000), XUID: str(me), Gamertag: str("Moi")},
-				{EventType: highlightevent.EventTypeMedal, TimeMS: ms(20_000), XUID: str(me), MedalName: str("Double Kill")},
+				{EventType: highlightevent.EventTypeMedal, TimeMS: ms(20_000), XUID: str(me)},
 				{EventType: highlightevent.EventTypeKill, TimeMS: ms(30_000), XUID: str(adv), Gamertag: str("Adverse")},
 				{EventType: highlightevent.EventTypeKill, TimeMS: ms(40_000), XUID: str(bot), Gamertag: str("343 Bot")},
 			},
@@ -204,7 +204,7 @@ func assertHeaderExercised(t *testing.T, h domain.MatchViewHeader) {
 }
 
 // assertFeedExercised : le fil porte les décorations attendues (arme, assistant, équipe du
-// tueur, médaille nommée) et le recalage T0, sans event de countdown.
+// tueur, médaille) et le recalage T0, sans event de countdown.
 func assertFeedExercised(t *testing.T, events []domain.MatchHighlightEvent, killsFromKV bool) {
 	t.Helper()
 	var withWeapon, withAssist, withMedal, shifted, kills, withTeam bool
@@ -214,7 +214,7 @@ func assertFeedExercised(t *testing.T, events []domain.MatchHighlightEvent, kill
 		}
 		withWeapon = withWeapon || e.WeaponKey == "hinf_br75"
 		withAssist = withAssist || e.AssistGamertag == "Ami"
-		withMedal = withMedal || (e.EventType == highlightevent.EventTypeMedal && e.MedalName == "Double Kill")
+		withMedal = withMedal || e.EventType == highlightevent.EventTypeMedal
 		shifted = shifted || (e.EventTimeMS != nil && *e.EventTimeMS == 5_000 && e.VictimXUID != nil)
 		kills = kills || e.EventType == highlightevent.EventTypeKill
 		withTeam = withTeam || (e.EventType == highlightevent.EventTypeKill && e.ActorTeamID != nil)

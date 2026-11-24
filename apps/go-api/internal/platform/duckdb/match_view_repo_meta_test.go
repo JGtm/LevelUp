@@ -392,7 +392,7 @@ func TestGetMatchEvents_ResolvesGamertagViaView(t *testing.T) {
 		`INSERT INTO shared.highlight_events VALUES ('m1', 'first_blood', 43000, '2783503310586789', 'kill', NULL)`,
 		`INSERT INTO shared.highlight_events VALUES ('m1', 'killing_spree', 60000, 'bid(7.0)', 'spree', NULL)`,
 		`INSERT INTO shared.highlight_events VALUES ('m1', 'kill', 90000, '9999999999999999', 'kill', NULL)`, // orphelin
-		// Event medal : le raw_json porte le nom anglais, extrait dans EventRaw.MedalName.
+		// Event medal : servi comme les autres events, sans lecture de son raw_json.
 		`INSERT INTO shared.highlight_events VALUES ('m1', 'medal', 95000, '2783503310586789', '50',
 			'{"medal_name": "Odin''s Raven", "medal_value": 91}')`,
 	} {
@@ -420,14 +420,8 @@ func TestGetMatchEvents_ResolvesGamertagViaView(t *testing.T) {
 	if events[2].Gamertag == nil || *events[2].Gamertag != "Joueur 9999" {
 		t.Errorf("events[2].Gamertag (orphelin) = %v, want « Joueur 9999 »", events[2].Gamertag)
 	}
-	// L'event medal porte son nom anglais (raw_json.medal_name) ; les autres non.
-	if events[3].MedalName == nil || *events[3].MedalName != "Odin's Raven" {
-		t.Errorf("events[3].MedalName = %v, want Odin's Raven", events[3].MedalName)
-	}
-	for i := 0; i < 3; i++ {
-		if events[i].MedalName != nil {
-			t.Errorf("events[%d].MedalName = %q, want nil (pas un event medal)", i, *events[i].MedalName)
-		}
+	if events[3].EventType != "medal" {
+		t.Errorf("events[3].EventType = %q, want medal", events[3].EventType)
 	}
 }
 

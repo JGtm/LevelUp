@@ -89,7 +89,6 @@ func buildCombatTabFull(
 		TugOfWar:        tugDomain,
 		ImpactBadges:    badgesDomain,
 		KDTimeline:      kdDomain,
-		NemesisDuels:    []domain.MatchNemesisRow{},
 		KillerVictim:    killerVictim,
 		Cadence:         cadence,
 	}
@@ -110,11 +109,6 @@ func highlightEventList(events []domain.EventRaw) []domain.MatchHighlightEvent {
 			EventTimeMS:   e.TimeMS,
 			ActorXUID:     e.XUID,
 			ActorGamertag: e.Gamertag,
-		}
-		// Le nom brut de la médaille voyage avec l'event ; son libellé et son visuel se
-		// résolvent contre le référentiel, hors de l'event.
-		if e.MedalName != nil {
-			ev.MedalName = *e.MedalName
 		}
 		evtList = append(evtList, ev)
 	}
