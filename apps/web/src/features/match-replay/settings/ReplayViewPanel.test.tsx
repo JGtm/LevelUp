@@ -238,7 +238,7 @@ describe('la rubrique Carte', () => {
     expect(screen.queryByRole('radiogroup', { name: 'Fond' })).toBeNull()
   })
 
-  it('« Traits du relief » (une seule valeur) se lit sous le fond ; « Plan des murs » n’est pas proposé sur le fond Plan', () => {
+  it('« Traits du relief » (celui du fond affiché) se lit sous le fond ; « Plan des murs » n’est pas proposé sur le fond Plan', () => {
     const { unmount } = open({ drawn: 'plan' })
     expect(sw('Traits du relief')).toBeInTheDocument()
     expect(screen.queryByRole('switch', { name: 'Plan des murs' })).toBeNull()

@@ -138,7 +138,8 @@ export function useViewsController({ ctx, binding, mode, matchKey, newId = defau
     },
     reset: () => {
       const factory = factoryValues()
-      write(SETTING_IDS.filter((id) => values[id] !== factory[id]).map((id) => [id, factory[id]] as const))
+      // « Traits du relief » n'a pas de valeur d'usine unique : elle dépend du fond (allumés sur le Relief seulement).
+      write(SETTING_IDS.filter((id) => id !== 'reliefLines' && values[id] !== factory[id]).map((id) => [id, factory[id]] as const))
       commit(setActiveView(state, DEFAULT_ACTIVE))
     },
   }

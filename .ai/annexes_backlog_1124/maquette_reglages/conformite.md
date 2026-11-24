@@ -25,8 +25,8 @@ sont rangés dans `settings/settingsText.ts` (textes d'origine) et `i18n/setting
 | E11 | Infobulles des lignes : celles d'avant (longues, avec la réserve de mesure), pas les phrases courtes de la maquette ; options de choix idem | « Chaque réglage garde son effet exact » : on ne perd pas l'explication. Libellés renommés comme la maquette (Zones nommées, Objets lâchés, Y compris les armes de départ, Étage de la fiche ouverte, Point de vue, Teintes et points, Fil posé sur le plan). |
 | E12 | Étage : le segmenté suit les étages détectés (3 dans la maquette), la valeur du curseur dit le rang (« Étage 1 »), jamais un nombre | Règle d'avant (D-14 : jamais de mètres) ; le rang est celui des pastilles d'avant. |
 | E13 | Une rubrique sans aucune ligne pour ce match n'a pas d'onglet (Objets sur un Assassin, Son sans piste sonore) | Règle d'avant : pas de commande qui ne commande rien. La maquette simule deux matchs qui ont toutes les rubriques. |
-| E14 | « Traits du relief » allumés d'office pour tous les fonds, une seule valeur — y compris sur le Plan, où ils étaient éteints d'office ; conséquences : l'image des hauteurs se calcule dès l'ouverture sur un fond Plan, et la Tactique et « Occupation du terrain » partagent la même valeur | Fusion de R6 demandée par les notes (« une seule valeur pour tous les fonds, allumée par défaut »). **À voir à l'écran** (Tactique, Occupation du terrain). |
-| E15 | Appliquer Combat éteint les traits du relief (et Complet les allume) : un préréglage écrit donc une valeur partagée avec la Tactique et « Occupation du terrain » (comme le plan des murs) | Conséquence de R6 et R7 dans les 37 réglages couverts (tables de la maquette). |
+| E14 | « Traits du relief » : pas de fusion en une valeur ; les trois clés `replay-relief-lines.<fond>` restent (allumés d'office sur le Relief, éteints sur le Plan et le Rendu). Le panneau porte UN interrupteur qui lit et écrit la clé du fond affiché. La maquette et ses notes (R6) fusionnaient en une valeur allumée d'office | Le rendu par défaut du Plan a été validé tel quel par le propriétaire (rejeu, Tactique, « Occupation du terrain »), et une valeur allumée d'office sur le Plan imposerait le calcul de l'image des hauteurs à l'ouverture ; le réglage est partagé avec les deux autres pages. |
+| E15 | (voir la correction suivante : réglages partagés hors des préréglages) | — |
 | E16 | Aucun des outils de la maquette : variante B, recherche, « Comparer avec l'existant », thème, sélecteur de mode, « Rouvrir le rejeu », « Réinitialiser la maquette », compte de commandes | Outillage de démonstration. |
 | E17 | Pas de bandeau d'état « Point de vue : … · Caméra : … · Étage : … » sur la carte, ni de témoin visuel du son | Décor de la maquette, sans équivalent dans l'application. |
 | E18 | Fiche d'un joueur : pas de bouton « Caméra : suivre » ni « Prendre le point de vue », pas de sous-titre « point de vue du rejeu » | Absents de l'inventaire (R58 à R62 « inchangés ») et de la fiche d'application, où Suivre et Masquer vivent sur les tuiles ; non codés. |
@@ -84,7 +84,7 @@ Légende : **C** = conforme, **E#** = écart du tableau 1, **VE** = à voir à l
 | Ligne | État | Réglage et clé |
 |---|---|---|
 | Fond : Plan / Rendu / Relief | C | `replay-background-style` (partagée) |
-| Traits du relief (sous Fond ; une valeur ; allumés d'office) | C (E14) | `replay-relief-lines` (`lib/replay/useReliefLines.ts`) |
+| Traits du relief (sous Fond ; celui du fond affiché ; allumés d'office sur le Relief seulement) | C (E14) | `replay-relief-lines.<fond>` (`lib/replay/useReliefLines.ts`, inchangé) |
 | Plan des murs (sous Fond ; non proposé sur le fond Plan) | C | `replay-show-wall-plan` (partagée) |
 | Étage : Tout / rangs ; curseur « Hauteur » quand une coupe est active | C (E12) | `settings/ReplayFloorRow.tsx` ; non mémorisé |
 | Étage de la fiche ouverte (sous Étage ; grisé et expliqué sans fiche) | C | `relief.floor.follow` |
@@ -147,7 +147,7 @@ Légende : **C** = conforme, **E#** = écart du tableau 1, **VE** = à voir à l
 | R2 Visée, R3 Traînée | table `aim`, `trail` : rubrique Joueurs ; état `useReplaySettings.ts` |
 | R4 Zones | `zones` (« Zones nommées »), Carte |
 | R5 Fond | `bg`, Carte ; `useBackgroundStyle.ts` |
-| R6 Traits du relief | `reliefLines`, Carte ; `lib/replay/useReliefLines.ts` (une clé ; reprise des clés par fond) |
+| R6 Traits du relief | `reliefLines`, Carte ; `lib/replay/useReliefLines.ts` (inchangé : une clé par fond) |
 | R7 Plan des murs | `wallPlan`, Carte (non proposé sur le fond Plan) |
 | R8 Étage | `floor`, Carte ; `settings/ReplayFloorRow.tsx` |
 | R9 Suivre le joueur ouvert | `floorFollow` (« Étage de la fiche ouverte »), sous Étage |
@@ -194,22 +194,20 @@ compte des modifications et Mes vues n'ont rien à changer. L'icône d'accès ra
 | Ancien état | Nouvel état |
 |---|---|
 | Les ~49 clés `replay-*` des réglages | relues telles quelles (aucune ne change de nom) |
-| `replay-relief-lines.<fond>` (trois clés) | une clé `replay-relief-lines` : le choix du fond retenu, sinon Relief, Plan, Rendu ; sans choix, allumés ; les trois clés d'avant sont effacées (à la première lecture, partagée avec la Tactique et « Occupation du terrain ») |
+| `replay-relief-lines.<fond>` (trois clés) | inchangées : aucune reprise |
 | Préréglage Combat (ou Déplacements) retenu, treize calques encore à son état, traces des vies sans clé | `replay-show-deaths` et `-killers` (ou `-spawns`) écrits à `true` une fois, pour que la vue reste la sienne |
 | `replay-lives-group-open` | effacée (le groupe ne se replie plus) |
 | `replay-view-preset` (dernier préréglage) | la vue active ; un préréglage s'y lit comme avant ; absente, invalide ou « personnalise » : Complet |
 | Rien (premier lancement) | marque `replay-prefs-version` = 2 ; les épingles d'usine, aucune vue, pas de vue d'ouverture |
 | Clés neuves | `replay-views` (3 vues au plus, validées), `replay-view-default`, `replay-pins`, `replay-view-tab` |
 
-Idempotente : la marque de version empêche un second passage ; la reprise des traits du relief ne fait rien sans clé d'avant ;
-aucune valeur n'est jamais réécrite par-dessus une clé existante. Tests : `settings/settingsMigration.test.ts`,
-`lib/replay/useReliefLines.test.ts`.
+Idempotente : la marque de version empêche un second passage ; aucune valeur n'est jamais réécrite par-dessus une clé existante. Test : `settings/settingsMigration.test.ts`.
 
 ## 6. Points à contrôler à l'écran (rien n'a été vu par l'agent)
 
 1. Panneau Variante A au Standard, Cinéma, Plein cadre : onglets, maître à trois états, filles en retrait, pointillé de la puce modifiée, défilement du panneau sur un écran bas.
 2. Accès rapide : cinq boutons, grisé du fil au Standard, infobulles ; même état que la ligne du panneau.
-3. Fond Plan avec traits du relief allumés d'office (E14) : lisibilité, temps d'ouverture ; Tactique et « Occupation du terrain » : même valeur.
+3. Traits du relief : l'interrupteur du panneau suit le fond affiché (allumé sur le Relief, éteint sur le Plan et le Rendu) ; la Tactique et « Occupation du terrain » montrent la même chose qu'avant.
 4. Préréglage Combat puis un réglage à la main : « Combat · modifié », Revenir, Enregistrer comme ma vue, trois vues, vue d'ouverture, rattachement à un mode (E8).
 5. Menu caméra « Caméra : suivre » / « Point de vue », mention « point de vue » sur la ligne, liste de la frise.
 6. Export : la case « Inclure le son » suit le son de la page.

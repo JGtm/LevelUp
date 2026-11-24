@@ -10,8 +10,9 @@
  *     couvre désormais ces traces lui-même et la règle de défaut a disparu : la reprise écrit une fois ce que la règle
  *     donnait, pour que la vue du lecteur reste la sienne ;
  *  2. LE GROUPE « VIES » NE SE REPLIE PLUS : la clé de son état replié est effacée ;
- *  3. LES TRAITS DU RELIEF, retenus par fond, n'ont plus qu'une valeur : leur reprise vit avec leur lecture
- *     (`lib/replay/useReliefLines`), partagée avec la Tactique et « Occupation du terrain ».
+ *
+ * Les traits du relief, retenus par fond (`replay-relief-lines.<fond>`, partagés avec la Tactique et « Occupation du terrain »),
+ * ne sont PAS repris : leur clé et leur défaut par fond restent ceux d'avant.
  *
  * La vue active reste sous sa clé d'avant (`replay-view-preset`) : un préréglage s'y lit comme avant. Le préréglage
  * ne verrouille plus rien — si l'état s'en écarte, la vue est « modifiée », et rien n'est réécrit.

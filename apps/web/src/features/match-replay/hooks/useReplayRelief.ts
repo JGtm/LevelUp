@@ -22,7 +22,8 @@
  * « SUIVRE LE JOUEUR OUVERT » pose la coupe à la place de l'utilisateur (`useReplayReliefFollow`) : à chaque image
  * lue, l'étage de ses pieds. Un choix manuel (« Tout », pastille, curseur) le coupe.
  *
- * LES TRAITS DU RELIEF ont UNE valeur pour les trois fonds (`useReliefLines`), allumés d'office. Leur calque est cuit hors écran avec les autres (`useReplayStaticLayers`).
+ * LES TRAITS DU RELIEF sont retenus PAR FOND (`useReliefLines`) : allumés d'office sur le Relief, éteints sur
+ * le Plan et le Rendu. Leur calque est cuit hors écran avec les autres (`useReplayStaticLayers`).
  */
 import { useCallback, useMemo } from 'react'
 
@@ -98,7 +99,7 @@ export function useReplayRelief(o: ReplayReliefOptions): ReplayRelief {
   const offered = !!base?.reliefAvailable
   // LE FOND VOULU, avant tout échec de lecture : il décide des traits retenus et de ce qu'il faut charger.
   const wanted = resolveBackgroundVariant(style, planAvailable, { available: offered, failed: false })
-  const [linesOn, toggleLines] = useReliefLines()
+  const [linesOn, toggleLines] = useReliefLines(wanted)
   const choice = useReplayFloorChoice(scopeKey, follow.player !== null)
   const files = useMatchReliefSource(playerSlug, matchId, offered)
   const view = useReliefView({

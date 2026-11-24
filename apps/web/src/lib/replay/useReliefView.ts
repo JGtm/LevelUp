@@ -50,7 +50,7 @@ export interface ReliefViewOptions {
   /** Le fond VOULU (`resolveBackgroundVariant` sans échec de lecture) : il décide des traits et de l'image à charger. */
   wanted: MapBackgroundVariant
   planAvailable: boolean
-  /** Les traits du relief sont allumés (une valeur pour tous les fonds, `useReliefLines`). */
+  /** Les traits du relief sont allumés (retenus par fond, `useReliefLines`). */
   linesOn: boolean
   /** L'orientation EFFECTIVE de la carte : elle ne règle que la direction de la lumière. */
   turns: QuarterTurns

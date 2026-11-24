@@ -147,8 +147,7 @@ afterEach(() => {
 })
 
 describe('ReplayCanvas — le fond Plan par défaut', () => {
-  it('traits éteints : ne lit que les données du relief, ni image des hauteurs, ni demande de rendu', () => {
-    localStorage.setItem('replay-relief-lines', 'false')
+  it('ne lit que les données du relief : ni image des hauteurs, ni demande de rendu', () => {
     renderWithProviders(<ReplayCanvas {...props(smallDoc(), background())} />)
     expect(mocks.files.mock.calls.at(-1)?.[0]).toMatchObject({ dataPath: expect.stringContaining('/players/jg/matches/m1/replay/') })
     expect(lastNeedImage()).toBe(false)
@@ -162,13 +161,13 @@ describe('ReplayCanvas — le fond Plan par défaut', () => {
 })
 
 describe('ReplayCanvas — le panneau de la vue', () => {
-  it('propose Plan, Rendu, Relief, le Plan retenu, les traits allumés d’office et la commande d’étage en rangs', () => {
+  it('propose Plan, Rendu, Relief, le Plan retenu, les traits éteints et la commande d’étage en rangs', () => {
     renderWithProviders(<ReplayCanvas {...props(smallDoc(), background())} />)
     const panel = openPanel()
     const group = within(panel).getByRole('radiogroup', { name: 'Fond' })
     expect(within(group).getAllByRole('radio').map((r) => r.textContent)).toEqual(['Plan', 'Rendu', 'Relief'])
     expect(within(panel).getByRole('radio', { name: 'Plan' })).toHaveAttribute('aria-checked', 'true')
-    expect(within(panel).getByRole('switch', { name: 'Traits du relief' })).toHaveAttribute('aria-checked', 'true')
+    expect(within(panel).getByRole('switch', { name: 'Traits du relief' })).toHaveAttribute('aria-checked', 'false')
     expect(within(within(panel).getByRole('radiogroup', { name: 'Étage' })).getAllByRole('radio').map((b) => b.textContent)).toEqual(['Tout', 'Bas', 'Étage 1'])
   })
 

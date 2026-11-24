@@ -10,7 +10,7 @@
  * `peindreLePlan` est moqué pour lire ce que le plan donne au peintre (zones filtrées, traits).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 
 import type { TacticalRaster } from '@/lib/api/types'
 import { RELIEF_VIEW_TEXT } from '@/components/map-relief/text'
@@ -181,35 +181,28 @@ describe('la pilule « Fond »', () => {
 })
 
 describe('les traits du relief', () => {
-  it('allumés d’office, sur le Plan comme sur le Relief : le peintre les reçoit avec le calage du relief', () => {
+  it('éteints sur le Plan : aucun trait au peintre', () => {
     rendre()
-    expect(screen.getByTestId('tactical-plan-traits')).toHaveAttribute('aria-pressed', 'true')
-    expect(dernierePeinture().reliefLines?.calibration.widthPx).toBe(40)
-    cleanup()
-    window.localStorage.setItem('replay-background-style', 'relief')
-    rendre()
-    expect(screen.getByTestId('tactical-plan-traits')).toHaveAttribute('aria-pressed', 'true')
-    expect(dernierePeinture().reliefLines?.calibration.widthPx).toBe(40)
-  })
-
-  it('un geste vaut pour TOUS les fonds : éteindre sur le Relief les éteint aussi sur le Plan', () => {
-    window.localStorage.setItem('replay-background-style', 'relief')
-    rendre()
-    fireEvent.click(screen.getByTestId('tactical-plan-traits'))
-    expect(screen.getByTestId('tactical-plan-traits')).toHaveAttribute('aria-pressed', 'false')
-    expect(window.localStorage.getItem('replay-relief-lines')).toBe('false')
-    fireEvent.click(within(screen.getByTestId('tactical-plan-fond-pilule')).getByRole('button', { name: 'Plan' }))
     expect(screen.getByTestId('tactical-plan-traits')).toHaveAttribute('aria-pressed', 'false')
     expect(dernierePeinture().reliefLines ?? null).toBeNull()
   })
 
-  it('reprend le choix d’avant, retenu par fond : le fond retenu prime', () => {
+  it('allumés d’office sur le Relief : le peintre les reçoit avec le calage du relief', () => {
     window.localStorage.setItem('replay-background-style', 'relief')
-    window.localStorage.setItem('replay-relief-lines.relief', 'false')
     rendre()
+    expect(screen.getByTestId('tactical-plan-traits')).toHaveAttribute('aria-pressed', 'true')
+    expect(dernierePeinture().reliefLines?.calibration.widthPx).toBe(40)
+  })
+
+  it('un geste est retenu PAR FOND : éteindre sur le Relief ne touche pas le Plan', () => {
+    window.localStorage.setItem('replay-background-style', 'relief')
+    rendre()
+    fireEvent.click(screen.getByTestId('tactical-plan-traits'))
     expect(screen.getByTestId('tactical-plan-traits')).toHaveAttribute('aria-pressed', 'false')
-    expect(window.localStorage.getItem('replay-relief-lines')).toBe('false')
-    expect(window.localStorage.getItem('replay-relief-lines.relief')).toBeNull()
+    expect(window.localStorage.getItem('replay-relief-lines.relief')).toBe('false')
+    fireEvent.click(within(screen.getByTestId('tactical-plan-fond-pilule')).getByRole('button', { name: 'Plan' }))
+    expect(screen.getByTestId('tactical-plan-traits')).toHaveAttribute('aria-pressed', 'false')
+    expect(window.localStorage.getItem('replay-relief-lines.plan')).toBeNull()
   })
 })
 

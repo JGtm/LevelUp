@@ -159,15 +159,13 @@ describe('MatchPositionsHeatmap — le choix de fond du bloc', () => {
 })
 
 describe('MatchPositionsHeatmap — les traits du relief', () => {
-  it('allumés d’office sur tous les fonds, une seule valeur : le tracé les reçoit, et éteindre les éteint partout', () => {
+  it('éteints sur le Plan, allumés d’office sur le Relief : le tracé les reçoit alors', () => {
     rendre()
-    expect(screen.getByTestId('match-positions-traits')).toHaveAttribute('aria-pressed', 'true')
-    expect(dernierTrace()?.reliefLines?.calibration.widthPx).toBe(40)
-    fireEvent.click(screen.getByTestId('match-positions-traits'))
     expect(screen.getByTestId('match-positions-traits')).toHaveAttribute('aria-pressed', 'false')
     expect(dernierTrace()?.reliefLines ?? null).toBeNull()
     fireEvent.click(within(screen.getByTestId('match-positions-fond-pilule')).getByRole('button', { name: 'Relief' }))
-    expect(screen.getByTestId('match-positions-traits')).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByTestId('match-positions-traits')).toHaveAttribute('aria-pressed', 'true')
+    expect(dernierTrace()?.reliefLines?.calibration.widthPx).toBe(40)
   })
 })
 

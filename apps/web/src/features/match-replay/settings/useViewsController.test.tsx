@@ -171,12 +171,13 @@ describe('les réglages épinglés', () => {
 
 describe('réinitialiser', () => {
   it('remet les réglages d’usine et Complet, garde Mes vues, la vue d’ouverture et les épingles', () => {
-    const { result } = mount({ initial: { aim: false, bg: 'relief', volume: 0.2, sound: true, floor: 2 } })
+    const { result } = mount({ initial: { aim: false, bg: 'relief', volume: 0.2, sound: true, floor: 2, reliefLines: false } })
     act(() => { result.current.controller.saveAs('Ma vue') })
     act(() => result.current.controller.setDefault('v1'))
     act(() => { result.current.controller.pin('zones') })
     act(() => result.current.controller.reset())
-    expect(result.current.values).toEqual(factoryValues())
+    // Les traits du relief n'ont pas de valeur d'usine unique (elle dépend du fond) : la remise à zéro n'y touche pas.
+    expect(result.current.values).toEqual({ ...factoryValues(), reliefLines: false })
     expect(result.current.controller.state.activeId).toBe('complet')
     expect(result.current.controller.state.views).toHaveLength(1)
     expect(result.current.controller.state.defaultId).toBe('v1')

@@ -74,9 +74,6 @@ function rendered(over: Partial<ReliefRender> = {}): ReliefRender {
   return { status: 'ready', info: { width: 40, height: 10, hasMesh: true }, frame: frame(), error: null, ...over }
 }
 
-/** Les traits du relief ont UNE valeur, allumée d'office : ces tests la posent éteinte quand ils parlent d'un fond sans traits. */
-const eteindreLesTraits = () => window.localStorage.setItem('replay-relief-lines', 'false')
-
 /** La dernière demande de rendu que le hook a posée au calculateur. */
 const lastRequest = (): ReliefRenderRequest | null => mocks.render.mock.calls.at(-1)?.[2] ?? null
 /** Le dernier `needImage` demandé à la lecture des fichiers. */
@@ -172,7 +169,6 @@ describe('useReplayRelief — une ReliefError replie sur le Plan', () => {
 
 describe('useReplayRelief — quand l’image des hauteurs est demandée', () => {
   it('jamais sur un fond Plan sans traits ni coupe : les données seules, aucune demande de rendu', () => {
-    eteindreLesTraits()
     renderHook(() => useReplayRelief(options({ style: 'plan' })))
     expect(lastNeedImage()).toBe(false)
     expect(lastRequest()).toBeNull()
@@ -185,7 +181,6 @@ describe('useReplayRelief — quand l’image des hauteurs est demandée', () =>
   })
 
   it('sur un fond Plan, allumer les traits la demande, sans teinte ni masque', () => {
-    eteindreLesTraits()
     const { result } = renderHook(() => useReplayRelief(options({ style: 'plan' })))
     act(() => result.current.lines.onToggle())
     expect(lastNeedImage()).toBe(true)
@@ -193,7 +188,6 @@ describe('useReplayRelief — quand l’image des hauteurs est demandée', () =>
   })
 
   it('sur un fond Plan, choisir un étage la demande, avec les masques de la coupe', () => {
-    eteindreLesTraits()
     const { result } = renderHook(() => useReplayRelief(options({ style: 'plan' })))
     act(() => result.current.floor.selectRank(2.2))
     expect(lastNeedImage()).toBe(true)
@@ -206,18 +200,25 @@ describe('useReplayRelief — quand l’image des hauteurs est demandée', () =>
   })
 })
 
-describe('useReplayRelief — les traits du relief, une valeur pour tous les fonds', () => {
-  it('allumés d’office sur le Relief, le Plan et le Rendu', () => {
-    for (const style of ['relief', 'plan', 'rendu'] as const) {
-      expect(renderHook(() => useReplayRelief(options({ style }))).result.current.lines.show).toBe(true)
-    }
+describe('useReplayRelief — les traits du relief, retenus par fond', () => {
+  it('allumés sur le Relief, éteints sur le Plan et le Rendu', () => {
+    const relief = renderHook(() => useReplayRelief(options({ style: 'relief' })))
+    expect(relief.result.current.lines.show).toBe(true)
+    const plan = renderHook(() => useReplayRelief(options({ style: 'plan' })))
+    expect(plan.result.current.lines.show).toBe(false)
+    const rendu = renderHook(() => useReplayRelief(options({ style: 'rendu' })))
+    expect(rendu.result.current.lines.show).toBe(false)
   })
 
-  it('un geste vaut pour tous les fonds : éteindre sur le Relief les éteint sur le Plan', () => {
+  it('un geste sur le Plan ne touche pas le Relief', () => {
+    const plan = renderHook(() => useReplayRelief(options({ style: 'plan' })))
+    act(() => plan.result.current.lines.onToggle())
+    expect(plan.result.current.lines.show).toBe(true)
     const relief = renderHook(() => useReplayRelief(options({ style: 'relief' })))
+    expect(relief.result.current.lines.show).toBe(true)
     act(() => relief.result.current.lines.onToggle())
     expect(relief.result.current.lines.show).toBe(false)
-    expect(renderHook(() => useReplayRelief(options({ style: 'plan' }))).result.current.lines.show).toBe(false)
+    expect(renderHook(() => useReplayRelief(options({ style: 'plan' }))).result.current.lines.show).toBe(true)
   })
 
   it('le calque des traits porte les traits de la frame, le liseré du fichier et les encres tirées de la base', () => {
@@ -231,7 +232,6 @@ describe('useReplayRelief — les traits du relief, une valeur pour tous les fon
   })
 
   it('éteints : pas de calque de traits', () => {
-    eteindreLesTraits()
     const { result } = renderHook(() => useReplayRelief(options({ style: 'plan' })))
     expect(result.current.linesLayer).toBeNull()
   })
