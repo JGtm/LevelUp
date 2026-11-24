@@ -24,12 +24,12 @@
 // OpenAPI), memes tags JSON, memes `omitempty`. `api/openapi.yaml` et
 // `apps/web/src/lib/api/generated.ts` sont inchanges — c'est le gate du lot.
 //
-// LA SEULE EXCEPTION : les champs SERVIS SEULS, resolus a la requete depuis le referentiel du titre
-// et sans source dans le document stocke. Ils (et les types qu'eux seuls portent) sont inscrits, avec
-// leur date et leur motif, dans la liste unique `internal/testutil/replay_servis_seuls.go`, que lisent
-// les deux gardes de jumelage (`service/replayview/parity_test.go` et
-// `internal/filmcorpus/document_shape_jumeaux_test.go`). Un champ servi hors de cette liste est un
-// champ sans source : les deux gardes echouent.
+// LES CHAMPS SERVIS SEULS : les champs du document servi sans source dans le document stocke sont inscrits, avec
+// leur date et leur motif, dans la liste unique `internal/testutil/replay_servis_seuls.go`, que lisent les deux
+// gardes de jumelage (`service/replayview/parity_test.go` et `internal/filmcorpus/document_shape_jumeaux_test.go`).
+// Un champ servi hors de cette liste est un champ sans source : les deux gardes echouent. La liste est vide depuis que
+// le decodeur de film declare lui-meme les calques resolus a la requete (`medalLabels`, v1.5.0) : un nouveau calque de
+// cette nature se declare d'abord dans le decodeur.
 //
 // AUCUN IMPORT D'`internal/games/halo_infinite/film/replay` ICI, jamais : ce paquet est une feuille de
 // `domain/`, et c'est ce qui garantit que le contrat ne suive pas le format de stockage

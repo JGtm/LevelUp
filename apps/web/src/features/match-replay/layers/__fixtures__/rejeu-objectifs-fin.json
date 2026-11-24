@@ -1,4 +1,4 @@
-{"variant":"objectifs","instant":"fin","frame":22931,"opCount":2204}
+{"variant":"objectifs","instant":"fin","frame":22931,"opCount":2264}
 {"op":"setTransform","args":[1,0,0,1,0,0]}
 {"op":"clearRect","args":[0,0,960,354]}
 {"op":"drawImage","args":[{"canvas":{"w":960,"h":354,"ops":5433,"sha":"74734f23a5185dc805584e9db506ec6660cfc4556a0ab1a212820dd220099091"}},-2.842170943040401e-14,0,960,354]}
@@ -157,6 +157,66 @@
 {"op":"lineTo","args":[608.2592192500001,173.78537979375]}
 {"op":"closePath","args":[]}
 {"op":"fill","args":[]}
+{"op":"set strokeStyle","args":["#718d42"]}
+{"op":"set fillStyle","args":["#718d42"]}
+{"op":"set globalAlpha","args":[0.35]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[218.43403687500006,243.2241918125]}
+{"op":"lineTo","args":[222.43403687500006,247.2241918125]}
+{"op":"lineTo","args":[218.43403687500006,251.2241918125]}
+{"op":"lineTo","args":[214.43403687500006,247.2241918125]}
+{"op":"closePath","args":[]}
+{"op":"fill","args":[]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set font","args":["600 8px ui-sans-serif, system-ui, sans-serif"]}
+{"op":"set textAlign","args":["center"]}
+{"op":"set textBaseline","args":["bottom"]}
+{"op":"set lineJoin","args":["round"]}
+{"op":"set lineWidth","args":[2.4]}
+{"op":"set strokeStyle","args":["#4ee3ef"]}
+{"op":"strokeText","args":["33 s",218.43403687500006,240.7241918125]}
+{"op":"set fillStyle","args":["#5b6f63"]}
+{"op":"fillText","args":["33 s",218.43403687500006,240.7241918125]}
+{"op":"set strokeStyle","args":["#718d42"]}
+{"op":"set fillStyle","args":["#718d42"]}
+{"op":"set globalAlpha","args":[0.35]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[751.9429171875001,243.44476203124998]}
+{"op":"lineTo","args":[755.9429171875001,247.44476203124998]}
+{"op":"lineTo","args":[751.9429171875001,251.44476203124998]}
+{"op":"lineTo","args":[747.9429171875001,247.44476203124998]}
+{"op":"closePath","args":[]}
+{"op":"fill","args":[]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set font","args":["600 8px ui-sans-serif, system-ui, sans-serif"]}
+{"op":"set textAlign","args":["center"]}
+{"op":"set textBaseline","args":["bottom"]}
+{"op":"set lineJoin","args":["round"]}
+{"op":"set lineWidth","args":[2.4]}
+{"op":"set strokeStyle","args":["#4ee3ef"]}
+{"op":"strokeText","args":["61 s",751.9429171875001,240.94476203124998]}
+{"op":"set fillStyle","args":["#5b6f63"]}
+{"op":"fillText","args":["61 s",751.9429171875001,240.94476203124998]}
+{"op":"set strokeStyle","args":["#718d42"]}
+{"op":"set fillStyle","args":["#718d42"]}
+{"op":"set globalAlpha","args":[0.35]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[485.30106702187504,235.284865625]}
+{"op":"lineTo","args":[489.30106702187504,239.284865625]}
+{"op":"lineTo","args":[485.30106702187504,243.284865625]}
+{"op":"lineTo","args":[481.30106702187504,239.284865625]}
+{"op":"closePath","args":[]}
+{"op":"fill","args":[]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set font","args":["600 8px ui-sans-serif, system-ui, sans-serif"]}
+{"op":"set textAlign","args":["center"]}
+{"op":"set textBaseline","args":["bottom"]}
+{"op":"set lineJoin","args":["round"]}
+{"op":"set lineWidth","args":[2.4]}
+{"op":"set strokeStyle","args":["#4ee3ef"]}
+{"op":"strokeText","args":["38 s",485.30106702187504,232.784865625]}
+{"op":"set fillStyle","args":["#5b6f63"]}
+{"op":"fillText","args":["38 s",485.30106702187504,232.784865625]}
 {"op":"set globalAlpha","args":[1]}
 {"op":"restore","args":[]}
 {"op":"save","args":[]}

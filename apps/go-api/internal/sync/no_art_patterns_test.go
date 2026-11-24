@@ -194,8 +194,9 @@ var tablesProtegees = []string{
 	//     persist/shared_persister.go persistKillPositionsPass (chemin builder Halo 5).
 	//     Pas de decoder_rev sur cette table, et c'est voulu (decode_pass discrimine déjà).
 	//   - match_weapon_hit_distance : CRÉÉE append-only (migration/steps_shared_weapon_hit_distance.go,
-	//     id PK seq + decode_pass + decoder_rev + written_at + vue _latest par PASSE) ; écrivain
-	//     unique persist/weapon_hit_distance_persister.go, un seul statement INSERT.
+	//     id PK seq + decode_pass + decoder_rev + written_at + vue _latest par PASSE). Elle n'a plus
+	//     d'écrivain (la précision par arme selon la distance est retirée) : l'entrée reste pour
+	//     qu'un écrivain futur retombe sous le garde-rail dès son premier INSERT.
 	// Enrôlement GRATUIT : aucune violation existante, aucune entrée d'allowlist créée. Le `\b`
 	// final ne déborde pas sur les vues `_latest` (`_` est un caractère de mot).
 	"kill_positions",

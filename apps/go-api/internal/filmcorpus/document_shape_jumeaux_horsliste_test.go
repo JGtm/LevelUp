@@ -35,7 +35,7 @@ func docServi() reflect.Type {
 }
 
 func TestFormesJumellesChampServiHorsListeEchoue(t *testing.T) {
-	msg := ecartDesFormesJumelles(docStocke(), docServi(), nil, nil)
+	msg := ecartDesFormesJumelles(docStocke(), docServi(), exceptionsDeForme{})
 	if msg == "" {
 		t.Fatal("un champ servi sans jumeau stocke et hors liste doit faire echouer la comparaison")
 	}
@@ -50,19 +50,19 @@ func TestFormesJumellesListeNeCouvreQueSesEntrees(t *testing.T) {
 
 	t.Run("champ seul liste : le type Lot echoue encore", func(t *testing.T) {
 		// `Doc.Lots` reste decrit et son type `Lot` n'a pas de jumeau : divergence.
-		if ecartDesFormesJumelles(docStocke(), docServi(), champs, nil) == "" {
+		if ecartDesFormesJumelles(docStocke(), docServi(), exceptionsDeForme{servisSeulsChamps: champs}) == "" {
 			t.Error("le type servi seul `Lot` non liste doit faire echouer la comparaison")
 		}
 	})
 	t.Run("type seul liste : le champ Extra echoue encore", func(t *testing.T) {
-		if ecartDesFormesJumelles(docStocke(), docServi(), nil, types) == "" {
+		if ecartDesFormesJumelles(docStocke(), docServi(), exceptionsDeForme{servisSeulsTypes: types}) == "" {
 			t.Error("le champ servi seul `Doc.Extra` non liste doit faire echouer la comparaison")
 		}
 	})
 	t.Run("champs et types listes : jumeaux", func(t *testing.T) {
 		// `Doc.Lots` est un champ servi seul aussi : sans lui, le type `Lot` retire laisserait une ligne orpheline.
 		tous := map[string]string{"Doc.Extra": "2026-01-01 : test", "Doc.Lots": "2026-01-01 : test"}
-		if msg := ecartDesFormesJumelles(docStocke(), docServi(), tous, types); msg != "" {
+		if msg := ecartDesFormesJumelles(docStocke(), docServi(), exceptionsDeForme{servisSeulsChamps: tous, servisSeulsTypes: types}); msg != "" {
 			t.Errorf("les entrees listees doivent suffire : %s", msg)
 		}
 	})
@@ -70,7 +70,7 @@ func TestFormesJumellesListeNeCouvreQueSesEntrees(t *testing.T) {
 		// `Doc.ID` existe des deux cotes : le nommer dans la liste le retire du servi seul, et le stocke
 		// qui le porte encore diverge. Une entree ne peut donc pas masquer un champ jumeau.
 		tous := map[string]string{"Doc.Extra": "2026-01-01 : test", "Doc.Lots": "2026-01-01 : test", "Doc.ID": "2026-01-01 : test"}
-		if ecartDesFormesJumelles(docStocke(), docServi(), tous, types) == "" {
+		if ecartDesFormesJumelles(docStocke(), docServi(), exceptionsDeForme{servisSeulsChamps: tous, servisSeulsTypes: types}) == "" {
 			t.Error("nommer un champ jumeau dans la liste ne doit pas le masquer cote stocke")
 		}
 	})
@@ -88,5 +88,28 @@ func TestInventaireServiVoitLesChampsEtLesTypes(t *testing.T) {
 		if !types[want] {
 			t.Errorf("type %q absent de l'inventaire", want)
 		}
+	}
+}
+
+// TestFormesJumellesNonServiRetireDuStockeSeul : une decision de non-publication retire un champ de la forme
+// STOCKEE, et d'elle seule : le servi qui le porterait encore diverge.
+func TestFormesJumellesNonServiRetireDuStockeSeul(t *testing.T) {
+	stocke := func() reflect.Type {
+		type Doc struct {
+			ID   string `json:"id"`
+			Fige string `json:"fige,omitempty"`
+		}
+		return reflect.TypeFor[Doc]()
+	}()
+	nonServis := map[string]string{"Doc.Fige": "2026-01-01 : test"}
+
+	if msg := ecartDesFormesJumelles(stocke, docStocke(), exceptionsDeForme{nonServisChamps: nonServis}); msg != "" {
+		t.Errorf("le champ stocke non servi doit etre retire de la forme stockee : %s", msg)
+	}
+	if ecartDesFormesJumelles(stocke, docStocke(), exceptionsDeForme{}) == "" {
+		t.Error("sans decision ecrite, le champ stocke absent du servi doit faire echouer la comparaison")
+	}
+	if ecartDesFormesJumelles(docStocke(), stocke, exceptionsDeForme{nonServisChamps: nonServis}) == "" {
+		t.Error("une decision de non-publication ne doit pas masquer un champ qui reste dans la forme servie")
 	}
 }

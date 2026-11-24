@@ -68,7 +68,11 @@ func fichiersDuPerimetreFilm(t *testing.T, racines ...string) []fichierDuPerimet
 			}
 			rel := cheminDeGardeRail(t, p)
 			if d.IsDir() {
-				if rel == racineBriqueFilm+"/research" {
+				// `cmd/film-bench` (2026-11-24, decodeur v1.6.0) : l'outil de mesure, seule commande de la brique, dont
+				// `main` ne releve ni de la production du decodeur ni de l'exploitation du serveur ; comme `research`,
+				// il n'entre pas dans le perimetre. L'exclusion vise cette commande seule : une commande ajoutee
+				// plus tard entre dans le perimetre tant qu'elle n'est pas nommee ici avec sa justification.
+				if rel == racineBriqueFilm+"/research" || rel == racineBriqueFilm+"/cmd/film-bench" {
 					return filepath.SkipDir
 				}
 				return nil

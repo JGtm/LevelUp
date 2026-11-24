@@ -55,7 +55,7 @@ export function matchesFeedFilter(entry: ReplayFeedEntry, filter: FeedFilterId):
     case 'kills':
       return entry.kill !== null
     case 'objectives':
-      return entry.event?.family === 'objectives' || entry.flagCarrierKill === true
+      return entry.event?.family === 'objectives' || entry.flagCarrierKill === true || (entry.objectiveKills?.length ?? 0) > 0
     case 'pickups':
     case 'vehicles':
       return entry.event?.family === filter

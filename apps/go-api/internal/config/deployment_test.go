@@ -102,13 +102,13 @@ func TestDeployment_CapacitesParProfil(t *testing.T) {
 		{DeploymentHosted, "production", "", LaunchModeDefault, DeploymentCapabilities{
 			UseGroups: true, PoolTokens: true, UseAdmin: true, UseResticBackup: true, UseDiscord: true,
 			UseOutboundNetwork: true, OfferWindowsDownload: true, EditSettings: true, UploadMedia: true, CompareAccounts: true,
-			ExportForDesktop: true, ResourcePackFatal: true}},
+			ExportForDesktop: true, ResourcePackFatal: true, DecoderThreads: 1}},
 		{DeploymentDev, "", "", LaunchModeDefault, DeploymentCapabilities{
 			UseGroups: true, PoolTokens: true, UseAdmin: true, UseResticBackup: true, UseDiscord: true,
 			UseOutboundNetwork: true, OfferWindowsDownload: true, EditSettings: true, UploadMedia: true, CompareAccounts: true,
-			ExportForDesktop: true, GenerateReplays: true}},
+			ExportForDesktop: true, GenerateReplays: true, DecoderThreads: 4}},
 		{DeploymentDemo, "", "true", LaunchModeDefault, DeploymentCapabilities{
-			UseAdmin: true, OfferWindowsDownload: true, CompareAccounts: true, ResourcePackFatal: true}},
+			UseAdmin: true, OfferWindowsDownload: true, CompareAccounts: true, ResourcePackFatal: true, DecoderThreads: 1}},
 		{DeploymentDesktop, "", "", LaunchModeDesktop, DeploymentCapabilities{
 			UseOutboundNetwork: true, UpdateApp: true, EditSettings: true, UploadMedia: true,
 			ShellEntryGate: true, PoolGrantedToLocalUser: true, WakeSequence: true, TokenVault: true,
@@ -116,7 +116,7 @@ func TestDeployment_CapacitesParProfil(t *testing.T) {
 			GameProcessWatch: true, ShellIntegration: true, ScheduledRefresh: true, AutoSyncByDefault: true,
 			ParquetBackup: true, ImportFromSite: true, DiagnosticReport: true, MemoryLimit: true, ReplayRegen: true,
 			KeepMediaSources: true, RevealFilesInExplorer: true, TrashMediaSources: true, PickFolder: true,
-			CompactPassesAtStartup: true, GenerateReplays: true}},
+			CompactPassesAtStartup: true, GenerateReplays: true, DecoderThreads: 4}},
 	}
 	for _, c := range cas {
 		t.Run(string(c.profil), func(t *testing.T) {
@@ -322,6 +322,38 @@ func TestDeployment_GenerationDesRejeuxSeulementEnLocal(t *testing.T) {
 			}
 			if got := cfg.Capabilities.GenerateReplays; got != c.want {
 				t.Errorf("GenerateReplays = %v, attendu %v (hôte %q)", got, c.want, cfg.APIHost)
+			}
+		})
+	}
+}
+
+// TestDeployment_FilsDuDecodeurParProfil : le nombre de fils du décodeur est une valeur dérivée du profil, lue une fois
+// ici : un fil sur un serveur (hébergé, démo), quatre sur le bureau et en développement.
+func TestDeployment_FilsDuDecodeurParProfil(t *testing.T) {
+	cas := []struct {
+		nom    string
+		launch string
+		env    string
+		demo   string
+		profil Deployment
+		want   int
+	}{
+		{"hébergé", LaunchModeDefault, "production", "", DeploymentHosted, 1},
+		{"démo", LaunchModeDefault, "", "true", DeploymentDemo, 1},
+		{"développement", LaunchModeDefault, "", "", DeploymentDev, 4},
+		{"bureau", LaunchModeDesktop, "", "", DeploymentDesktop, 4},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			cfg, err := chargerServeur(t, c.launch, c.env, c.demo, "", "")
+			if err != nil {
+				t.Fatalf("LoadServer : %v", err)
+			}
+			if cfg.Deployment != c.profil {
+				t.Fatalf("profil = %q, attendu %q", cfg.Deployment, c.profil)
+			}
+			if got := cfg.Capabilities.DecoderThreads; got != c.want {
+				t.Errorf("DecoderThreads = %d, attendu %d", got, c.want)
 			}
 		})
 	}

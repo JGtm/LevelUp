@@ -403,10 +403,21 @@ func (b *Builder) serialiserDocument(ctx context.Context, matchID string, entry 
 		return Built{}, fmt.Errorf("sérialisation artefact %s: %w", matchID, err)
 	}
 	b.observe(EtapeRejeuDepuisLesFaits, depuisLesFaits)
+	b.observe("scoreTimeline", joueursDuTableau(doc))
+	b.observe("eliminations", doc.Eliminations)
 	b.observe("artifact", blob)
 	slog.InfoContext(ctx, "cuisson: octets construits", "match_id", matchID, "depuis_les_faits", depuisLesFaits,
 		"duration", time.Since(debutTotal), "tracks", len(doc.Tracks), "bytes", len(blob))
 	return Built{Blob: blob, Module: entry.Module, Tracks: len(doc.Tracks)}, nil
+}
+
+// joueursDuTableau rend les joueurs du tableau des scores du document (nil sans courbe de score) : l etape
+// `scoreTimeline` observe leurs compteurs, que ni la marche ni les entrees du tableau ne rendent sous cette forme.
+func joueursDuTableau(doc replay.ReplayDocument) []replay.PlayerScore {
+	if doc.ScoreTimeline == nil {
+		return nil
+	}
+	return doc.ScoreTimeline.Players
 }
 
 // SansFaitsPersistes force la branche DECODE : les faits sur disque sont IGNORES, le film est

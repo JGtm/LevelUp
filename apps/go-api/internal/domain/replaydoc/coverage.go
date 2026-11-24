@@ -64,7 +64,9 @@ type Coverage struct {
 	// (schema 62) : la MARCHE et le SCAN DIRECT lisent le meme champ par deux localisateurs, de
 	// precisions differentes, et un consommateur doit pouvoir ponderer ce qu il lit. Absent =
 	// artefact anterieur au schema 62, ou morts non lues sur ce match.
-	DeathsPaths *DeathsPathsCoverage `json:"deathsPaths,omitempty"`
+	DeathsPaths  *DeathsPathsCoverage `json:"deathsPaths,omitempty"`
+	Reloads      *ReloadCoverage      `json:"reloads,omitempty"`
+	Eliminations *EliminationCoverage `json:"eliminations,omitempty"`
 }
 
 // FallbackHit est un repli du décodeur et son nombre de déclenchements sur la cuisson qui a
@@ -174,21 +176,10 @@ type BridgeHealth struct {
 type T0FilmCoverage struct {
 	Detected bool   `json:"detected"`
 	Reason   string `json:"reason,omitempty"`
-	Tracks   int    `json:"tracks"`
-	Moving   int    `json:"moving"`
-	Burst    int    `json:"burst"`
+	Tracks   int    `json:"tracks,omitempty"`
+	Moving   int    `json:"moving,omitempty"`
+	Burst    int    `json:"burst,omitempty"`
 	MarginMs int64  `json:"marginMs"`
-}
-
-// PadDatingStats dit ce que la datation a pu faire, et ce qu'elle n'a pas pu.
-type PadDatingStats struct {
-	Occupations        int `json:"occupations"`
-	Dated              int `json:"dated"`
-	Named              int `json:"named"`
-	Ambiguous          int `json:"ambiguous"`
-	Uncovered          int `json:"uncovered"`
-	PowerupOccupations int `json:"powerupOccupations"`
-	FirstOfCycle       int `json:"firstOfCycle"`
 }
 
 // InventoryCoverage est la couverture du calque INVENTAIRE (munitions, grenades, capacité,

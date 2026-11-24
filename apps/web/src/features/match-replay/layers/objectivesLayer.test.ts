@@ -378,7 +378,7 @@ describe('buildObjectivePulses — les frags et les assistances ne font AUCUN pu
     expect(buildObjectivePulses(doc, normalizeMapObjectives(MO))).toHaveLength(0)
   })
 
-  it('les autres familles d’objectif gardent leur pulse (crâne, VIP, bombe)', () => {
+  it('une famille ne suffit pas : la bombe garde son pulse, une désignation de VIP ou un nom inconnu de crâne non', () => {
     const doc = testReplayDoc({
       frameIntervalMs: 100,
       tracks: tracks as never,
@@ -390,7 +390,7 @@ describe('buildObjectivePulses — les frags et les assistances ne font AUCUN pu
       ],
     })
     const pulses = buildObjectivePulses(doc, normalizeMapObjectives(MO))
-    expect(pulses.map((p) => p.frame)).toEqual([10, 11, 12])
+    expect(pulses.map((p) => p.frame)).toEqual([12])
   })
 })
 

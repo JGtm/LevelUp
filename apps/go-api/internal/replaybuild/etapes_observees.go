@@ -10,9 +10,11 @@ var (
 		"score", "objectives", "vip", "skull", "bomb", "flag", "zones", "zoneRoles",
 		"killsource", "spawnPoints", "spawnPointsState", "neutralDeaths", "killRefs",
 	}
-	// `EtapeRejeuDepuisLesFaits` PRECEDE `artifact` : le harnais doit savoir QUELLE BRANCHE a
-	// servi avant de comparer les octets qu elle a produits (lot 4.1.2).
-	buildBytesStepsAfter = []string{EtapeRejeuDepuisLesFaits, "artifact"}
+	// `EtapeRejeuDepuisLesFaits` OUVRE la liste : le harnais doit savoir QUELLE BRANCHE a servi avant de
+	// comparer ce qu elle a produit (lot 4.1.2). `scoreTimeline` (les joueurs du tableau des scores et leurs
+	// compteurs) et `eliminations` (le calque des eliminations) se lisent sur le DOCUMENT assemble : leurs
+	// lignes sortent de l assemblage, pas d un balayage, et ne figurent dans aucune etape de la marche.
+	buildBytesStepsAfter = []string{EtapeRejeuDepuisLesFaits, "scoreTimeline", "eliminations", "artifact"}
 )
 
 // BuildBytesStepsBefore rend une COPIE de la liste des etapes qui precedent le decodage des

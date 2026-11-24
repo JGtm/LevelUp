@@ -14,6 +14,9 @@ import (
 // jamais d'empreinte : changer un seuil impose de changer KickoffRev ET d'ajouter ici une entrée.
 var kickoffParametersByRevision = map[string]string{
 	"kickoff-2026-11-18": "3d7470f4241fdd55c2322cb83027cd84f9688308b2bf4743dbdef30101246313",
+	// Même empreinte : le coup d'envoi publié par le rejeu est lu sur l'horloge du jeu, ce qui change la valeur
+	// rangée, pas un nombre ni l'ordre des sources.
+	"kickoff-2026-11-22": "3d7470f4241fdd55c2322cb83027cd84f9688308b2bf4743dbdef30101246313",
 }
 
 // kickoffParameters hache les nombres et l'ordre des sources que la résolution applique.

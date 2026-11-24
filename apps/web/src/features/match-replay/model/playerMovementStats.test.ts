@@ -22,6 +22,7 @@ import {
   playerMovementStatsAt,
   readMovementSeries,
   STANCE_KIND_JUMP_DERIVED,
+  STANCE_KIND_MOVE_COMMAND,
   STANCE_KIND_SPRINT,
 } from './playerMovementStats'
 
@@ -62,8 +63,8 @@ describe('playerMovementStats — aucun sprint', () => {
   const lire = lecteur(docWith({ stances: [sprint(1, 10, 30)] }))
 
   it('un joueur sans intervalle a un zéro mesuré, pas une absence', () => {
-    expect(lire('b1', 0)).toEqual({ sprintMs: 0, jumps: 0, jumpsEstimated: true })
-    expect(lire('b1', 100)).toEqual({ sprintMs: 0, jumps: 0, jumpsEstimated: true })
+    expect(lire('b1', 0)).toEqual({ sprintMs: 0, jumps: 0, jumpsEstimated: true, moveMs: null, moveEstimated: false })
+    expect(lire('b1', 100)).toEqual({ sprintMs: 0, jumps: 0, jumpsEstimated: true, moveMs: null, moveEstimated: false })
   })
 
   it('avant le premier sprint, le cumul est nul pour le joueur qui sprintera', () => {
@@ -144,23 +145,23 @@ describe('playerMovementStats — sauts', () => {
 
   it('le compte des sauts est une estimation : le document ne publie que des sauts dérivés', () => {
     expect(lire('a1', 100).jumpsEstimated).toBe(true)
-    expect(lire('b1', 100)).toEqual({ sprintMs: 0, jumps: 1, jumpsEstimated: true })
+    expect(lire('b1', 100)).toEqual({ sprintMs: 0, jumps: 1, jumpsEstimated: true, moveMs: null, moveEstimated: false })
   })
 
   it('les sauts ne se mêlent pas au sprint', () => {
     const l = lecteur(docWith({ stances: [jump(1, 15, 20), sprint(1, 10, 30)] }))
-    expect(l('a1', 100)).toEqual({ sprintMs: 2000, jumps: 1, jumpsEstimated: true })
+    expect(l('a1', 100)).toEqual({ sprintMs: 2000, jumps: 1, jumpsEstimated: true, moveMs: null, moveEstimated: false })
   })
 
   it('les autres états de mouvement ne sont ni un sprint ni un saut', () => {
     const l = lecteur(docWith({ stances: [{ slot: 1, kind: 'crouch', t0: 10, t1: 30 }, { slot: 1, kind: 'slide', t0: 5, t1: 8 }] }))
-    expect(l('a1', 100)).toEqual({ sprintMs: 0, jumps: 0, jumpsEstimated: true })
+    expect(l('a1', 100)).toEqual({ sprintMs: 0, jumps: 0, jumpsEstimated: true, moveMs: null, moveEstimated: false })
   })
 })
 
 describe('playerMovementStats — grandeur non publiée', () => {
   const stances = [sprint(1, 10, 30), jump(1, 15, 20)]
-  const ABSENT = { sprintMs: null, jumps: null, jumpsEstimated: false }
+  const ABSENT = { sprintMs: null, jumps: null, jumpsEstimated: false, moveMs: null, moveEstimated: false }
 
   it('sans couverture des états de mouvement (artefact antérieur), rien n’est établi', () => {
     expect(lecteur(docWith({ stances, coverage: {} }))('a1', 100)).toEqual(ABSENT)
@@ -180,12 +181,14 @@ describe('playerMovementStats — grandeur non publiée', () => {
         sprintMs: 2000,
         jumps: null,
         jumpsEstimated: false,
+        moveMs: null,
+        moveEstimated: false,
       })
     }
   })
 
   it('un document sans aucun intervalle mais balayé donne des zéros mesurés, pas des absences', () => {
-    expect(lecteur(docWith({ stances: [] }))('a1', 100)).toEqual({ sprintMs: 0, jumps: 0, jumpsEstimated: true })
+    expect(lecteur(docWith({ stances: [] }))('a1', 100)).toEqual({ sprintMs: 0, jumps: 0, jumpsEstimated: true, moveMs: null, moveEstimated: false })
   })
 
   it('un joueur sans aucune vie n’a pas de série : rien n’est établi pour lui', () => {
@@ -231,6 +234,8 @@ describe('playerMovementStats — bot', () => {
       sprintMs: 2000,
       jumps: 1,
       jumpsEstimated: true,
+      moveMs: null,
+      moveEstimated: false,
     })
   })
 
@@ -245,6 +250,8 @@ describe('playerMovementStats — bot', () => {
       sprintMs: 0,
       jumps: 1,
       jumpsEstimated: true,
+      moveMs: null,
+      moveEstimated: false,
     })
   })
 })
@@ -341,5 +348,61 @@ describe('playerMovementStats — fin de match égale la somme des intervalles (
         jumps = s.jumps as number
       }
     }
+  })
+})
+
+describe('playerMovementStats — commande de déplacement tenue', () => {
+  const control = { holds: 4, withHole: 0, innerHoles: 0, entries: 9, published: 4, intervals: 4, noTrack: 0, noPlayer: 0 }
+  const COVERED_WITH_CONTROL = { stances: { scanned: true, jumpEpisodes: 10, jumpsDerived: 3, control } }
+  const move = (slot: number, t0: number, t1: number) => ({ slot, kind: STANCE_KIND_MOVE_COMMAND, t0, t1 })
+
+  it('somme le temps tenu jusqu’à l’image, une commande en cours comptant jusqu’à elle', () => {
+    const lire = lecteur(docWith({ coverage: COVERED_WITH_CONTROL, stances: [move(1, 10, 30), move(1, 50, 60)] }))
+    expect(lire('a1', 5).moveMs).toBe(0)
+    expect(lire('a1', 20).moveMs).toBe(1000)
+    expect(lire('a1', 40).moveMs).toBe(2000)
+    expect(lire('a1', 55).moveMs).toBe(2500)
+    expect(lire('a1', 100).moveMs).toBe(3000)
+  })
+
+  it('le temps du sprint et celui de la commande ne se mélangent pas', () => {
+    const lire = lecteur(docWith({ coverage: COVERED_WITH_CONTROL, stances: [move(1, 10, 30), sprint(1, 10, 20)] }))
+    expect(lire('a1', 100).moveMs).toBe(2000)
+    expect(lire('a1', 100).sprintMs).toBe(1000)
+  })
+
+  it('un joueur sans commande a un zéro mesuré quand la vue de contrôle est lue', () => {
+    const lire = lecteur(docWith({ coverage: COVERED_WITH_CONTROL, stances: [move(1, 10, 30)] }))
+    expect(lire('b1', 100).moveMs).toBe(0)
+  })
+
+  it('une couverture entière ne rend pas le temps estimé', () => {
+    const lire = lecteur(docWith({ coverage: COVERED_WITH_CONTROL, stances: [move(1, 10, 30)] }))
+    expect(lire('a1', 100).moveEstimated).toBe(false)
+  })
+
+  it('une part de commandes écartée (sans vie, sans joueur, ou avec un trou) rend le temps estimé', () => {
+    for (const part of [{ noTrack: 1 }, { noPlayer: 2 }, { withHole: 3 }]) {
+      const coverage = { stances: { scanned: true, jumpEpisodes: 10, control: { ...control, ...part } } }
+      const lire = lecteur(docWith({ coverage, stances: [move(1, 10, 30)] }))
+      expect(lire('a1', 100)).toMatchObject({ moveMs: 2000, moveEstimated: true })
+    }
+  })
+
+  it('sans temps de déplacement établi, rien n’est estimé', () => {
+    const coverage = { stances: { scanned: true, jumpEpisodes: 10 } }
+    expect(lecteur(docWith({ coverage, stances: [] }))('a1', 100)).toMatchObject({ moveMs: null, moveEstimated: false })
+  })
+
+  it('sans couverture de la vue de contrôle, la grandeur est absente, jamais un zéro', () => {
+    const lire = lecteur(docWith({ stances: [move(1, 10, 30)] }))
+    expect(lire('a1', 100).moveMs).toBeNull()
+    expect(lire('b1', 100).moveMs).toBeNull()
+  })
+
+  it('un balayage refusé n’établit pas la commande non plus', () => {
+    const refused = { stances: { scanned: false, jumpEpisodes: 0, jumpsDerived: 0, control } }
+    const lire = lecteur(docWith({ coverage: refused, stances: [move(1, 10, 30)] }))
+    expect(lire('a1', 100).moveMs).toBeNull()
   })
 })

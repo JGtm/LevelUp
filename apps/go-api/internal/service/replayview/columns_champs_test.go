@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -13,6 +14,9 @@ import (
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/service/replayview"
+	"levelup/go-api/internal/testutil"
+
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // Couverture de TOUS les champs du document servi par l'aller-retour de l'encodage en colonnes.
@@ -254,8 +258,86 @@ func TestEncodeColumns_FixturesCouvrentLeDocument(t *testing.T) {
 	if len(seuls) > 0 {
 		t.Logf("sans fixture réelle (couverts par le document plein) : %s", strings.Join(seuls, ", "))
 	}
+	// Les fixtures sont des documents STOCKES : un chemin que le type servi ne porte pas n'est admis que s'il est
+	// sous un champ ou un type dont la non-publication est une decision ecrite (`testutil/replay_servis_seuls.go`).
+	hors = slices.DeleteFunc(hors, nonServiParDecision(proprietairesDuType(reflect.TypeOf(replay.ReplayDocument{}))))
 	if len(hors) > 0 {
 		t.Fatalf("chemins des fixtures absents du type du document : %s", strings.Join(hors, ", "))
+	}
+}
+
+// champs range les champs d'une structure sous `chemin`. Un champ ANONYME sans balise JSON est aplati par `encoding/json` :
+// ses champs sortent au meme chemin que ceux de la structure qui l'embarque, et c'est elle qui les possede
+// (`TrackCoverage.AimOnlyNoLife`, comme le garde de parite le nomme).
+func champs(t reflect.Type, proprietaire, chemin string, vus map[reflect.Type]bool,
+	marche func(reflect.Type, string, map[reflect.Type]bool), out map[string][2]string) {
+	for i := 0; i < t.NumField(); i++ {
+		f := t.Field(i)
+		tag := strings.Split(f.Tag.Get("json"), ",")[0]
+		if !f.IsExported() || tag == "-" {
+			continue
+		}
+		if f.Anonymous && tag == "" && f.Type.Kind() == reflect.Struct {
+			champs(f.Type, proprietaire, chemin, vus, marche, out)
+			continue
+		}
+		if tag == "" {
+			tag = f.Name
+		}
+		base := f.Type
+		for base.Kind() == reflect.Pointer || base.Kind() == reflect.Slice || base.Kind() == reflect.Array || base.Kind() == reflect.Map {
+			base = base.Elem()
+		}
+		out[chemin+"."+tag] = [2]string{proprietaire + "." + f.Name, base.Name()}
+		marche(f.Type, chemin+"."+tag, vus)
+	}
+}
+
+// proprietairesDuType rend, pour chaque chemin JSON du type (meme notation que `cheminsDeCles`, cartes a cle
+// libre repliees en `{}`), le couple `Type.Champ` qui le porte et le nom du type du champ.
+func proprietairesDuType(t reflect.Type) map[string][2]string {
+	out := map[string][2]string{}
+	var marche func(t reflect.Type, chemin string, vus map[reflect.Type]bool)
+	marche = func(t reflect.Type, chemin string, vus map[reflect.Type]bool) {
+		switch t.Kind() {
+		case reflect.Pointer:
+			marche(t.Elem(), chemin, vus)
+		case reflect.Slice, reflect.Array:
+			marche(t.Elem(), chemin+"[]", vus)
+		case reflect.Map:
+			marche(t.Elem(), chemin+".{}", vus)
+		case reflect.Struct:
+			if vus[t] {
+				return
+			}
+			vus[t] = true
+			defer delete(vus, t)
+			champs(t, t.Name(), chemin, vus, marche, out)
+		}
+	}
+	marche(t, "", map[reflect.Type]bool{})
+	return out
+}
+
+// nonServiParDecision dit si un chemin est sous un champ de `testutil.ReplayChampsNonServis` ou sous un type de `testutil.ReplayTypesNonServis`.
+func nonServiParDecision(proprietaires map[string][2]string) func(string) bool {
+	return func(chemin string) bool {
+		for q := chemin; q != ""; {
+			if p, ok := proprietaires[q]; ok {
+				if _, non := testutil.ReplayChampsNonServis[p[0]]; non {
+					return true
+				}
+				if _, non := testutil.ReplayTypesNonServis[p[1]]; non {
+					return true
+				}
+			}
+			i := max(strings.LastIndex(q, "."), strings.LastIndex(q, "[]"))
+			if i < 0 {
+				break
+			}
+			q = q[:i]
+		}
+		return false
 	}
 }
 

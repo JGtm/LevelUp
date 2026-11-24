@@ -190,9 +190,9 @@ func ajouterAuCamp(parCamp *[2]int, camp map[string]int, xuid string, n int) {
 // circulaire, y compris pour un slot nomme par le triplet : le triplet apparie frags, morts et
 // assistances, jamais le score.
 //
-// Ligne de base connue : le score publie ne redescend jamais (les decrements de -100 sont ecartes,
-// `film/replay/document_score.go`) ; un joueur qui s'est suicide ou a trahi porte donc un FP
-// stable. Seul le delta decide.
+// Le score publie PEUT redescendre : depuis le decodeur v1.6.0 la penalite de suicide ou de trahison
+// figure dans la courbe, et le total d'un joueur peut etre negatif. La derniere valeur de la courbe est
+// donc le score final, sans hypothese de croissance. Seul le delta decide.
 func scorePersonnel(d *Document, oracle domain.MatchOracle) Score {
 	pub := map[string]int{}
 	if d.ScoreTimeline != nil {

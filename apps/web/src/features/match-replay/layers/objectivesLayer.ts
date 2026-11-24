@@ -21,13 +21,12 @@
  * et d'Oddball, eux, n'ont pas d'objet vivant et gardent leur rôle entier — la fonction n'est
  * donc pas supprimée, seule la FAMILLE drapeau sort.
  *
- * ET SEULES LES FAMILLES D'OBJECTIF EN FONT UN (D.1, 2026-09-13). `doc.objectives` n'est pas une
- * liste d'objectifs : il porte TOUT ce que le statborg sait nommer, `kills` et `assists`
- * compris — l'ancre d'identité du balayage et son contrôle croisé (`objectiveevents/named.go`).
- * Sur `8bc6074f` cela faisait 15 648 pulses construits par image de scène pour 160 actions
- * d'objectif réelles (audit du 2026-09-10 §12-1), et un anneau de capture allumé à chaque frag.
- * Le tri se fait sur la FAMILLE du nom (`model/objectiveFamilies.ts`), pas sur une liste de
- * statistiques : c'est le seul discriminant que le contrat de transport publie.
+ * ET SEULES LES ACTIONS SUR L'OBJECTIF EN FONT UN. `doc.objectives` n'est pas une liste d'objectifs :
+ * il porte TOUT ce que le statborg sait nommer, `kills` et `assists` compris, et les éliminations liées
+ * à l'objectif (défenseur de base, VIP adverse, porteur de drapeau). Un tri par famille laissait passer
+ * une élimination de zone, qui aurait ouvert un anneau de capture : le tri est une LISTE BLANCHE d'actions
+ * (`OBJECTIVE_PULSE_STATS`), une action nouvelle du décodeur n'ouvre pas d'anneau tant qu'elle n'y est pas
+ * nommée. La famille (`model/objectiveFamilies.ts`) ne sert plus qu'à retirer le drapeau quand ses portages existent.
  *
  * CE QUE LE SERVEUR A DÉJÀ DÉCIDÉ, et que ce calque ne rejoue pas : quels rôles servir
  * (table du titre jointe au pair_name), quelles équipes afficher (les modes à possession
@@ -59,6 +58,7 @@ import type { ReplayMapObjectives } from '@/lib/api/types'
 
 import { buildCarrierPosAt } from '../model/carrierPosition'
 import { objectiveFamilyOf } from '../model/objectiveFamilies'
+import { OBJECTIVE_PULSE_STATS } from '../model/objectiveFeedLogic'
 import { drawFloorRings, floorInRange, FLOOR_RING_ALPHA, FLOOR_RING_ALPHA_DECAY, FLOOR_RING_GAP } from './floorRings'
 import { type XY } from '../../../lib/replay/replayLogic'
 import { filmClockTrusted } from '@/lib/replay/scoreTimeline'
@@ -392,11 +392,10 @@ export function buildObjectivePulses(
   const posOf = buildCarrierPosAt(doc)
   const out: ObjectivePulse[] = []
   for (const a of doc.objectives) {
-    // SEULES LES FAMILLES D'OBJECTIF FONT UN PULSE (cf. l'en-tête, D.1 du 2026-09-13) : les
-    // frags et les assistances voyagent dans le même tableau et n'ont rien à annoncer ici.
-    const family = objectiveFamilyOf(a.stat)
-    if (family === null) continue
-    if (dropFlags && family === 'flag') continue
+    // SEULES LES ACTIONS SUR L'OBJECTIF FONT UN PULSE (cf. l'en-tête) : les frags, les assistances et les
+    // éliminations liées à l'objectif voyagent dans le même tableau et n'ont rien à annoncer ici.
+    if (!OBJECTIVE_PULSE_STATS.has(a.stat)) continue
+    if (dropFlags && objectiveFamilyOf(a.stat) === 'flag') continue
     // AUCUN RECALAGE ICI : `a.t` est déjà une frame du document (cf. en-tête). L'action que
     // la grille ne portait pas a été comptée hors fenêtre côté Go et n'est pas publiée.
     const frame = a.t

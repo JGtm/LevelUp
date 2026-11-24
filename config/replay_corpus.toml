@@ -287,52 +287,203 @@ raison  = "remplace f75e7053, hors d'atteinte du poste (2026-11-17) : meme carte
 # decision que le gate signale « sans effet » (la reference porte deja le changement) se retire.
 
 [[decision]]
-mesure   = "coverage.hits.noShooter"
-decodeur = "v1.4.1"
-date     = "2026-11-16"
-raison   = "feuille de couverture neuve du schema 125 (decodeur v1.4.0, touches et degats) : un bloc qui n existait pas, son compteur d echec passe de absent a N ; rien de lu avant n est perdu. Accord du user du 2026-11-16 (« oui », a la question d inscrire comme acceptes les compteurs neufs du schema 125 et les deux points de jauge en moins)."
-
-[[decision]]
 mesure   = "coverage.hits.noVictim"
 decodeur = "v1.4.1"
 date     = "2026-11-16"
 raison   = "feuille de couverture neuve du schema 125 (decodeur v1.4.0, touches et degats) : un bloc qui n existait pas, son compteur d echec passe de absent a N ; rien de lu avant n est perdu. Accord du user du 2026-11-16 (« oui », a la question d inscrire comme acceptes les compteurs neufs du schema 125 et les deux points de jauge en moins)."
 
 [[decision]]
-mesure   = "coverage.hits.stoppedFrames"
-decodeur = "v1.4.1"
-date     = "2026-11-16"
-raison   = "feuille de couverture neuve du schema 125 (decodeur v1.4.0, touches et degats) : un bloc qui n existait pas, son compteur d echec passe de absent a N ; rien de lu avant n est perdu. Accord du user du 2026-11-16 (« oui », a la question d inscrire comme acceptes les compteurs neufs du schema 125 et les deux points de jauge en moins)."
+mesure   = "t0FilmMs"
+temoins  = ["0797ce72", "084a804d", "0a247154", "111fa685", "11de8353", "396cfc92", "4f77afc1", "50247b26", "51ebbc0f", "60ae07c4", "a349fea8", "a521164d", "bcb6d393", "bf15f7ab", "bfecd02b", "c75f33b8", "d9781168", "e5adf7b2", "fb1a1a72"]
+decodeur = "v1.5.0"
+date     = "2026-11-22"
+raison   = "coup d envoi lu a l horloge de la premiere manche (decodeur v1.5.0) : plus tot de 0,3 a 0,9 s ; accord a une seconde de l API dans 1 422 cas sur 1 447. Accepte par l utilisateur le 2026-11-22 (« Oui je suis d accord avec toi », en reponse au tableau des ecarts voulus)."
 
 [[decision]]
-mesure   = "coverage.hits.vitalsUnread"
-decodeur = "v1.4.1"
-date     = "2026-11-16"
-raison   = "feuille de couverture neuve du schema 125 (decodeur v1.4.0, touches et degats) : un bloc qui n existait pas, son compteur d echec passe de absent a N ; rien de lu avant n est perdu. Accord du user du 2026-11-16 (« oui », a la question d inscrire comme acceptes les compteurs neufs du schema 125 et les deux points de jauge en moins)."
+mesure   = "coverage.score.points"
+temoins  = ["084a804d", "0a247154", "11de8353", "51ebbc0f", "60ae07c4", "a349fea8", "bcb6d393", "e5adf7b2"]
+decodeur = "v1.5.0"
+date     = "2026-11-22"
+raison   = "faux enregistrements du tableau abandonnes (decodeur v1.5.0) : scores, eliminations, morts et assistances par joueur egaux a l API ; aucun compteur ne s eloigne. Accepte par l utilisateur le 2026-11-22 (« Oui je suis d accord avec toi », en reponse au tableau des ecarts voulus)."
 
 [[decision]]
-mesure   = "coverage.flagCarries.seatsBeyondBand"
-decodeur = "v1.4.1"
-date     = "2026-11-16"
-raison   = "compteur neuf du schema 125 (sieges lus aux listes de la session, au-dela de la bande du drapeau) : absent avant, il passe a N ; aucun portage perdu. Accord du user du 2026-11-16 (« oui », a la question d inscrire comme acceptes les compteurs neufs du schema 125 et les deux points de jauge en moins)."
+mesure   = "identity/n"
+temoins  = ["a349fea8", "a521164d"]
+decodeur = "v1.5.0"
+date     = "2026-11-22"
+raison   = "faux enregistrements du tableau abandonnes (decodeur v1.5.0) : scores, eliminations, morts et assistances par joueur egaux a l API ; aucun compteur ne s eloigne. Accepte par l utilisateur le 2026-11-22 (« Oui je suis d accord avec toi », en reponse au tableau des ecarts voulus)."
 
 [[decision]]
-mesure   = "coverage.flagCarries.gaugePoints"
+mesure   = "coverage.shots.noSlot"
+temoins  = ["0797ce72", "084a804d", "111fa685", "11de8353", "396cfc92", "4f77afc1", "51ebbc0f", "bcb6d393", "bfecd02b", "c75f33b8", "d9781168", "e5adf7b2", "fb1a1a72"]
+decodeur = "v1.5.0"
+date     = "2026-11-22"
+raison   = "tirs lus a tout rang d une trame (decodeur v1.5.0) : 45 687 -> 59 766 tirs lus ; la part d ensemble baisse. Accepte par l utilisateur le 2026-11-22 (« Oui je suis d accord avec toi », en reponse au tableau des ecarts voulus)."
+
+[[decision]]
+mesure   = "coverage.shots.unitOtherIndex"
+temoins  = ["4f77afc1"]
+decodeur = "v1.5.0"
+date     = "2026-11-22"
+raison   = "tirs lus a tout rang d une trame (decodeur v1.5.0) : 45 687 -> 59 766 tirs lus ; la part d ensemble baisse. Accepte par l utilisateur le 2026-11-22 (« Oui je suis d accord avec toi », en reponse au tableau des ecarts voulus)."
+
+[[decision]]
+mesure   = "coverage.vehicles.shotsNoRide"
+temoins  = ["084a804d", "111fa685", "11de8353", "4f77afc1", "bfecd02b", "e5adf7b2"]
+decodeur = "v1.5.0"
+date     = "2026-11-22"
+raison   = "tirs lus a tout rang d une trame (decodeur v1.5.0) : 45 687 -> 59 766 tirs lus ; la part d ensemble baisse. Accepte par l utilisateur le 2026-11-22 (« Oui je suis d accord avec toi », en reponse au tableau des ecarts voulus)."
+
+[[decision]]
+mesure   = "coverage.shots.aim.none"
+temoins  = ["4f77afc1", "bcb6d393", "d9781168", "e5adf7b2"]
+decodeur = "v1.5.0"
+date     = "2026-11-22"
+raison   = "meme cause (tirs lus a tout rang d une trame, decodeur v1.5.0) ; la part MONTE (0,12 % -> 0,23 % et 5,1 % -> 6,0 %) : ecart connu, renvoye au chantier « precision ». Accepte par l utilisateur le 2026-11-22 (« Oui je suis d accord avec toi », en reponse au tableau des ecarts voulus)."
+
+[[decision]]
+mesure   = "coverage.projectiles.shotAmbiguous"
+temoins  = ["0797ce72", "084a804d", "111fa685", "11de8353", "4f77afc1", "c75f33b8", "d9781168", "e5adf7b2", "fb1a1a72"]
+decodeur = "v1.5.0"
+date     = "2026-11-22"
+raison   = "meme cause (tirs lus a tout rang d une trame, decodeur v1.5.0) ; la part MONTE (0,12 % -> 0,23 % et 5,1 % -> 6,0 %) : ecart connu, renvoye au chantier « precision ». Accepte par l utilisateur le 2026-11-22 (« Oui je suis d accord avec toi », en reponse au tableau des ecarts voulus)."
+
+[[decision]]
+mesure   = "coverage.hits.noVictim"
+temoins  = ["084a804d", "11de8353", "396cfc92", "4f77afc1", "e5adf7b2"]
+decodeur = "v1.5.0"
+date     = "2026-11-22"
+raison   = "auteur d une touche lu par l unite (decodeur v1.5.0) : touches sans tireur 1 256 -> 31, echecs totaux 33,8 % -> 30,2 %. Accepte par l utilisateur le 2026-11-22 (« Oui je suis d accord avec toi », en reponse au tableau des ecarts voulus)."
+
+[[decision]]
+mesure   = "scoreActions.name/presents"
+temoins  = ["e5adf7b2"]
+decodeur = "v1.5.0"
+date     = "2026-11-22"
+raison   = "arbre des actions decale sur ce build (decodeur v1.5.0) : somme des actions egale a l API pour 28 joueurs sur 28, contre 20. Accepte par l utilisateur le 2026-11-22 (« Oui je suis d accord avec toi », en reponse au tableau des ecarts voulus)."
+
+[[decision]]
+mesure   = "scoreActions.points/presents"
+temoins  = ["e5adf7b2"]
+decodeur = "v1.5.0"
+date     = "2026-11-22"
+raison   = "arbre des actions decale sur ce build (decodeur v1.5.0) : somme des actions egale a l API pour 28 joueurs sur 28, contre 20. Accepte par l utilisateur le 2026-11-22 (« Oui je suis d accord avec toi », en reponse au tableau des ecarts voulus)."
+
+[[decision]]
+mesure   = "scoreActions.t/presents"
+temoins  = ["e5adf7b2"]
+decodeur = "v1.5.0"
+date     = "2026-11-22"
+raison   = "arbre des actions decale sur ce build (decodeur v1.5.0) : somme des actions egale a l API pour 28 joueurs sur 28, contre 20. Accepte par l utilisateur le 2026-11-22 (« Oui je suis d accord avec toi », en reponse au tableau des ecarts voulus)."
+
+[[decision]]
+mesure   = "scoreActions.xuid/presents"
+temoins  = ["e5adf7b2"]
+decodeur = "v1.5.0"
+date     = "2026-11-22"
+raison   = "arbre des actions decale sur ce build (decodeur v1.5.0) : somme des actions egale a l API pour 28 joueurs sur 28, contre 20. Accepte par l utilisateur le 2026-11-22 (« Oui je suis d accord avec toi », en reponse au tableau des ecarts voulus)."
+
+[[decision]]
+mesure   = "scoreActions/n"
+temoins  = ["e5adf7b2"]
+decodeur = "v1.5.0"
+date     = "2026-11-22"
+raison   = "arbre des actions decale sur ce build (decodeur v1.5.0) : somme des actions egale a l API pour 28 joueurs sur 28, contre 20. Accepte par l utilisateur le 2026-11-22 (« Oui je suis d accord avec toi », en reponse au tableau des ecarts voulus)."
+
+[[decision]]
+mesure   = "scoreActions/par-xuid/*"
+temoins  = ["e5adf7b2"]
+decodeur = "v1.5.0"
+date     = "2026-11-22"
+raison   = "arbre des actions decale sur ce build (decodeur v1.5.0) : somme des actions egale a l API pour 28 joueurs sur 28, contre 20. Accepte par l utilisateur le 2026-11-22 (« Oui je suis d accord avec toi », en reponse au tableau des ecarts voulus)."
+
+[[decision]]
+mesure   = "coverage.scoreActions.published"
+temoins  = ["e5adf7b2"]
+decodeur = "v1.5.0"
+date     = "2026-11-22"
+raison   = "arbre des actions decale sur ce build (decodeur v1.5.0) : somme des actions egale a l API pour 28 joueurs sur 28, contre 20. Accepte par l utilisateur le 2026-11-22 (« Oui je suis d accord avec toi », en reponse au tableau des ecarts voulus)."
+
+[[decision]]
+mesure   = "coverage.vehicles.ridesNamed"
+temoins  = ["4f77afc1"]
+decodeur = "v1.5.0"
+date     = "2026-11-22"
+raison   = "un trajet perd un nom faux, celui d un joueur pas encore en jeu (decodeur v1.5.0). Accepte par l utilisateur le 2026-11-22 (« Oui je suis d accord avec toi », en reponse au tableau des ecarts voulus)."
+
+[[decision]]
+mesure   = "vehicles.rides.xuid/presents"
+temoins  = ["4f77afc1"]
+decodeur = "v1.5.0"
+date     = "2026-11-22"
+raison   = "un trajet perd un nom faux, celui d un joueur pas encore en jeu (decodeur v1.5.0). Accepte par l utilisateur le 2026-11-22 (« Oui je suis d accord avec toi », en reponse au tableau des ecarts voulus)."
+
+[[decision]]
+mesure   = "vehicles.rides/par-xuid/*"
+temoins  = ["4f77afc1"]
+decodeur = "v1.5.0"
+date     = "2026-11-22"
+raison   = "un trajet perd un nom faux, celui d un joueur pas encore en jeu (decodeur v1.5.0). Accepte par l utilisateur le 2026-11-22 (« Oui je suis d accord avec toi », en reponse au tableau des ecarts voulus)."
+
+[[decision]]
+mesure   = "score/equipe/1/manches"
+temoins  = ["a349fea8"]
+decodeur = "v1.5.0"
+date     = "2026-11-22"
+raison   = "Unique point de la courbe d equipe 1, a zero, porte par un faux enregistrement du tableau abandonne ; meme cause que coverage.score.points sur ce temoin. Inscrit par le pilote comme consequence de la decision acceptee le 2026-11-22, puis accepte par l utilisateur le meme jour (« J accepte l inscription pour la courbe d equipe »)."
+
+[[decision]]
+mesure   = "coverage.padDating.uncovered"
+temoins  = ["084a804d", "0a247154", "396cfc92", "4f77afc1", "50247b26", "51ebbc0f", "60ae07c4", "a349fea8", "a521164d", "bcb6d393", "bf15f7ab", "bfecd02b", "c75f33b8", "d9781168", "fb1a1a72"]
+decodeur = "v1.6.0"
+date     = "2026-11-24"
+raison   = "socles d equipement neufs dans la liste des socles (decodeur v1.6.0) : le perimetre compte grandit, aucun socle d arme ne regresse, la definition du compteur ne change pas. Accepte par l utilisateur le 2026-11-24 (« j accepte les 4 ecarts », en reponse au tableau des ecarts voulus)."
+
+[[decision]]
+mesure   = "coverage.padDating.ambiguous"
+temoins  = ["084a804d", "4f77afc1", "50247b26", "60ae07c4", "a349fea8", "d9781168", "fb1a1a72"]
+decodeur = "v1.6.0"
+date     = "2026-11-24"
+raison   = "socles d equipement neufs dans la liste des socles (decodeur v1.6.0) : le perimetre compte grandit, aucun socle d arme ne regresse, la definition du compteur ne change pas. Accepte par l utilisateur le 2026-11-24 (« j accepte les 4 ecarts », en reponse au tableau des ecarts voulus)."
+
+[[decision]]
+mesure   = "coverage.groundWeapons.unknown"
+temoins  = ["084a804d", "4f77afc1", "51ebbc0f", "60ae07c4", "a349fea8", "a521164d", "bfecd02b", "c75f33b8", "d9781168"]
+decodeur = "v1.6.0"
+date     = "2026-11-24"
+raison   = "socles d equipement neufs dans la liste des socles (decodeur v1.6.0) : le perimetre compte grandit, aucun socle d arme ne regresse, la definition du compteur ne change pas. Accepte par l utilisateur le 2026-11-24 (« j accepte les 4 ecarts », en reponse au tableau des ecarts voulus)."
+
+[[decision]]
+mesure   = "coverage.flagCarries.ambiguousReturns"
+temoins  = ["bcb6d393"]
+decodeur = "v1.6.0"
+date     = "2026-11-24"
+raison   = "portages du drapeau et lignes d objectif lus en plus (decodeur v1.6.0) : rien de lu avant n est perdu, les objets neufs sont comptes. Accepte par l utilisateur le 2026-11-24 (« j accepte les 4 ecarts », en reponse au tableau des ecarts voulus)."
+
+[[decision]]
+mesure   = "coverage.flagCarries.noBridge"
+temoins  = ["bcb6d393"]
+decodeur = "v1.6.0"
+date     = "2026-11-24"
+raison   = "portages du drapeau et lignes d objectif lus en plus (decodeur v1.6.0) : rien de lu avant n est perdu, les objets neufs sont comptes. Accepte par l utilisateur le 2026-11-24 (« j accepte les 4 ecarts », en reponse au tableau des ecarts voulus)."
+
+[[decision]]
+mesure   = "coverage.objectives.noSlot"
+temoins  = ["bcb6d393"]
+decodeur = "v1.6.0"
+date     = "2026-11-24"
+raison   = "portages du drapeau et lignes d objectif lus en plus (decodeur v1.6.0) : rien de lu avant n est perdu, les objets neufs sont comptes. Accepte par l utilisateur le 2026-11-24 (« j accepte les 4 ecarts », en reponse au tableau des ecarts voulus)."
+
+[[decision]]
+mesure   = "coverage.flagCarries.carrierTeamUnknown"
 temoins  = ["084a804d"]
-decodeur = "v1.4.1"
-date     = "2026-11-16"
-raison   = "jauge de retour lue trame par trame (decodeur v1.4.0) : 185 -> 183 points ; les deux points retires (20 559 et 20 596 ms) tombent au milieu de leurs voisins sur une montee lineaire (0,666 / 0,686 / 0,706), le trace ne change pas. Accord du user du 2026-11-16 (« oui », a la question d inscrire comme acceptes les compteurs neufs du schema 125 et les deux points de jauge en moins)."
+decodeur = "v1.6.0"
+date     = "2026-11-24"
+raison   = "portages du drapeau lus en plus (decodeur v1.6.0) : 23 sur 23 puis 41 sur 41, soit tous les portages avant comme apres ; le denominateur grandit, rien ne regresse. Accepte par l utilisateur le 2026-11-24 (« j accepte les 4 ecarts », en reponse au tableau des ecarts voulus)."
 
 [[decision]]
-mesure   = "flagCarries.spans.returnProgress/n"
-temoins  = ["084a804d"]
-decodeur = "v1.4.1"
-date     = "2026-11-16"
-raison   = "jauge de retour lue trame par trame (decodeur v1.4.0) : 185 -> 183 points ; les deux points retires (20 559 et 20 596 ms) tombent au milieu de leurs voisins sur une montee lineaire (0,666 / 0,686 / 0,706), le trace ne change pas. Accord du user du 2026-11-16 (« oui », a la question d inscrire comme acceptes les compteurs neufs du schema 125 et les deux points de jauge en moins)."
-
-[[decision]]
-mesure   = "flagCarries.spans.returnProgress/total"
-temoins  = ["084a804d"]
-decodeur = "v1.4.1"
-date     = "2026-11-16"
-raison   = "jauge de retour lue trame par trame (decodeur v1.4.0) : 185 -> 183 points ; les deux points retires (20 559 et 20 596 ms) tombent au milieu de leurs voisins sur une montee lineaire (0,666 / 0,686 / 0,706), le trace ne change pas. Accord du user du 2026-11-16 (« oui », a la question d inscrire comme acceptes les compteurs neufs du schema 125 et les deux points de jauge en moins)."
+mesure   = "R-1 repli repli_tireur_par_le_siege_de_la_place"
+temoins  = ["4f77afc1"]
+decodeur = "v1.6.0"
+date     = "2026-11-24"
+raison   = "repli neuf du tireur par le siege de sa place (decodeur v1.6.0) : six tirs du siege 2, attribues au joueur qui tient aussi cette place sur 329 autres tirs ; le nombre de replis suit (coverage.fallbacks/n). Accepte par l utilisateur le 2026-11-24 (« j accepte les 4 ecarts », en reponse au tableau des ecarts voulus)."

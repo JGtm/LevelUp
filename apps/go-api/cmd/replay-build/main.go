@@ -71,6 +71,7 @@ func main() {
 		"fichier de profil CPU de la cuisson (vide = aucun profil) ; lecture : go tool pprof")
 	memProfile := flag.String("memprofile", "",
 		"fichier de profil de tas, écrit APRÈS la cuisson (vide = aucun profil)")
+	fils := flag.Int("fils", 1, "fils que le decodeur peut employer pour lire le film (1 = un seul ; la sortie n'en depend pas)")
 	flag.Parse()
 	debut := time.Now()
 	args := flag.Args()
@@ -96,7 +97,7 @@ func main() {
 		slog.ErrorContext(ctx, "préparation du builder", "err", err, "title", *titleFlag)
 		os.Exit(1)
 	}
-	builder.WithFrameInterval(*interval)
+	builder.WithFrameInterval(*interval).AvecFils(*fils)
 	if *geomDir != "" {
 		builder.WithGeometryDir(ctx, *geomDir)
 	}

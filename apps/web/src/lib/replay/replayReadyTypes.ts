@@ -211,6 +211,7 @@ export type ReplayDocumentReady = Omit<
   | 'grenadeLabels'
   | 'grenadeReads'
   | 'damage'
+  | 'eliminations'
   | 'grenades'
   | 'hits'
   | 'identity'
@@ -225,6 +226,7 @@ export type ReplayDocumentReady = Omit<
   | 'objectives'
   | 'padPickups'
   | 'projectiles'
+  | 'reloads'
   | 'respawnCountdowns'
   | 'roster'
   | 'roundClock'
@@ -378,6 +380,7 @@ export type ReplayDocumentReady = Omit<
    */
   grenadeReads: ReplayGrenadeReadReady[]
   damage: NonNullable<ReplayDocument['damage']>
+  eliminations: NonNullable<ReplayDocument['eliminations']>
   grenades: NonNullable<ReplayDocument['grenades']>
   hits: NonNullable<ReplayDocument['hits']>
   inventory: ReplayInventoryReady[]
@@ -387,6 +390,7 @@ export type ReplayDocumentReady = Omit<
   objectives: NonNullable<ReplayDocument['objectives']>
   padPickups: NonNullable<ReplayDocument['padPickups']>
   projectiles: ReplayProjectileReady[]
+  reloads: NonNullable<ReplayDocument['reloads']>
   respawnCountdowns: NonNullable<ReplayDocument['respawnCountdowns']>
   roundClock: NonNullable<ReplayDocument['roundClock']>
   scoreActions: NonNullable<ReplayDocument['scoreActions']>

@@ -57,6 +57,12 @@ const (
 	desktopListenHost = "127.0.0.1"
 	// environmentDevelopment : valeur de LEVELUP_ENV qui ne déclare PAS d'environnement.
 	environmentDevelopment = "development"
+	// decoderThreadsServer : un fil, le comportement des versions antérieures du décodeur.
+	decoderThreadsServer = 1
+	// decoderThreadsLocal : le gain du décodeur v1.6.0 se tasse au-delà de quatre fils (35,8 s à un fil, 27,8 s à
+	// quatre et 26,7 s à huit sur les treize films du banc du décodeur) ; il peut employer brièvement jusqu'à cinq
+	// goroutines de plus que ce nombre, et le pic de mémoire du plus gros film reste de 1,7 à 1,9 Gio.
+	decoderThreadsLocal = 4
 )
 
 // DeploymentCapabilities : les faits fins sur lesquels le reste du code branche, décidés ici
@@ -206,6 +212,13 @@ type DeploymentCapabilities struct {
 	// ligne de commande : sans elle les passes s'y accumulent. Faux ailleurs, où la compaction reste un
 	// entretien serveur arrêté.
 	CompactPassesAtStartup bool
+	// DecoderThreads : le nombre de fils que le décodeur de film peut employer pour lire un film
+	// (`replay.Options.Vitesse`). Une valeur, pas un drapeau : 1 sur un serveur (hébergé ou démo), qui
+	// partage sa machine avec la synchronisation et ne gagne rien à la saturer tant qu'une mesure sur le
+	// serveur ne dit pas mieux ; [decoderThreadsLocal] sur le bureau et en développement, où le décodage
+	// d'un film est la seule tâche lourde. La sortie du décodeur ne dépend pas de cette valeur. Les
+	// appelants la reçoivent par leur construction, jamais en lisant le profil.
+	DecoderThreads int
 }
 
 // DeploymentProfile est embarqué dans AppConfig : le profil résolu et ses capacités.
@@ -322,7 +335,17 @@ func capabilitiesOf(cfg *AppConfig) DeploymentCapabilities {
 		TrashMediaSources:      desktop,
 		PickFolder:             desktop,
 		CompactPassesAtStartup: desktop,
+		DecoderThreads:         decoderThreadsOf(cfg.Deployment),
 	}
+}
+
+// decoderThreadsOf dérive le nombre de fils du décodeur du profil : le bureau et le développement en
+// emploient plusieurs, un serveur (hébergé ou démo) un seul.
+func decoderThreadsOf(d Deployment) int {
+	if d == DeploymentDesktop || d == DeploymentDev {
+		return decoderThreadsLocal
+	}
+	return decoderThreadsServer
 }
 
 // authModeAccepted : le mode d'authentification de cfg est-il une valeur admise ? Les valeurs

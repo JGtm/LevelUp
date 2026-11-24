@@ -15,6 +15,9 @@ import (
 	"strings"
 )
 
+// libelleIDObjetEquipement : le nom de l'identifiant d'un objet d'équipement dans les messages d'erreur du chargement.
+const libelleIDObjetEquipement = "identifiant d'objet d'équipement"
+
 // equipmentObjectEntry — une ligne de [[equipment_objects]] : l'identifiant du tag, la famille
 // de pose qu'il designe, l'identifiant de chaine du jeu, la PROVENANCE du nom et la NATURE
 // mesuree de l'objet.
@@ -140,7 +143,7 @@ func parseEquipmentObjects(path string, rows []equipmentObjectEntry) (map[uint32
 		if raw == "" {
 			return nil, fmt.Errorf("%s: objet d'équipement sans id", path)
 		}
-		id, err := tagGlobalID32(path, raw, "identifiant d'objet d'équipement")
+		id, err := tagGlobalID32(path, raw, libelleIDObjetEquipement)
 		if err != nil {
 			return nil, err
 		}
@@ -227,4 +230,38 @@ func clesTriees(m map[string]bool) string {
 	}
 	sort.Strings(out)
 	return strings.Join(out, ", ")
+}
+
+// parseDeployedEquipment rend l'ensemble des objets d'equipement que le manifeste marque
+// `kind = "deployed"` : la forme POSEE d'un objet, qui n'existe que deployee. Le decodeur de film
+// ne la retient pas comme socle (`replay.LabelCatalog.DeployedEquipment`) : sans cette table, deux
+// murs poses au meme endroit feraient un faux socle. Les identifiants sont ceux que
+// [parseEquipmentObjects] a deja valides ; la nature l'est par [verifieNatureEquipement].
+func parseDeployedEquipment(path string, rows []equipmentObjectEntry) (map[uint32]bool, error) {
+	out := make(map[uint32]bool)
+	for _, e := range rows {
+		if strings.TrimSpace(e.Kind) != equipKindDeployed {
+			continue
+		}
+		raw := strings.TrimSpace(e.ID)
+		id, err := tagGlobalID32(path, raw, libelleIDObjetEquipement)
+		if err != nil {
+			return nil, err
+		}
+		out[id] = true
+	}
+	return out, nil
+}
+
+// DeployedEquipment retourne les GlobalID de tag `eqip` que le manifeste marque `kind = "deployed"`
+// (copie). Vide quand le titre n'en declare aucun : rien n'est ecarte de ce chef.
+func (s *ReplayLabelSet) DeployedEquipment() map[uint32]bool {
+	out := make(map[uint32]bool)
+	if s == nil {
+		return out
+	}
+	for k, v := range s.deployedEquip {
+		out[k] = v
+	}
+	return out
 }

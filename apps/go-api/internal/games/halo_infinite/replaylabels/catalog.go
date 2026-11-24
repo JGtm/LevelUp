@@ -71,6 +71,9 @@ func Load(repoRoot, titleSlug string) (replay.LabelCatalog, error) {
 	// et les teintes : elle est keyée par GlobalID de tag `eqip` (lu dans le film), et
 	// n'entre dans aucune jointure du catalogue.
 	cat.EquipmentFamilies = labels.EquipmentObjects()
+	// Les formes POSEES (`kind = deployed`) se posent de meme : la voie des socles d'equipement du
+	// decodeur ne les retient pas, un objet pose n'est pas sur un socle.
+	cat.DeployedEquipment = labels.DeployedEquipment()
 	// Les familles dont l'USAGE est MESURÉ par le canal d'impulsion se posent après
 	// construction, pour la même raison : c'est une déclaration du titre (ce que SA mesure
 	// établit), pas une jointure du catalogue. Le paquet `replay` ne saurait pas, seul, que

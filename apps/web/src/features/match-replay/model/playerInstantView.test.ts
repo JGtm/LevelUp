@@ -122,8 +122,8 @@ describe('playerInstantView — Alpha, tout est lu, à la fin du match', () => {
     expect(v.medals[2]).toMatchObject({ imageUrl: '', sprite: null, difficulty: null })
   })
 
-  it('gestes : temps de sprint cumulé et sauts', () => {
-    expect(v.gestures).toEqual({ sprintMs: 4000, jumps: 3 })
+  it('gestes : temps de sprint cumulé et sauts ; sans couverture, ni déplacement ni rechargements', () => {
+    expect(v.gestures).toEqual({ sprintMs: 4000, moveMs: null, moveEstimated: false, jumps: 3, reloads: null, reloadsMinimum: false })
   })
 
   it('un document qui ne déclare pas le calque des médailles : ni éliminations parfaites ni médaille, jamais un zéro', () => {
@@ -149,7 +149,7 @@ describe('playerInstantView — la fiche suit l’image lue', () => {
     expect(v.kills?.classes.map((c) => [c.classKey, c.atInstant])).toEqual([['shoulder', 2], ['grenade', 0], ['heavy', 1]])
     expect(v.grenadesThrown).toEqual([{ name: 'Fragmentation', count: 2 }, { name: 'Plasma', count: 1 }])
     expect(v.pickups).toEqual({ weapons: 2, grenades: 1 })
-    expect(v.gestures).toEqual({ sprintMs: 2000, jumps: 2 })
+    expect(v.gestures).toEqual({ sprintMs: 2000, moveMs: null, moveEstimated: false, jumps: 2, reloads: null, reloadsMinimum: false })
   })
 
   it('les valeurs ne reculent jamais d’une image à l’autre', () => {
@@ -283,5 +283,68 @@ describe('playerInstantView — les armes sans nom', () => {
     expect(seule?.weapons).toEqual([])
     const deux = mk([kill(30_000, '', ''), kill(31_000, 'hinf_hammer', 'Marteau')]).kills?.classes.find((c) => c.classKey === 'melee')
     expect(deux?.weapons.map((w) => w.name).sort()).toEqual(['Marteau', null])
+  })
+})
+
+describe('playerInstantView — rechargements et temps en commande de déplacement', () => {
+  const base = instantDoc()
+  const control = { holds: 2, withHole: 0, innerHoles: 0, entries: 4, published: 2, intervals: 2, noTrack: 0, noPlayer: 0 }
+  const reloadsRead = {
+    frames: 300, closedFrames: 300, stoppedFrames: 0, read: 4, copies: 0, withoutPlayer: 0,
+    beforeOrigin: 0, afterEnd: 0, published: 4,
+  }
+  const reloads = [{ t: 15, place: 0 }, { t: 90, place: 0 }, { t: 200, place: 0 }, { t: 20, place: 1 }]
+  const moves = [
+    { slot: 512, kind: 'moveCommand', t0: 5, t1: 25 },
+    { slot: 513, kind: 'moveCommand', t0: 175, t1: 185 },
+  ]
+  const docWith = (cov: { stances?: object; reloads?: object }) =>
+    instantDoc({
+      coverage: {
+        ...base.coverage,
+        stances: { ...base.coverage?.stances, ...cov.stances },
+        ...(cov.reloads ? { reloads: cov.reloads } : {}),
+      } as never,
+      reloads,
+      stances: [...base.stances, ...moves],
+    } as never)
+  const lu = docWith({ stances: { control }, reloads: reloadsRead })
+
+  it('Alpha : les rechargements et le temps tenu, cumulés à la fin du match', () => {
+    const v = lecteur('A', { doc: lu })(FIN)
+    expect(v.gestures).toEqual({ sprintMs: 4000, moveMs: 3000, moveEstimated: false, jumps: 3, reloads: 3, reloadsMinimum: false })
+  })
+
+  it('suivent l’image lue, sans reculer', () => {
+    const lire = lecteur('A', { doc: lu })
+    expect(lire(10).gestures).toMatchObject({ moveMs: 500, reloads: null })
+    expect(lire(100).gestures).toMatchObject({ moveMs: 2000, reloads: 2 })
+    expect(lire(FIN).gestures).toMatchObject({ moveMs: 3000, reloads: 3 })
+  })
+
+  it('une trame arrêtée fait des rechargements un minimum', () => {
+    const doc = docWith({ stances: { control }, reloads: { ...reloadsRead, closedFrames: 298, stoppedFrames: 2 } })
+    expect(lecteur('A', { doc })(FIN).gestures).toMatchObject({ reloads: 3, reloadsMinimum: true })
+  })
+
+  it('sans couverture des rechargements : aucune ligne de rechargements, même si le calque porte des lignes', () => {
+    const doc = docWith({ stances: { control } })
+    const v = lecteur('A', { doc })(FIN)
+    expect(v.gestures?.reloads).toBeNull()
+    expect(v.gestures?.moveMs).toBe(3000)
+  })
+
+  it('sans couverture de la commande de déplacement : aucune ligne de temps tenu', () => {
+    const doc = docWith({ reloads: reloadsRead })
+    const v = lecteur('A', { doc })(FIN)
+    expect(v.gestures?.moveMs).toBeNull()
+    expect(v.gestures?.reloads).toBe(3)
+  })
+
+  it('un joueur qui n’a ni rechargé ni tenu de commande n’a pas de ligne (zéro mesuré, jamais écrit)', () => {
+    const doc = docWith({ stances: { control }, reloads: reloadsRead })
+    const v = lecteur('E', { doc })(FIN)
+    expect(v.gestures?.moveMs).toBeNull()
+    expect(v.gestures?.reloads).toBe(1)
   })
 })

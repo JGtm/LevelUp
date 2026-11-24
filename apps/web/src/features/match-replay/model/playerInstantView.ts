@@ -2,12 +2,12 @@
  * playerInstantView.ts — CE QUE LA FICHE D'UN JOUEUR ÉCRIT À L'IMAGE LUE, section par section. Sans React.
  *
  * Il ne calcule rien de nouveau : chaque lecture vient de son module (`playerInstantStats`, `killBreakdown`,
- * `playerInstantEstimates`, `playerThrowsPickups`, `playerEquipmentStats`, `playerMovementStats`,
+ * `playerInstantEstimates`, `playerThrowsPickups`, `playerEquipmentStats`, `playerMovementStats`, `playerReloadStats`,
  * `matchMedals`), lu UNE FOIS par document et par joueur (`playerInstantSources.ts`) puis interrogé par image. Ce
  * module les range en sections, et décide ce qui existe : une valeur que son module rend `null` n'a pas de
  * ligne ; une section dont aucune ligne n'existe est `null`, et le rendu n'écrit alors ni titre ni texte de
  * remplacement. Un zéro mesuré s'écrit pour les compteurs et les tableaux ; pour les listes de gestes (lancers,
- * ramassages, sprint, sauts) un zéro n'a pas de ligne, il n'y a rien à lister.
+ * ramassages, sprint, déplacement, sauts, rechargements) un zéro n'a pas de ligne, il n'y a rien à lister.
  *
  * Les noms des armes et des grenades viennent des tables du document dans la langue demandée (`catalogText`) ;
  * une arme sans nom n'a pas de ligne, jamais une clé écrite à sa place.
@@ -26,6 +26,7 @@ import type { PlayerInstantSources } from './playerInstantSources'
 import { playerInstantStatsAt, type PlayerInstantStats } from './playerInstantStats'
 import { playerEquipmentStatsAt, type EquipmentFamilyStats } from './playerEquipmentStats'
 import { playerMovementStatsAt } from './playerMovementStats'
+import { playerReloadsAt } from './playerReloadStats'
 import { playerThrowsPickupsAt } from './playerThrowsPickups'
 import type { ShieldReading } from './playerShield'
 
@@ -104,9 +105,19 @@ export interface PickupsView {
   grenades: number | null
 }
 
+/**
+ * La section des gestes : une valeur par ligne, `null` = pas de ligne (zéro, ou grandeur que le document ne permet pas
+ * d'établir). `moveEstimated` : la couverture dit qu'une part des commandes de déplacement n'a pas été publiée, le temps
+ * est une estimation. `reloadsMinimum` : le compte de rechargements est un plancher (le film perd des messages sur
+ * certaines trames, ou des rechargements sans joueur), l'écran le dit.
+ */
 export interface GesturesView {
   sprintMs: number | null
+  moveMs: number | null
+  moveEstimated: boolean
   jumps: number | null
+  reloads: number | null
+  reloadsMinimum: boolean
 }
 
 /** La fiche à une image : chaque section est `null` (ou vide) quand elle n'existe pas. */
@@ -243,6 +254,9 @@ export function playerInstantViewAt(s: PlayerInstantSources, frame: number): Pla
   const grenadesPicked = countOrNull(throwsPickups.grenadePickups)
   const sprintMs = positiveOrNull(movement.sprintMs)
   const jumps = positiveOrNull(movement.jumps)
+  const moveMs = positiveOrNull(movement.moveMs)
+  const reloaded = playerReloadsAt(s.reloads, frame)
+  const reloads = positiveOrNull(reloaded.count)
   return {
     identity: identityOf(stats, s.player.board),
     since: sinceOf(stats, estimates.score, estimates.rank),
@@ -255,6 +269,16 @@ export function playerInstantViewAt(s: PlayerInstantSources, frame: number): Pla
     pickups: weaponsPicked === null && grenadesPicked === null ? null : { weapons: weaponsPicked, grenades: grenadesPicked },
     equipment: playerEquipmentStatsAt(s.equipment, frame)?.families ?? [],
     medals: medalGroupsOf(stats.medals, s.doc),
-    gestures: sprintMs === null && jumps === null ? null : { sprintMs, jumps },
+    gestures:
+      sprintMs === null && moveMs === null && jumps === null && reloads === null
+        ? null
+        : {
+            sprintMs,
+            moveMs,
+            moveEstimated: moveMs !== null && movement.moveEstimated,
+            jumps,
+            reloads,
+            reloadsMinimum: reloads !== null && reloaded.minimum,
+          },
   }
 }

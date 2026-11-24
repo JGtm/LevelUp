@@ -126,3 +126,23 @@ func TestScorePersonnel_ContreLOracleOfficiel(t *testing.T) {
 		t.Error("O-S3 sans oracle doit etre absent du bulletin")
 	}
 }
+
+// TestScorePersonnel_LaCourbeRecule : depuis le decodeur v1.6.0 la penalite de suicide ou de trahison est publiee dans
+// la courbe, qui recule, et un total peut etre negatif. Le score final est la derniere valeur de la courbe, jamais son
+// maximum : un joueur dont la courbe finit a -50 est juste face a un score officiel de -50.
+func TestScorePersonnel_LaCourbeRecule(t *testing.T) {
+	d := documentJuste()
+	d.ScoreTimeline.Players[0].Score = serie(Pas{0, 0}, Pas{50, 100}, Pas{80, 0}, Pas{120, -50})
+	d.ScoreTimeline.Players[1].Score = serie(Pas{0, 0}, Pas{190, 150}, Pas{200, 100})
+	oracle := &domain.MatchOracle{Players: []domain.MatchPlayerOracle{
+		{XUID: "111", PersonalScore: ptr(-50)},
+		{XUID: "222", PersonalScore: ptr(100)},
+	}}
+	// Le joueur a -50 est juste et ne retire rien au juste du joueur a 100.
+	exigerScore(t, Noter(d, faitsJustes(), oracle), ScorePersonnel, 100, 0, 0)
+
+	// Un score final negatif ecarte a l'oracle : l'ecart se lit signe, le manque ne depasse pas l'ecart.
+	d.ScoreTimeline.Players[0].Score = serie(Pas{0, 0}, Pas{50, -50})
+	oracle.Players[0].PersonalScore = ptr(0)
+	exigerScore(t, Noter(d, faitsJustes(), oracle), ScorePersonnel, 100, 0, 50)
+}

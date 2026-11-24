@@ -92,6 +92,13 @@ describe('padNameFor — ce que l’infobulle écrit', () => {
     expect(padNameFor(SNIPER, LABELS, REPLAY_TEXT.fr, 'fr')).toBe('S7 Sniper')
   })
 
+  it('une famille d’équipement du manifeste (socle d’équipement du schéma 127) se nomme, jamais par sa clé brute', () => {
+    expect(padNameFor('wall', LABELS, REPLAY_TEXT.fr, 'fr')).toBe(REPLAY_TEXT.fr.placementFamily.wall)
+    expect(padNameFor('sensor', LABELS, REPLAY_TEXT.en, 'en')).toBe(REPLAY_TEXT.en.placementFamily.sensor)
+    // Une famille qu'aucune table ne nomme garde son identifiant : la seule chose vraie qu'on puisse écrire.
+    expect(padNameFor('famille_inconnue', LABELS, REPLAY_TEXT.fr, 'fr')).toBe('famille_inconnue')
+  })
+
   it('une arme hors catalogue garde son identifiant — c’est VOULU, et ça n’a pas bougé', () => {
     expect(padNameFor(INCONNUE, LABELS, REPLAY_TEXT.fr, 'fr')).toBe(INCONNUE)
   })

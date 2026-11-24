@@ -17,6 +17,7 @@ import { FEED_GRID_BUTTON, FEED_GRID_ROW, FEED_ROW, FEED_ROW_ITEM, feedRowClass,
 import type { ReplayDeath, ReplayFeedEntry, ReplayKill } from '../model/killFeedLogic'
 import type { MedalEvent } from '../model/medalEvent'
 import { killLineHint } from '../model/killLineHint'
+import type { ObjectiveFeedStat } from '../model/objectiveFeedLogic'
 import type { FeedZoneOf } from '../hooks/useFeedZones'
 import type { ReplayTeamCascades } from '../hooks/useTeamCascades'
 import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
@@ -178,6 +179,7 @@ export function FeedLine({
       locale={locale}
       zone={zoneOf?.(entry.key)}
       carrier={entry.flagCarrierKill === true}
+      objectiveKills={entry.objectiveKills}
       focus={focus}
       strongXuids={strongXuids}
       followed={followed}
@@ -294,6 +296,8 @@ interface KillLineProps {
   zone?: string
   /** Vrai quand la victime portait le drapeau : la ligne d'objectif s'est repliée en infobulle. */
   carrier?: boolean
+  /** Les éliminations liées à l'objectif repliées sur la ligne : elles se lisent dans son infobulle. */
+  objectiveKills?: readonly ObjectiveFeedStat[]
   focus?: FeedLineFocus
   strongXuids?: ReadonlySet<string>
   /** La ligne concerne le joueur suivi par la caméra : fond léger de suivi, cumulable avec la ligne choisie. */
@@ -330,6 +334,7 @@ export function KillLine({
   locale,
   zone,
   carrier,
+  objectiveKills,
   focus,
   strongXuids,
   followed,
@@ -351,7 +356,7 @@ export function KillLine({
       ) : (
         <span aria-hidden />
       )}
-      {!onPlan && <FeedMedals medals={k.medals} locale={locale} />}
+      {!onPlan && <FeedMedals medals={k.medals} marks={k.fragMarks} locale={locale} />}
     </>
   )
   if (onPlan) {
@@ -365,7 +370,7 @@ export function KillLine({
     return (
       <li
         className={feedRowClass(FEED_GRID_ROW, followed)} data-followed={followedAttr(followed)} style={columns}
-        title={killLineHint(k, carrier === true, t, false)}
+        title={killLineHint(k, carrier === true, t, false, objectiveKills)}
       >
         {content}
       </li>
@@ -382,7 +387,7 @@ export function KillLine({
         className={FEED_GRID_BUTTON}
         style={columns}
         aria-pressed={focus.selected}
-        title={killLineHint(k, carrier === true, t, true)}
+        title={killLineHint(k, carrier === true, t, true, objectiveKills)}
         {...PRESS_GUARDS}
         onClick={focus.onSelect}
       >

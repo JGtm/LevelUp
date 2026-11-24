@@ -30,5 +30,18 @@ type StanceCoverage struct {
 	RefusedNewFalseReads  int            `json:"refusedNewFalseReads,omitempty"`
 	RefusedNewLostCreates int            `json:"refusedNewLostCreations,omitempty"`
 	RefusedNewUndecided   int            `json:"refusedNewUndecided,omitempty"`
-	MapWidths             [3]uint        `json:"mapWidths,omitempty"`
+	// Control dit ce que la lecture de la commande de déplacement tenue a rendu (genre `moveCommand`) ; absent
+	// quand la vue de contrôle n'a pas été lue.
+	Control   *StanceControlCoverage `json:"control,omitempty"`
+	MapWidths [3]uint                `json:"mapWidths,omitempty"`
+}
+
+// StanceControlCoverage dit ce que la publication des commandes de déplacement tenues a écarté : `noTrack` et
+// `noPlayer` (commandes sans vie ou sans joueur) et `withHole` (commandes dont la lecture a un trou) rendent le temps
+// de déplacement d'un joueur approximatif. Les autres compteurs du décodeur n'ont aucun lecteur ici
+// (`testutil.ReplayChampsNonServis`).
+type StanceControlCoverage struct {
+	WithHole int `json:"withHole"`
+	NoTrack  int `json:"noTrack"`
+	NoPlayer int `json:"noPlayer"`
 }

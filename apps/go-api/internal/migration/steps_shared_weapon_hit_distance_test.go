@@ -39,7 +39,7 @@ func insertHitDistanceRow(t *testing.T, db *sql.DB, matchID, pass, xuid, weapon,
 			match_id, decode_pass, decoder_rev, xuid, weapon_id,
 			dist_bucket_json, dist_n
 		) VALUES (?, ?, ?, ?, CAST(? AS UBIGINT), ?, ?)`,
-		matchID, pass, WeaponHitDistanceDecoderRev, xuid, weapon, bucketJSON, distN)
+		matchID, pass, "whd-v1", xuid, weapon, bucketJSON, distN)
 	if err != nil {
 		t.Fatalf("insert (%s/%s): %v", matchID, pass, err)
 	}

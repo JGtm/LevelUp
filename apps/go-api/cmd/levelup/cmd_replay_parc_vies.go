@@ -69,6 +69,8 @@ type optionsParcVies struct {
 	// garderDocuments : depose aussi le document cuit sous <sortie>/documents/<id>.json.gz, par la porte des
 	// rejeux (enquete sur pieces d'un sous-ensemble ; replaydiff et replay-verite relisent ce dossier).
 	garderDocuments bool
+	// fils : le nombre de fils du decodeur dans chaque enfant (la configuration de l'installation).
+	fils int
 }
 
 // pisteMesuree : ce que la mesure retient d'une piste publiee.
@@ -135,6 +137,7 @@ func runReplayParcVies(cfg *config.AppConfig, args []string) error {
 	if o.faits == "" || o.cache == "" || o.sortie == "" {
 		return errors.New("usage : levelup replay-parc-vies --faits <dossier> --cache <data/cache> --sortie <dossier> [--ids F] [--title slug]")
 	}
+	o.fils = cfg.Capabilities.DecoderThreads
 	return mesurerParcVies(context.Background(), cfg.RepoRoot, o)
 }
 
@@ -280,7 +283,7 @@ func requeteParcVies(repoRoot string, o optionsParcVies, id string, f replaybuil
 	return replaychild.Request{
 		MatchID: f.MatchID, TitleSlug: o.titre, RepoRoot: repoRoot, MapNames: f.MapNames,
 		FilmDir: filmcache.ChunkDir(o.cache, id), Facts: f.MatchFacts,
-		SansEcritureDesFaits: true,
+		SansEcritureDesFaits: true, DecoderThreads: o.fils,
 	}
 }
 

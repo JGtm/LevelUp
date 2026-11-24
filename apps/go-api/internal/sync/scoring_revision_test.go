@@ -35,6 +35,9 @@ var (
 		// Le temps de jeu que la note lit se calcule sur le coup d'envoi du registre (ADR 0050) ; l'empreinte
 		// hache désormais timeline.KickoffRev, qui lie les deux révisions.
 		"perf-2026-11-18": "2c6301e1c657bc65dea1f009d674e6a478e0d3f4289874428dc1f2ad6402be98",
+		// Le coup d'envoi publié par le rejeu vient de l'horloge du jeu (révision de la résolution du coup d'envoi,
+		// ADR 0050 D-6) : l'empreinte hache timeline.KickoffRev, aucun paramètre propre ne change.
+		"perf-2026-11-22": "01b5ae9bf9bc138c681cebaadef2e8e1a71988ea1d2b343c82e93a2da44f0d5e",
 	}
 	lusrParametersByRevision = map[string]string{
 		"lusr-2026-11-08": "ef84e6e155f63198d9a7387d11af1f1dfd77473d4e12bad220e667ef5fd3443a",
@@ -45,6 +48,8 @@ var (
 		// Coup d'envoi et temps de jeu, que le poids d'un joueur lit, viennent de la résolution unique
 		// (ADR 0050) ; l'empreinte hache désormais timeline.KickoffRev, qui lie les deux révisions.
 		"lusr-2026-11-18": "31e129714c2ee40a72f92fdad2218ebac7788f0c07f38099cf708752c120427e",
+		// Même liaison que la note de performance : la révision du coup d'envoi change, aucun paramètre propre au LUSR.
+		"lusr-2026-11-22": "119e364d21797c0022b42d83bd766155e57708ade072b2309dc006dcbbe24afb",
 	}
 )
 

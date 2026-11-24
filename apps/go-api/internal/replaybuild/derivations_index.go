@@ -63,7 +63,7 @@ import (
 // MEME DOCTRINE QUE `killcollector.KillSourceDecoderRev`, et pour la meme raison : sans
 // revision, une correction de projection ne repare que les matchs a venir, et le parc reste
 // servi avec l'ancienne — sans compteur et sans reprise possible.
-const DerivationsRev = "derivations-2026-11-17"
+const DerivationsRev = "derivations-2026-11-22"
 
 // SuffixeMarqueDerivations : le suffixe du fichier de marque, pose a la place de l'extension d'artefact (`.json.gz` comme
 // `.json` : le nom `{short8}.derived.json` ne depend pas de la forme de l'artefact).

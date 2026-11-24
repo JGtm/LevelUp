@@ -13317,6 +13317,8 @@ components:
           $ref: '#/components/schemas/DeathsPathsCoverage'
         decoder:
           $ref: '#/components/schemas/DecoderCoverage'
+        eliminations:
+          $ref: '#/components/schemas/EliminationCoverage'
         equipment:
           $ref: '#/components/schemas/EquipmentCoverage'
         equipmentChanges:
@@ -13366,6 +13368,8 @@ components:
           $ref: '#/components/schemas/EquipmentPlacementCoverage'
         projectiles:
           $ref: '#/components/schemas/ProjectileCoverage'
+        reloads:
+          $ref: '#/components/schemas/ReloadCoverage'
         score:
           $ref: '#/components/schemas/ScoreCoverage'
         scoreActions:
@@ -13956,6 +13960,27 @@ components:
         - borne
         - symetrique
         - n_cellules
+      type: object
+    Elimination:
+      additionalProperties: false
+      properties:
+        headshot:
+          type: boolean
+        perfect:
+          type: boolean
+        t:
+          format: int64
+          type: integer
+        victim:
+          type: string
+        xuid:
+          type: string
+      required:
+        - t
+        - xuid
+      type: object
+    EliminationCoverage:
+      additionalProperties: false
       type: object
     EmpriseEquipment:
       additionalProperties: false
@@ -25593,6 +25618,32 @@ components:
         - overview
         - relations
       type: object
+    Reload:
+      additionalProperties: false
+      properties:
+        place:
+          format: int64
+          type: integer
+        t:
+          format: int64
+          type: integer
+      required:
+        - t
+        - place
+      type: object
+    ReloadCoverage:
+      additionalProperties: false
+      properties:
+        stoppedFrames:
+          format: int64
+          type: integer
+        withoutPlayer:
+          format: int64
+          type: integer
+      required:
+        - stoppedFrames
+        - withoutPlayer
+      type: object
     ReplayBuildEnqueueResponse:
       additionalProperties: false
       properties:
@@ -25674,6 +25725,12 @@ components:
         durationMs:
           format: int64
           type: integer
+        eliminations:
+          items:
+            $ref: '#/components/schemas/Elimination'
+          type:
+            - array
+            - "null"
         equipmentChanges:
           items:
             $ref: '#/components/schemas/EquipmentChange'
@@ -25830,6 +25887,12 @@ components:
         projectiles:
           items:
             $ref: '#/components/schemas/Projectile'
+          type:
+            - array
+            - "null"
+        reloads:
+          items:
+            $ref: '#/components/schemas/Reload'
           type:
             - array
             - "null"
@@ -30410,6 +30473,23 @@ components:
         - t0
         - t1
       type: object
+    StanceControlCoverage:
+      additionalProperties: false
+      properties:
+        noPlayer:
+          format: int64
+          type: integer
+        noTrack:
+          format: int64
+          type: integer
+        withHole:
+          format: int64
+          type: integer
+      required:
+        - withHole
+        - noTrack
+        - noPlayer
+      type: object
     StanceCoverage:
       additionalProperties: false
       properties:
@@ -30420,6 +30500,8 @@ components:
             format: int64
             type: integer
           type: object
+        control:
+          $ref: '#/components/schemas/StanceControlCoverage'
         desyncs:
           format: int64
           type: integer
@@ -31343,9 +31425,6 @@ components:
           type: integer
       required:
         - detected
-        - tracks
-        - moving
-        - burst
         - marginMs
       type: object
     TableStatus:

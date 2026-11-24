@@ -8,9 +8,12 @@ flag	20	B	flag_capture_assists	named.go	exact 8/8 (oracle 8 joueurs, 2026-08-02)
 flag	21	A	flag_captures	named.go	exact 8/8 (oracle 8 joueurs, 2026-08-02)
 flag	21	B	flag_carriers_killed	named.go	exact 8/8 (oracle 8 joueurs, 2026-08-02)
 flag	22	A	flag_grabs	named.go	exact 8/8 — NOM CORRIGE, ce n est PAS flag_taken (recompense)
+flag	22	B	flag_returners_killed	named.go	exact par joueur sur les moities de films pair/impair (9 et 7 joueurs non nuls), colonne API flag_returners_killed (2026-11-22)
 flag	23	A	flag_returns	named.go	exact 8/8 (oracle 8 joueurs, 2026-08-02)
 flag	23	B	flag_secures	named.go	exact 11 films / 79 slots, 0 desaccord (balayage 2026-09-11, lot 6.7 B2) — seul emplacement exact sur 260
 flag	24	A	flag_steals	named.go	exact 8/8 (oracle 8 joueurs, 2026-08-02)
+flag	24	B	flag_kills_as_carrier	named.go	nom lu dans la definition d emplacement de la variante (KillsAsFlagCarrier) ; un seul joueur du parc non nul, controle sur moities inapplicable (2026-11-22)
+flag	25	A	flag_kills_as_returner	named.go	exact par joueur sur les moities pair/impair (8 et 6 joueurs non nuls), colonne API kills_as_flag_returner (2026-11-22)
 zone	2	A	kills	named.go+slotidentity.go	ancre — exact 8/8 contre match_participants
 zone	2	B	deaths	slotidentity.go	exact 8/8 contre match_participants (2026-08-02)
 zone	3	A	assists	named.go+slotidentity.go	exact 8/8 contre match_participants
@@ -18,6 +21,11 @@ zone	12	A	kills	named.go	redondant de 2 A — controle croise exact (2026-08-02)
 zone	12	B	assists	named.go	redondant de 3 A — controle croise exact (2026-08-02)
 zone	20	B	zone_captures	named.go	exact 8/8 (oracle 8 joueurs) + total film 61
 zone	21	A	zone_secures	named.go	exact 8/8 (oracle 8 joueurs) + total film 16
+zone	21	B	zone_offensive_kills	named.go	exact sur les moities pair/impair (28 et 47 sur 48 joueurs non nuls), colonne API zone_offensive_kills (2026-11-22)
+zone	22	A	zone_defensive_kills	named.go	exact sur les moities pair/impair (28 et 33 sur 34 joueurs non nuls), colonne API zone_defensive_kills (2026-11-22)
+vip	20	B	vip_kills	named.go	exact sur les moities pair/impair (6 et 8 joueurs non nuls), colonne API vip_kills (2026-11-22)
+vip	21	A	vip_assists	named.go	exact sur les moities pair/impair (6 et 7 joueurs non nuls), colonne API vip_assists (2026-11-22)
+vip	21	B	vip_kills_as_vip	named.go	exact sur les moities pair/impair (6 et 6 joueurs non nuls), colonne API kills_as_vip (2026-11-22)
 vip	22	A	vip_selected	named.go	exact 8/8 x3 (bazaar/bazaar/catalyst) — TimesSelectedAsVip, somme-film decale 0, gate corrige (VIP_temoin_corrige.log)
 bomb	0	A	bomb_detonations	named.go	exact 8/8 films (somme des slots joueurs = explosions du film), moities disjointes 4/4 + 4/4, controle morts 37/37 — lot A phase A4, 2026-08-27
 core	0	A	Score	score.go	score de mode — CoreStats_ rang 0 (binaire)

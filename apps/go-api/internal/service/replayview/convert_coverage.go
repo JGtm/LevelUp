@@ -60,6 +60,8 @@ func toCoverage(v replay.Coverage) replaydoc.Coverage {
 		Fallbacks:         toFallbackHits(v.Fallbacks),
 		Decoder:           ptrOf(v.Decoder, toDecoderCoverage),
 		DeathsPaths:       ptrOf(v.DeathsPaths, toDeathsPathsCoverage),
+		Reloads:           ptrOf(v.Reloads, toReloadCoverage),
+		Eliminations:      ptrOf(v.Eliminations, toEliminationCoverage),
 	}
 }
 
@@ -252,18 +254,6 @@ func toT0FilmCoverage(v replay.T0FilmCoverage) replaydoc.T0FilmCoverage {
 	}
 }
 
-func toPadDatingStats(v replay.PadDatingStats) replaydoc.PadDatingStats {
-	return replaydoc.PadDatingStats{
-		Occupations:        v.Occupations,
-		Dated:              v.Dated,
-		Named:              v.Named,
-		Ambiguous:          v.Ambiguous,
-		Uncovered:          v.Uncovered,
-		PowerupOccupations: v.PowerupOccupations,
-		FirstOfCycle:       v.FirstOfCycle,
-	}
-}
-
 func toInventoryCoverage(v replay.InventoryCoverage) replaydoc.InventoryCoverage {
 	return replaydoc.InventoryCoverage{
 		Decoded:             v.Decoded,
@@ -323,6 +313,7 @@ func toStanceCoverage(v replay.StanceCoverage) replaydoc.StanceCoverage {
 		RefusedNewFalseReads:  v.RefusedNewFalseReads,
 		RefusedNewLostCreates: v.RefusedNewLostCreates,
 		RefusedNewUndecided:   v.RefusedNewUndecided,
+		Control:               ptrOf(v.Control, toStanceControlCoverage),
 		MapWidths:             v.MapWidths,
 	}
 	if len(v.ByKind) > 0 {

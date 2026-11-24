@@ -4,7 +4,6 @@ import "github.com/JGtm/halo-infinite-film-decoder/decfilm"
 
 // Les fichiers de l'hote qui portent plusieurs sites.
 const (
-	fichierHits         = "internal/sync/killcollector/hits.go"
 	fichierShots        = "internal/sync/killcollector/shots.go"
 	fichierReplaybuild  = "internal/replaybuild/replaybuild.go"
 	fichierRegleDuDecor = "internal/service/replay_vehicle_scenery_rule.go"
@@ -14,13 +13,8 @@ const (
 // `CompleteeParLHote`. Fichier relatif a la racine du module `apps/go-api`, ancre exacte comme dans
 // le registre de la brique.
 var sitesDeLHote = map[decfilm.Nom][]decfilm.Site{
-	decfilm.NomDistancesDeToucheDesactivees: {
-		{Fichier: fichierHits, Ancre: "replisDeLaPasse(ctx).Declenche(decfilm.NomDistancesDeToucheDesactivees)"},
-		{Fichier: fichierHits, Ancre: "carte hors catalogue de bornes, distances desactivees"},
-	},
 	decfilm.NomCartePremierNomResolu: {
 		{Fichier: "internal/sync/killcollector/map_identity.go", Ancre: "replisDeLaPasse(ctx).Declenche(decfilm.NomCartePremierNomResolu)"},
-		{Fichier: fichierHits, Ancre: "premierNomSansArbitrage(ctx, noms, err)"},
 		{Fichier: "internal/sync/killcollector/map_identity.go", Ancre: "if entry, err := c.mapBounds.Lookup(name); err == nil {"},
 	},
 	decfilm.NomXuidVidePourNomInconnu: {
@@ -35,10 +29,6 @@ var sitesDeLHote = map[decfilm.Nom][]decfilm.Site{
 		{Fichier: fichierShots, Ancre: "*discordances++"},
 		{Fichier: fichierShots, Ancre: "fb.DeclencheN(decfilm.NomPremiereOccurrenceSansConcordance, discordances)"},
 		{Fichier: fichierShots, Ancre: "continue // premiere occurrence gagnante"},
-	},
-	decfilm.NomPrecisionParArmePasseSautee: {
-		{Fichier: fichierHits, Ancre: "replisDeLaPasse(ctx).Declenche(decfilm.NomPrecisionParArmePasseSautee)"},
-		{Fichier: fichierHits, Ancre: "numerateur non configure (chemin live sans cache disque)"},
 	},
 	decfilm.NomCoequipiersPartisConstanteNulle: {
 		{Fichier: "internal/sync/killcollector/isolation_facts.go", Ancre: "ids.replis.DeclencheN(decfilm.NomCoequipiersPartisConstanteNulle, len(out))"},

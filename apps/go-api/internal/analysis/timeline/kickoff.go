@@ -14,7 +14,7 @@ import (
 // un changement de logique sans changement de nombre se signale en changeant cette valeur. Les notes
 // lisent ce que cette résolution écrit : l'empreinte des révisions de notation hache KickoffRev
 // (TestScoringParametersMatchRevision, paquet sync), donc la changer impose de les monter aussi.
-const KickoffRev = "kickoff-2026-11-18"
+const KickoffRev = "kickoff-2026-11-22"
 
 // KickoffSource dit d'où vient le coup d'envoi rangé d'un match. Valeurs rangées dans
 // `match_registry.real_start_source` : `film`, `api`, ou vide (coup d'envoi inconnu).

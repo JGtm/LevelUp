@@ -42,7 +42,7 @@ const COLUMNS_QUERY = '?encoding=columns'
  *
  * `enabled` EXISTE POUR LA VUE MATCH, PAS POUR LE REJEU. Sur la page de rejeu, l'artefact
  * EST la page : on le demande toujours. La vue match, elle, en lit un seul calque (la courbe
- * de score, décision D2) et un artefact pèse de 1,5 à 2,7 Mio — le télécharger pour rien sur
+ * de score, décision D2) et un artefact pèse de 2 à 4 Mio (45 % de plus depuis le décodeur v1.6.0) — le télécharger pour rien sur
  * chaque match sans film serait un coût pur. L'appelant passe donc la même présence que le
  * lien « rejeu » (`header.replay_available`, résolu par un `os.Stat` côté API), ce qui est
  * exactement le gating que le plan demande. La CLÉ NE CHANGE PAS : les deux surfaces

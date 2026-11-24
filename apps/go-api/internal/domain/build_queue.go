@@ -164,10 +164,12 @@ const (
 //
 // POURQUOI UN PLAFOND, ET POURQUOI CELUI-CI. Le VPS web a un disque SOUS TENSION
 // (plafond de cache 5 Go, zéro swap, incidents de gel documentés) : un corps non
-// borné est une porte ouverte dessus, quel que soit le jeton présenté. Les
-// artefacts mesurés pèsent ~2 Mo (2,19 · 1,64 · 2,62) ; 16 Mio laisse huit fois
-// la marge du plus gros connu tout en restant FINI — assez large pour qu'un match
-// hors norme passe, assez court pour qu'un ouvrier fou ne remplisse rien.
+// borné est une porte ouverte dessus, quel que soit le jeton présenté. Un artefact
+// pèse de 3 à 4 Mo pour un match courant et jusqu'à 11,4 Mo pour le plus gros film
+// du banc du décodeur v1.6.0 (+45 % depuis la v1.5.0, mesure du décodeur en gzip) :
+// 16 Mio laisse moins de la moitié de marge au plus gros connu tout en restant
+// FINI — assez large pour qu'un match hors norme passe, assez court pour qu'un
+// ouvrier fou ne remplisse rien. Un film plus gros que ce banc se refuse en 413.
 const MaxBuildArtifactBytes = 16 << 20
 
 // ErrBuildArtifactInvalid : l'artefact déposé n'est pas celui qu'on attendait

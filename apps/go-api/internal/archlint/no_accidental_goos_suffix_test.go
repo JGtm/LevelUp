@@ -51,6 +51,8 @@ var goosSuffixAllowed = map[string]string{
 		"ajoute le 2026-10-17 (lecture du detenteur du verrou de decodage)",
 	"apps/go-api/internal/filmrun/priority_windows.go":     "priorite de processus : SetPriorityClass (Win32)",
 	"apps/go-api/internal/filmrun/selfpriority_windows.go": "priorite du processus courant : Win32",
+	"libs/film/cmd/film-bench/machine_windows.go": "description de la machine de mesure (registre, MEMORYSTATUSEX) de l'outil " +
+		"film-bench de la brique, ajoute le 2026-11-24 (decodeur v1.6.0)",
 	"libs/film/internal/decodelock/priorite_windows.go": "priorite du processus d'un instrument de la brique : " +
 		"SetPriorityClass (Win32), ajoute le 2026-11-04 (lot 2.1 de la fin du decouplage)",
 	"apps/go-api/internal/platform/filelock/filelock_windows.go": "verrou de fichier entre processus : " +

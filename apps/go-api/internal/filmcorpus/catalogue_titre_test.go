@@ -92,6 +92,7 @@ func catalogueDuTitre(t *testing.T) replay.LabelCatalog {
 	// ici ferait publier au golden un document dont TOUTES les poses sont `other`, alors que
 	// le manifeste en nomme — c'est-a-dire un document que la production ne sert pas.
 	cat.EquipmentFamilies = labels.EquipmentObjects()
+	cat.DeployedEquipment = labels.DeployedEquipment()
 	// LES FAMILLES MESUREES PAR LE CANAL D'IMPULSION, par le MEME chemin qu'en production
 	// (cf. replaylabels.Load). Les oublier ici ferait publier au golden un document SANS
 	// impulsion sur un film qui en porte — c'est-a-dire l'inverse de ce que la production sert.

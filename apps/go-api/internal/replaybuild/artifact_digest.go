@@ -65,6 +65,10 @@ type Digest struct {
 	// le parseur n ouvre toujours pas le reste du document, ce qui garde la lecture bon marche sur
 	// ~1,2 Mio (item 5.3 de PLAN_CUISSON_PERF).
 	Layers map[string]string
+	// T0Read : le document a été lu et son coup d'envoi (`t0FilmMs`) est établi : T0FilmMs le porte, nil quand le
+	// document n'en publie pas. Faux : rien n'est établi (octets non décodés), le fichier d'en-tête n'en porte pas.
+	T0Read   bool
+	T0FilmMs *int64
 }
 
 // UpToDate : cet artefact est-il A JOUR, c est-a-dire au schema courant ET decode par les
@@ -152,7 +156,8 @@ func digestFromBytes(raw []byte) (Digest, bool) {
 		ScoreTimeline   struct {
 			Players []json.RawMessage `json:"players"`
 		} `json:"scoreTimeline"`
-		Layers map[string]string `json:"layers"`
+		Layers   map[string]string `json:"layers"`
+		T0FilmMs *int64            `json:"t0FilmMs"`
 	}
 	if err := json.Unmarshal(raw, &head); err != nil {
 		return Digest{}, false
@@ -165,6 +170,8 @@ func digestFromBytes(raw []byte) (Digest, bool) {
 		Tracks:          len(head.Tracks),
 		Bytes:           len(raw),
 		Layers:          head.Layers,
+		T0Read:          true,
+		T0FilmMs:        head.T0FilmMs,
 	}, true
 }
 

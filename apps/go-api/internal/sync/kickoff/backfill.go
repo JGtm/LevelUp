@@ -27,7 +27,8 @@ import (
 // secondes : le writer partagé n'est jamais tenu longtemps.
 const DefaultLotSize = 100
 
-// ErrPartial : au moins un match n'a pas pu être traité ; la révision n'est pas rangée.
+// ErrPartial : l'écriture d'au moins un match a échoué ; la révision n'est pas rangée. Un rejeu illisible n'en est pas
+// une cause : il se traite comme un rejeu absent.
 var ErrPartial = errors.New("kickoff: rattrapage partiel")
 
 // Access ouvre les segments de la base partagée : Read pour lire (simulation, révision rangée),
@@ -71,10 +72,23 @@ func Backfill(ctx context.Context, acc Access, o Options) (Report, error) {
 			return rep, err
 		}
 	}
+	logUnreadable(ctx, o.TitleSlug, rep)
 	if rep.Failures > 0 {
-		return rep, fmt.Errorf("%w : %d match(s) en échec, par exemple %s", ErrPartial, rep.Failures, rep.FailedExample)
+		return rep, fmt.Errorf("%w : %d match(s) en échec d'écriture, par exemple %s", ErrPartial, rep.Failures, rep.FailedExample)
 	}
 	return rep, nil
+}
+
+// logUnreadable journalise, une fois par passage, les rejeux présents mais illisibles : combien, et ce que la résolution
+// en a fait (coup d'envoi `film` rangé gardé tel quel, ou résolution sur la source suivante comme si le rejeu était absent).
+// Rien n'est journalisé quand aucun rejeu n'est illisible.
+func logUnreadable(ctx context.Context, titleSlug string, rep Report) {
+	if rep.UnreadableArtifacts == 0 {
+		return
+	}
+	slog.WarnContext(ctx, "coup d'envoi : rejeux illisibles, traités comme absents (la révision n'est pas retenue)",
+		"titleSlug", titleSlug, "illisibles", rep.UnreadableArtifacts,
+		"film_garde", rep.UnreadableKeptFilm, "resolus_sur_la_source_suivante", rep.UnreadableFellBack)
 }
 
 // listMatches lit la liste des matchs par un segment de lecture.
@@ -111,8 +125,8 @@ func runLot(ctx context.Context, acc Access, o Options, ids []string, rep *Repor
 	observability.AddIntT(o.TitleSlug, CompteurAbsentsDuRegistre, int64(len(missing)))
 	for _, p := range plans {
 		rep.add(p)
-		if unreadableBlocks(films[p.MatchID], p.BeforeSource) {
-			rep.fail(p.MatchID)
+		if films[p.MatchID].State == FilmUnreadable {
+			rep.addUnreadable(p)
 		}
 	}
 	if o.DryRun {
@@ -126,16 +140,9 @@ func runLot(ctx context.Context, acc Access, o Options, ids []string, rep *Repor
 	return nil
 }
 
-// unreadableBlocks : un rejeu présent mais illisible, pour un match dont le coup d'envoi rangé est de
-// source `film` ou inconnu, laisse un doute que seule une relecture lève : le match compte en échec
-// et la révision n'est pas rangée. Un rejeu absent, lui, ne retient rien.
-func unreadableBlocks(f Film, stored timeline.KickoffSource) bool {
-	return f.State == FilmUnreadable &&
-		(stored == timeline.KickoffSourceFilm || stored == timeline.KickoffSourceUnknown)
-}
-
 // readFilms lit ce que le rejeu de chaque match du lot dit de son coup d'envoi (cf. [Film]). Un rejeu
-// illisible est journalisé et compté.
+// illisible est compté (compteur et bilan) ; la synthèse du passage le journalise UNE fois ([logUnreadable]).
+// Un rejeu illisible ne retient jamais la révision : [Resolve] le traite comme un rejeu absent.
 func readFilms(ctx context.Context, o Options, ids []string, rep *Report) map[string]Film {
 	films := make(map[string]Film, len(ids))
 	for _, id := range ids {
@@ -144,11 +151,11 @@ func readFilms(ctx context.Context, o Options, ids []string, rep *Report) map[st
 			continue
 		}
 		path := o.ArtifactPath(id)
-		ms, found, err := replaybuild.ArtifactKickoff(path)
+		ms, found, err := replaybuild.ArtifactKickoff(ctx, path, !o.DryRun)
 		switch {
 		case err != nil:
-			slog.WarnContext(ctx, "coup d'envoi : rejeu illisible, rien de neuf n'en est tiré",
-				"titleSlug", o.TitleSlug, "match_id", id, "path", path, "err", err)
+			slog.DebugContext(ctx, "coup d'envoi : rejeu illisible, rien de neuf n'en est tiré",
+				"titleSlug", o.TitleSlug, "match_id", id, "err", err)
 			observability.IncCounterT(o.TitleSlug, CompteurArtefactsIllisibles)
 			rep.UnreadableArtifacts++
 			films[id] = Film{State: FilmUnreadable}

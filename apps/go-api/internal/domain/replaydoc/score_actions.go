@@ -14,7 +14,10 @@ type ScoreAction struct {
 }
 
 // ScoreActionCoverage dit ce que le calque a lu, publie et ecarte. `complete` est le verdict : la
-// somme des points d'un joueur ne vaut son score personnel que s'il est vrai.
+// somme des points d'un joueur ne vaut son score personnel que s'il est vrai : le décodeur le rend faux, entre autres,
+// quand le tableau des scores du film montre des points que le calque ne publie pas. Les compteurs de cette
+// comparaison (joueurs comparés, en dessous, au-dessus du tableau, décalage d'arbre) n'ont aucun lecteur ici : le
+// verdict suffit (`testutil.ReplayChampsNonServis`).
 type ScoreActionCoverage struct {
 	Complete           bool   `json:"complete"`
 	Group              string `json:"group,omitempty"`

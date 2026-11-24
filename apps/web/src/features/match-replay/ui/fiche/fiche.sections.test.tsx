@@ -356,7 +356,7 @@ describe('FicheTotaux et FicheGestes', () => {
   })
 
   it('les gestes : l’instant lu à côté du titre, sprint, sauts avec la capsule « estimation »', () => {
-    const { container } = render(<FicheGestes gestures={{ sprintMs: 64_000, jumps: 12 }} clock="3:51" locale="fr" />)
+    const { container } = render(<FicheGestes gestures={{ sprintMs: 64_000, moveMs: null, moveEstimated: false, jumps: 12, reloads: null, reloadsMinimum: false }} clock="3:51" locale="fr" />)
     const section = screen.getByRole('region', { name: 'Gestes' })
     expect(within(section).getByText('3:51')).toBeTruthy()
     expect(container.firstElementChild?.className).toContain('border-t')
@@ -364,8 +364,34 @@ describe('FicheTotaux et FicheGestes', () => {
     expect(within(section).getByText('estimation')).toBeTruthy()
   })
 
+  it('le temps de déplacement et les rechargements : deux lignes, dans les deux langues, sans jargon', () => {
+    const g = { sprintMs: 64_000, moveMs: 125_000, moveEstimated: false, jumps: null, reloads: 18, reloadsMinimum: false }
+    const fr = render(<FicheGestes gestures={g} clock="3:51" locale="fr" />)
+    expect(lignes(fr.container)).toEqual([['Sprint, temps cumulé', '1:04'], ['Déplacement, temps cumulé', '2:05'], ['Rechargements', '18']])
+    fr.unmount()
+    const en = render(<FicheGestes gestures={g} clock="3:51" locale="en" />)
+    expect(lignes(en.container)).toEqual([['Sprint, total time', '1:04'], ['Movement, total time', '2:05'], ['Reloads', '18']])
+  })
+
+  it('un compte de rechargements qui est un plancher porte la capsule « estimation » et son infobulle', () => {
+    const g = { sprintMs: null, moveMs: null, moveEstimated: false, jumps: null, reloads: 7, reloadsMinimum: true }
+    const { container } = render(<FicheGestes gestures={g} clock="1:00" locale="fr" />)
+    expect(lignes(container)).toEqual([['Rechargementsestimation', '7']])
+    expect(screen.getByTitle('Le film ne montre pas tous les rechargements : ce compte est un minimum')).toBeTruthy()
+  })
+
+  it('un temps de déplacement estimé porte la capsule « estimation » et son infobulle, dans les deux langues', () => {
+    const g = { sprintMs: null, moveMs: 5000, moveEstimated: true, jumps: null, reloads: null, reloadsMinimum: false }
+    const fr = render(<FicheGestes gestures={g} clock="1:00" locale="fr" />)
+    expect(lignes(fr.container)).toEqual([['Déplacement, temps cumuléestimation', '0:05']])
+    expect(screen.getByTitle('Le film ne montre pas toutes les commandes de déplacement : ce temps est une estimation')).toBeTruthy()
+    fr.unmount()
+    render(<FicheGestes gestures={g} clock="1:00" locale="en" />)
+    expect(screen.getByTitle('The film does not show every movement command: this time is an estimate')).toBeTruthy()
+  })
+
   it('un geste absent n’a pas de ligne', () => {
-    const { container } = render(<FicheGestes gestures={{ sprintMs: null, jumps: 4 }} clock="0:10" locale="fr" />)
+    const { container } = render(<FicheGestes gestures={{ sprintMs: null, moveMs: null, moveEstimated: false, jumps: 4, reloads: null, reloadsMinimum: false }} clock="0:10" locale="fr" />)
     expect(lignes(container)).toEqual([['Sautsestimation', '4']])
   })
 })

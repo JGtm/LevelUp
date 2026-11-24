@@ -145,6 +145,25 @@ export function goFixtureSchemaVersion(): number {
 }
 
 /**
+ * LES CALQUES DU DOCUMENT STOCKÉ QUE L'API NE SERT PAS (décodeur v1.6.0, schéma 127, décision du 2026-11-24) : les
+ * fixtures sont les documents du décodeur, avec tout ce qu'il écrit, alors que le serveur n'envoie au web que la
+ * projection du contrat (la racine du contrat est stricte : une clé de plus est un manquement). Cette liste est celle de
+ * `testutil.ReplayChampsNonServis` pour `ReplayDocument.*` côté Go : un calque que LevelUp ne lit pas reste dans le
+ * décodeur, et la fixture le perd ici comme le serveur le perd en route. Une clé renommée d'un calque SERVI n'y est pas
+ * et reste attrapée par le contrat.
+ */
+const STORED_ONLY_LAYERS: readonly string[] = [
+  'ammoReads',
+  'announcements',
+  'attachments',
+  'chatter',
+  'drawnWeapons',
+  'gestures',
+  'padCandidates',
+  'vitals',
+]
+
+/**
  * UN document, décompressé et désérialisé.
  *
  * PARESSEUX PAR CONSTRUCTION : un document pèse de 2 à 10 Mio décompressé, et seuls les tests
@@ -156,5 +175,7 @@ export function loadGoFixture(entry: GoFixtureEntry): GoFixture {
   const json = entry.file.endsWith('.gz')
     ? gunzipSync(blob).toString('utf8')
     : blob.toString('utf8')
-  return { entry, doc: JSON.parse(json) as ReplayDocument }
+  const doc = JSON.parse(json) as Record<string, unknown>
+  for (const key of STORED_ONLY_LAYERS) delete doc[key]
+  return { entry, doc: doc as unknown as ReplayDocument }
 }

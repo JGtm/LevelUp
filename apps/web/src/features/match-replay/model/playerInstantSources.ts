@@ -3,7 +3,7 @@
  * lecture, rangées par document (le lobby entier) et par joueur. Sans React.
  *
  * DEUX NIVEAUX, parce que deux durées de vie. Ce qui se lit pour tout le lobby — score et rang, tirs, équipement,
- * sprint et sauts — ne dépend que du document et de ses joueurs (`readInstantDocSeries`) : changer de joueur ne le
+ * sprint, sauts, commande de déplacement et rechargements — ne dépend que du document et de ses joueurs (`readInstantDocSeries`) : changer de joueur ne le
  * relit pas. Ce qui se lit pour un joueur — compteurs, éliminations, lancers, médailles — en dépend aussi
  * (`readPlayerInstantSources`). Le rendu appelle chacun dans un `useMemo` et interroge ensuite `playerInstantViewAt`
  * à chaque image, sans rien relire du document.
@@ -32,6 +32,12 @@ import {
   type MovementSeriesIndex,
   type PlayerMovementSeries,
 } from './playerMovementStats'
+import {
+  readReloadSeries,
+  reloadSeriesOf,
+  type PlayerReloadSeries,
+  type ReloadSeriesIndex,
+} from './playerReloadStats'
 import { readPlayerThrowsPickupsSeries, type PlayerThrowsPickupsSeries } from './playerThrowsPickups'
 
 /** Ce qui se lit une fois par document : les séries du lobby entier. */
@@ -39,6 +45,7 @@ export interface InstantDocSeries {
   estimates: InstantEstimatesSeries
   equipment: EquipmentSeriesIndex
   movement: MovementSeriesIndex
+  reloads: ReloadSeriesIndex
 }
 
 /** readInstantDocSeries lit, pour le lobby entier, ce qui ne dépend pas du joueur ouvert. */
@@ -47,6 +54,7 @@ export function readInstantDocSeries(doc: ReplayDocumentReady, players: readonly
     estimates: readInstantEstimatesSeries({ doc, players }),
     equipment: readEquipmentSeries(doc, players),
     movement: readMovementSeries(doc, players),
+    reloads: readReloadSeries(doc, players),
   }
 }
 
@@ -76,6 +84,7 @@ export interface PlayerInstantSources {
   throws: PlayerThrowsPickupsSeries
   equipment: PlayerEquipmentSeries | null
   movement: PlayerMovementSeries | null
+  reloads: PlayerReloadSeries | null
   estimates: InstantEstimatesSeries
   /** Le nom d'une arme par sa clé du registre, ou `null` quand aucun nom n'est connu. */
   weaponName: (weaponKey: string) => string | null
@@ -104,6 +113,7 @@ export function readPlayerInstantSources(input: PlayerInstantSourcesInput): Play
     throws: readPlayerThrowsPickupsSeries({ doc, players, player }),
     equipment: equipmentSeriesOf(docSeries.equipment, player),
     movement: movementSeriesOf(docSeries.movement, player),
+    reloads: reloadSeriesOf(docSeries.reloads, player),
     estimates: docSeries.estimates,
     weaponName: (key) => fromFeed.get(key) || weaponIcons.get(key)?.label || null,
   }

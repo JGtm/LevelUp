@@ -55,6 +55,14 @@ describe('playerInstantScore — la tuile et la fiche lisent la même valeur', (
     }
   })
 
+  it('un verdict faux du décodeur : la cause est « score incomplet », pour la tuile comme pour la fiche', () => {
+    const base = instantDoc()
+    const doc = instantDoc({ coverage: { ...base.coverage, scoreActions: { complete: false } } as never })
+    const players = instantPlayers(doc, instantSheet())
+    const series = readInstantScoreSeries(doc, players)
+    for (const p of players) expect(series.get(p.xuid)).toEqual({ ticks: null, absence: 'score-incomplet' })
+  })
+
   it('le calque de score du film ne décide pas : décalé d’une image, il n’est pas lu', () => {
     const base = instantDoc()
     const calque = {
@@ -74,6 +82,22 @@ describe('playerInstantScore — la tuile et la fiche lisent la même valeur', (
     const alpha = instantPlayer(players, 'A')
     expect(playerScoreAt(tuiles, alpha, 20)).toBe(100)
     expect(playerInstantEstimatesAt(fiche, alpha, 20).score).toBe(100)
+  })
+
+  it('une pénalité fait reculer le score, et le total peut être négatif', () => {
+    const base = instantDoc()
+    const doc = instantDoc({
+      coverage: base.coverage,
+      scoreActions: [
+        { t: 20, xuid: 'A', name: 'kill', points: 100 },
+        { t: 60, xuid: 'A', name: 'betrayal', points: -150 },
+      ] as never,
+    })
+    const sheet = instantSheet().map((r) => (r.xuid === 'A' ? { ...r, score: -50 } : r))
+    const { players, tuiles } = lectures(doc, sheet)
+    const alpha = instantPlayer(players, 'A')
+    expect(playerScoreAt(tuiles, alpha, 30)).toBe(100)
+    expect(playerScoreAt(tuiles, alpha, 60)).toBe(-50)
   })
 
   it('un joueur étranger au lobby n’a pas de score', () => {

@@ -72,6 +72,17 @@ func (b *Builder) ecrireLesFaits(ctx context.Context, matchID string, f *replay.
 		"bytes", len(blob))
 }
 
+// AvecFils regle le nombre de fils que le decodeur de film peut employer pour lire un film (`replay.Options.Vitesse`).
+// La valeur vient de la configuration de l'installation (`config.DeploymentCapabilities.DecoderThreads`), que
+// l'appelant passe ici ; la sortie du decodeur n'en depend pas. Zero ou moins : un fil.
+func (b *Builder) AvecFils(n int) *Builder {
+	b.fils = n
+	return b
+}
+
+// Fils rend le nombre de fils regle par AvecFils (zero = un fil).
+func (b *Builder) Fils() int { return b.fils }
+
 // SansEcritureDesFaits : la cuisson n'ECRIT pas ses faits dans le cache du depot. Pour un
 // appelant qui cuit hors du cycle du depot et ne doit rien ecrire sous sa racine — la
 // recuisson des rejeux figes de la demo, dont la seule sortie est la demo elle-meme. La

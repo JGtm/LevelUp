@@ -66,10 +66,22 @@ computed once, at sync, on the estimate, and never again when the replay brought
   holds the player notes of that title for that startup. A replay whose match is not in the registry, or a match that
   vanished between the list and its batch, is not a failure (logged, counted, the derivation is marked). The command
   `levelup backfill-kickoff` runs the same function, with a `--dry-run` that lists the gaps without writing.
+  Amendment (2026-11-23): an unreadable replay no longer holds the revision. It is resolved as an absent replay (a match
+  stored as `film` keeps its value, the others fall through the fixed order to the estimate, then unknown), counted
+  (`kickoff_artefacts_illisibles_total`, the report) and logged once per pass with the counts, so a damaged file does not
+  rerun the catch-up at every startup; only a failed WRITE keeps the revision unstored. The resolution order and the
+  parameters are unchanged, so `KickoffRev` does not move. The catch-up reads the kickoff from the artifact's header file
+  (`<short8>.meta`, which the artifact writer keeps; `t0FilmMs` follows the tracks in the document, so the first bytes of the
+  file never reach it) and falls back to one full read when the header is missing, stale or older than the field, completing
+  the header on the way (not in `--dry-run`); same value either way.
 - **D-6 — The notes replay once, and the revisions are bound.** `PerformanceScoreRev` and `LUSRRev` move to
   `2026-11-18`: on the first startup, the kickoff catch-up runs, then every player's notes are replayed once. Both
   scoring fingerprints hash `timeline.KickoffRev` (`TestScoringParametersMatchRevision`): changing the kickoff revision
   without moving the two scoring revisions fails.
+  Amendment (2026-11-22): the kickoff the replay publishes is read on the game clock (film decoder v1.5.0), so the
+  stored value of a replayed match changes. `KickoffRev` moves to `kickoff-2026-11-22`, `PerformanceScoreRev` to
+  `perf-2026-11-22` and `LUSRRev` to `lusr-2026-11-22` (same two-fingerprint rule, no parameter of their own changes):
+  the first startup runs the kickoff catch-up, then replays every player's notes once.
 
 - **D-7 — One reading, for every reader.** `timeline.ForMatch` (`internal/analysis/timeline/build.go`) is the only rule
   that reads a stored kickoff: a known kickoff = the chronology starts from it; an unknown one (`nil`: Halo 5, a refused

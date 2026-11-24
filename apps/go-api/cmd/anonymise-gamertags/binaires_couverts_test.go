@@ -45,6 +45,10 @@ var binairesCouverts = []binaireCouvert{
 	{regexp.MustCompile(`^replay/testdata/commande_[0-9a-f]{8}\.bin\.gz$`),
 		"lectures d unit-control et suppressions de bipede : index de joueur du film, slot et instant, aucun champ xuid " +
 			"(golden_commande_test.go) ; codec encodeCommandeDesBipedes"},
+	{regexp.MustCompile(`^replay/testdata/horloges_[0-9a-f]{8}\.bin\.gz$`),
+		"horloge de manche et comptes a rebours : horodatages, quanta, etat, slot, index de joueur du film et " +
+			"secondes, aucun champ xuid (encodeHorloges) ; golden_horloges_test.go " +
+			"TestGoldenHorlogesNePorteAucunIdentifiant (domaines bornes, aucune suite de 16 chiffres ASCII)"},
 	{regexp.MustCompile(`^replay/testdata/jeu_[0-9a-f]{8}\.bin\.gz$`),
 		"messages de jeu et noms de script : index de joueur du film, aucun champ xuid (golden_jeu_test.go) ; " +
 			"codec encodeJeu"},

@@ -60,22 +60,76 @@ func TestDocumentShapeTwinsAgree(t *testing.T) {
 	for _, pb := range testutil.ReplayServisSeulsIncoherents(inventaireServi(servi)) {
 		t.Error(pb)
 	}
-	if msg := ecartDesFormesJumelles(stocke, servi, testutil.ReplayChampsServisSeuls, testutil.ReplayTypesServisSeuls); msg != "" {
+	if msg := ecartDesFormesJumelles(stocke, servi, exceptionsDeForme{
+		servisSeulsChamps: testutil.ReplayChampsServisSeuls, servisSeulsTypes: testutil.ReplayTypesServisSeuls,
+		nonServisChamps: testutil.ReplayChampsNonServis, nonServisTypes: testutil.ReplayTypesNonServis,
+		balisesServies: testutil.ReplayBalisesServiesDifferentes,
+	}); msg != "" {
 		t.Error(msg)
 	}
 }
 
-// ecartDesFormesJumelles rend le message d'ecart entre la forme serialisee de `stocke` et celle de `servi`
-// privee des champs (`Type.Champ`) et des types `servisSeuls` nommes, ou "" quand elles coincident. Les
-// listes ne retirent rien de la forme stockee.
-func ecartDesFormesJumelles(stocke, servi reflect.Type, champsServisSeuls, typesServisSeuls map[string]string) string {
-	a := documentShapeRenderSerialise(stocke, nil, nil)
-	b := documentShapeRenderSerialise(servi, champsServisSeuls, typesServisSeuls)
+// exceptionsDeForme porte les decisions ecrites qui separent les deux formes : les champs et types SERVIS SEULS
+// (retires de la forme servie) et les champs et types NON SERVIS (retires de la forme stockee), par `Type.Champ`
+// et par nom de type.
+type exceptionsDeForme struct {
+	servisSeulsChamps, servisSeulsTypes map[string]string
+	nonServisChamps, nonServisTypes     map[string]string
+	// balisesServies : les differences de balise JSON declarees (`Type.Champ`), rapportees a la balise stockee avant
+	// comparaison.
+	balisesServies map[string]testutil.BaliseServieDifferente
+}
+
+// ecartDesFormesJumelles rend le message d'ecart entre la forme serialisee de `stocke` et celle de `servi`, chacune
+// privee de ses exceptions ecrites, ou "" quand elles coincident. Une exception ne retire rien de l'autre forme.
+func ecartDesFormesJumelles(stocke, servi reflect.Type, ex exceptionsDeForme) string {
+	a := documentShapeRenderSerialise(stocke, ex.nonServisChamps, ex.nonServisTypes)
+	b := documentShapeRenderSerialise(servi, ex.servisSeulsChamps, ex.servisSeulsTypes)
+	b, perimees := ramenerLesBalisesDeclarees(b, ex.balisesServies)
+	if len(perimees) > 0 {
+		return fmt.Sprintf("testutil.ReplayBalisesServiesDifferentes cite des balises que la forme servie n'ecrit plus "+
+			"telles que declarees : %s", strings.Join(perimees, ", "))
+	}
 	if a == b {
 		return ""
 	}
 	return fmt.Sprintf("la forme STOCKEE et la forme SERVIE divergent (empreintes %s et %s).\n%s",
 		empreinteDe(a), empreinteDe(b), premierEcartTexte(a, b))
+}
+
+// ramenerLesBalisesDeclarees remplace, dans la forme servie `render`, la balise servie de chaque champ de `declarees`
+// (`Type.Champ`) par sa balise stockee, pour que la comparaison ne voie que les differences NON declarees. Une
+// declaration dont le champ n'a plus exactement la balise servie declaree est rendue dans `perimees` : une exception
+// qui survit a sa raison finit par en couvrir une autre.
+func ramenerLesBalisesDeclarees(render string, declarees map[string]testutil.BaliseServieDifferente) (string, []string) {
+	vues := map[string]bool{}
+	lignes := strings.Split(render, "\n")
+	nomDuType := ""
+	for i, l := range lignes {
+		if !strings.HasPrefix(l, "  ") {
+			nomDuType = l
+			continue
+		}
+		champ, reste, _ := strings.Cut(strings.TrimPrefix(l, "  "), " ")
+		cle := nomDuType + "." + champ
+		d, ok := declarees[cle]
+		if !ok {
+			continue
+		}
+		servie := fmt.Sprintf("json:%q ", d.Servi)
+		if strings.HasPrefix(reste, servie) {
+			vues[cle] = true
+			lignes[i] = "  " + champ + " " + fmt.Sprintf("json:%q ", d.Stocke) + strings.TrimPrefix(reste, servie)
+		}
+	}
+	var perimees []string
+	for cle := range declarees {
+		if !vues[cle] {
+			perimees = append(perimees, cle)
+		}
+	}
+	sort.Strings(perimees)
+	return strings.Join(lignes, "\n"), perimees
 }
 
 // inventaireServi recense, pour la forme SERVIE entiere (listes non retirees), les champs exportes par

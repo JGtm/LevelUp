@@ -20,8 +20,7 @@ package migration
 //	                           un petit tableau de comptes par tranche, pas un point par touche.
 //	dist_n            STOCKE   nombre de touches dont LES DEUX positions (tireur, victime) se
 //	                           sont resolues au ts du degat. C est l effectif de l histogramme
-//	                           ci-dessus. dist_n < WeaponHitsMinShots => l histogramme n est
-//	                           PAS publiable (voir la porte plus bas).
+//	                           ci-dessus.
 //	distance brute    HORS PORTEE  aucune ligne par touche : la distance individuelle n a pas
 //	                           d usage produit, seul l histogramme par arme est affiche.
 //
@@ -32,52 +31,21 @@ package migration
 //	                    32 bits du dead-state. Insere en CHAINE DECIMALE (piege ubigintArg : un
 //	                    id dont le bit de poids fort vaut 1 serait NEGATIF en int64 signe).
 //
-// ─── LA PORTE DE PUBLICATION (Nmin) — MESUREE, PAS DEVINEE ─────────────────────────────────
+// ─── ETAT : LA TABLE N A PLUS D ECRIVAIN ──────────────────────────────────────────────────
 //
-// Une forme par arme (taux d accuracy, histogramme de distance) n est publiable que si son
-// effectif atteint WeaponHitsMinShots : denominateur `shots_fired` pour le taux, `dist_n` pour
-// l histogramme. Sous ce seuil, une poignee d observations donne une forme qui n est que du bruit.
-//
-// WeaponHitsMinShots = 8, FIXE PAR MESURE le 2026-09-01 (instrument lot1_nmin_effectif_research_test)
-// sur les trois films de reference, fenetre W = 250 ms, 12 chunks temoin (fenetre TRONQUEE : un
-// match d arene complet est plusieurs fois plus long, les effectifs reels sont superieurs).
-// Distribution par cle (joueur, arme) du nombre de TIRS decodes :
-//
-//	film      cles(joueur,arme)  median tirs/cle  cles >=5  cles >=8  cles >=10
-//	000d5950         33                5             17       11         10
-//	01e1f945         14               60             12       11         11
-//	00502e52         34                5             18       11         10
-//
-// LA JUSTIFICATION DU 8 : le sous-ensemble « >= 8 tirs » est REMARQUABLEMENT STABLE d un film a
-// l autre — 11 cles sur les trois, quand le total va de 14 a 34. Le seuil isole donc les armes
-// avec lesquelles le joueur s est REELLEMENT battu et jette la longue traine des ramassages a
-// 1-4 tirs (33 -> 11, 14 -> 11, 34 -> 11). C est le meme ordre de grandeur que le garde-fou
-// `n < 5` deja code dans l instrument d attribution (attribM2/attribM3), releve a 8 : la DISTANCE
-// est plus exigeante encore (chaque touche compte dans `dist_n` seulement si SES DEUX positions
-// se resolvent, ~2/3 des touches — reserve #3 du plan), mais sur un match complet (non tronque a
-// 12 chunks) l effectif d une arme reellement utilisee depasse largement 8.
+// La passe du collecteur qui la remplissait depuis le film (precision par arme selon la distance) est
+// retiree : l'appariement tir-degat manquait ~40 % des touches, la precision par arme d'Infinite
+// n'est pas exposee. La table et sa vue `_latest` restent au schema : elles ne portent aucune ligne
+// sur une base neuve et celles des bases existantes ne sont lues par personne.
 //
 // ─── APPEND-ONLY, MEME UNITE DE GENERATION QUE match_weapon_shots ─────────────────────────
 //
 // PK technique `id`, `written_at`, INSERT purs (ADR 0026/0030 : aucun UPDATE/DELETE/ON CONFLICT).
 // La vue `_latest` retient LA DERNIERE PASSE PAR MATCH (`decode_pass`), jamais la derniere ligne
 // par cle : l unite de production est le FILM ENTIER. Un `_latest` ligne par ligne laisserait
-// survivre les armes d une passe precedente que la nouvelle ne decode plus. Le persister
-// (INSERT-only) arrive au Lot 3 ; ce step ne pose que le schema.
+// survivre les armes d une passe precedente que la nouvelle ne decode plus.
 
 import "database/sql"
-
-// WeaponHitDistanceDecoderRev est la version du numerateur film qui alimente cette table.
-// Distincte du decodeur de tirs (match_weapon_shots) : distance et touches sortent de
-// l appariement tir<->degat (methode PAR LE TIR, NOTE_ATTRIBUTION_ARME_TIR_2026-08-31),
-// pas du simple comptage des fire-events. Sert a savoir QUELS matchs redecoder apres un
-// changement du numerateur, au lieu de tout redecoder.
-const WeaponHitDistanceDecoderRev = "whd-v1"
-
-// WeaponHitsMinShots est l effectif minimal (`dist_n`) pour qu un histogramme de distances
-// par arme soit publiable. Fixe a 8 par mesure (cf. doc-header). Une cle sous ce seuil n est
-// JAMAIS affichee : trop peu de touches pour une forme de distribution sensee.
-const WeaponHitsMinShots = 8
 
 func init() {
 	Register(Migration{
@@ -98,8 +66,8 @@ func applyMatchWeaponHitDistance(db *sql.DB) error {
 	return execScript(db, ddlMatchWeaponHitDistanceLatest)
 }
 
-// ddlMatchWeaponHitDistance : la table + son unique index. UN SEUL INDEX, meme argument que
-// match_weapon_shots : DuckDB est colonnaire, le seul acces ponctuel reel est « les touches de
+// ddlMatchWeaponHitDistance : la table (sans ecrivain, cf. « ETAT » en tete de fichier) + son unique
+// index. UN SEUL INDEX, meme argument que match_weapon_shots : DuckDB est colonnaire, le seul acces ponctuel reel est « les touches de
 // CE match » ; chaque index en plus coute a l INSERT et elargit la surface ART.
 const ddlMatchWeaponHitDistance = `
 	CREATE SEQUENCE IF NOT EXISTS match_weapon_hit_distance_id_seq START 1;
@@ -109,8 +77,7 @@ const ddlMatchWeaponHitDistance = `
 		match_id          VARCHAR   NOT NULL,
 		-- decode_pass : identifiant d UNE passe de decodage d UN film. Unite de generation.
 		decode_pass       VARCHAR   NOT NULL,
-		-- decoder_rev : version du numerateur film (WeaponHitDistanceDecoderRev). Sert a savoir
-		-- QUELS matchs redecoder apres un changement, au lieu de tout redecoder.
+		-- decoder_rev : version du numerateur film qui a ecrit la ligne.
 		decoder_rev       VARCHAR   NOT NULL,
 		written_at        TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 
@@ -129,7 +96,7 @@ const ddlMatchWeaponHitDistance = `
 		-- (comptes par tranche, bornes = sondeDistEdges de l instrument d attribution).
 		dist_bucket_json  VARCHAR   NOT NULL,
 		-- dist_n : nombre de touches dont LES DEUX positions se sont resolues = effectif de
-		-- l histogramme. dist_n < WeaponHitsMinShots => non publiable (le lecteur tranche).
+		-- l histogramme.
 		dist_n            INTEGER   NOT NULL
 	);
 	CREATE INDEX IF NOT EXISTS idx_match_weapon_hit_distance_match

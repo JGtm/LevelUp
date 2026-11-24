@@ -1,4 +1,4 @@
-{"variant":"objectifs","instant":"milieu","frame":11466,"opCount":3102}
+{"variant":"objectifs","instant":"milieu","frame":11466,"opCount":3244}
 {"op":"setTransform","args":[1,0,0,1,0,0]}
 {"op":"clearRect","args":[0,0,960,354]}
 {"op":"drawImage","args":[{"canvas":{"w":960,"h":354,"ops":5433,"sha":"74734f23a5185dc805584e9db506ec6660cfc4556a0ab1a212820dd220099091"}},-2.842170943040401e-14,0,960,354]}
@@ -177,6 +177,66 @@
 {"op":"lineTo","args":[608.2592192500001,173.78537979375]}
 {"op":"closePath","args":[]}
 {"op":"fill","args":[]}
+{"op":"set strokeStyle","args":["#718d42"]}
+{"op":"set fillStyle","args":["#718d42"]}
+{"op":"set globalAlpha","args":[0.35]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[218.43403687500006,243.2241918125]}
+{"op":"lineTo","args":[222.43403687500006,247.2241918125]}
+{"op":"lineTo","args":[218.43403687500006,251.2241918125]}
+{"op":"lineTo","args":[214.43403687500006,247.2241918125]}
+{"op":"closePath","args":[]}
+{"op":"fill","args":[]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set font","args":["600 8px ui-sans-serif, system-ui, sans-serif"]}
+{"op":"set textAlign","args":["center"]}
+{"op":"set textBaseline","args":["bottom"]}
+{"op":"set lineJoin","args":["round"]}
+{"op":"set lineWidth","args":[2.4]}
+{"op":"set strokeStyle","args":["#4ee3ef"]}
+{"op":"strokeText","args":["14 s",218.43403687500006,240.7241918125]}
+{"op":"set fillStyle","args":["#5b6f63"]}
+{"op":"fillText","args":["14 s",218.43403687500006,240.7241918125]}
+{"op":"set strokeStyle","args":["#718d42"]}
+{"op":"set fillStyle","args":["#718d42"]}
+{"op":"set globalAlpha","args":[0.35]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[751.9429171875001,243.44476203124998]}
+{"op":"lineTo","args":[755.9429171875001,247.44476203124998]}
+{"op":"lineTo","args":[751.9429171875001,251.44476203124998]}
+{"op":"lineTo","args":[747.9429171875001,247.44476203124998]}
+{"op":"closePath","args":[]}
+{"op":"fill","args":[]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set font","args":["600 8px ui-sans-serif, system-ui, sans-serif"]}
+{"op":"set textAlign","args":["center"]}
+{"op":"set textBaseline","args":["bottom"]}
+{"op":"set lineJoin","args":["round"]}
+{"op":"set lineWidth","args":[2.4]}
+{"op":"set strokeStyle","args":["#4ee3ef"]}
+{"op":"strokeText","args":["52 s",751.9429171875001,240.94476203124998]}
+{"op":"set fillStyle","args":["#5b6f63"]}
+{"op":"fillText","args":["52 s",751.9429171875001,240.94476203124998]}
+{"op":"set strokeStyle","args":["#718d42"]}
+{"op":"set fillStyle","args":["#718d42"]}
+{"op":"set globalAlpha","args":[0.35]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[485.30106702187504,235.284865625]}
+{"op":"lineTo","args":[489.30106702187504,239.284865625]}
+{"op":"lineTo","args":[485.30106702187504,243.284865625]}
+{"op":"lineTo","args":[481.30106702187504,239.284865625]}
+{"op":"closePath","args":[]}
+{"op":"fill","args":[]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set font","args":["600 8px ui-sans-serif, system-ui, sans-serif"]}
+{"op":"set textAlign","args":["center"]}
+{"op":"set textBaseline","args":["bottom"]}
+{"op":"set lineJoin","args":["round"]}
+{"op":"set lineWidth","args":[2.4]}
+{"op":"set strokeStyle","args":["#4ee3ef"]}
+{"op":"strokeText","args":["35 s",485.30106702187504,232.784865625]}
+{"op":"set fillStyle","args":["#5b6f63"]}
+{"op":"fillText","args":["35 s",485.30106702187504,232.784865625]}
 {"op":"set globalAlpha","args":[1]}
 {"op":"restore","args":[]}
 {"op":"save","args":[]}
@@ -2798,11 +2858,33 @@
 {"op":"set globalAlpha","args":[1]}
 {"op":"set lineWidth","args":[1.1]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[288.87750000000005,148.603125]}
+{"op":"lineTo","args":[288.87750000000005,150.303125]}
+{"op":"stroke","args":[]}
+{"op":"beginPath","args":[]}
+{"op":"arc","args":[288.87750000000005,152.503125,0.6,0,6.283185307179586]}
+{"op":"fill","args":[]}
+{"op":"set strokeStyle","args":["#7604ad"]}
+{"op":"set fillStyle","args":["#7604ad"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set lineWidth","args":[1.1]}
+{"op":"beginPath","args":[]}
 {"op":"moveTo","args":[73.75312500000004,163.90312500000002]}
 {"op":"lineTo","args":[73.75312500000004,165.603125]}
 {"op":"stroke","args":[]}
 {"op":"beginPath","args":[]}
 {"op":"arc","args":[73.75312500000004,167.80312500000002,0.6,0,6.283185307179586]}
+{"op":"fill","args":[]}
+{"op":"set strokeStyle","args":["#7604ad"]}
+{"op":"set fillStyle","args":["#7604ad"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set lineWidth","args":[1.1]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[288.87750000000005,148.603125]}
+{"op":"lineTo","args":[288.87750000000005,150.303125]}
+{"op":"stroke","args":[]}
+{"op":"beginPath","args":[]}
+{"op":"arc","args":[288.87750000000005,152.503125,0.6,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"save","args":[]}
 {"op":"set globalCompositeOperation","args":["source-over"]}
@@ -2961,6 +3043,36 @@
 {"op":"set strokeStyle","args":["#49c670"]}
 {"op":"set fillStyle","args":["#49c670"]}
 {"op":"save","args":[]}
+{"op":"translate","args":[277.741616973277,154.81125333752183]}
+{"op":"rotate","args":[-3.2183871406775437]}
+{"op":"scale","args":[1.7,0.45]}
+{"op":"createRadialGradient","args":[0,0,0,0,0,13]}
+{"op":"addColorStop","args":[0,"#49c670"]}
+{"op":"addColorStop","args":[0.35,"#49c670"]}
+{"op":"addColorStop","args":[1,"transparent"]}
+{"op":"set globalAlpha","args":[0.2716822592662245]}
+{"op":"set fillStyle","args":["[Object]"]}
+{"op":"beginPath","args":[]}
+{"op":"arc","args":[0,0,13,0,6.283185307179586]}
+{"op":"fill","args":[]}
+{"op":"createRadialGradient","args":[0,0,0,0,0,4.6]}
+{"op":"addColorStop","args":[0,"#be4280"]}
+{"op":"addColorStop","args":[0.35,"#be4280"]}
+{"op":"addColorStop","args":[1,"transparent"]}
+{"op":"set globalAlpha","args":[0.3018691769624717]}
+{"op":"set fillStyle","args":["[Object]"]}
+{"op":"beginPath","args":[]}
+{"op":"arc","args":[0,0,4.6,0,6.283185307179586]}
+{"op":"fill","args":[]}
+{"op":"restore","args":[]}
+{"op":"restore","args":[]}
+{"op":"save","args":[]}
+{"op":"set globalCompositeOperation","args":["source-over"]}
+{"op":"set lineCap","args":["round"]}
+{"op":"set lineJoin","args":["round"]}
+{"op":"set strokeStyle","args":["#49c670"]}
+{"op":"set fillStyle","args":["#49c670"]}
+{"op":"save","args":[]}
 {"op":"translate","args":[276.14786697327696,154.65187833752185]}
 {"op":"rotate","args":[-3.2183871406775437]}
 {"op":"scale","args":[1.7,0.45]}
@@ -3038,6 +3150,36 @@
 {"op":"addColorStop","args":[0.35,"#be4280"]}
 {"op":"addColorStop","args":[1,"transparent"]}
 {"op":"set globalAlpha","args":[0.6888773475735721]}
+{"op":"set fillStyle","args":["[Object]"]}
+{"op":"beginPath","args":[]}
+{"op":"arc","args":[0,0,4.6,0,6.283185307179586]}
+{"op":"fill","args":[]}
+{"op":"restore","args":[]}
+{"op":"restore","args":[]}
+{"op":"save","args":[]}
+{"op":"set globalCompositeOperation","args":["source-over"]}
+{"op":"set lineCap","args":["round"]}
+{"op":"set lineJoin","args":["round"]}
+{"op":"set strokeStyle","args":["#49c670"]}
+{"op":"set fillStyle","args":["#49c670"]}
+{"op":"save","args":[]}
+{"op":"translate","args":[276.13617925886075,151.13786123435173]}
+{"op":"rotate","args":[-3.204424506661589]}
+{"op":"scale","args":[1.7,0.45]}
+{"op":"createRadialGradient","args":[0,0,0,0,0,13]}
+{"op":"addColorStop","args":[0,"#49c670"]}
+{"op":"addColorStop","args":[0.35,"#49c670"]}
+{"op":"addColorStop","args":[1,"transparent"]}
+{"op":"set globalAlpha","args":[0.755661888677734]}
+{"op":"set fillStyle","args":["[Object]"]}
+{"op":"beginPath","args":[]}
+{"op":"arc","args":[0,0,13,0,6.283185307179586]}
+{"op":"fill","args":[]}
+{"op":"createRadialGradient","args":[0,0,0,0,0,4.6]}
+{"op":"addColorStop","args":[0,"#be4280"]}
+{"op":"addColorStop","args":[0.35,"#be4280"]}
+{"op":"addColorStop","args":[1,"transparent"]}
+{"op":"set globalAlpha","args":[0.8396243207530377]}
 {"op":"set fillStyle","args":["[Object]"]}
 {"op":"beginPath","args":[]}
 {"op":"arc","args":[0,0,4.6,0,6.283185307179586]}

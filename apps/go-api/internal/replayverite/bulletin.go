@@ -49,9 +49,11 @@ type Score struct {
 // Ecart est la valeur publiee et la valeur officielle d'une unite.
 type Ecart struct{ Pub, Off int }
 
-// noter ajoute une unite au score.
+// noter ajoute une unite au score. Un total peut etre NEGATIF (le score personnel d'un joueur qui a trahi, depuis la
+// penalite publiee par le decodeur v1.6.0) : l'accord ne compte que ce qui est positif, un total negatif ne retire
+// jamais de vrais positifs aux autres joueurs. L'ecart, lui, se lit signe.
 func (s *Score) noter(cle string, pub, off int) {
-	s.VP += min(pub, off)
+	s.VP += max(0, min(pub, off))
 	s.FP += max(0, pub-off)
 	s.FN += max(0, off-pub)
 	if pub != off {
