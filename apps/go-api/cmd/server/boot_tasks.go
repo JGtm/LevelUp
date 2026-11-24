@@ -56,21 +56,21 @@ func initAccountsPool(st *bootState) {
 	// Le callback onRotated persiste le refresh_token rotaté par Microsoft dans le
 	// MultiUserTokenStore — sans ça, le prochain refresh échouerait avec
 	// invalid_grant (Microsoft rotate systématiquement le RT à chaque usage).
+	//
+	// LES COMPTES SE RÉSOLVENT EN TÂCHE DE FOND : le pool naît vide et le serveur ne les attend pas
+	// (douze comptes coûtaient 122 s avant l'ouverture). Chaque compte entre dans le pool dès sa
+	// résolution ; une acquisition l'attend, et les boucles qui ne se rejouent pas avant longtemps
+	// attendent la fin de la résolution avant leur première passe (afterAccountsResolved).
 	gate.setStep(ctx, bootStepAccounts)
 	var autoSyncPool pool.Pool
 	if !boot.isCut(stepTokenPool) {
-		autoSyncPool = buildAutoSyncPool(ctx, cfg, tokenProvider)
+		accountsCtx, cancelAccounts := context.WithCancel(ctx)
+		st.cancelAccounts = cancelAccounts
+		autoSyncPool = buildAutoSyncPool(accountsCtx, cfg, tokenProvider)
 	}
 	gate.setStep(ctx, bootStepServices)
-	switch {
-	case autoSyncPool == nil:
+	if autoSyncPool == nil {
 		slog.Error("auto_sync: pool non initialisé — découverte ou création en échec, auto-sync inactif jusqu'au redémarrage")
-	case autoSyncPool.Size() == 0:
-		slog.Warn("auto_sync: pool vide — aucun jeton résolu au démarrage, il se remplira à la connexion d'un joueur ou au re-scan",
-			"hint", "authentifier un joueur (SSO Xbox) ou lancer `go run ./cmd/token-capture/ <GT>`",
-		)
-	default:
-		slog.Info("auto_sync: pool initialisé", "size", autoSyncPool.Size())
 	}
 	st.autoSyncPool = autoSyncPool
 }
@@ -96,7 +96,14 @@ func initScheduler(st *bootState) {
 		// complet avec des films en retard. Sans la capacité (serveur hébergé), aucun lecteur : la cadence ne suit
 		// que l'historique.
 		WithFilmBacklogReader(filmbacklog.ReaderFor(cfg.Capabilities.FilmCatchUp))
-	schedulerCtx, cancelScheduler := context.WithCancel(ctx)
+	schedulerCtx, cancelSchedulerLoops := context.WithCancel(ctx)
+	// L'arrêt annule aussi la résolution des comptes en tâche de fond, dès son premier instant.
+	cancelScheduler := func() {
+		cancelSchedulerLoops()
+		if st.cancelAccounts != nil {
+			st.cancelAccounts()
+		}
+	}
 	// Les cycles demandés à la main (« Synchroniser maintenant ») suivent le cycle de vie du serveur :
 	// annulés avec schedulerCtx, attendus par l'arrêt avant la fermeture des bases.
 	autoScheduler.BindManualCycles(schedulerCtx, &st.schedulerWG)
@@ -279,16 +286,22 @@ func buildAutoSyncPool(
 		slog.Error("auto_sync: pool discovery échoué", "err", err)
 		return nil
 	}
-	// Aucune source, ou aucune qui se résout (services Halo indisponibles) : le pool est
-	// créé VIDE et se remplit à chaud (re-scan périodique, connexion d'un joueur). Un pool nil
-	// condamnait l'auto-sync jusqu'au redémarrage : un joueur qui se connectait après le
-	// démarrage n'était jamais synchronisé (constaté sur l'application de bureau).
 	resolver := pool.NewResolverWithCallbacks(tokenProvider, 0, poolCallbacks(cfg, multiUserStore)) // 0 = default TTL ~3h30
+	return newAutoSyncPool(ctx, resolver, sources)
+}
+
+// newAutoSyncPool crée le pool de l'auto-sync : VIDE, ses comptes se résolvent en tâche de fond sous ctx
+// (annulé à l'arrêt) et se remplissent à mesure. Aucune source, ou aucune qui se résout (services Halo
+// indisponibles) : le pool reste vide et se remplit à chaud (re-scan périodique, connexion d'un joueur).
+// Un pool nil condamnait l'auto-sync jusqu'au redémarrage : un joueur qui se connectait après le
+// démarrage n'était jamais synchronisé (constaté sur l'application de bureau).
+func newAutoSyncPool(ctx context.Context, resolver pool.Resolver, sources []pool.CredentialSource) pool.Pool {
 	p, err := pool.NewPool(ctx, resolver, sources, pool.PoolOptions{
 		MaxSize:     0, // 0 = tous les sources découverts
 		PerTokenRPS: 5, // Option 2 audit 2026-05-21 : aligné sur le sync manuel
 		//                 (validé en multi-tokens réel : 0 × 429 à 5N RPS)
-		AllowEmpty: true,
+		AllowEmpty:          true,
+		ResolveInBackground: true,
 	})
 	if err != nil {
 		slog.Error("auto_sync: pool creation échouée", "err", err)

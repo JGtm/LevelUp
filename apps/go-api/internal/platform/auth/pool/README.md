@@ -63,6 +63,22 @@ engine.SetCustomClient(client)
 syncResult, err := engine.RunDelta(ctx, opts)
 ```
 
+#### Resolving accounts in the background (server startup)
+
+`PoolOptions.ResolveInBackground` makes `NewPool` return at once with an empty pool; the accounts are resolved in
+the background (six at a time, never two accounts sharing a refresh token together, `MaxSize` honoured) and each
+enters the pool as soon as it is resolved. The server uses it so that opening the port does not wait for the
+slowest accounts (twelve accounts cost 122 s before). While the resolution runs:
+
+- `PolicyPinnedPlayer` waits for the target account (or for its failure, logged as
+  `pool: impossible de résoudre token au boot`), `PolicyAnyPublic` for the first account that consented to pooling,
+  both within the caller's context;
+- `HasPlayer` is true and `IsWithheld` already applies the consent of an account not resolved yet, and `SetShared`
+  reaches it: an account without consent never lends its token and never borrows the others', and a consent withdrawn
+  during the resolution survives;
+- `pool.WaitResolved(ctx, p)` waits for the end of the resolution (loops whose first pass happens at startup and that
+  do not replay for a long time call it before that pass); `Close` cancels the resolution and waits for it.
+
 ### Acquisition Policies
 
 **PolicyAnyPublic** — Round-robin distribution for public endpoints, over the slots whose owner consented to pooling (ADR 0038; a withheld slot stays reachable through `PolicyPinnedPlayer` only):

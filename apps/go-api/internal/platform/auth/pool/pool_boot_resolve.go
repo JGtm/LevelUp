@@ -79,10 +79,22 @@ func resolveBootSources(ctx context.Context, resolver Resolver, sorted []Credent
 //     chaque usage, deux échanges concurrents du même jeton en perdraient la rotation ;
 //   - au plus bootResolveConcurrency résolutions en vol ; la fonction ne rend la main
 //     qu'une fois toutes les résolutions lancées terminées (aucune goroutine ne lui
-//     survit).
+//     survit) ;
+//   - un contexte annulé arrête les lancements : les sources restantes ne sont jamais tentées.
 //
 // Le Resolver doit accepter des appels concurrents pour des comptes distincts.
 func runBootResolutions(ctx context.Context, resolver Resolver, sorted []CredentialSource, maxSize int) []bootOutcome {
+	return runBootResolutionsNotify(ctx, resolver, sorted, maxSize, nil)
+}
+
+// runBootResolutionsNotify est runBootResolutions qui rend compte de chaque issue à mesure qu'elle
+// arrive : notify(i, issue) est appelée dans la goroutine de l'appelant, une fois par source lancée,
+// dès que sa résolution se termine (pas d'appel concurrent à notify). Le contexte annulé arrête les
+// lancements : une source non lancée garde une issue vide.
+func runBootResolutionsNotify(
+	ctx context.Context, resolver Resolver, sorted []CredentialSource, maxSize int,
+	notify func(i int, o bootOutcome),
+) []bootOutcome {
 	outcomes := make([]bootOutcome, len(sorted))
 	sameTokenBefore := previousSameRefreshToken(sorted)
 	finished := make([]bool, len(sorted))
@@ -90,7 +102,7 @@ func runBootResolutions(ctx context.Context, resolver Resolver, sorted []Credent
 
 	next, inFlight, succeeded := 0, 0, 0
 	for {
-		for next < len(sorted) && inFlight < bootResolveConcurrency &&
+		for next < len(sorted) && inFlight < bootResolveConcurrency && ctx.Err() == nil &&
 			(maxSize == 0 || succeeded+inFlight < maxSize) &&
 			(sameTokenBefore[next] < 0 || finished[sameTokenBefore[next]]) {
 			go func(i int) {
@@ -111,6 +123,9 @@ func runBootResolutions(ctx context.Context, resolver Resolver, sorted []Credent
 		outcomes[done.idx] = done.outcome
 		if done.outcome.err == nil {
 			succeeded++
+		}
+		if notify != nil {
+			notify(done.idx, done.outcome)
 		}
 	}
 }

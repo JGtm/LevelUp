@@ -52,6 +52,9 @@ type poolImpl struct {
 	// Goroutine refresher en arrière-plan.
 	stopOnce sync.Once
 	stopCh   chan struct{}
+
+	// fill : la résolution des comptes en tâche de fond (PoolOptions.ResolveInBackground). Nil sinon.
+	fill *bootFill
 }
 
 // slot encapsule l'état d'un token dans le pool.
@@ -117,6 +120,43 @@ func poolTitleOf(sources []CredentialSource) string {
 	return ""
 }
 
+// newPoolImpl assemble le pool et son cooldown. opts porte déjà ses valeurs par défaut. Le tour de rôle
+// public n'est pas rempli : l'appelant y pose les indices des slots qu'il a créés.
+func newPoolImpl(
+	resolver Resolver, title string, slots []*slot, slotsByKey map[string]int, publicCap int, opts PoolOptions,
+) *poolImpl {
+	cooldownCtx, cancel := context.WithCancel(context.Background())
+	return &poolImpl{
+		resolver:        resolver,
+		titleSlug:       title,
+		slots:           slots,
+		slotsByKey:      slotsByKey,
+		anyPublicChan:   make(chan int, publicCap),
+		maxSize:         opts.MaxSize,
+		perTokenRPS:     opts.PerTokenRPS,
+		refreshInterval: opts.RefreshInterval,
+		globalCooldown:  opts.GlobalCooldown,
+		stopCh:          make(chan struct{}),
+		cooldownCtx:     cooldownCtx,
+		cooldownCancel:  cancel,
+	}
+}
+
+// newSlotFor crée le slot d'un compte résolu : son rate limiter est le budget PAR COMPTE partagé
+// process-wide (sujet 2 T1) — tous les consommateurs du même xuid (pool, career_live, worldenrich)
+// attendent sur le MÊME token bucket, le pool voit la vraie pression.
+func newSlotFor(src CredentialSource, resolved *ResolvedTokens, perTokenRPS int) *slot {
+	return &slot{
+		gamertag:    src.Gamertag,
+		xuid:        src.XUID,
+		resolved:    resolved,
+		limiter:     ratebudget.ForXUID(src.XUID, float64(perTokenRPS)),
+		healthy:     true,
+		lastRefresh: time.Now(),
+		excluded:    src.PoolExcluded,
+	}
+}
+
 // NewPool crée un Pool à partir d'une liste de CredentialSources découvertes.
 // opts.MaxSize = nombre maximal de slots SAINS (0 = tous ceux que les sources permettent) ;
 // les sources sont prises dans l'ordre alphabétique des gamertags, et une résolution en
@@ -166,6 +206,11 @@ func NewPool(
 	copy(sorted, sources)
 	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Gamertag < sorted[j].Gamertag })
 
+	// Résolution en tâche de fond : le pool naît vide et se remplit (pool_background.go).
+	if opts.ResolveInBackground {
+		return startBackgroundPool(ctx, resolver, poolTitle, sorted, opts), nil
+	}
+
 	// Créer les slots. Une source en échec est SKIPPÉE et on passe à la SUIVANTE. Les
 	// comptes sont résolus en parallèle (cf. resolveBootSources : même parc, même ordre
 	// qu'une résolution en série, durée du plus lent au lieu de la somme).
@@ -177,18 +222,7 @@ func NewPool(
 	slotsByKey := make(map[string]int)
 	for _, rs := range resolvedSources {
 		slotsByKey[gtKey(poolTitle, rs.src.Gamertag)] = len(slots)
-		slots = append(slots, &slot{
-			gamertag: rs.src.Gamertag,
-			xuid:     rs.src.XUID,
-			resolved: rs.resolved,
-			// Budget PAR COMPTE partagé process-wide (sujet 2 T1) : tous les
-			// consommateurs du même xuid (pool, career_live, worldenrich)
-			// attendent sur le MÊME token bucket — le pool voit la vraie pression.
-			limiter:     ratebudget.ForXUID(rs.src.XUID, float64(opts.PerTokenRPS)),
-			healthy:     true,
-			lastRefresh: time.Now(),
-			excluded:    rs.src.PoolExcluded,
-		})
+		slots = append(slots, newSlotFor(rs.src, rs.resolved, opts.PerTokenRPS))
 	}
 	poolSize := len(slots)
 
@@ -199,23 +233,7 @@ func NewPool(
 	// chaud (sans elle, un pool né vide ne servirait ses slots qu'en politique épinglée).
 	publicCap := poolSize + hotAddPublicSlots
 
-	// Créer le cooldown context.
-	cooldownCtx, cancel := context.WithCancel(context.Background())
-
-	p := &poolImpl{
-		resolver:        resolver,
-		titleSlug:       poolTitle,
-		slots:           slots,
-		slotsByKey:      slotsByKey,
-		anyPublicChan:   make(chan int, publicCap),
-		maxSize:         opts.MaxSize,
-		perTokenRPS:     opts.PerTokenRPS,
-		refreshInterval: opts.RefreshInterval,
-		globalCooldown:  opts.GlobalCooldown,
-		stopCh:          make(chan struct{}),
-		cooldownCtx:     cooldownCtx,
-		cooldownCancel:  cancel,
-	}
+	p := newPoolImpl(resolver, poolTitle, slots, slotsByKey, publicCap, opts)
 
 	// Initialiser le canal round-robin avec tous les slots.
 	for i := 0; i < poolSize; i++ {
@@ -252,9 +270,30 @@ func (p *poolImpl) Acquire(ctx context.Context, policy AcquirePolicy, pinnedGame
 // des tests et des journaux le citent.
 var ErrNoHealthySlot = errors.New("pool: aucun slot sain disponible (PolicyAnyPublic)")
 
-// acquireAnyPublic : round-robin parmi les slots sains.
+// acquireAnyPublic : round-robin parmi les slots sains. Pendant la résolution de fond, un pool sans
+// slot acquérable attend le prochain compte résolu (dans la limite de ctx) au lieu d'échouer.
 func (p *poolImpl) acquireAnyPublic(ctx context.Context) (*Lease, error) {
-	maxRetries := len(p.slots) // Éviter boucle infinie si tous les slots sont malsains.
+	for {
+		lease, err := p.tryAcquireAnyPublic(ctx)
+		if !errors.Is(err, ErrNoHealthySlot) {
+			return lease, err
+		}
+		if !p.fill.wait(ctx) {
+			if cerr := ctx.Err(); cerr != nil {
+				return nil, cerr
+			}
+			return nil, err
+		}
+	}
+}
+
+// tryAcquireAnyPublic : un tour de round-robin sur les slots présents.
+func (p *poolImpl) tryAcquireAnyPublic(ctx context.Context) (*Lease, error) {
+	// Éviter boucle infinie si tous les slots sont malsains. Lu sous slotMu : la résolution de fond
+	// et AddOrUpdateSource ajoutent des slots concurremment.
+	p.slotMu.RLock()
+	maxRetries := len(p.slots)
+	p.slotMu.RUnlock()
 
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		select {
@@ -298,12 +337,21 @@ func (p *poolImpl) acquireAnyPublic(ctx context.Context) (*Lease, error) {
 	return nil, ErrNoHealthySlot
 }
 
-// acquirePinnedPlayer : lookup par gamertag, retourne ErrNoTokenForPlayer si absent ou malsain.
-//
-// même si le lookup en mémoire pure n'a pas besoin de timeout/cancel aujourd'hui.
-//
-//nolint:unparam // ctx maintenu pour cohérence avec l'interface caller (Acquire(ctx))
+// acquirePinnedPlayer : lookup par gamertag, erreur si le compte est absent ou malsain. Un compte encore
+// à résoudre en tâche de fond est attendu, dans la limite de ctx.
 func (p *poolImpl) acquirePinnedPlayer(ctx context.Context, gamertag string) (*Lease, error) {
+	// Un compte encore à résoudre (résolution de fond) : on attend son slot, ou l'échec de sa résolution.
+	if p.fill != nil {
+		key := p.fill.key(gamertag)
+		for p.slotFor(gamertag) == nil && p.fill.waitIfPending(ctx, key) {
+			continue
+		}
+		if p.slotFor(gamertag) == nil {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
+		}
+	}
 	// Capturer l'index ET le pointeur de slot sous slotMu (append concurrent possible).
 	p.slotMu.RLock()
 	slotIdx, ok := p.slotsByKey[gtKey(p.titleSlug, gamertag)]
@@ -333,14 +381,20 @@ func (p *poolImpl) acquirePinnedPlayer(ctx context.Context, gamertag string) (*L
 	}, nil
 }
 
-// Size implémente Pool.Size().
+// HasPlayer implémente Pool.HasPlayer(). Un compte encore à résoudre (résolution de fond) compte
+// comme présent : son acquisition épinglée l'attendra.
 func (p *poolImpl) HasPlayer(gamertag string) bool {
 	p.slotMu.RLock()
 	defer p.slotMu.RUnlock()
-	_, ok := p.slotsByKey[gtKey(p.titleSlug, gamertag)]
-	return ok
+	key := gtKey(p.titleSlug, gamertag)
+	if _, ok := p.slotsByKey[key]; ok {
+		return true
+	}
+	_, pending := p.fill.pendingSource(key)
+	return pending
 }
 
+// Size implémente Pool.Size() : les slots installés, sans les comptes encore à résoudre.
 func (p *poolImpl) Size() int {
 	p.slotMu.RLock()
 	defer p.slotMu.RUnlock()
@@ -378,6 +432,9 @@ func (p *poolImpl) AddOrUpdateSource(ctx context.Context, src CredentialSource) 
 	}
 	key := gtKey(p.titleSlug, src.Gamertag)
 
+	// Un ajout à chaud résout ce compte : la résolution de fond n'a plus à le faire.
+	p.fill.take(key)
+
 	// Update existing slot in-place.
 	if idx, exists := p.slotsByKey[key]; exists {
 		s := p.slots[idx]
@@ -398,18 +455,15 @@ func (p *poolImpl) AddOrUpdateSource(ctx context.Context, src CredentialSource) 
 		return fmt.Errorf("pool: AddOrUpdateSource pool full (maxSize=%d)", p.maxSize)
 	}
 
-	newSlot := &slot{
-		gamertag: src.Gamertag,
-		xuid:     src.XUID,
-		resolved: resolved,
-		// Budget PAR COMPTE partagé (sujet 2 T1) — cf. NewPool.
-		limiter:     ratebudget.ForXUID(src.XUID, float64(p.perTokenRPS)),
-		healthy:     true,
-		lastRefresh: time.Now(),
-		excluded:    src.PoolExcluded,
-	}
+	p.appendSlotLocked(ctx, src, resolved, key)
+	return nil
+}
+
+// appendSlotLocked ajoute le slot d'un compte résolu et l'offre au tour de rôle public (si la capacité
+// du canal le permet). slotMu tenu en écriture, la clé n'est pas encore présente.
+func (p *poolImpl) appendSlotLocked(ctx context.Context, src CredentialSource, resolved *ResolvedTokens, key string) {
 	newIdx := len(p.slots)
-	p.slots = append(p.slots, newSlot)
+	p.slots = append(p.slots, newSlotFor(src, resolved, p.perTokenRPS))
 	p.slotsByKey[key] = newIdx
 
 	// Best-effort push dans le canal round-robin (capacité fixe au boot).
@@ -423,7 +477,6 @@ func (p *poolImpl) AddOrUpdateSource(ctx context.Context, src CredentialSource) 
 
 	slog.InfoContext(ctx, "pool: slot ajouté (hot-add)",
 		"gamertag", src.Gamertag, "source", src.Source, "new_size", len(p.slots))
-	return nil
 }
 
 // MarkUnhealthy invalide un token après 401/403 et déclenche un Resolver.Refresh asynchrone.
@@ -657,6 +710,7 @@ func (p *poolImpl) Close() {
 	p.stopOnce.Do(func() {
 		close(p.stopCh)
 		p.cooldownCancel()
+		p.stopFill()
 		slog.InfoContext(context.Background(), "pool: fermé")
 	})
 }
