@@ -48,25 +48,26 @@
 # `bilanDeLaBobine`) vont dans le MÊME lot : séparés, chaque lot refairait la marche des sept bobines.
 #
 # V1.6 DU DÉCODEUR (montée en v1.6.1, PR 216). Les tests « forme sur les bobines » ajoutés par la
-# brique ont fait retomber 598 s dans le lot reste, qui a atteint `-timeout 600s` (CI de la PR 216).
-# Durées par test de premier niveau relevées sur les trois lots de cette CI (somme des tests, sous
-# couverture) :
-#   avant   film-grammar-lourd 258 s   film-grammar-moyen  97 s   film-grammar-reste 598 s (délai atteint)
-#   après   film-grammar-lourd 258 s   film-grammar-moyen 340 s   film-grammar-reste 355 s
-# `TestLesRecherchesDeTableEgalentLeurFormeSurLesBobines` (243 s) passe dans la liste grammar-moyens ;
-# les quatre autres (échantillons des bandes 85 s, balayage des visées 65 s, marcheur delta bipède 49 s,
-# passe des créations 34 s) restent dans le lot reste. Trois lots suffisent, tous sous 400 s : un
-# quatrième lot ne se justifie qu'au prochain dépassement.
+# brique ont fait atteindre `-timeout 600s` au lot reste (598 s de tests au premier passage). Deux
+# relevés de cette PR, somme des durées des tests de premier niveau sous couverture, puis durée du
+# job sur le runner (compilation et édition de liens comprises, ~50 s) :
+#   premier passage    lourd 258 s   moyen  97 s   reste 598 s (délai atteint, lot rouge)
+#   second passage     lourd 137 s   moyen 450 s   reste 522 s ; runner 3 min 8 s / 8 min 13 s / 9 min 49 s
+#   après rééquilibrage lourd ~375 s  moyen ~371 s  reste ~363 s ; runner visé ~7 min chacun
+# Les durées varient du simple au double d'un passage à l'autre (la boucle de `TestSuivante...` :
+# 178 s puis 92 s) : on équilibre sur la somme du second passage. Déplacements : la recherche de table sur
+# les bobines (`TestLesRecherchesDeTableEgalentLeurFormeSurLesBobines`, 238 s) va dans le lot lourd ;
+# `TestFilsMotsIdentiques` (159 s) du lot reste dans le lot moyen. Aucun de ces tests ne partage de
+# décodage mémoïsé avec un autre lot. Trois lots, aucun test retiré, délai inchangé.
 
 # Tests les plus longs de `grammar`, joués seuls (`film-grammar-lourd`). Un nom qui disparaît du
 # paquet fait rougir archlint (liste périmée) ; une liste n'a aucun test en commun avec une autre.
-heavy grammar-lourds TestSuivanteEgaleLaBoucleDAvantSurTamponsSynthetiques TestFrameClosureDetailleeRendLaCarteDeFrameClosure TestGoldenMiniBobineFamilles TestChaqueLectureCiteUneEtendueDeLaStructure
+heavy grammar-lourds TestSuivanteEgaleLaBoucleDAvantSurTamponsSynthetiques TestFrameClosureDetailleeRendLaCarteDeFrameClosure TestGoldenMiniBobineFamilles TestChaqueLectureCiteUneEtendueDeLaStructure TestLesRecherchesDeTableEgalentLeurFormeSurLesBobines
 
 # Tests moyens de `grammar` (`film-grammar-moyen`) : la structure des bobines et sa fermeture, la marche
 # d'état complet (avec ses lecteurs du même décodage mémoïsé), les équipes et les entités `ti=9`, les
-# corps de génération et les records, plus la recherche de table sur les bobines (v1.6 de la brique,
-# 243 s à elle seule, elle déplace ~243 s du lot reste vers ce lot).
-heavy grammar-moyens TestLaStructureDesBobinesTientSesInvariants TestLaFermetureDeLaStructureNeDescendPas TestFrameClosureRatchet TestLesValeursDeLEtatCompletDesBobines TestLaFenetreNeVoitQueLesRecordsNonAdmis TestLEtatCompletDesBobines TestLesArmesSeulesSontCellesDeLaMarcheComplete TestUnRecordRecupereParLInventairePorteUneValeur TestEntitesTi9SurLesBobines TestScanPlayerTeamsSurLesBobines TestPositions_CorpsDeGenerationDeuxPublieParLeCheminDeProduction TestLesRecordsTi9DeLaMarcheOntUnEnTeteExact TestMarcheurDelta_GenerationPorteeEstCelleDuHandle TestMarcheurDelta_CorpsDeGenerationDeuxVuParLesHuitCanaux TestLeCanalDesMortsRecoitLesRecordsPartisDeLaFinDeLaVueA TestLesRecherchesDeTableEgalentLeurFormeSurLesBobines
+# corps de génération et les records, plus `TestFilsMotsIdentiques` (prédécodage des images-clés, v1.6).
+heavy grammar-moyens TestLaStructureDesBobinesTientSesInvariants TestLaFermetureDeLaStructureNeDescendPas TestFrameClosureRatchet TestLesValeursDeLEtatCompletDesBobines TestLaFenetreNeVoitQueLesRecordsNonAdmis TestLEtatCompletDesBobines TestLesArmesSeulesSontCellesDeLaMarcheComplete TestUnRecordRecupereParLInventairePorteUneValeur TestEntitesTi9SurLesBobines TestScanPlayerTeamsSurLesBobines TestPositions_CorpsDeGenerationDeuxPublieParLeCheminDeProduction TestLesRecordsTi9DeLaMarcheOntUnEnTeteExact TestMarcheurDelta_GenerationPorteeEstCelleDuHandle TestMarcheurDelta_CorpsDeGenerationDeuxVuParLesHuitCanaux TestLeCanalDesMortsRecoitLesRecordsPartisDeLaFinDeLaVueA TestFilsMotsIdentiques
 
 # Module apps/go-api. `persist` et `ops` partageaient le lot du décodeur de film (56 + 6 s hors
 # couverture au relevé du 2026-10-28) avant que le décodeur ne devienne une brique.
