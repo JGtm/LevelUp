@@ -8,8 +8,8 @@
  * bandeau de score quand le cadre le pose ici (`scorePlacement`, sur n'importe quel cadre dont
  * le corps est trop étroit pour la cellule de l'en-tête ; sinon `null`), puis la toile et ses surcouches.
  *
- * LES TROIS SURCOUCHES SE POSENT SUR LA CARTE, PAS SUR LE LECTEUR : l'écran de fin, le message
- * inter-manche et le compte à rebours de la bombe descendent dans le conteneur de la toile (`mapOverlays`),
+ * LES SURCOUCHES SE POSENT SUR LA CARTE, PAS SUR LE LECTEUR : l'écran de fin, le message
+ * inter-manche, le compte à rebours de la bombe et la suite des collines descendent dans le conteneur de la toile (`mapOverlays`),
  * seul endroit dont les bornes sont celles du terrain. Montées en sœurs de la toile, leur `inset-0`
  * couvrirait le bandeau de score, la carte ET la barre de lecture.
  */
@@ -19,13 +19,14 @@ import { REPLAY_TEXT } from '../../i18n/i18n'
 import type { EmplacementScore } from '../../model/cotesBandeauScore'
 import { ReplayBombCountdownOverlay } from '../ReplayBombCountdownOverlay'
 import { ReplayCanvas } from '../ReplayCanvas'
+import { ReplayHillSequenceOverlay } from '../ReplayHillSequenceOverlay'
 import { ReplayRoundBreakOverlay } from '../ReplayRoundBreakOverlay'
 import { ReplayScoreBanner } from '../ReplayScoreBanner'
 import { ReplayVictoryOverlay } from '../ReplayVictoryOverlay'
 import type { ReplayCanvasSlots } from '../replayTransportCommands'
 import type { ReplayFrameView } from './replayFrameTypes'
 
-/** Les trois surcouches de la carte : l'écran de fin, le message inter-manche, le compte à rebours de la bombe. */
+/** Les surcouches de la carte : l'écran de fin, le message inter-manche, le compte à rebours de la bombe, la suite des collines. */
 function StageMapOverlays({ view }: { view: ReplayFrameView }) {
   const { doc, model, header, playFrame, locale } = view
   return (
@@ -44,6 +45,7 @@ function StageMapOverlays({ view }: { view: ReplayFrameView }) {
       />
       <ReplayRoundBreakOverlay doc={doc} frame={playFrame} locale={locale} />
       <ReplayBombCountdownOverlay doc={doc} frame={playFrame} locale={locale} />
+      <ReplayHillSequenceOverlay doc={doc} frame={playFrame} locale={locale} />
     </>
   )
 }

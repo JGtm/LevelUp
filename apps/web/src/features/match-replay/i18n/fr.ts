@@ -1,6 +1,7 @@
 /** Textes du rejeu 2D en français (contrat : `i18nContract.ts`). */
 import type { ReplayText } from './i18nContract'
 import { FR_FEED_LINES } from './feedLines.i18n'
+import { FR_HILL_SEQUENCE } from './hillSequence.i18n'
 import { FR_LIVES } from './lives.i18n'
 import { FR_RELIEF } from './relief.i18n'
 import { FR_RESPAWN_FORECAST } from './respawnForecast.i18n'
@@ -98,6 +99,7 @@ export const FR_TEXT = {
   lives: FR_LIVES,
   relief: FR_RELIEF,
   respawnForecast: FR_RESPAWN_FORECAST,
+  hillSequence: FR_HILL_SEQUENCE,
   feedLines: FR_FEED_LINES,
   killFeedNoAssistHint:
     'Mort sans assistant : la mort porte son événement dans le film, et il ne déclare personne.',
