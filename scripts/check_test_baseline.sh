@@ -66,6 +66,26 @@
 # (les cartes de la page du match le calculent depuis le fil). Aucune paire réinscrite. Vérifié par le bilan d'absence du
 # gate : ces 4 paires étaient les seules absentes du run courant.
 #
+# RETRAIT DU 2026-11-24 (montée du décodeur v1.6.1) : 1 paire (Package, Test), 1 ligne dans `tests_halo-infinite-film-decoder.jsonl`,
+# `github.com/JGtm/halo-infinite-film-decoder/replay` : TestPowerupPadsFamilleInconnueNeDonneRien/famille_connue_mais_pas_un_power-up.
+# Le cas existait au tag v1.5.0 (un panneau de mur, équipement porté qui n'est pas un power-up, ne devait donner aucun socle). Le
+# commit 2fe2f49 (v1.6.0, « décodage deux à trois fois plus rapide, contenu neuf ») a élargi la règle : un équipement porté
+# récurrent au même point donne désormais un socle publié sous sa famille. Le cas a donc changé de sens et ses deux remplaçants
+# sont dans le même fichier de la brique : le sous-test « forme deployee » (le mur posé, au repos, ne donne aucun socle) dans
+# TestPowerupPadsFamilleInconnueNeDonneRien, et TestPowerupPadsRetientLEquipementPorte (le mur récurrent donne un socle `wall`).
+# Aucune couverture perdue sans remplacement. Vérifié par lecture du source aux tags v1.5.0 et v1.6.1 et par `git log` du fichier.
+# Aucune paire réinscrite.
+#
+# RENOMMAGE DU 2026-11-24 (anonymisation, commit 48f85c9bdb) : 7 paires de `levelup/go-api/internal/analysis/skill_v2` (28 lignes de
+# `tests_pre_migration.jsonl`) changent de nom, et les anciens noms (qui portaient des pseudos de joueurs) quittent le fichier :
+# TestInferTier_ReferencePlayers/{Madina_BTB, Madina_arena_slayer, Madina_arena_objectif} deviennent .../joueur_075_{BTB, arena_slayer,
+# arena_objectif} ; TestMapMuToLegacyRating_ReferencePlayers/{Madina_BTB_Diamant_I, Madina_Slayer_Diamant_I, Madina_Objectif_Platine_II}
+# deviennent .../joueur_075_{...} et .../XxDaemon_Bronze_VI devient .../joueur_639_Bronze_VI. Les lignes sont réécrites en place
+# (même nombre de lignes). Vérifié par `go test -run ReferencePlayers -json` (les 12 sous-tests passent sous leurs nouveaux noms).
+# Restent dans la baseline trois autres tests dont le nom contient « Madina » (platform/duckdb TestQ7XPHistory_MadinaRegressionScenario,
+# service TestBuildProjections_MadinaScenarioPostFix, sync TestComputeAndPersistHadBotTeammate_MadinaRealCase_FALSE) : hors périmètre,
+# signalés au pilote.
+#
 # RETRAIT DU 2026-11-23 (montée du décodeur v1.5.0) : 4 paires (Package, Test), 4 lignes JSONL, quittent la baseline
 # avec le code qu'elles couvraient. `internal/sync/killcollector` (3 paires, 3 lignes dans `tests_pre_migration.jsonl`) :
 # TestPorteDePrecisionSansFixture, TestPrecisionNonConfigureeNeCassePas et TestPrecisionSurFilmReel, l'ancien calcul de

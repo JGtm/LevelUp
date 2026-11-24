@@ -756,7 +756,6 @@
 {"Time":"2026-09-05T23:46:38.7267923+02:00","Action":"pass","Package":"github.com/JGtm/halo-infinite-film-decoder/replay","Test":"TestPowerupPadsSeuilDeRecurrence","Elapsed":0}
 {"Time":"2026-09-05T23:46:38.7267923+02:00","Action":"pass","Package":"github.com/JGtm/halo-infinite-film-decoder/replay","Test":"TestPowerupPadsEcarteLesCreationsAVieDelta","Elapsed":0}
 {"Time":"2026-09-05T23:46:38.7267923+02:00","Action":"pass","Package":"github.com/JGtm/halo-infinite-film-decoder/replay","Test":"TestPowerupPadsFamilleInconnueNeDonneRien/identite_hors_manifeste","Elapsed":0}
-{"Time":"2026-09-05T23:46:38.7267923+02:00","Action":"pass","Package":"github.com/JGtm/halo-infinite-film-decoder/replay","Test":"TestPowerupPadsFamilleInconnueNeDonneRien/famille_connue_mais_pas_un_power-up","Elapsed":0}
 {"Time":"2026-09-05T23:46:38.7267923+02:00","Action":"pass","Package":"github.com/JGtm/halo-infinite-film-decoder/replay","Test":"TestPowerupPadsFamilleInconnueNeDonneRien","Elapsed":0}
 {"Time":"2026-09-05T23:46:38.7267923+02:00","Action":"pass","Package":"github.com/JGtm/halo-infinite-film-decoder/replay","Test":"TestPowerupPadsIndexDOccupationEstGlobal","Elapsed":0}
 {"Time":"2026-09-05T23:46:38.7267923+02:00","Action":"pass","Package":"github.com/JGtm/halo-infinite-film-decoder/replay","Test":"TestPowerupPadsVoieNonLueNeDitPasZero","Elapsed":0}
