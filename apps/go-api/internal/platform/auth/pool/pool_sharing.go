@@ -89,6 +89,9 @@ func (p *poolImpl) SetShared(xuid string, shared bool) bool {
 	s.excluded = !shared
 	gamertag := s.gamertag
 	s.mu.Unlock()
+	if shared {
+		p.fill.signal() // un consentement rendu rouvre le tour de rôle public aux acquisitions en attente
+	}
 	if changed {
 		slog.InfoContext(context.Background(), "pool: consentement de mise en commun appliqué",
 			"gamertag", gamertag, "xuid", xuid, "shared", shared)

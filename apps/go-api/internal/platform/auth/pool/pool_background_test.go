@@ -501,3 +501,115 @@ func TestBackground_BilanDeResolution(t *testing.T) {
 		}
 	})
 }
+
+// TestBackground_ReveilNonPerdu : un compte résolu ENTRE l'essai d'acquisition et la mise en attente ne
+// doit pas être manqué. Le crochet de test installe le slot exactement à cet endroit.
+func TestBackground_ReveilNonPerdu(t *testing.T) {
+	src := bgSources("Tardif")
+	p, err := NewPool(context.Background(), newCtxResolver(func(string) time.Duration { return time.Minute }), src,
+		PoolOptions{AllowEmpty: true, ResolveInBackground: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	impl := p.(*poolImpl)
+	t.Cleanup(p.Close)
+	var once sync.Once
+	impl.afterFailedTryHook = func() {
+		once.Do(func() {
+			impl.installBootSlot(context.Background(), src[0], &ResolvedTokens{
+				Gamertag: "Tardif", XUID: src[0].XUID, Tokens: &domain.HaloTokens{SpartanToken: "spartan_Tardif"},
+				ExpiresAt: time.Now().Add(time.Hour),
+			})
+		})
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
+	defer cancel()
+	lease, err := p.Acquire(ctx, PolicyAnyPublic, "")
+	if err != nil || lease == nil || lease.Gamertag != "Tardif" {
+		t.Fatalf("lease=%v err=%v : le slot installé entre l'essai et l'attente a été manqué", lease, err)
+	}
+	lease.Release()
+}
+
+// TestBackground_FinDeRepos429 : pendant le remplissage, le seul slot présent prend un 429 de 300 ms ; l'acquisition
+// publique reprend dès la fin du repos, sans attendre un événement du remplissage (le second compte est très lent).
+func TestBackground_FinDeRepos429(t *testing.T) {
+	p := newBackgroundPool(t, newCtxResolver(func(gt string) time.Duration {
+		if gt == "Vif" {
+			return time.Millisecond
+		}
+		return time.Minute
+	}), bgSources("Vif", "Lent"), 0)
+	waitFor(t, "Vif entre dans le pool", func() bool { return p.Size() == 1 })
+	p.On429ForToken("Vif", 300*time.Millisecond)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
+	defer cancel()
+	debut := time.Now()
+	lease, err := p.Acquire(ctx, PolicyAnyPublic, "")
+	if err != nil || lease == nil {
+		t.Fatalf("lease=%v err=%v après %v : l'acquisition a dormi au-delà de la fin du repos", lease, err, time.Since(debut))
+	}
+	lease.Release()
+	if d := time.Since(debut); d < 200*time.Millisecond || d > 900*time.Millisecond {
+		t.Errorf("acquisition après %v, attendu la fin du repos (~300 ms)", d)
+	}
+}
+
+// TestBackground_RetourDeSante : le slot malsain redevient sain (refresher, ou source rafraîchie) pendant le
+// remplissage : l'acquisition publique en attente le prend aussitôt.
+func TestBackground_RetourDeSante(t *testing.T) {
+	p := newBackgroundPool(t, newCtxResolver(func(gt string) time.Duration {
+		if gt == "Vif" {
+			return time.Millisecond
+		}
+		return time.Minute
+	}), bgSources("Vif", "Lent"), 0)
+	waitFor(t, "Vif entre dans le pool", func() bool { return p.Size() == 1 })
+	p.MarkUnhealthy("Vif", errors.New("401"))
+
+	go func() {
+		time.Sleep(150 * time.Millisecond)
+		// Le retour de santé du refresher : même chemin que AddOrUpdateSource sur un slot existant.
+		if err := p.AddOrUpdateSource(context.Background(), bgSources("Vif")[0]); err != nil {
+			t.Errorf("AddOrUpdateSource: %v", err)
+		}
+	}()
+	ctx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
+	defer cancel()
+	lease, err := p.Acquire(ctx, PolicyAnyPublic, "")
+	if err != nil || lease == nil {
+		t.Fatalf("lease=%v err=%v : le retour de santé n'a pas réveillé l'acquisition", lease, err)
+	}
+	lease.Release()
+}
+
+// Hors résolution de fond (pool construit en synchrone, ou résolution terminée), un slot au repos rend
+// ErrNoHealthySlot TOUT DE SUITE : les appelants qui rejouent après un 429 (historyretry) ne sont pas ralentis.
+func TestBackground_SansRemplissageEchecImmediat(t *testing.T) {
+	r := newCtxResolver(func(string) time.Duration { return 0 })
+	for nom, p := range map[string]Pool{
+		"synchrone": func() Pool {
+			p, err := NewPool(context.Background(), r, bgSources("A"), PoolOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			return p
+		}(),
+		"remplissage terminé": func() Pool {
+			p := newBackgroundPool(t, r, bgSources("A"), 0)
+			WaitResolved(context.Background(), p)
+			return p
+		}(),
+	} {
+		t.Run(nom, func(t *testing.T) {
+			defer p.Close()
+			p.On429ForToken("A", 5*time.Second)
+			debut := time.Now()
+			_, err := p.Acquire(context.Background(), PolicyAnyPublic, "")
+			if !errors.Is(err, ErrNoHealthySlot) || time.Since(debut) > 500*time.Millisecond {
+				t.Errorf("err=%v après %v, attendu ErrNoHealthySlot immédiat", err, time.Since(debut))
+			}
+		})
+	}
+}

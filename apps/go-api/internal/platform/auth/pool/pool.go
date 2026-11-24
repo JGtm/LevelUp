@@ -55,6 +55,9 @@ type poolImpl struct {
 
 	// fill : la résolution des comptes en tâche de fond (PoolOptions.ResolveInBackground). Nil sinon.
 	fill *bootFill
+	// afterFailedTryHook : crochet de test, appelé entre un essai d'acquisition publique infructueux et la
+	// mise en attente. Nil en production.
+	afterFailedTryHook func()
 }
 
 // slot encapsule l'état d'un token dans le pool.
@@ -271,14 +274,23 @@ func (p *poolImpl) Acquire(ctx context.Context, policy AcquirePolicy, pinnedGame
 var ErrNoHealthySlot = errors.New("pool: aucun slot sain disponible (PolicyAnyPublic)")
 
 // acquireAnyPublic : round-robin parmi les slots sains. Pendant la résolution de fond, un pool sans
-// slot acquérable attend le prochain compte résolu (dans la limite de ctx) au lieu d'échouer.
+// slot acquérable attend (dans la limite de ctx) qu'un slot le redevienne au lieu d'échouer : compte résolu,
+// retour de santé, consentement rendu, ou fin du repos d'un slot rate-limité. Hors résolution de fond,
+// l'échec ErrNoHealthySlot est rendu tout de suite, comme avant (les appelants rejouent après le repos).
 func (p *poolImpl) acquireAnyPublic(ctx context.Context) (*Lease, error) {
 	for {
+		// Le canal de réveil est pris AVANT l'essai : un slot installé entre l'essai et l'attente ferme CE
+		// canal, l'attente le voit (pas de réveil perdu).
+		wake, filling := p.fill.watch()
+		essaiA := time.Now()
 		lease, err := p.tryAcquireAnyPublic(ctx)
-		if !errors.Is(err, ErrNoHealthySlot) {
+		if !errors.Is(err, ErrNoHealthySlot) || !filling {
 			return lease, err
 		}
-		if !p.fill.wait(ctx) {
+		if p.afterFailedTryHook != nil {
+			p.afterFailedTryHook()
+		}
+		if !p.waitForUsableSlot(ctx, wake, essaiA) {
 			if cerr := ctx.Err(); cerr != nil {
 				return nil, cerr
 			}
@@ -445,6 +457,7 @@ func (p *poolImpl) AddOrUpdateSource(ctx context.Context, src CredentialSource) 
 		s.lastRefresh = time.Now()
 		s.excluded = src.PoolExcluded
 		s.mu.Unlock()
+		p.fill.signal() // un slot redevenu sain réveille les acquisitions en attente (résolution de fond)
 		slog.InfoContext(ctx, "pool: slot updated",
 			"gamertag", src.Gamertag, "source", src.Source)
 		return nil
@@ -823,6 +836,7 @@ func (p *poolImpl) refresherLoop(baseCtx context.Context) {
 						s.healthy = true
 						s.lastRefresh = time.Now()
 						s.mu.Unlock()
+						p.fill.signal() // retour de santé : réveille les acquisitions en attente (résolution de fond)
 
 						slog.InfoContext(ctx, "pool: token rafraîchi avec succès",
 							"gamertag", gt, "reason", reason)

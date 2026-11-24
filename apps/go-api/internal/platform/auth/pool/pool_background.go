@@ -107,21 +107,73 @@ func (f *bootFill) setShared(xuid string, shared bool) bool {
 	return false
 }
 
-// wait attend un changement (slot installé, échec, fin) tant que la résolution dure. Rend faux, sans
-// attendre, quand elle n'est pas ou plus en cours, ou quand ctx est terminé.
-func (f *bootFill) wait(ctx context.Context) bool {
+// watch rend le canal de réveil courant et dit si la résolution est en cours. À prendre AVANT l'essai
+// d'acquisition dont l'échec mène à l'attente.
+func (f *bootFill) watch() (<-chan struct{}, bool) {
 	if f == nil {
-		return false
+		return nil, false
 	}
 	f.mu.Lock()
-	if !f.running {
-		f.mu.Unlock()
-		return false
-	}
-	return f.waitWake(ctx)
+	defer f.mu.Unlock()
+	return f.wake, f.running
 }
 
-// waitIfPending est wait pour une acquisition épinglée : n'attend que si ce compte est encore à résoudre.
+// signal réveille les acquisitions en attente, si une résolution est en cours.
+func (f *bootFill) signal() {
+	if f == nil {
+		return
+	}
+	f.mu.Lock()
+	if f.running {
+		f.signalLocked()
+	}
+	f.mu.Unlock()
+}
+
+// waitForUsableSlot attend, pendant la résolution de fond, que l'acquisition publique ait une chance
+// d'aboutir : un réveil du pool (slot installé, retour de santé, consentement rendu, fin de résolution), ou
+// l'échéance du plus proche repos de slot (429) qui finit après `essaiA`, l'instant de l'essai infructueux
+// (un repos déjà échu à l'attente compte : l'attente repart aussitôt). Rend faux si ctx se termine avant.
+func (p *poolImpl) waitForUsableSlot(ctx context.Context, wake <-chan struct{}, essaiA time.Time) bool {
+	var timeout <-chan time.Time
+	if d, ok := p.untilNextRestEnd(essaiA); ok {
+		timer := time.NewTimer(d)
+		defer timer.Stop()
+		timeout = timer.C
+	}
+	select {
+	case <-wake:
+		return true
+	case <-timeout:
+		return true
+	case <-ctx.Done():
+		return false
+	}
+}
+
+// untilNextRestEnd rend le délai (nul si déjà échu) avant la fin du plus proche repos de slot (429) qui finit
+// après `depuis`, faux s'il n'y en a pas.
+func (p *poolImpl) untilNextRestEnd(depuis time.Time) (time.Duration, bool) {
+	p.slotMu.RLock()
+	slots := p.slots
+	p.slotMu.RUnlock()
+	var next time.Time
+	for _, s := range slots {
+		s.mu.RLock()
+		until := s.rateLimitedUntil
+		s.mu.RUnlock()
+		if until.After(depuis) && (next.IsZero() || until.Before(next)) {
+			next = until
+		}
+	}
+	if next.IsZero() {
+		return 0, false
+	}
+	return max(0, time.Until(next)), true
+}
+
+// waitIfPending attend, pour une acquisition épinglée, un changement de la résolution (slot installé, échec, fin) :
+// seulement si ce compte est encore à résoudre. Rend faux, sans attendre, sinon ou quand ctx est terminé.
 func (f *bootFill) waitIfPending(ctx context.Context, key string) bool {
 	if f == nil {
 		return false
