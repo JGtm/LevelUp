@@ -173,11 +173,13 @@ func keptFilmWithinWindow(m Match, f Film, window *int) (kept, outOfBounds bool)
 	return true, false
 }
 
-// longestPlayed rend le plus long temps de jeu rangé des joueurs du match (nil quand aucun n'est rangé).
+// longestPlayed rend le plus long temps de jeu rangé des joueurs HUMAINS du match (nil quand aucun n'est
+// rangé) : un bot n'est pas un joueur, son temps de jeu dépasse la durée sans que la durée soit fausse
+// (cas réel : durée juste de 917 s, deux bots à 947 s).
 func longestPlayed(parts []Participant) *int {
 	var longest *int
 	for _, p := range parts {
-		if p.TimePlayed != nil && (longest == nil || *p.TimePlayed > *longest) {
+		if timeline.HumanXUID(p.XUID) && p.TimePlayed != nil && (longest == nil || *p.TimePlayed > *longest) {
 			v := *p.TimePlayed
 			longest = &v
 		}

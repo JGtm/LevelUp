@@ -41,6 +41,8 @@ var (
 		// Fenêtre du match d'un coup d'envoi du rejeu bornée aussi par le plus long temps de jeu (révision de la résolution
 		// du coup d'envoi) : l'empreinte hache timeline.KickoffRev, aucun paramètre propre ne change.
 		"perf-2026-11-24": "78ea297ff5ebe15c8fbb7fdf27f0998340bb3daf1753227245957daf2217a8d1",
+		// Même liaison : la marge de la durée du registre change la révision du coup d'envoi.
+		"perf-2026-11-24b": "8b37ea4caebf54cbd11aafc6f9f23a623284aa906438b0d5e40f89fa17bac23b",
 	}
 	lusrParametersByRevision = map[string]string{
 		"lusr-2026-11-08": "ef84e6e155f63198d9a7387d11af1f1dfd77473d4e12bad220e667ef5fd3443a",
@@ -54,7 +56,8 @@ var (
 		// Même liaison que la note de performance : la révision du coup d'envoi change, aucun paramètre propre au LUSR.
 		"lusr-2026-11-22": "119e364d21797c0022b42d83bd766155e57708ade072b2309dc006dcbbe24afb",
 		// Même liaison : la révision du coup d'envoi change, aucun paramètre propre au LUSR.
-		"lusr-2026-11-24": "38c2d9300c8a9725d7ffcec4ade1ed06b2c7d56bcbcca7ea8f6714f04208d5df",
+		"lusr-2026-11-24":  "38c2d9300c8a9725d7ffcec4ade1ed06b2c7d56bcbcca7ea8f6714f04208d5df",
+		"lusr-2026-11-24b": "1776d63ead9737dc8e35820622e1b4a7bd5c58b8ebaba1cd9fae7562918a1187",
 	}
 )
 

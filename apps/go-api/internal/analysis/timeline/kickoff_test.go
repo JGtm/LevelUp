@@ -22,6 +22,9 @@ var kickoffParametersByRevision = map[string]string{
 	// fausse) ; un coup d'envoi du rejeu gardé est contrôlé contre cette fenêtre. Le texte haché
 	// de la règle change, donc l'empreinte aussi (les empreintes anciennes décrivent l'ancienne règle).
 	"kickoff-2026-11-24": "edde8db690b3d5a43be15df117db6ba0ecbb609f58a7251a5b64b77497c1159e",
+	// Revue : la durée n'est tenue pour fausse qu'au-delà d'une marge sur le temps de jeu des joueurs humains
+	// (DurationMismatchMarginSeconds) ; la marge entre dans le texte haché.
+	"kickoff-2026-11-24b": "d04ca51bc7ebafb017e476d0cadade2b63a947da6a404015616547315f76cd54",
 }
 
 // kickoffParameters hache les nombres et l'ordre des sources que la résolution applique.
@@ -30,7 +33,8 @@ func kickoffParameters() (string, string) {
 		"t0SpreadThresholdMs=" + strconv.FormatInt(t0SpreadThresholdMs, 10),
 		"t0MaxPlausibleMs=" + strconv.FormatInt(t0MaxPlausibleMs, 10),
 		"ordre=" + string(KickoffSourceFilm) + ">" + string(KickoffSourceAPI) + ">inconnue",
-		"rejeuDansLaFenetre=[0,max(duree,tempsDeJeuMax)]",
+		"rejeuDansLaFenetre=[0,max(duree,tempsDeJeuMaxDesJoueurs)]",
+		"dureeFausseMarge=" + strconv.Itoa(DurationMismatchMarginSeconds),
 		"tempsDeJeu=" + string(TimePlayedOK),
 	}
 	sort.Strings(lines)
@@ -230,6 +234,9 @@ func TestDurationUnreliable(t *testing.T) {
 	}{
 		"plus courte que le temps de jeu": {p(21), p(462), true},
 		"égale":                           {p(462), p(462), false},
+		"une seconde au-dessus":           {p(600), p(601), false},
+		"exactement la marge":             {p(900), p(910), false},
+		"au-delà de la marge":             {p(900), p(911), true},
 		"plus longue":                     {p(600), p(462), false},
 		"durée inconnue":                  {nil, p(462), false},
 		"durée nulle":                     {p(0), p(462), false},

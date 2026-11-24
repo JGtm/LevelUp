@@ -14,7 +14,7 @@ import (
 // un changement de logique sans changement de nombre se signale en changeant cette valeur. Les notes
 // lisent ce que cette résolution écrit : l'empreinte des révisions de notation hache KickoffRev
 // (TestScoringParametersMatchRevision, paquet sync), donc la changer impose de les monter aussi.
-const KickoffRev = "kickoff-2026-11-24"
+const KickoffRev = "kickoff-2026-11-24b"
 
 // KickoffSource dit d'où vient le coup d'envoi rangé d'un match. Valeurs rangées dans
 // `match_registry.real_start_source` : `film`, `api`, ou vide (coup d'envoi inconnu).
@@ -67,7 +67,7 @@ type KickoffInput struct {
 	// DurationSeconds : la durée du match ; nil ou nulle = inconnue (seule la borne zéro du coup
 	// d'envoi du rejeu s'applique alors).
 	DurationSeconds *int
-	// LongestPlayedSeconds : le plus long temps de jeu rangé des joueurs du match ; nil = inconnu.
+	// LongestPlayedSeconds : le plus long temps de jeu rangé des JOUEURS (humains) du match ; nil = inconnu.
 	// Quand la durée du registre est plus courte (durée manifestement fausse, cf.
 	// [DurationUnreliable]), il borne la fenêtre du match à sa place.
 	LongestPlayedSeconds *int
@@ -100,12 +100,22 @@ func ResolveKickoff(in KickoffInput) Kickoff {
 	return Kickoff{Source: KickoffSourceAPI, OffsetMs: t0, Estimate: q, FilmOutOfBounds: outOfBounds}
 }
 
-// DurationUnreliable dit si la durée du registre est manifestement fausse : connue, et plus courte
-// que le plus long temps de jeu d'un joueur du match (un joueur ne joue pas plus longtemps que le
-// match). Faux quand l'une des deux valeurs manque : rien ne contredit alors la durée.
+// DurationMismatchMarginSeconds est l'excédent de temps de jeu au-dessus duquel la durée du registre est
+// « manifestement fausse ». En dessous, l'écart est celui des horloges (arrivée et départ comptés à la
+// seconde, durée de l'API différente de fin moins début) et la durée reste tenue pour juste : sans marge,
+// un joueur à une seconde de trop élargissait la fenêtre du match (un coup d'envoi après la fin réelle
+// aurait été accepté) et le temps de jeu de tout le match n'était plus recalculé. Mesure sur la base du
+// poste le 2026-11-24 : l'excédent minimum d'un vrai cas de durée fausse (21 s pour 462 s jouées, 24 s
+// pour 677 s...) est de 30 s ; 10 s tient les écarts d'horloge en dehors, avec 20 s de marge de sécurité.
+const DurationMismatchMarginSeconds = 10
+
+// DurationUnreliable dit si la durée du registre est manifestement fausse : connue, et plus courte que le
+// plus long temps de jeu d'un JOUEUR du match de plus de [DurationMismatchMarginSeconds] (un joueur ne joue
+// pas plus longtemps que le match ; les bots n'entrent pas dans ce temps de jeu, l'appelant ne lui passe
+// que des humains). Faux quand l'une des deux valeurs manque : rien ne contredit alors la durée.
 func DurationUnreliable(durationSeconds, longestPlayedSeconds *int) bool {
 	return durationSeconds != nil && *durationSeconds > 0 &&
-		longestPlayedSeconds != nil && *longestPlayedSeconds > *durationSeconds
+		longestPlayedSeconds != nil && *longestPlayedSeconds > *durationSeconds+DurationMismatchMarginSeconds
 }
 
 // MatchWindowSeconds rend la durée qui borne la fenêtre du match : celle du registre, sauf quand elle
