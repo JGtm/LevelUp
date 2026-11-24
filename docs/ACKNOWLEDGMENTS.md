@@ -18,6 +18,16 @@ art we learned from, not code we ship, except the data files named below:
   services, and the import path for OpenSpartan data.
 - **Den Delimarsky** ([dend](https://github.com/dend)) for [OpenSpartan Cartographer](https://github.com/OpenSpartan/cartographer) and [films-ui](https://github.com/OpenSpartan/films-ui) —
   the principles of the Relief background (height-tinted terrain, vector lines, cut by storey); MIT licence, no code copied.
+- **Den Delimarsky** ([dend](https://github.com/dend)) for libfilmshell (OpenSpartan, MIT licence) — the tables of the
+  score responses, of the medals and of the damage effects, and the payload widths of some film messages, read by the
+  film decoder (`halo-infinite-film-decoder`, v1.6.0); the credit headers and licence texts sit next to the tables.
+- **llampwall** ([llampwall](https://github.com/llampwall)) for the 3D replay reader built on the film decoder
+  (`llampwall/installation-08`) and the readings it brought: gestures, crouch and jump commands, the shooter by control
+  place, aims without a position, the weapon in hand, the ammunition carried, positions at the film's full rate,
+  projectiles that stick, equipment pads. They were written again under the decoder's rules (v1.6.0); no line of the
+  fork is copied.
+- **nuzzles** (the Rust parser `halo_api`) — the method of reading the chunks of a film on several threads, behind the
+  decoder's thread option (v1.6.0, replay generation two to three times faster); no code taken.
 - **Gravemind2401** ([Gravemind2401](https://github.com/Gravemind2401)) for [Reclaimer](https://github.com/Gravemind2401/Reclaimer) —
   its reading of the Halo map file formats is the reference behind our geometry decoder
   (`halo-infinite-map-images/himap/`: SBSP sections, mesh filters, SDDT groups).
