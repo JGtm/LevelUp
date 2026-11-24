@@ -1581,10 +1581,6 @@
 {"Time":"2026-06-26T23:45:09.8275915+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestComputeKillerVictimPairs_NegativeTolerance","Output":"=== RUN   TestComputeKillerVictimPairs_NegativeTolerance\n"}
 {"Time":"2026-06-26T23:45:09.8275915+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestComputeKillerVictimPairs_NegativeTolerance","Output":"--- PASS: TestComputeKillerVictimPairs_NegativeTolerance (0.00s)\n"}
 {"Time":"2026-06-26T23:45:09.8275915+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestComputeKillerVictimPairs_NegativeTolerance","Elapsed":0}
-{"Time":"2026-06-26T23:45:09.8275915+02:00","Action":"run","Package":"levelup/go-api/internal/analysis","Test":"TestComputeAntagonistCounts"}
-{"Time":"2026-06-26T23:45:09.8275915+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestComputeAntagonistCounts","Output":"=== RUN   TestComputeAntagonistCounts\n"}
-{"Time":"2026-06-26T23:45:09.8275915+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestComputeAntagonistCounts","Output":"--- PASS: TestComputeAntagonistCounts (0.00s)\n"}
-{"Time":"2026-06-26T23:45:09.8275915+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestComputeAntagonistCounts","Elapsed":0}
 {"Time":"2026-06-26T23:45:09.8275915+02:00","Action":"run","Package":"levelup/go-api/internal/analysis","Test":"TestComputeKPIStats_Empty"}
 {"Time":"2026-06-26T23:45:09.8275915+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestComputeKPIStats_Empty","Output":"=== RUN   TestComputeKPIStats_Empty\n"}
 {"Time":"2026-06-26T23:45:09.8275915+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestComputeKPIStats_Empty","Output":"=== PAUSE TestComputeKPIStats_Empty\n"}
@@ -2937,18 +2933,6 @@
 {"Time":"2026-06-26T23:45:09.8334409+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestComputeModeCategory_Unknown","Output":"=== RUN   TestComputeModeCategory_Unknown\n"}
 {"Time":"2026-06-26T23:45:09.8334409+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestComputeModeCategory_Unknown","Output":"--- PASS: TestComputeModeCategory_Unknown (0.00s)\n"}
 {"Time":"2026-06-26T23:45:09.8334409+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestComputeModeCategory_Unknown","Elapsed":0}
-{"Time":"2026-06-26T23:45:09.8334409+02:00","Action":"run","Package":"levelup/go-api/internal/analysis","Test":"TestComputeModeCategoryAverages_Empty"}
-{"Time":"2026-06-26T23:45:09.8334409+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestComputeModeCategoryAverages_Empty","Output":"=== RUN   TestComputeModeCategoryAverages_Empty\n"}
-{"Time":"2026-06-26T23:45:09.8334409+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestComputeModeCategoryAverages_Empty","Output":"--- PASS: TestComputeModeCategoryAverages_Empty (0.00s)\n"}
-{"Time":"2026-06-26T23:45:09.8334409+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestComputeModeCategoryAverages_Empty","Elapsed":0}
-{"Time":"2026-06-26T23:45:09.8334409+02:00","Action":"run","Package":"levelup/go-api/internal/analysis","Test":"TestComputeModeCategoryAverages_NoMatch"}
-{"Time":"2026-06-26T23:45:09.8334409+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestComputeModeCategoryAverages_NoMatch","Output":"=== RUN   TestComputeModeCategoryAverages_NoMatch\n"}
-{"Time":"2026-06-26T23:45:09.8334409+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestComputeModeCategoryAverages_NoMatch","Output":"--- PASS: TestComputeModeCategoryAverages_NoMatch (0.00s)\n"}
-{"Time":"2026-06-26T23:45:09.8334409+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestComputeModeCategoryAverages_NoMatch","Elapsed":0}
-{"Time":"2026-06-26T23:45:09.8334409+02:00","Action":"run","Package":"levelup/go-api/internal/analysis","Test":"TestComputeModeCategoryAverages_Average"}
-{"Time":"2026-06-26T23:45:09.8334409+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestComputeModeCategoryAverages_Average","Output":"=== RUN   TestComputeModeCategoryAverages_Average\n"}
-{"Time":"2026-06-26T23:45:09.8334409+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestComputeModeCategoryAverages_Average","Output":"--- PASS: TestComputeModeCategoryAverages_Average (0.00s)\n"}
-{"Time":"2026-06-26T23:45:09.8334409+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestComputeModeCategoryAverages_Average","Elapsed":0}
 {"Time":"2026-06-26T23:45:09.8334409+02:00","Action":"run","Package":"levelup/go-api/internal/analysis","Test":"TestFirstBlood_FirstKiller"}
 {"Time":"2026-06-26T23:45:09.8334409+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestFirstBlood_FirstKiller","Output":"=== RUN   TestFirstBlood_FirstKiller\n"}
 {"Time":"2026-06-26T23:45:09.8334409+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestFirstBlood_FirstKiller","Output":"--- PASS: TestFirstBlood_FirstKiller (0.00s)\n"}
@@ -14079,18 +14063,6 @@
 {"Time":"2026-06-26T23:46:18.1263482+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5","Test":"TestNewSpartanTokenSource_NoToken","Output":"=== RUN   TestNewSpartanTokenSource_NoToken\n"}
 {"Time":"2026-06-26T23:46:18.1263482+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5","Test":"TestNewSpartanTokenSource_NoToken","Output":"--- PASS: TestNewSpartanTokenSource_NoToken (0.00s)\n"}
 {"Time":"2026-06-26T23:46:18.1263482+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_5","Test":"TestNewSpartanTokenSource_NoToken","Elapsed":0}
-{"Time":"2026-06-26T23:46:18.1263482+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_5","Test":"TestAdapter_LoadMatchSummaries_FromSource"}
-{"Time":"2026-06-26T23:46:18.1263482+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5","Test":"TestAdapter_LoadMatchSummaries_FromSource","Output":"=== RUN   TestAdapter_LoadMatchSummaries_FromSource\n"}
-{"Time":"2026-06-26T23:46:18.1263482+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5","Test":"TestAdapter_LoadMatchSummaries_FromSource","Output":"--- PASS: TestAdapter_LoadMatchSummaries_FromSource (0.00s)\n"}
-{"Time":"2026-06-26T23:46:18.1263482+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_5","Test":"TestAdapter_LoadMatchSummaries_FromSource","Elapsed":0}
-{"Time":"2026-06-26T23:46:18.1263482+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_5","Test":"TestAdapter_LoadMatchSummaries_NilSource"}
-{"Time":"2026-06-26T23:46:18.1263482+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5","Test":"TestAdapter_LoadMatchSummaries_NilSource","Output":"=== RUN   TestAdapter_LoadMatchSummaries_NilSource\n"}
-{"Time":"2026-06-26T23:46:18.1263482+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5","Test":"TestAdapter_LoadMatchSummaries_NilSource","Output":"--- PASS: TestAdapter_LoadMatchSummaries_NilSource (0.00s)\n"}
-{"Time":"2026-06-26T23:46:18.1263482+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_5","Test":"TestAdapter_LoadMatchSummaries_NilSource","Elapsed":0}
-{"Time":"2026-06-26T23:46:18.1268577+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_5","Test":"TestAdapter_LoadMatchSummaries_SourceError"}
-{"Time":"2026-06-26T23:46:18.1268577+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5","Test":"TestAdapter_LoadMatchSummaries_SourceError","Output":"=== RUN   TestAdapter_LoadMatchSummaries_SourceError\n"}
-{"Time":"2026-06-26T23:46:18.1268577+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5","Test":"TestAdapter_LoadMatchSummaries_SourceError","Output":"--- PASS: TestAdapter_LoadMatchSummaries_SourceError (0.00s)\n"}
-{"Time":"2026-06-26T23:46:18.1268577+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_5","Test":"TestAdapter_LoadMatchSummaries_SourceError","Elapsed":0}
 {"Time":"2026-06-26T23:46:18.1268577+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_5","Test":"TestCapabilitiesTOMLMatchesHardcoded"}
 {"Time":"2026-06-26T23:46:18.1268577+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5","Test":"TestCapabilitiesTOMLMatchesHardcoded","Output":"=== RUN   TestCapabilitiesTOMLMatchesHardcoded\n"}
 {"Time":"2026-06-26T23:46:18.1268577+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5","Test":"TestCapabilitiesTOMLMatchesHardcoded","Output":"--- PASS: TestCapabilitiesTOMLMatchesHardcoded (0.00s)\n"}
@@ -14769,10 +14741,6 @@
 {"Time":"2026-06-26T23:46:24.1898152+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestLoadCareerSnapshot_PropagatesUnknownError","Output":"=== RUN   TestLoadCareerSnapshot_PropagatesUnknownError\n"}
 {"Time":"2026-06-26T23:46:24.1898152+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestLoadCareerSnapshot_PropagatesUnknownError","Output":"=== PAUSE TestLoadCareerSnapshot_PropagatesUnknownError\n"}
 {"Time":"2026-06-26T23:46:24.1898152+02:00","Action":"pause","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestLoadCareerSnapshot_PropagatesUnknownError"}
-{"Time":"2026-06-26T23:46:24.1898152+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestLoadMatchSummaries_NotImplemented"}
-{"Time":"2026-06-26T23:46:24.1898152+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestLoadMatchSummaries_NotImplemented","Output":"=== RUN   TestLoadMatchSummaries_NotImplemented\n"}
-{"Time":"2026-06-26T23:46:24.1898152+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestLoadMatchSummaries_NotImplemented","Output":"=== PAUSE TestLoadMatchSummaries_NotImplemented\n"}
-{"Time":"2026-06-26T23:46:24.1898152+02:00","Action":"pause","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestLoadMatchSummaries_NotImplemented"}
 {"Time":"2026-06-26T23:46:24.1898152+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestLoadTimeseries_NotImplemented"}
 {"Time":"2026-06-26T23:46:24.1898152+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestLoadTimeseries_NotImplemented","Output":"=== RUN   TestLoadTimeseries_NotImplemented\n"}
 {"Time":"2026-06-26T23:46:24.1898152+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestLoadTimeseries_NotImplemented","Output":"=== PAUSE TestLoadTimeseries_NotImplemented\n"}
@@ -15309,8 +15277,6 @@
 {"Time":"2026-06-26T23:46:24.2113+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_CSRRankImageURL","Output":"=== CONT  TestAssetURLAdapter_CSRRankImageURL\n"}
 {"Time":"2026-06-26T23:46:24.2113+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_CSRRankImageURL/gold_3"}
 {"Time":"2026-06-26T23:46:24.2113+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_CSRRankImageURL/gold_3","Output":"=== RUN   TestAssetURLAdapter_CSRRankImageURL/gold_3\n"}
-{"Time":"2026-06-26T23:46:24.2113+02:00","Action":"cont","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestLoadMatchSummaries_NotImplemented"}
-{"Time":"2026-06-26T23:46:24.2113+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestLoadMatchSummaries_NotImplemented","Output":"=== CONT  TestLoadMatchSummaries_NotImplemented\n"}
 {"Time":"2026-06-26T23:46:24.2113+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_CSRRankImageURL/gold_3","Output":"--- PASS: TestAssetURLAdapter_CSRRankImageURL/gold_3 (0.00s)\n"}
 {"Time":"2026-06-26T23:46:24.2113+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_CSRRankImageURL/gold_3","Elapsed":0}
 {"Time":"2026-06-26T23:46:24.2113+02:00","Action":"cont","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_MapImageURL"}
@@ -15409,8 +15375,6 @@
 {"Time":"2026-06-26T23:46:24.2118117+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestSemanticAdapter_NilSet","Elapsed":0}
 {"Time":"2026-06-26T23:46:24.2118117+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_CSRRankImageURLOnyx","Output":"--- PASS: TestAssetURLAdapter_CSRRankImageURLOnyx (0.00s)\n"}
 {"Time":"2026-06-26T23:46:24.2118117+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_CSRRankImageURLOnyx","Elapsed":0}
-{"Time":"2026-06-26T23:46:24.2118117+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestLoadMatchSummaries_NotImplemented","Output":"--- PASS: TestLoadMatchSummaries_NotImplemented (0.00s)\n"}
-{"Time":"2026-06-26T23:46:24.2118117+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestLoadMatchSummaries_NotImplemented","Elapsed":0}
 {"Time":"2026-06-26T23:46:24.2118117+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_CSRRankImageURL/platinum_5"}
 {"Time":"2026-06-26T23:46:24.2118117+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_CSRRankImageURL/platinum_5","Output":"=== RUN   TestAssetURLAdapter_CSRRankImageURL/platinum_5\n"}
 {"Time":"2026-06-26T23:46:24.2118117+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestComputeWarthogDestroyer_Sum","Output":"--- PASS: TestComputeWarthogDestroyer_Sum (0.00s)\n"}
