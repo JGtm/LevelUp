@@ -7,7 +7,8 @@
 //
 // Frontière avec internal/domain/ : domain/ héberge les types non-titre-aware
 // (sessions, performance score, citations) qui restent calculés au-dessus du
-// canonique services. canonical/ ne dépend de rien hors stdlib.
+// canonique services. canonical/ ne dépend que de la bibliothèque standard et de
+// internal/i18n (libellés par langue).
 package canonical
 
 // FieldKey est un identifiant stable, machine-friendly, agnostique du titre,

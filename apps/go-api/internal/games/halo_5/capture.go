@@ -367,7 +367,8 @@ func isKnownOrFalse(f func(string) bool) func(string) bool {
 // captureMatchTimeline fetch + mappe la timeline d'un match. Indisponibilité
 // (404/410, token expiré, decode) -> timeline vide + EventsFailed++ : le match est
 // TOUT DE MÊME collecté (registry seul) — on ne perd jamais le match pour un events
-// KO, et un futur passage le re-tentera (match_registry idempotent).
+// KO. Aucun passage automatique ne le reprend ensuite : le delta et le rattrapage sautent les
+// matchs connus, le match reste donc sans timeline.
 func captureMatchTimeline(ctx context.Context, src h5Source, matchID string, stats *CaptureStats) []canonical.MatchEvent {
 	resp, err := src.GetMatchEvents(ctx, matchID)
 	if err != nil {
@@ -395,8 +396,8 @@ func FetchCanonicalEvents(ctx context.Context, src CaptureSource, matchID string
 // commendations natives (AXE B) depuis ce MÊME carnage (pas de 2e fetch).
 // Indisponibilité (404/410, token expiré, decode) -> (nil, nil) + CarnageFailed++ :
 // le match est TOUT DE MÊME collecté (sans participants ni commendations) — squad/
-// rencontres dégradent pour ce match seul, et un futur passage le re-tentera
-// (match_registry idempotent).
+// rencontres dégradent pour ce match seul. Aucun passage automatique ne le reprend ensuite :
+// le delta et le rattrapage sautent les matchs connus, le match reste donc sans participants.
 func captureParticipants(ctx context.Context, src CaptureSource, matchID, mode string, resolveXUID func(string) string, stats *CaptureStats) ([]domain.MatchParticipantRow, []persist.CommendationInsert, *int, *int) {
 	carnage, err := src.GetMatchCarnage(ctx, matchID, mode)
 	if err != nil {

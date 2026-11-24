@@ -55,7 +55,7 @@ const SIZE_CLASSES: Record<NonNullable<NarrativeBadgeProps['size']>, string> = {
 
 /**
  * NarrativeBadge — rendu unifié. La couleur est appliquée via une variable
- * CSS pour respecter la règle CLAUDE.md §20 (pas de hex/Tailwind hardcodé
+ * CSS pour respecter la règle CLAUDE.md règle 12 (pas de hex/Tailwind hardcodé
  * dans les composants).
  */
 export function NarrativeBadge({

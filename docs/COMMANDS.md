@@ -1734,7 +1734,7 @@ dev parc rendered LOSS on all 7 witnesses at the best known state — a gate tha
 gates nothing):
 
 - `--reference=base` (**default**): bakes each witness TWICE — once with HEAD's code, once
-  with a **base revision**'s code (default: `origin/feat/v75` if HEAD differs from it,
+  with a **base revision**'s code (default: `origin/main` if HEAD differs from it,
   otherwise `HEAD^` — a detached temporary worktree is created for the base revision and
   removed afterwards, even on failure) — then diffs the two fresh artifacts. Any loss exits 1.
   This is the gate to run before merging: the signal is binary, a loss can only come from the
