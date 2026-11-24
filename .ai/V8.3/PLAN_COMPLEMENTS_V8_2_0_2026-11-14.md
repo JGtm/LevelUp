@@ -81,7 +81,7 @@ avant/après capturé) ; relecture indépendante sans P0/P1 ; notes de version e
   changent de palier), pour la note et pour le LUSR.
 - **D-15 : gestes de prod.** La suppression de `streak` (bases joueur) et toute réparation de la précision sont des
   migrations qui s'appliquent seules au démarrage (registre de migrations, skill `db-schema`), précédées de la sauvegarde
-  habituelle du VPS ; séquence inscrite dans `.ai/annexes_v8_1_2/gestes_prod_8_2_0.md` (sauvegarde, démarrage, contrôle
+  habituelle du VPS ; séquence inscrite dans `.ai/V8.3/annexes_v8_1_2/gestes_prod_8_2_0.md` (sauvegarde, démarrage, contrôle
   du log : plus de refus de réparation, recalcul des notes terminé pour chaque joueur). **Aucune copie de base locale
   vers le VPS** (règle du user : les joueurs ne sont pas les mêmes) : les copies à froid restent dans le scratchpad, pour
   mesurer seulement ; en prod, tout changement de données passe par les migrations au démarrage ou par des passes
@@ -112,7 +112,7 @@ avant/après capturé) ; relecture indépendante sans P0/P1 ; notes de version e
 - [!] 1.6 Bail joueur annulé pendant le recalcul (`dblease/writer.go:198`, `career_live_service.go:460`, `db_recovery.go:180`) : cause établie ; l'écriture partielle de carrière n'est plus perdue (attente ou reprise) ; plus de connexion fermée sous un lecteur. (bail : fait ; connexion fermée sous un lecteur : cause par le code, correction NON faite, voir Journal)
 - [x] 1.7 `world_leaderboard_cron.go:290,415`, `playlist_expansion_service.go:78` : une erreur 5xx du service Halo = une ligne de synthèse par passe (playlists en échec, statut), niveau WARN. (fait)
 - [x] 1.8 `pool/pool.go:642`, `watcher/match_poller.go:104` : 429 absorbé par le retrait = INFO compté ; WARN seulement si le retrait échoue ou dure. (fait)
-- [x] 1.4b et 1.5b Skill `db-schema` appliqué ; migrations au registre (démarrage), tests sur base joueur legacy et neuve ; séquence prod ajoutée à `.ai/annexes_v8_1_2/gestes_prod_8_2_0.md` (D-15). (fait)
+- [x] 1.4b et 1.5b Skill `db-schema` appliqué ; migrations au registre (démarrage), tests sur base joueur legacy et neuve ; séquence prod ajoutée à `.ai/V8.3/annexes_v8_1_2/gestes_prod_8_2_0.md` (D-15). (fait)
 - [x] 1.9 Gate : témoin 0.3 rejoué, comparaison ligne à ligne ; restent seulement les replis nommés du décodeur et les cartes non résolues (normaux, D-10 ADR 0034). (fait : 230 WARN et ERROR avant, 38 après)
 
 ### Étape 2 — Tendances, groupe « Rythme »

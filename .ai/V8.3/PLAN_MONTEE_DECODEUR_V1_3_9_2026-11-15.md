@@ -68,7 +68,7 @@ GOWORK local par `scripts/briques-workspace.sh` uniquement (jamais de `go.work`,
 
 - [x] (ACCORD DU USER 2026-11-16 matin, relayé par levelup-dd : UNE régénération locale au schéma 124 dès la CI verte) Régénération du
       parc, une fois, binaire de `release/v8.2.1` à `e657d05bc8`, serveur local arrêté, un film à la fois ; films 1 614 avant et après (voir Journal).
-- [x] Gestes prod : `.ai/annexes_v8_1_2/gestes_prod_8_2_1.md` (R1 régénération et dérivés locaux, R2 dossier d'attente du VPS et
+- [x] Gestes prod : `.ai/V8.3/annexes_v8_1_2/gestes_prod_8_2_1.md` (R1 régénération et dérivés locaux, R2 dossier d'attente du VPS et
       `BASCULE.sh` simulé, R3 dérivés serveur) ; la 8.2.0 étant sortie, son annexe reste l'historique de la 8.2.0. Dossier d'attente
       envoyé sur instruction du pilote (accord du user relayé), bascule NON appliquée.
 
@@ -228,4 +228,4 @@ GOWORK local par `scripts/briques-workspace.sh` uniquement (jamais de `go.work`,
   2 267 -> 2 267, `.json.gz` 1 455 -> 1 455 (tous au 124), faits 1 458 -> 1 458. Dérivés locaux, 0 échec, 25 min : usage-summary 1 455, pad-tiers 1 451,
   killsource 1 460 matchs / 146 249 morts, vehicle-takes 1 456, flag-grabs-net 186, tactical-rasters 1 456 en v7. VPS : dossier d'attente
   `replays-staging-v8.2.1` (1 455 `.json.gz` + 1 455 `.meta`, octets identiques au local), `BASCULE.sh` simulé : 1 455 remplacent un rejeu servi,
-  0 erreur ; rien dans le dossier servi, aucune base. Gestes : `.ai/annexes_v8_1_2/gestes_prod_8_2_1.md`. Machine rendue à levelup-1f (gate v1.4.0).
+  0 erreur ; rien dans le dossier servi, aucune base. Gestes : `.ai/V8.3/annexes_v8_1_2/gestes_prod_8_2_1.md`. Machine rendue à levelup-1f (gate v1.4.0).

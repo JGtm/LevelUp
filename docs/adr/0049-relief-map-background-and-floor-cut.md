@@ -1,7 +1,7 @@
 # ADR 0049 — The Relief map background, the relief lines and the floor cut
 
 Status: accepted (2026-11-18); implemented on the `feat/fonds-relief` work of the same date.
-Source: the Relief plan of 2026-11-18 (`.ai/PLAN_FONDS_RELIEF_2026-11-18.md`), built on the principles of OpenSpartan
+Source: the Relief plan of 2026-11-18 (`.ai/V8.3/PLAN_FONDS_RELIEF_2026-11-18.md`), built on the principles of OpenSpartan
 Cartographer; the comparison mock-up of the same date and the decisions of the user, taken at the go and at the end of
 the design gate (colour, marker outline, floors, light, weight).
 Relates to: ADR 0048 (amended, see the last section), ADR 0043 (the relief is computed in a published brick; a

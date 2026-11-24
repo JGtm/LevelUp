@@ -1,6 +1,6 @@
 # Témoins AVANT de la branche `chore/830-backlog-1118` (2026-11-18)
 
-Étape 0.2 du plan `.ai/PLAN_BACKLOG_2026-11-18.md`. Aucun code de production n'a été modifié pour les obtenir : les lancements
+Étape 0.2 du plan `.ai/V8.3/PLAN_BACKLOG_2026-11-18.md`. Aucun code de production n'a été modifié pour les obtenir : les lancements
 sont ceux de la tête de la branche, les mesures du match `38900a5e` viennent de tests vitest jetables (supprimés, jamais versionnés ;
 le script est gardé en `.txt` sous `sondes/`). Chaque chiffre vient d'une commande lancée ce jour-là.
 

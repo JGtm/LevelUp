@@ -121,7 +121,7 @@ Le gain est plat parce que 73 % du travail est la fermeture commune (§ 2).
 
 ### 3.2 Les appelants de LevelUp
 
-Source : `.ai/annexes_decodeur_v160/appelants_partiels_0_7.md` du dépôt de l'application (tableaux A et B, relu).
+Source : `.ai/V8.3/annexes_decodeur_v160/appelants_partiels_0_7.md` du dépôt de l'application (tableaux A et B, relu).
 
 | Appelant | Entrée aujourd'hui | Gagnerait avec une sélection ? |
 |---|---|---|

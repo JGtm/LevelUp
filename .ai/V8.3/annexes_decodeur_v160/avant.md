@@ -13,7 +13,7 @@ Aucun identifiant de joueur ni pseudo ici ; les films se désignent par leur ide
 - Absent de la copie : la base des référentiels (noms de cartes en anglais) ; toute colonne d'apparence des Spartans
   (armure, revêtement : piste E.4) ; toute donnée de réplique. La copie n'a jamais été rouverte en écriture (octets
   inchangés après les lectures).
-- Dérivés des mêmes lectures sur le parc de la v1.4.1 : tous les chiffres de `LevelUp/.ai/annexes_decodeur_1118/avant.md`
+- Dérivés des mêmes lectures sur le parc de la v1.4.1 : tous les chiffres de `LevelUp/.ai/V8.3/annexes_decodeur_1118/avant.md`
   (jointures, score, compteurs, drapeau, zones, gestes, temps forts), pris sur 1 455 rejeux de schéma 125. Le parc n'a
   PAS été régénéré depuis (décision du 2026-11-22 : une seule régénération, après la v1.6.0) ; ces chiffres décrivent
   donc le décodeur v1.4.1, pas la v1.5.0. L'état de la v1.5.0 n'est établi que sur des échantillons (cités par piste).
@@ -54,8 +54,8 @@ serveur ni processus LevelUp, rien sur le port 8000 au moment de la copie).
 ## Table : piste, mesure attendue, valeur avant
 
 Légende : « parc v1.4.1 » = mesure sur les 1 455 rejeux non régénérés ; « échantillon v1.5.0 » = mesure du plan v1.5.0
-sur un sous-ensemble de films. Les renvois `1118` désignent `.ai/annexes_decodeur_1118/avant.md` (sections), `P160`
-le plan v1.6.0 (lignes), `P150` le plan v1.5.0 (`.ai/PLAN_DECODEUR_2026-11-18.md`, lignes).
+sur un sous-ensemble de films. Les renvois `1118` désignent `.ai/V8.3/annexes_decodeur_1118/avant.md` (sections), `P160`
+le plan v1.6.0 (lignes), `P150` le plan v1.5.0 (`.ai/V8.3/PLAN_DECODEUR_2026-11-18.md`, lignes).
 
 ### Piste A, score et tableau
 
@@ -75,7 +75,7 @@ le plan v1.6.0 (lignes), `P150` le plan v1.5.0 (`.ai/PLAN_DECODEUR_2026-11-18.md
 |---|---|---|---|---|
 | B.1 | cause prouvée par famille pour 16 portages à « au socle » faux : porteur précédent hors des 8 premières places ou sans humain nommé (7) ; variante à un drapeau publiée avec deux drapeaux d'équipe (4) ; résidu (5) | 16 = 7 + 4 + 5 (plan) ; au-delà de 8 joueurs, 85,7 % des joueurs à 2 s de l'API | P160 l.868-870 ; P150 l.343 (E.3) | causes : à mesurer par B.1 |
 | B.3 | équipe du porteur lue par le film sur une carte à 6 socles | 25 portages sur 25 d'équipe inconnue sur le film 390b1de5 | P150 l.737-738 (découvertes) ; P160 l.872-873 | lecture : à mesurer par B.3 |
-| B.4 | borne par build des compteurs de zones (octet signé qui avance de 32) | pas de valeur sur les anciens builds ; sur deux films à zones (dont 7344d24f), `zone_defensive_kills` égal à l'API pour 14 joueurs sur 14 | `.ai/annexes_decodeur_1118/changements_de_sortie.md` l.62 ; P160 l.874-875 | borne par build : à mesurer par B.4 |
+| B.4 | borne par build des compteurs de zones (octet signé qui avance de 32) | pas de valeur sur les anciens builds ; sur deux films à zones (dont 7344d24f), `zone_defensive_kills` égal à l'API pour 14 joueurs sur 14 | `.ai/V8.3/annexes_decodeur_1118/changements_de_sortie.md` l.62 ; P160 l.874-875 | borne par build : à mesurer par B.4 |
 | B.5 | temps de porteur à 2 s de l'API pour au moins autant de joueurs au-delà de 8 qu'en deçà | parc v1.4.1 : 88,11 % tous (1 542 / 1 750) ; 91,71 % à 8 joueurs ou moins (675 / 736) ; 85,50 % au-delà de 8 (867 / 1 014). Échantillon v1.5.0 (simulation sur les 186 films) : 88,23 % tous, 85,70 % au-delà de 8 | 1118, Piste E ; P150 l.345 ; `dec-v150-recup/e/rapport.md` l.42-43 | condition de B.5 : à mesurer après B.2 et B.4 |
 | B.6 | deux compteurs de couverture (lettres lues, lettres en accord avec le rang publié) | parc v1.4.1 : 77 rejeux de Bases, `coverage.zones.letters` = 3 pour les 77 (lettres lues) ; « lettres en accord avec le rang » : compteur inexistant | 1118, Piste G | accord : à mesurer par B.6 |
 | B.7 | cause de la zone au propriétaire de nom inconnu (un film, carte Recharge) | un film, non chiffré davantage | P160 §1.4 (ligne « zone au propriétaire de nom inconnu ») | cause : à mesurer par B.7 |

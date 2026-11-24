@@ -19,7 +19,7 @@ Tout part de deux scripts, lancés un par un (Node `--max-old-space-size=1024`),
 | `q_spree.sql` (via `C:/t/duckq`, copie en lecture seule) | colonne `max_killing_spree`, absente de l'export initial | `spree.tsv` |
 
 Les rejeux ne sont jamais écrits. Les sondes gardées sous
-`.ai/annexes_decodeur_1118/sondes/` sont copiées sous `C:/t/dec/avant/` ; seule `pilote_mesure_horloge` est
+`.ai/V8.3/annexes_decodeur_1118/sondes/` sont copiées sous `C:/t/dec/avant/` ; seule `pilote_mesure_horloge` est
 rejouée telle quelle, les autres mesures sont refaites par `extract.js` + `analyse.js` (une passe unique plutôt
 que vingt sondes qui relisent le parc), et retrouvent les chiffres de la section 1 là où elle en donne (écarts
 signalés plus bas).

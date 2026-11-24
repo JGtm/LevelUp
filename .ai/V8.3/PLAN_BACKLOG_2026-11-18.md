@@ -6,7 +6,7 @@ choix d'un tracé sur planche) ; D-6 élargie ; et une correction de périmètre
 de les traiter », les entrées que la première version laissait au backlog entrent dans le plan (section 1.3).
 Seconde série de réponses le 2026-11-18 : D-1 tranchée (flèche qui monte du sol pour les armes, caisse pour
 les équipements) ; D-8 tranchée (plan du décodeur à part, version visée 8.3.0, piloté par cette session avec
-ce plan-ci : `.ai/PLAN_DECODEUR_2026-11-18.md`) ; fenêtre du clic après match ramenée à 5 minutes. Toutes
+ce plan-ci : `.ai/V8.3/PLAN_DECODEUR_2026-11-18.md`) ; fenêtre du clic après match ramenée à 5 minutes. Toutes
 les décisions sont prises. GO D'EXÉCUTION DONNÉ par le user le 2026-11-18 (« ok avec tes recos, go pour les
 deux plans »).**
 Contrat d'exécution : skill `plan-execution` (ordre strict dans une piste, aucun report, statut de chaque item,
@@ -55,7 +55,7 @@ aucune régénération de rejeu.
 
 Trois instructions en lecture seule (agents Sonnet) sur `release/v8.3.0` à `e95769096a`, recoupées par le
 pilote sur une quinzaine de références ; le rejeu du match `38900a5e` lu champ par champ ; une mesure sur les
-1 455 rejeux du poste (`.ai/annexes_backlog_1118/mesure_departs.md`). L'exécutant RE-VÉRIFIE chaque référence
+1 455 rejeux du poste (`.ai/V8.3/annexes_backlog_1118/mesure_departs.md`). L'exécutant RE-VÉRIFIE chaque référence
 avant de coder (étape 0.4).
 
 ### 1.1 Les deux retours du user
@@ -134,7 +134,7 @@ geste du user (maquette à valider, écriture en base, version du décodeur) por
 | Périmètre | « Pourquoi tu as laissé les trucs au backlog ? ma requête était justement de les traiter » | Section 1.3 : chaque entrée écartée a un item |
 
 | D-1 — pictogramme d'une ligne de ramassage | Silhouette de l'arme écartée (« ça risque d'être confusant ») ; puis, sur la planche (https://claude.ai/artifact/FhyKN9Q88cQaebNFFkScPA) : « j'aime bien l'option B pour arme de râtelier et arme spéciale. Option C des caisses ça me paraît mieux pour l'équipement et l'équipement + à la rigueur (sachant que normalement on sait quel équipement est game changer ou non) » | Quatre tracés : flèche qui monte du sol (arme de râtelier), la même et l'étoile (arme spéciale), caisse (équipement), caisse et étoile (équipement qui change la partie : surbouclier, camouflage) (A.2) |
-| D-8 — entrées du décodeur | « on vise cette version mais ce qu'on peut faire c'est un plan à part oui, tu le traiteras avec plus de rigueur et de prudence. du coup tu piloteras le plan backlog et le plan décodeur » | Plan `.ai/PLAN_DECODEUR_2026-11-18.md`, version visée 8.3.0 (donc une seconde montée du décodeur et une seconde régénération du parc dans la 8.3.0, par exception à la règle d'une montée par version, décidée par le user) |
+| D-8 — entrées du décodeur | « on vise cette version mais ce qu'on peut faire c'est un plan à part oui, tu le traiteras avec plus de rigueur et de prudence. du coup tu piloteras le plan backlog et le plan décodeur » | Plan `.ai/V8.3/PLAN_DECODEUR_2026-11-18.md`, version visée 8.3.0 (donc une seconde montée du décodeur et une seconde régénération du parc dans la 8.3.0, par exception à la règle d'une montée par version, décidée par le user) |
 | Clic juste après la fin d'un match | « c'est quand même rapide donc je baisserai à 5 minutes si jamais on a pas moyen de détecter le manque autrement » | F.9 : chercher d'abord un signal du film pas encore publié ; à défaut, fenêtre de 5 minutes |
 | Temps de jeu | « Normalement le temps de jeu on l'a avec T0 jusqu'à la fin du match transmise par l'API non ? » | Confirmé sur pièces (`analysis/timeline/compute_time_played.go`) : présence du joueur bornée par le coup d'envoi et la fin du match de l'API. Seul le coup d'envoi change ; la valeur rangée a été calculée avec l'ancien et n'est jamais recalculée (piste T) |
 
@@ -195,7 +195,7 @@ Aucune décision ouverte avant le go. Une validation viendra en cours de route :
   vérifications. Les corrections qui en sortiront arrivent à cette session : elles s'ajoutent à la piste Q
   en liste fermée, datée, avant leur code. Avant l'intégration, le pilote recale la branche sur la tête de
   `origin/release/v8.3.0`.
-- Nœuds avec le plan du fond « Relief » (`.ai/PLAN_FONDS_RELIEF_2026-11-18.md`, session levelup-98, plan
+- Nœuds avec le plan du fond « Relief » (`.ai/V8.3/PLAN_FONDS_RELIEF_2026-11-18.md`, session levelup-98, plan
   maître N22 à N26, reçus le 2026-11-18) : C.4 passe AVANT son item D.4 (mêmes fichiers :
   `useMapViewPreferences.ts`, `TacticalPlanCard.tsx`, `TacticalReapparitionsPlan.tsx`,
   `MatchPositionsHeatmap.tsx`) ; K.2 passe AVANT son item B.1 (`cmd/mapfond-build/`) ; ses items web du
@@ -204,7 +204,7 @@ Aucune décision ouverte avant le go. Une validation viendra en cours de route :
   levelup-98 dès que C.4 et K.2 sont fusionnés. La borne de 4 agents d'écriture vaut pour tous les plans de
   la 8.3.0 ensemble : levelup-98 en tient 2 au 2026-11-18, ce plan et celui du décodeur se partagent les 2
   autres tant que c'est le cas, et le pilote lui annonce chaque lancement.
-- Nœud avec le plan du décodeur (`.ai/PLAN_DECODEUR_2026-11-18.md`) : ce plan-ci ne change ni le décodeur ni
+- Nœud avec le plan du décodeur (`.ai/V8.3/PLAN_DECODEUR_2026-11-18.md`) : ce plan-ci ne change ni le décodeur ni
   le document de rejeu et s'intègre le premier ; la montée du décodeur et la régénération du parc
   appartiennent à l'autre plan. `MR/model/equipmentGestures.ts` (D.5) et la règle des départs (A.1) lisent
   le document tel qu'il est au schéma 125 : si le plan du décodeur change un champ qu'ils lisent, c'est lui
@@ -242,13 +242,13 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
 
 - [x] 0.1 (fait le 2026-11-18, depuis `1a7329e625`) Branche `chore/830-backlog-1118` créée depuis la tête de `origin/release/v8.3.0` du jour du go ;
       worktrees des pistes de la vague 1.
-- [x] 0.2 (fait le 2026-11-18 : rejeu 390 fichiers de test, 5 517 réussis ; composants 1 208 ; Escouade 999 ; 12 tests Go par minute ; témoin du match pris SANS les frags de l'API, dit en tête de l'annexe) Témoins AVANT, dans `.ai/annexes_backlog_1118/temoins_avant.md` : nombre de tests vitest de `MR/`,
+- [x] 0.2 (fait le 2026-11-18 : rejeu 390 fichiers de test, 5 517 réussis ; composants 1 208 ; Escouade 999 ; 12 tests Go par minute ; témoin du match pris SANS les frags de l'API, dit en tête de l'annexe) Témoins AVANT, dans `.ai/V8.3/annexes_backlog_1118/temoins_avant.md` : nombre de tests vitest de `MR/`,
       de `apps/web/src/components/` et de `apps/web/src/features/squad/` ; sorties des tests par minute de
       l'Escouade (`per_minute_caracterisation_test.go`, `per_minute_temoins_test.go`) ; compte du garde-rail
       des couches ; pour le match `38900a5e`, les lignes du fil entre 4:30 et 5:30 et l'état de la fiche
       du joueur A aux images 9700, 9786, 9900 et 9940, tirés d'un test jetable hors dépôt.
 - [x] 0.3 (fait le 2026-11-18 : (a) 0 compte à rebours sur 875 ; (b) 6 539 joueurs sur 12 126 en écart sur au moins une image, 166 au total final différent ; (c) 0 lâcher repris à + 1 ou + 2 sur 28 540 ; (d) 2,2 à 4,3 ms) Mesures qui décident, sur les rejeux du poste, un fichier à la fois, lecture seule, résultats dans
-      `.ai/annexes_backlog_1118/mesures.md` :
+      `.ai/V8.3/annexes_backlog_1118/mesures.md` :
       (a) départs : faite le 2026-11-18 (`mesure_departs.md`) ; à compléter par la répartition de l'écart
       entre la fin de la dernière vie et la fermeture de la présence, et par le compte des corps supprimés
       qui ne sont PAS une dernière vie de partant, classés (fin de manche, fin de match, autre) ;
@@ -446,7 +446,7 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
 
 ## Piste M — barre de lecture : écran étroit et surimpression (Sonnet)
 
-- [x] M.1 (fait le 2026-11-18 : https://claude.ai/artifact/Q2duSkmGtSf4QLWASqZY83, source gardée sous `.ai/annexes_backlog_1118/maquettes/` ; cotes vérifiées sur le code : commandes fixes 894 px, 1 012 avec « Plan tourné » ; la frise ne tombe pas à 14 px, elle garde 120 px et RECOUVRE les commandes de droite ; le pire cas est 1 280 px, où la colonne est encore à côté du plan ; variantes : A menu « plus » à deux paliers, B deux lignes, D ligne de progression repliée, C barre de 32 px translucide ; rendu non vu dans un navigateur) Planche publiée (page d'artefact, dessinée DANS les cadres validés de la refonte), à trois largeurs
+- [x] M.1 (fait le 2026-11-18 : https://claude.ai/artifact/Q2duSkmGtSf4QLWASqZY83, source gardée sous `.ai/V8.3/annexes_backlog_1118/maquettes/` ; cotes vérifiées sur le code : commandes fixes 894 px, 1 012 avec « Plan tourné » ; la frise ne tombe pas à 14 px, elle garde 120 px et RECOUVRE les commandes de droite ; le pire cas est 1 280 px, où la colonne est encore à côté du plan ; variantes : A menu « plus » à deux paliers, B deux lignes, D ligne de progression repliée, C barre de 32 px translucide ; rendu non vu dans un navigateur) Planche publiée (page d'artefact, dessinée DANS les cadres validés de la refonte), à trois largeurs
       de fenêtre (1 280, 1 440, 1 536 px) : (a) la barre d'une ligne quand la place manque, deux variantes de
       repli (groupes zoom, capture et vitesse rangés dans un menu ; ou barre sur deux lignes) ; (b) la barre en
       surimpression au Plein cadre, selon la proposition notée au backlog (fine ligne de progression au bas du
@@ -462,10 +462,10 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
 
 ## Piste Q — écarts avec les maquettes (Sonnet)
 
-- [x] Q.1 (fait le 2026-11-18 : `.ai/annexes_backlog_1118/ecarts_maquettes.md` ; 8 écarts à corriger, 3 points conformes à une décision datée, 3 points sans dessin posés au user ; liste fermée ci-dessous, soumise au user le 2026-11-18) Instruction en lecture des onze points de l'entrée du backlog, contre les fichiers de maquette
-      (`.ai/annexes_refonte_ui_rejeu/maquettes/`) et la grille (`conformite_maquettes.md`) : chaque point classé
+- [x] Q.1 (fait le 2026-11-18 : `.ai/V8.3/annexes_backlog_1118/ecarts_maquettes.md` ; 8 écarts à corriger, 3 points conformes à une décision datée, 3 points sans dessin posés au user ; liste fermée ci-dessous, soumise au user le 2026-11-18) Instruction en lecture des onze points de l'entrée du backlog, contre les fichiers de maquette
+      (`.ai/V8.3/annexes_refonte_ui_rejeu/maquettes/`) et la grille (`conformite_maquettes.md`) : chaque point classé
       « conforme à une décision datée », « écart à corriger » (avec la cote ou le dessin attendu) ou « sans
-      dessin, au user ». Résultat dans `.ai/annexes_backlog_1118/ecarts_maquettes.md` ; les écarts à corriger
+      dessin, au user ». Résultat dans `.ai/V8.3/annexes_backlog_1118/ecarts_maquettes.md` ; les écarts à corriger
       sont inscrits ici en liste fermée avant tout code, et montrés au user.
 - [x] Q.2 (fait le 2026-11-22, `9277c6fa73`, un seul commit pour toute la liste ; portes passées : décisions du user du 2026-11-18 sur les écarts, puis sur le prototype des quatre choix) Corrections livrées : a) commandes de la barre d'une ligne en carrés de 30 px au rayon de 8 px, sans bordure ni fond au repos, lecture inchangée (rond plein de 36 px) ; b) capture, export et enregistrement en boutons ordinaires dans la barre d'une ligne, sans cartouche ; c) fenêtre de fiche à 8 px sous le haut du bloc du plan ; e) un seul bloc arrondi pour la toile et la colonne du Standard ; g) « Tirs à la tête » lu sur le compteur du jeu, valeur seule, ligne absente quand le film ne le donne pas ; h) marges du Plein cadre à 16 px sur les côtés et 6 px en bas ; i) lignes du fil qui concernent le joueur suivi sur fond légèrement teinté ; j) barre de lecture sous le bloc arrondi au Cinéma, et au Plein cadre quand la barre fine est éteinte ; k) Suivre / Seul / Masquer en un segment de trois colonnes égales. Écartés par le user : d) défilement entier de la fenêtre de fiche (l'actuel reste) et f) gain en pour-cent dans l'infobulle de « Plan tourné » (la maquette n'est pas suivie).
 - **Gate Q** : gate commun web sur `MR/` ; grille de conformité mise à jour ligne par ligne.
@@ -493,12 +493,12 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 
 - [x] T.0 (fait le 2026-11-18 : inventaire fermé de 11 sources, 7 qualités, 22 replis, 4 durées ; verdict
       sur les 22 rejeux : l'horloge a raison, prouvé par les positions des joueurs ; annexe sur la branche
-      d'intégration) Audit (lecture seule ; base lue sur une COPIE), dans `.ai/annexes_backlog_1118/coup_d_envoi.md` :
+      d'intégration) Audit (lecture seule ; base lue sur une COPIE), dans `.ai/V8.3/annexes_backlog_1118/coup_d_envoi.md` :
       inventaire FERMÉ de chaque source, seuil, qualité, repli, écrivain, lecteur (Go, SQL, web) et commande ;
       mesures sur le parc : écart entre l'horloge de manche du film, le premier mouvement et l'estimation de
       l'API ; matchs sans film, par source restante ; écart de temps de jeu par joueur ; dépendance de la note
       de performance et du LUSR (ADR 0047).
-- [x] T.1 (modèle écrit le 2026-11-18 : `.ai/annexes_backlog_1118/modele_coup_d_envoi.md` ; VALIDÉ par le
+- [x] T.1 (modèle écrit le 2026-11-18 : `.ai/V8.3/annexes_backlog_1118/modele_coup_d_envoi.md` ; VALIDÉ par le
       user le 2026-11-18, « Oui je valide », avec ses quatre points ; il fait foi sur T.2 à T.6 là où il les précise : rattrapage au démarrage
       par révision ET par commande, montée des deux révisions de notation, rattrapage du poste UNE fois après
       la régénération du plan du décodeur, colonnes retirées seulement si la recette de migration ne
@@ -534,7 +534,7 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 ## Piste S — schéma d'une base joueur et tests du paquet DuckDB (Sonnet)
 
 - [x] S.1 Test d'égalité dans les deux sens (« synchronisation puis migrations » contre « migrations
-      seules ») sur types, défauts et `NOT NULL` ; écart listé dans `.ai/annexes_backlog_1118/schema_joueur.md` ;
+      seules ») sur types, défauts et `NOT NULL` ; écart listé dans `.ai/V8.3/annexes_backlog_1118/schema_joueur.md` ;
       forme des bases existantes relevée sur une COPIE d'une base joueur du poste.
 - [x] S.2 La définition qui s'écarte de la forme de référence est alignée, pour les bases neuves seulement ;
       aucune migration d'une base existante ; si l'alignement demande de modifier une étape de migration déjà
@@ -555,7 +555,7 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 
 - [x] I.1 (fait : trois livraisons fusionnées dans `release/v8.3.0` au lieu d'une seule, amendement écrit au journal du 2026-11-18 ; la troisième le 2026-11-22) Recalage sur `origin/release/v8.3.0` ; fusion des sous-branches dans `chore/830-backlog-1118` ;
       `openapi.yaml` et `make generate-types` une seule fois.
-- [x] I.2 (fait le 2026-11-23 : 17 témoins comparés dans `.ai/annexes_backlog_1118/temoins_apres.md` ; 8 identiques, 5 changés comme le plan le prévoit, 1 changé par un autre chantier, 2 non rejouables sans le rejeu du match témoin, aucun écart non expliqué) Témoins APRÈS comparés à 0.2 : écarts listés, chacun rattaché à un item ou déclaré défaut.
+- [x] I.2 (fait le 2026-11-23 : 17 témoins comparés dans `.ai/V8.3/annexes_backlog_1118/temoins_apres.md` ; 8 identiques, 5 changés comme le plan le prévoit, 1 changé par un autre chantier, 2 non rejouables sans le rejeu du match témoin, aucun écart non expliqué) Témoins APRÈS comparés à 0.2 : écarts listés, chacun rattaché à un item ou déclaré défaut.
 - [x] I.3 (fait le 2026-11-23 pour le changelog et les notes de version, en français et en anglais ; le dossier `C:/t` des caches dédiés a été vidé le 2026-11-22, voir journal) `docs/CHANGELOG.md` et notes de version de la 8.3.0, en français et en anglais (départs, ramassages,
       « Seul » et « Suivre », Escouade, Échap) ; `.ai/thought_log.md` ; caches dédiés rendus.
 - **Gate I** : `make gate-push` ; `cd apps/go-api && go test -tags=integration -p 1 ./internal/sync/... ./internal/platform/duckdb/...` ;
@@ -592,7 +592,7 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 - 2026-11-23 — CLÔTURE DES DOCUMENTS. Code livré en trois fois dans `release/v8.3.0` (première : K.2, E, H, C, G, B, A, F ; seconde : D, K, S ; troisième : piste T, M.2, M.3 et Q.2) ; Q.2 statué (`[x]`), I.1 et I.3 faits (changelog et notes de version des deux langues), R.1 fait (backlog et registre).
   T.6 passe en `[!]` : le user a décidé le 2026-11-22 de ne régénérer le parc qu'une fois, après la version suivante du décodeur ; le rattrapage du coup d'envoi et le rejeu des notes partent au premier démarrage de la version.
   Restent ouverts : I.2 (témoins après), R.2 (relecture), R.3 (vérifications à l'écran du user), R.4 (clôture, fusion dans `main`, CI).
-  Grille de conformité aux maquettes mise à jour (`.ai/annexes_refonte_ui_rejeu/conformite_maquettes.md`).
+  Grille de conformité aux maquettes mise à jour (`.ai/V8.3/annexes_refonte_ui_rejeu/conformite_maquettes.md`).
 
 - 2026-11-18 — PREMIÈRE LIVRAISON dans `release/v8.3.0` (`f5c0b92cec`, poussée) : K.2, E, H, C, G, B, A, F. AMENDEMENT
   écrit : le plan prévoyait une seule fusion à la fin ; cette livraison partielle sert le plan du fond Relief, qui
@@ -712,7 +712,7 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
   Q.2-i fond teinté du joueur suivi ; Q.2-j barre du Cinéma sous le bloc ; Q.2-k segment de la fiche. Q.2-g
   (tirs à la tête) attend la réponse du user sur la lecture du compteur du jeu. Q.2-d et Q.2-f : écartés.
 - 2026-11-18 — prototype des quatre choix publié, lu en entier par le pilote avant publication :
-  https://claude.ai/artifact/PpcJfwonVvFY3WhNj93etb (source : `.ai/annexes_backlog_1118/maquettes/rejeu-quatre-choix.html`).
+  https://claude.ai/artifact/PpcJfwonVvFY3WhNj93etb (source : `.ai/V8.3/annexes_backlog_1118/maquettes/rejeu-quatre-choix.html`).
   Quatre bascules « Aujourd'hui / Proposé » : fond teinté des lignes du joueur suivi, barre du Cinéma sous le
   bloc, volume en icône seule, segment Suivre / Seul / Masquer. Jamais ouvert dans un navigateur par l'agent :
   le rendu est à juger par le user. Limite dite au user : au choix de la barre, le gain de hauteur du plan est
@@ -794,7 +794,7 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
   née des migrations (`performance_score` FLOAT contre DOUBLE, table et vue ; défaut de `sync_meta.updated_at` ;
   défaut FALSE de `is_with_friends` et `is_excluded`). Les fermer demande de modifier une étape de migration
   déjà jouée en production, ce que S.2 interdit : ils sont nommés et datés dans le test de forme. Trois options
-  écrites dans `.ai/annexes_backlog_1118/schema_joueur.md` ; le pilote retient « laisser », soumis au user.
+  écrites dans `.ai/V8.3/annexes_backlog_1118/schema_joueur.md` ; le pilote retient « laisser », soumis au user.
 
 - 2026-11-18 (intégration) — `internal/mapcatalog`, `TestAddOverlayEntryConcurrentNePerdPasDEntree` : instable, 1
   échec sur 10 passages sur le code d'AVANT le plan. Quand le verrou d'écriture ne se pose pas à temps, le code

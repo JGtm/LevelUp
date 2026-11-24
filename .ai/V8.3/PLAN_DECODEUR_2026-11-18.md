@@ -7,7 +7,7 @@ par le user le 2026-11-18 (« ok avec tes recos, go pour les deux plans »), ave
 des tirs lus lui paraît faible, et il veut aussi l'audio des répliques. GO D'EXÉCUTION DONNÉ le 2026-11-18.**
 Contrat d'exécution : skill `plan-execution`. Statuts : `[x]` fait, `[~]` couvert ailleurs (référence), `[!]`
 non traité (motif écrit). Aucune case vide à la clôture.
-Plan frère : `.ai/PLAN_BACKLOG_2026-11-18.md` (même pilote). Plan maître de la version :
+Plan frère : `.ai/V8.3/PLAN_BACKLOG_2026-11-18.md` (même pilote). Plan maître de la version :
 `.ai/PLAN_MAITRE_8_3_0_2026-11-17.md`.
 
 Abréviations : `DEC` = dépôt `JGtm/halo-infinite-film-decoder` (PUBLIC), lu pour l'instruction à sa version
@@ -45,8 +45,8 @@ décidée par le user le 2026-11-18.
 
 Trois instructions en lecture seule par agents Sonnet (score et compteurs ; sièges et objectifs ; canaux et
 publication) sur `DEC` v1.4.1, le témoin et les 1 455 rejeux du poste (schéma 125), lus un à un. Deux
-mesures du pilote (`.ai/annexes_backlog_1118/mesure_departs.md`, `mesure_coup_d_envoi.md`). Scripts gardés :
-`.ai/annexes_decodeur_1118/sondes/`. Les références `fichier:ligne` de `DEC` sont celles de v1.4.1 :
+mesures du pilote (`.ai/V8.3/annexes_backlog_1118/mesure_departs.md`, `mesure_coup_d_envoi.md`). Scripts gardés :
+`.ai/V8.3/annexes_decodeur_1118/sondes/`. Les références `fichier:ligne` de `DEC` sont celles de v1.4.1 :
 l'exécutant les rouvre sur la tête du dépôt avant de coder (étape 0.5).
 
 Nature : **bornée** = cause localisée, correction écrite ; **recherche** = cause ou donnée non établie, issue
@@ -67,7 +67,7 @@ incertaine.
 | Temps forts de type « mode » | Lus, non publiés dans le document ; LevelUp les range en base et les lit comme « zone capturée ». Le code de l'événement (octet 59) est dans la base de LevelUp | bornée (décompte) ; recherche (moitié Slayer) | Piste I |
 | Commandes, saut, rechargements | Commandes de déplacement et bouton de saut lus dans la vue de contrôle puis jetés (`DEC/internal/grammar/frame_vue_controle.go:257-271`) ; rechargement = genre 38, traversé sans valeur. Volume : environ 500 rechargements par film, 4 à 9 Ko compressés. Le bit du bouton de saut n'est pas validé côté décodeur. Constat en plus : aucun accroupissement ni glissade publié sur 200 rejeux alors que le code les lit | bornée (rechargements) ; bornée après validation (saut, commandes) ; diagnostic (accroupi) | Piste H |
 | Répliques des Spartans | Genres 75 et 76 traversés sans valeur. Le témoin lit locuteur, identifiant de son, indice de réplique, sans aucun texte. Le texte ou l'audio est dans les fichiers du jeu : aucune piste au dépôt | recherche (hors décodeur) | Piste H (DD-4) |
-| Deux replis tenus par LevelUp | Déclarés dans le registre (`DEC/internal/facts/fallback/`), lus par `LU internal/filmreplis`. Retirer les deux ENTRÉES ne change ni sortie ni révision ; retirer les CONSTANTES exportées serait une rupture de compatibilité. L'inventaire du retrait côté LevelUp (`.ai/annexes_backlog_1117/verification_0_3.md`, section F) est encore exact sur le fond | bornée | Piste J |
+| Deux replis tenus par LevelUp | Déclarés dans le registre (`DEC/internal/facts/fallback/`), lus par `LU internal/filmreplis`. Retirer les deux ENTRÉES ne change ni sortie ni révision ; retirer les CONSTANTES exportées serait une rupture de compatibilité. L'inventaire du retrait côté LevelUp (`.ai/V8.3/annexes_backlog_1117/verification_0_3.md`, section F) est encore exact sur le fond | bornée | Piste J |
 | `medalLabels` sans jumeau | Trois types et un champ à déclarer ; aucun changement de sortie ; `DEC/replay/document.go` est à 500 lignes | bornée | Piste J |
 | `replay-equiv` ne compare pas le tableau | Confirmé : l'étape `score` hache l'entrée, pas `scoreTimeline` | bornée | Piste J |
 | Trajet de Warthog porté par l'humain (2026-11-10) | Non reproduit sur le document v1.4.1 | contrôle | Piste J |
@@ -140,7 +140,7 @@ DD-1, DD-3 et DD-5 : retenues telles que recommandées.
 - **R-5 — dépôt public.** Aucun vrai identifiant de joueur dans une fixture, un golden, un test ou un
   message de commit ; contrôle avant chaque commit ; les agents ne poussent pas ; le pilote pousse après
   relecture. Plafond de 500 lignes ; aucune boucle de balayage bit à bit neuve.
-- **R-6 — registre des changements de sortie.** `.ai/annexes_decodeur_1118/changements_de_sortie.md`, tenu
+- **R-6 — registre des changements de sortie.** `.ai/V8.3/annexes_decodeur_1118/changements_de_sortie.md`, tenu
   par le pilote à chaque intégration de piste : champ, sens du changement, nombre de rejeux touchés. Il
   devient le corps des notes de version du décodeur.
 - **R-7 — un seul schéma, une seule régénération.** 125 vers 126 une fois, une entrée de chronique qui liste
@@ -158,7 +158,7 @@ DD-1, DD-3 et DD-5 : retenues telles que recommandées.
   le tag (demande reçue le 2026-11-18). Borne de machine partagée : levelup-98 tient 2 agents d'écriture au
   2026-11-18 ; ce plan et celui du backlog se partagent les 2 autres tant que c'est le cas, et le pilote lui
   annonce chaque lancement.
-- Marche de publication : `.ai/annexes_decodeur_1118/marche_de_publication.md` (19 gestes), rejouée à
+- Marche de publication : `.ai/V8.3/annexes_decodeur_1118/marche_de_publication.md` (19 gestes), rejouée à
   l'étape 0 pour vérifier chaque commande.
 - Reprise de session : ce fichier (cases, journal), le registre des changements de sortie, `git log` de
   `feat/v1.5.0` dans le clone, `git worktree list` des deux dépôts, `ListAgents`, puis `.ai/thought_log.md`.
@@ -198,13 +198,13 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       dépôt nommé au journal : par match et par joueur, éliminations, morts, assistances, tirs à la tête,
       corps à corps, grenades, armes lourdes, score personnel, tirs, touches, dégâts, temps de jeu, temps
       comme porteur du drapeau. Aucun identifiant de joueur n'entre au dépôt du décodeur.
-- [x] 0.4 (fait le 2026-11-18 : `.ai/annexes_decodeur_1118/avant.md`, jointure à l'API pour 99,7 % des joueurs ; le point des 22 coups d'envoi a été tranché par l'audit du plan du backlog, pas rejoué ici) Mesures AVANT, par piste, sur le parc, dans `.ai/annexes_decodeur_1118/avant.md` : celles de la
+- [x] 0.4 (fait le 2026-11-18 : `.ai/V8.3/annexes_decodeur_1118/avant.md`, jointure à l'API pour 99,7 % des joueurs ; le point des 22 coups d'envoi a été tranché par l'audit du plan du backlog, pas rejoué ici) Mesures AVANT, par piste, sur le parc, dans `.ai/V8.3/annexes_decodeur_1118/avant.md` : celles de la
       section 1 rejouées par les scripts gardés, plus, contre l'export 0.3 : taux d'accord de chaque compteur
       nommé par build ; somme des points contre score personnel ; temps de porteur ; durée de présence contre
       temps de jeu des partants ; coup d'envoi (horloge, mouvement) contre le premier événement daté du
       match, sur les 22 rejeux en désaccord et sur 50 autres.
 - [x] 0.5 (fait le 2026-11-18 : quatorze références rouvertes sur la tête du clone, aucune ne diverge) Chaque référence `fichier:ligne` de la section 1 rouverte sur la tête du clone ; écarts au journal.
-- [x] 0.6 (fait le 2026-11-18 : `.ai/annexes_decodeur_1118/instruments.md`, commandes vérifiées sur un film ; aucun harnais de lot n'existe : il se monte à partir de `replay-parc-vies --garder-documents`, `replay-verite` et `replay-diff`, premier item de la première piste qui change une sortie) Instruments : le harnais de mesure sur un lot de films (20 films de l'équivalence et les témoins de
+- [x] 0.6 (fait le 2026-11-18 : `.ai/V8.3/annexes_decodeur_1118/instruments.md`, commandes vérifiées sur un film ; aucun harnais de lot n'existe : il se monte à partir de `replay-parc-vies --garder-documents`, `replay-verite` et `replay-diff`, premier item de la première piste qui change une sortie) Instruments : le harnais de mesure sur un lot de films (20 films de l'équivalence et les témoins de
       chaque piste) qui sort, pour une branche donnée, les compteurs des pistes ; il réemploie
       `cmd/replay-verite`, `cmd/replay-diff` et les outils de `DEC/research/` avant d'écrire quoi que ce soit.
 - **Gate 0** : 0.2 à 20 identiques ; `avant.md` complet ; la question des 22 coups d'envoi est tranchée par
@@ -317,7 +317,7 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       choisis parmi les armes mal lues : par joueur et par arme, tirs, touches et dégâts de notre lecture,
       de celle du témoin (sa sonde, bâtie hors dépôt) et de l'API (export 0.3) ; part des joueurs à 10 % près
       de l'API pour chacune des deux lectures ; ce que donne le compte « événements de tir et objets
-      projectile ». Résultat dans `.ai/annexes_decodeur_1118/tirs.md` et présenté au user.
+      projectile ». Résultat dans `.ai/V8.3/annexes_decodeur_1118/tirs.md` et présenté au user.
       HYPOTHÈSE DU USER À TRANCHER PAR CETTE MESURE (2026-11-18 : « je me demande si le jeu n'enregistre pas que
       les tirs qui ont atteint leur but, les valeurs sont un peu élevées si c'est ça mais ça ressemble pas mal à
       la précision » ; déjà tentée par le passé) : par joueur et par arme, le nombre d'événements de tir du film
@@ -406,7 +406,7 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Piste I — temps forts de type « mode » (Haiku ; Sonnet)
 
-- [x] I.1 (fait le 2026-11-18 : `.ai/annexes_decodeur_1118/temps_forts_mode.md` ; 23 683 événements, 527 matchs, un seul code réel, 10) Décompte par mode et par code de l'événement, depuis la copie de la base de LevelUp ; croisé avec
+- [x] I.1 (fait le 2026-11-18 : `.ai/V8.3/annexes_decodeur_1118/temps_forts_mode.md` ; 23 683 événements, 527 matchs, un seul code réel, 10) Décompte par mode et par code de l'événement, depuis la copie de la base de LevelUp ; croisé avec
       les destructions de véhicule et les actions de score du document.
 - [x] I.2 (fait le 2026-11-18, sans code : un temps fort « mode » est l'écho d'une ACTION DE SCORE propre au mode, du même joueur, dans la même image (plage de 0 à 40 ms) : 76 % des événements de code 10 appariés. Par mode : zone capturée ou sécurisée en Bases, contrôle de la colline, vol, prise, retour, capture du drapeau et élimination du porteur en Drapeau, contrôle de la balle ; en Slayer : destruction de véhicule (12 noms), aide par IEM, quelques éliminations. Sens inverse : 85 à 100 % des actions de score de ces noms ont leur temps fort. Non appariés : 3 410 en Drapeau, 691 en Total Control (aucune action de score publiée pour ce mode), 303 en Extraction, dont le sens reste inconnu. Le décodeur n'a rien à publier de plus : `scoreActions` nomme déjà l'événement. Entrée du backlog mise à jour : la lecture « zone capturée » de LevelUp est fausse hors Bases) Selon I.1 : ce que la moitié inexpliquée en Slayer recouvre, ou `[!]` avec le décompte ; l'entrée
       du backlog est mise à jour, avec le crédit à nuzzles et à Den si leur lecture est reprise.
@@ -426,8 +426,8 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       seuls » (gestes 13 à 15).
 - [x] L.5 (fait le 2026-11-23 : CI de la branche verte, suite web complète verte (15 658 tests), suite Go d'intégration `-p 1` verte (229 paquets), filet de poussée sans échec ; notes de version et changelog en français et en anglais) Gates de LevelUp sans `GOWORK`, suite complète du web, `make gate-push`, CI (geste 16) ; notes de
       version dans les deux langues, changelog, journal, backlog, registre des reports (geste 17).
-- [~] L.6 (reporté par décision du user du 2026-11-22 : une seule régénération, après la v1.6.0 ; FAIT le 2026-11-24 : voir L.6 de `.ai/PLAN_DECODEUR_V160_2026-11-23.md`) Régénération du parc, une fois, serveur arrêté, puis les dérivés (geste 18).
-- [~] L.7 (mesures après faites sur échantillons, voir le journal ; mesure sur le parc FAITE le 2026-11-24 : voir L.7 de `.ai/PLAN_DECODEUR_V160_2026-11-23.md`) Mesures APRÈS sur le parc régénéré, comparées à `avant.md` ; vérifications à l'écran inscrites à
+- [~] L.6 (reporté par décision du user du 2026-11-22 : une seule régénération, après la v1.6.0 ; FAIT le 2026-11-24 : voir L.6 de `.ai/V8.3/PLAN_DECODEUR_V160_2026-11-23.md`) Régénération du parc, une fois, serveur arrêté, puis les dérivés (geste 18).
+- [~] L.7 (mesures après faites sur échantillons, voir le journal ; mesure sur le parc FAITE le 2026-11-24 : voir L.7 de `.ai/V8.3/PLAN_DECODEUR_V160_2026-11-23.md`) Mesures APRÈS sur le parc régénéré, comparées à `avant.md` ; vérifications à l'écran inscrites à
       l'artefact des vérifications du user ; gestes de prod inscrits à la liste de la release (geste 19).
 - **Gate L** : chaque ligne du registre des changements de sortie retrouvée dans les mesures APRÈS.
 
@@ -437,7 +437,7 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       montée ; axes imposés : heuristique déguisée, repli neuf, identifiant réel, sortie changée sans ligne
       au registre.
 - [x] R.2 (2026-11-22 : aucun P0 ; P1 du décodeur corrigés, `fb90397` et `f72779d` ; P1 de la montée corrigés, `407109bec1` ; P2 au backlog sauf ceux corrigés en passant ; un P2 du décodeur reclassé bloquant par le gate du corpus et corrigé, `e703301`) P0 et P1 corrigés en une ronde ; P2 au backlog seulement s'ils valent le coup.
-- [~] R.3 (clôture reprise par L.9 de `.ai/PLAN_DECODEUR_V160_2026-11-23.md`, 2026-11-24 ; 2026-11-23 : tous les items statués ; reports inscrits au registre ; worktrees de la v1.5.0 gardés tant que la montée n'est pas fusionnée ; backlog à jour) Tous les items statués ; recherches closes ou `[!]` avec leurs pièces ; backlog mis à jour entrée
+- [~] R.3 (clôture reprise par L.9 de `.ai/V8.3/PLAN_DECODEUR_V160_2026-11-23.md`, 2026-11-24 ; 2026-11-23 : tous les items statués ; reports inscrits au registre ; worktrees de la v1.5.0 gardés tant que la montée n'est pas fusionnée ; backlog à jour) Tous les items statués ; recherches closes ou `[!]` avec leurs pièces ; backlog mis à jour entrée
       par entrée ; worktrees retirés un à un après recherche de jonction.
 
 ## Journal d'exécution
@@ -507,7 +507,7 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
   points POSITIFS publiés ; 62 films : 15 bascules, aucune sur un rejeu égal à l'API ; `e5adf7b2` reste complet à tort,
   comme avant (matière de B.3). B.2 `[!]` : le compte des scripts sans groupe vaut 102 à 115 sur tous les films, il ne
   sépare rien ; retiré.
-  D (`afe8ab6`, `b449ee5`) : D.1 sans changement de sortie (52 films). D.2 : `.ai/annexes_decodeur_1118/tirs.md` ;
+  D (`afe8ab6`, `b449ee5`) : D.1 sans changement de sortie (52 films). D.2 : `.ai/V8.3/annexes_decodeur_1118/tirs.md` ;
   hypothèse du user réfutée (0,96 événement par tir tiré au MA40, 2,24 par tir au but ; armes à énergie : événements plus
   objets projectile = 0,97 à 1,02 fois les tirs tirés). D.4 (né de D.2) : deux causes prouvées, tirs lus au seul rang de
   tête d'une trame (85 % → 100 % des événements du témoin) et auteur d'une touche par l'index seul (touches 94,6 % →
@@ -537,7 +537,7 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
   À SAVOIR : les révisions `grammar-2026-11-22` et `objectives-2026-11-22` sont celles de la première intégration ; un
   cache de faits cuit à `e8d6856` serait accepté sans les valeurs figées. Seuls les dossiers de travail en ont eu un, vidé.
   Table figée de LevelUp complétée (`1974d83cca` sur `chore/830-decodeur-v150`, poussée avec les fixtures 126). Registre
-  des changements de sortie créé : `.ai/annexes_decodeur_1118/changements_de_sortie.md`. Vague suivante lancée : D, B, H.
+  des changements de sortie créé : `.ai/V8.3/annexes_decodeur_1118/changements_de_sortie.md`. Vague suivante lancée : D, B, H.
 - 2026-11-22 — C.6 fait pour huit compteurs (`072c16a`, `3f247e9` sur `piste/modes`, poussée) : Drapeau
   (`flag_returners_killed`, `flag_kills_as_returner`, `flag_kills_as_carrier` sur la seule définition du film, accord
   du user), zones (`zone_offensive_kills`, `zone_defensive_kills`), VIP (`vip_kills`, `vip_assists`,

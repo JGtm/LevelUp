@@ -36,7 +36,7 @@ lecture seule des modules installés, aucun film ouvert) :
    armes connues : `assault_rifle = 48C19D2D`, `battle_rifle = 2B1824D5`, `commando_rifle =
    FD98554C`, `energy_sword = 4FF3937E`, `hydra = 767DB96D`, `rocket_launcher = 71AB0A2C`,
    `sidearm_pistol = F408190F`, `sniper_rifle = 0A1992BC`, `mutilator = D7915565`…
-   (`.ai/REFERENCE_WEAPON_IDS.md`, `weapons/labels.go`). **`unarmed = 0x00007CA9`**, 26e clé
+   (`.ai/refs/REFERENCE_WEAPON_IDS.md`, `weapons/labels.go`). **`unarmed = 0x00007CA9`**, 26e clé
    sur 38, entre `bandit_vip` et `infection_sword`.
 3. **Ce que le Lua en fait (MESURÉ sur le vidage des chaînes du 2026-08-30 ; enchaînement DÉDUIT de
    l'ordre des constantes, le bytecode n'est pas décodé)** :

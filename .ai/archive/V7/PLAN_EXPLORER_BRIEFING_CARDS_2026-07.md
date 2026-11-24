@@ -427,7 +427,7 @@ Aucun item sans statut. Commit(s) avec accord utilisateur.
 - [x] **D3 — Non-régression Historique** : endpoint `pages/match-history/query` interrogé —
   ne pose pas `include_briefing` → `briefing` absent (seul `briefing_kpis` canonical inchangé).
   + test handler `TestExplorerHandler_MatchesQuery_NoBriefingByDefault`.
-- [x] **D4 — Docs** : `.ai/CHARTS_AND_TABLES.md` §9.0 ajouté (bandeau briefing). Aucun
+- [x] **D4 — Docs** : `.ai/refs/CHARTS_AND_TABLES.md` §9.0 ajouté (bandeau briefing). Aucun
   nouveau wrapper chart (TimeseriesLineChart réutilisé) → README charts inchangé.
 - [x] **D5 — Thought log** : entrées Lots A/B/C/D dans `.ai/thought_log.md`.
 

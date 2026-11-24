@@ -187,7 +187,7 @@ are reserved and excluded from weapon aggregation.
 
 The authoritative WID list (confirmed hex -> name) lives in `weaponEntries`
 inside `filmshell/catalogue.go`, and is mirrored as research notes in
-`.ai/REFERENCE_WEAPON_IDS.md`.
+`.ai/refs/REFERENCE_WEAPON_IDS.md`.
 
 ---
 
@@ -378,4 +378,4 @@ duplicated here**:
 
 - `.ai/RESEARCH_THEATER_RE.md` — film/theater chunk structure, dead-state and
   kill-feed reverse-engineering notes.
-- `.ai/REFERENCE_WEAPON_IDS.md` — weapon ID catalogue and resolution research.
+- `.ai/refs/REFERENCE_WEAPON_IDS.md` — weapon ID catalogue and resolution research.

@@ -12,7 +12,7 @@
 > conservées pour mémoire. Décision : plan master 2026-09-09, S4 / D5.
 
 
-> Issu de `.ai/diagnostics/RETOURS_2026-09-08/DIAGNOSTIC_RETOURS_UTILISATEUR_2026-09-08.md`, § point 4.
+> Issu de `.ai/archive/V7.5/RETOURS_2026-09-08/DIAGNOSTIC_RETOURS_UTILISATEUR_2026-09-08.md`, § point 4.
 > **Exécution sous le contrat du skill `plan-execution`.**
 
 ## Objectif et critère de succès
@@ -156,13 +156,13 @@ cd apps/go-api && go test ./internal/analysis/replay/...
 ## Étape B6 — Non-régression sur le parc
 
 - [ ] Recuire les 4 artefacts témoins (`8bc6074f`, `d8b13ec2`, `a4083bd2`, `bf2a9f05`)
-- [ ] `bash .ai/diagnostics/RETOURS_2026-09-08/swap.sh <teams.tsv>` → **`malplaces = 0`** sur les 4
+- [ ] `bash .ai/archive/V7.5/RETOURS_2026-09-08/swap.sh <teams.tsv>` → **`malplaces = 0`** sur les 4
 - [ ] Vérifier qu'aucun artefact jusque-là sain ne régresse
 - [ ] Poser un test de corpus qui épingle Origin : le joueur `2547408409520575` spawne côté `t0`
 
 **Gate :**
 ```bash
-bash .ai/diagnostics/RETOURS_2026-09-08/swap.sh /tmp/teams.tsv | awk -F'\t' 'NR>1 && $3>0'
+bash .ai/archive/V7.5/RETOURS_2026-09-08/swap.sh /tmp/teams.tsv | awk -F'\t' 'NR>1 && $3>0'
 # doit ne rien rendre
 cd apps/go-api && go test -tags=integration ./...
 ```

@@ -1,6 +1,6 @@
 # Mesures de l'étape 0.3 (2026-11-18)
 
-Plan `.ai/PLAN_BACKLOG_2026-11-18.md`, étape 0, item 0.3. Lecture seule des 1 455 rejeux du poste
+Plan `.ai/V8.3/PLAN_BACKLOG_2026-11-18.md`, étape 0, item 0.3. Lecture seule des 1 455 rejeux du poste
 (`data/cache/replays/halo_infinite/*.json.gz`, un fichier à la fois, aucun lot en mémoire, un seul processus de mesure à la
 fois, aucune base ouverte, aucun serveur). Les mesures (b), (c) et (d) appellent les VRAIES fonctions du site depuis des tests
 vitest jetables (supprimés ; leurs sources sont gardées en `.txt` sous `sondes/`) ; (a) est un script Node jetable (gardé aussi).

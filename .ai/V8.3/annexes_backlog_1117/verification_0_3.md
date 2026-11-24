@@ -206,7 +206,7 @@ La veracite de la correction (le sprint est bien lu par le decodeur) vit dans le
 
 | Reference | Constat | Statut |
 |---|---|---|
-| D.3, 19 marqueurs inertes | liste fermee dans `.ai/annexes_backlog_1117/marqueurs_inertes.md` | confirme (19 sur 95) |
+| D.3, 19 marqueurs inertes | liste fermee dans `.ai/V8.3/annexes_backlog_1117/marqueurs_inertes.md` | confirme (19 sur 95) |
 | D.5 `tools/lint-no-hardcoded-colors.lib.mjs` | `TW_PREFIXES` (lignes 36-39) : `text, bg, border, ring, ring-offset, fill, stroke, divide, placeholder, outline, decoration, accent, caret` ; `ABSOLUTE_PREFIXES` (lignes 47-51) contient deja `from, via, to, shadow` | ecart D-1 |
 | D.5 `lintNoHardcodedColors.guard.test.ts` | `web/lib/accessibility/lintNoHardcodedColors.guard.test.ts` (importe la lib par `../../../../../tools/...`) | confirme |
 | D.5/Section 1 « 0 occurrence a corriger pour `shadow`, `from`, `via`, `to` ; les 15 trouvees sont dans `palmares/rarity.ts` » | balayage `(shadow\|from\|via\|to)-<couleur nommee>-<teinte>` sur `features/`, `components/`, `lib/replay/` : 15 occurrences, toutes dans `features/palmares/rarity.ts` ; 0 ailleurs | confirme |

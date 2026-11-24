@@ -798,7 +798,7 @@ func TestRegression_DrainAbortsOnSystematicWorkerFailure(t *testing.T) { ... }
 
 ## Phase T8 — Matrice exhaustive enrichments (4h)
 
-**Référence catalogue** : [.ai/ENRICHMENTS_CATALOG.md](.ai/ENRICHMENTS_CATALOG.md) — source de vérité, 35 fonctions/colonnes recensées.
+**Référence catalogue** : [.ai/refs/ENRICHMENTS_CATALOG.md](.ai/refs/ENRICHMENTS_CATALOG.md) — source de vérité, 35 fonctions/colonnes recensées.
 
 **Audit couverture initial (2026-05-24)** : 19 OK exhaustif · 9 OK partiel · 7 manquants.
 
@@ -1058,7 +1058,7 @@ func TestMediaIndexer_ResetAndReindex(t *testing.T) {
 - Les **7 fichiers manquants** existent et passent (couleur verte).
 - Les **9 PARTIEL** sont upgradés à EXHAUSTIF.
 - `make coverage-enrichments` rapporte > 80% sur `internal/sync/{performance,session_recalc,friends_recompute,comeback,skill_rating,csr_writes,citations,transforms,transforms_personal_scores,enrichments,backfill_weapons,assists_model}.go`.
-- Chaque enrichment du catalogue [.ai/ENRICHMENTS_CATALOG.md](.ai/ENRICHMENTS_CATALOG.md) a au moins un test direct identifiable par `grep -l '<enrichment_name>' internal/**/*_test.go`.
+- Chaque enrichment du catalogue [.ai/refs/ENRICHMENTS_CATALOG.md](.ai/refs/ENRICHMENTS_CATALOG.md) a au moins un test direct identifiable par `grep -l '<enrichment_name>' internal/**/*_test.go`.
 
 ### Effort par enrichment
 

@@ -25,7 +25,7 @@ se fait dans la v1.6.0, sans échéance. GO D'EXÉCUTION donné le 2026-11-23.**
 **État au 2026-11-23 (soir) : vitesse intégrée (parallélisme compris), pistes A, B, E et F rendues ou statuées, gestes, répliques (lecture) et canaux du contributeur PORTÉS PAR NOUS et intégrés en six intégrations (tête `7bda46f`, document au schéma 127, faits au schéma 31). Restent : D.2 en cours, D.4 à D.6, E.4, R.*, L.* ; V4 et V2 abandonnées.**
 Contrat d'exécution : skill `plan-execution`, complément `levelup-plan`. Statuts : `[x]` fait, `[~]` couvert
 ailleurs (référence), `[!]` non traité (motif écrit). Aucune case vide à la clôture.
-Plans liés : `.ai/PLAN_DECODEUR_2026-11-18.md` (v1.5.0, dont ce plan reprend la forme et les règles),
+Plans liés : `.ai/V8.3/PLAN_DECODEUR_2026-11-18.md` (v1.5.0, dont ce plan reprend la forme et les règles),
 `.ai/PLAN_REJEU_3D_2026-11-15.md` (décision D-18), `.ai/PLAN_MAITRE_8_3_0_2026-11-17.md`.
 
 Abréviations : `DEC` = dépôt `JGtm/halo-infinite-film-decoder` (PUBLIC), lu pour l'instruction dans
@@ -104,7 +104,7 @@ parseur voisin par `gh` (tête `03291129df`, 2026-11-22 : arborescence et notice
 | `replay-equiv` sans `-deux-passes` compare aux références du clone ; avec `-deux-passes`, il compare deux passes du MÊME commit (décodage, puis rejeu depuis les faits) et ne lit AUCUNE référence. Ni lui, ni `replay-build`, ni le gate du corpus n'ont de réglage du niveau de fils | `LU apps/go-api/cmd/replay-equiv/main.go:136-163`, `cmd/replay-build/main.go:59-72`, `cmd/replay-corpus-gate/main.go:117-132` |
 | Le dépôt du décodeur n'a aucun dossier `cmd/` ; aucun catalogue de bornes de carte n'y a été trouvé | arborescence de `DEC` |
 | Plafond de mémoire par film : 3 Gio en production, 2 Gio pour une mesure sur le poste, 4 Gio dans le gate | `DEC/memguard/memguard.go` ; `LU apps/go-api/internal/replaychild/replaychild.go:68-121` ; `cmd/replay-corpus-gate/bake.go:72` |
-| Dix témoins de durée existent (2026-11-10) : builds 1.12 et 1.13, six modes, 25 à 67 chunks, dont une Grande bataille à 33 joueurs. AUCUN n'est dans le corpus d'équivalence : leurs identifiants courts ne sont pas dans le dépôt public | `.ai/annexes_marche_complete/temoins_duree.txt` ; `DEC/replay/testdata/equivalence/` |
+| Dix témoins de durée existent (2026-11-10) : builds 1.12 et 1.13, six modes, 25 à 67 chunks, dont une Grande bataille à 33 joueurs. AUCUN n'est dans le corpus d'équivalence : leurs identifiants courts ne sont pas dans le dépôt public | `.ai/V8.3/annexes_marche_complete/temoins_duree.txt` ; `DEC/replay/testdata/equivalence/` |
 | Deux reports de vitesse mesurés attendent : trois lecteurs d'images-clés qui cherchent chacun (environ 30 % du décodage seul) ; sonde de calibration hors de la marche (1,5 %) | `.ai/REGISTRE_REPORTS.md:362-363` |
 | Bruit connu : `replay-equiv -deux-passes` signale « 1 écart à classer : kill » dès la v1.4.1 ; un soupçon de non-déterminisme sur `joinSegments` n'a pas été observé | plan v1.5.0, Découvertes ; `DEC/replay/score_timeline_players.go:181-188` |
 | Outils de compatibilité : ni `gorelease` ni `apidiff` ne sont installés sur le poste (`benchstat` l'est) | `which`, `go env GOPATH`/bin, 2026-11-23 |
@@ -164,7 +164,7 @@ touchent aussi : `replay/options.go`, `observe.go`, `film_scan_mouvement.go`, `f
 `keyframe_etat_complet_bipede.go`, les fichiers de révision ; `filmcache/filmcache.go` ; `decfilm/` ; tous
 les goldens. C'est la liste des collisions de la piste P.
 
-**Inventaire du 2026-11-23** (`.ai/annexes_decodeur_v160/inventaire_contributeur.md`, lecture seule par `gh api`, tête `a66b791460` lue, arbres non tronqués). Ce qui est marqué « supposé » se déduit des noms de fichiers et des en-têtes, sans vérification ligne à ligne.
+**Inventaire du 2026-11-23** (`.ai/V8.3/annexes_decodeur_v160/inventaire_contributeur.md`, lecture seule par `gh api`, tête `a66b791460` lue, arbres non tronqués). Ce qui est marqué « supposé » se déduit des noms de fichiers et des en-têtes, sans vérification ligne à ligne.
 
 - Versions de départ : décodeur v1.3.6 (`5d63c67`), cartes v1.0.1 (`95547a3`), lecteur v1.0.1 (`01ec0fd`). Schémas de la copie : document 130, faits 25 (le README de la copie annonce encore 125 et 23 : périmé).
 - Décodeur (copie 2 607 fichiers ; v1.3.6 : 2 534 ; v1.5.0 : 2 629). Contre v1.3.6 : 73 fichiers ajoutés et 249 modifiés (comparaison par empreinte). Contre v1.5.0 : 186 fichiers présents seulement dans la copie (68 ajouts du contributeur, 118 retirés ou renommés par l'amont, surtout des tests de recherche), 208 présents seulement en v1.5.0, 420 de même chemin au contenu différent (mélange non exploitable). Sur les 186, 33 sont du code de production.
@@ -288,7 +288,7 @@ tout faire pour la 1.6 je veux dire. » ([le contributeur] = le contributeur du 
   jamais dans `coverage`).
 - La commande du relevé vit dans `DEC/cmd/film-bench`, sans étiquette `research`.
 - Les films du relevé portent dans le dépôt public un nom neutre (`f01` à `f13`) ; la correspondance avec
-  les matchs vit dans `.ai/annexes_decodeur_v160/films_du_releve.tsv`.
+  les matchs vit dans `.ai/V8.3/annexes_decodeur_v160/films_du_releve.tsv`.
 - Méthodes du parseur voisin : reprises, jamais son code ni ses tables.
 - Ce qui est demandé au contributeur de ne pas remonter : ses traductions de messages ; la table des scores
   cibles par variante (LevelUp l'injecte déjà) ; le saut tiré de la vitesse verticale tant qu'une lecture du
@@ -321,7 +321,7 @@ Les règles R-1 à R-10 du plan v1.5.0 s'appliquent, avec ces précisions.
   un relevé ou un message de commit (contrôle `25(33|35)[0-9]{12}` avant chaque commit, binaires
   décompressés compris). Les agents ne commitent ni ne poussent ; le pilote relit, commite, pousse. Jamais
   `--no-verify`, `git stash`, `git add -A`, jonction ni lien symbolique. Plafond de 500 lignes par fichier.
-- **R-6 — registre des changements de sortie.** `.ai/annexes_decodeur_v160/changements_de_sortie.md`, tenu
+- **R-6 — registre des changements de sortie.** `.ai/V8.3/annexes_decodeur_v160/changements_de_sortie.md`, tenu
   par le pilote à chaque intégration ; il devient le corps des notes de version. Les pistes V y ont une
   ligne : « aucun changement de sortie », avec la preuve. Après CHAQUE mise à jour de ce plan ou du
   registre, le pilote relit la ligne écrite dans le fichier (une écriture a échoué en silence en v1.5.0).
@@ -372,13 +372,13 @@ Les règles R-1 à R-10 du plan v1.5.0 s'appliquent, avec ces précisions.
   canal n'entre que sous une forme qui laisse ces empreintes intactes.
 - **R-15 — fichiers communs.** `FORMAT.md`, `GLOSSARY.md`, `NOTICE.md`, `README.md` et le schéma du
   document ne sont écrits par aucun agent. Chaque piste rend un fragment dans un fichier neuf
-  (`.ai/annexes_decodeur_v160/fragments/<piste>_<fichier>.md`) ; le pilote assemble à l'intégration.
+  (`.ai/V8.3/annexes_decodeur_v160/fragments/<piste>_<fichier>.md`) ; le pilote assemble à l'intégration.
 - **R-16 — porteur unique des options.** Le nombre de fils et le choix des canaux vivent dans UNE structure
   d'options ajoutée, posée par un seul écrivain avant toute piste de vitesse (V0.6). Aucune piste V ne crée
   son propre réglage.
 - **R-17 — une correction après un gate le fait repasser.** Aucun gate n'est tenu pour acquis sur un commit
   antérieur à une correction.
-- Marche de publication : `.ai/annexes_decodeur_1118/marche_de_publication.md` (19 gestes), chemins
+- Marche de publication : `.ai/V8.3/annexes_decodeur_1118/marche_de_publication.md` (19 gestes), chemins
   remplacés par ceux de R-4 ; le gate du corpus ne juge une branche que si `go.mod` de `LU` la désigne par
   une pseudo-version, avec `GOWORK=off`.
 - Reprise de session : ce fichier (cases, journal), le registre des changements de sortie, `git log` de
@@ -688,9 +688,9 @@ Aucun agent ne monte le schéma ni ne régénère un golden : il rend la liste e
       paquets), G-rev, G-equiv-ref à 20 identiques. Le gate du corpus est lancé une fois, comme TEST
       D'INFRASTRUCTURE seulement (parc de travail, verrou, manifeste lus) : sans changement de `go.mod` il
       compare la v1.5.0 à elle-même et ne prouve rien sur les sorties.
-- [x] 0.3 (fait le 2026-11-23 : le jeu se compose de films présents, 11 du corpus d'équivalence et les 2 témoins restants ; il couvre 7 familles de modes, 7 versions du film, de 13 à 69 morceaux, 5 films à plus de 24 joueurs ; aucun film à 33 joueurs ; table dans `.ai/annexes_decodeur_v160/films_du_releve.tsv`, note voisine `films_du_releve_note.md` ; le film de plus fort pic de mémoire reste à désigner par mesure, à la première fenêtre de mesure (candidat : le plus lourd, 69 morceaux)) Jeu de films fixe du relevé arrêté (V0.1) : présence de chaque film dans `HOTE` vérifiée ; le film
+- [x] 0.3 (fait le 2026-11-23 : le jeu se compose de films présents, 11 du corpus d'équivalence et les 2 témoins restants ; il couvre 7 familles de modes, 7 versions du film, de 13 à 69 morceaux, 5 films à plus de 24 joueurs ; aucun film à 33 joueurs ; table dans `.ai/V8.3/annexes_decodeur_v160/films_du_releve.tsv`, note voisine `films_du_releve_note.md` ; le film de plus fort pic de mémoire reste à désigner par mesure, à la première fenêtre de mesure (candidat : le plus lourd, 69 morceaux)) Jeu de films fixe du relevé arrêté (V0.1) : présence de chaque film dans `HOTE` vérifiée ; le film
       de plus fort pic de mémoire du parc désigné par mesure ; correspondance écrite dans
-      `.ai/annexes_decodeur_v160/films_du_releve.tsv`.
+      `.ai/V8.3/annexes_decodeur_v160/films_du_releve.tsv`.
 - [x] 0.4 (fait le 2026-11-23 :
       F. double passe trois fois : 20 artefacts identiques à l'octet à chaque passe ; 20 écarts « à classer »,
       toujours les mêmes, un par film, tous à l'étape `killsource` : écart ATTENDU et fixe, cause prouvée
@@ -709,12 +709,12 @@ Aucun agent ne monte le schéma ni ne régénère un golden : il rend la liste e
       étapes de tirs, de touches et de dégâts de `replay-equiv` relevés (R-14) ; outil de G-compat essayé et
       sa version épinglée, ou repli retenu et capture `go doc -all` de `v1.5.0` rangée hors dépôt ;
       `replay-equiv -repo-root` essayé sur une racine de données distincte (R-13).
-- [x] 0.7 (fait le 2026-11-23 : 21 sites de production, 5 lisent tout, 16 une partie ; table dans `.ai/annexes_decodeur_v160/appelants_partiels_0_7.md` ; à tracer par V4.1 avant la conception : que la génération complète consomme bien tous les canaux) Liste fermée des appelants de LevelUp qui ne lisent qu'une partie du film (candidats : rattrapage
+- [x] 0.7 (fait le 2026-11-23 : 21 sites de production, 5 lisent tout, 16 une partie ; table dans `.ai/V8.3/annexes_decodeur_v160/appelants_partiels_0_7.md` ; à tracer par V4.1 avant la conception : que la génération complète consomme bien tous les canaux) Liste fermée des appelants de LevelUp qui ne lisent qu'une partie du film (candidats : rattrapage
       de la source de dégât, coup d'envoi du film, rasters tactiques), avec fichier et ligne : elle fixe ce
       que V4 doit servir et ce que L.4 branche. Écrite ici avant la vague 1.
-- [x] 0.8 (fait le 2026-11-23 : copie de la base du 2026-11-22 (2 045 matchs), faits des 13 films exportés hors dépôt, mesures avant par piste dans `.ai/annexes_decodeur_v160/avant.md` ; les valeurs « parc » y décrivent le décodeur v1.4.1, le parc n'étant pas régénéré, l'état v1.5.0 par joueur est à reprendre en début de piste ; aucune vérité d'apparence des Spartans dans la copie, pour E.4) Vérité de l'API et faits des matchs : export unique en lecture sur une COPIE de la base partagée,
+- [x] 0.8 (fait le 2026-11-23 : copie de la base du 2026-11-22 (2 045 matchs), faits des 13 films exportés hors dépôt, mesures avant par piste dans `.ai/V8.3/annexes_decodeur_v160/avant.md` ; les valeurs « parc » y décrivent le décodeur v1.4.1, le parc n'étant pas régénéré, l'état v1.5.0 par joueur est à reprendre en début de piste ; aucune vérité d'apparence des Spartans dans la copie, pour E.4) Vérité de l'API et faits des matchs : export unique en lecture sur une COPIE de la base partagée,
       hors dépôt, pour les pistes A, B, E et pour le relevé B (`levelup replay-facts-export` sur les 13
-      films). Mesures AVANT par piste dans `.ai/annexes_decodeur_v160/avant.md`.
+      films). Mesures AVANT par piste dans `.ai/V8.3/annexes_decodeur_v160/avant.md`.
 - **Gate 0** : 0.2 vert (G-clone, G-rev, 20 identiques) ; 0.4 statué ; 0.6 et 0.7 écrits ; `avant.md`
   complet. Aucun relevé de vitesse n'est exigé ici.
 
@@ -753,14 +753,14 @@ Deux relevés, parce que la génération d'un rejeu dépend de la base de LevelU
       système, processeur, cœurs, mémoire, `GOMAXPROCS`, date).
 - [~] V0.4 (2026-11-24 : le relevé par film de `replay-build` n'a pas été produit sous cette forme (médiane de 5 passes, pic publié) ; le chiffre d'une génération de rejeu est couvert par la régénération réelle du parc, L.6 et L.7 : 1 455 rejeux en 1 h 11 contre 2 h 26 en v1.5.0, pic d'un enfant 1,64 Gio, voir `l6_regeneration_reelle_resume.md` et `l7_mesures_apres_regeneration.md` ; la vitesse du décodeur seul est au relevé A, I.3) **Relevé B, de bout en bout, dans LevelUp.** `replay-build` sur les 13 films, faits de 0.8,
       `-fils 1` : durée par film (5 passes, médiane) et pic publié par la commande ; rangé
-      `.ai/annexes_decodeur_v160/releve_bout_en_bout.md`. C'est le chiffre d'une génération de rejeu
+      `.ai/V8.3/annexes_decodeur_v160/releve_bout_en_bout.md`. C'est le chiffre d'une génération de rejeu
       (référence du 2026-11-13 : 3,5 s en médiane, 10,1 s au pire sur dix témoins).
-- [x] V0.5 (2026-11-23 : fait ; relevé de référence de la v1.5.0 dans `bench/releves/v1.5.0.tsv` (13 films, 5 passes) ; profil sur cinq films dans `.ai/annexes_decodeur_v160/profil.md` : décodage plus de 90 %, publication 5 à 10 %, décompression moins de 0,5 %, chargement moins de 1 %) Relevés de RÉFÉRENCE de la v1.5.0, par le pilote, en fenêtre de mesure. Relevé A : l'outil est
+- [x] V0.5 (2026-11-23 : fait ; relevé de référence de la v1.5.0 dans `bench/releves/v1.5.0.tsv` (13 films, 5 passes) ; profil sur cinq films dans `.ai/V8.3/annexes_decodeur_v160/profil.md` : décodage plus de 90 %, publication 5 à 10 %, décompression moins de 0,5 %, chargement moins de 1 %) Relevés de RÉFÉRENCE de la v1.5.0, par le pilote, en fenêtre de mesure. Relevé A : l'outil est
       copié, sans être commité, dans un worktree posé sur le tag `v1.5.0` (il n'emploie que des entrées
       publiques de cette version) ; rangé `bench/releves/v1.5.0.tsv`. Relevé B : branche de montée au
       `require` v1.5.0. Profil du temps et des allocations sur 3 films (`-cpuprofile`, `-memprofile` de
       `replay-build`) : part de chaque phase et des dix premières fonctions, dans
-      `.ai/annexes_decodeur_v160/profil.md`. C'est l'entrée des conceptions V1.1 à V4.1.
+      `.ai/V8.3/annexes_decodeur_v160/profil.md`. C'est l'entrée des conceptions V1.1 à V4.1.
 - [x] V0.6 (2026-11-23 : fait et intégré dans `feat/v1.6.0` : porteur `OptionsVitesse`, un fil par défaut, borne `MaxFils` = 8 ; `gorelease` : ajouts compatibles, version suggérée v1.6.0) Socle des options (R-16), un seul écrivain : une structure d'options AJOUTÉE (nombre de fils,
       choix des canaux), valeur zéro = comportement actuel, sans aucun effet à ce stade ; plafond du nombre
       de fils dans la brique (R-12). Intégrée dans `feat/v1.6.0` avant toute piste V. Réexport par la façade retiré le 2026-11-23 (cycle d'import sous l'étiquette de recherche) : le porteur vit dans `replay` seul.
@@ -799,7 +799,7 @@ ABANDONNÉE le 2026-11-23 sur mesure : gain mesuré de 0,1 à 0,8 % du total (pr
 
 ## Piste V4 — lecture au choix des canaux (Sonnet)
 
-- [x] V4.1 (2026-11-23 : conception rendue ; ABANDON de la piste décidé par le user le 2026-11-23, « ok on abandonne le choix des canaux » ; détail : `.ai/annexes_decodeur_v160/v4_conception.md` ; elle déconseille le chantier pour la v1.6.0 : environ 73 % du temps est incompressible quel que soit le choix, le gain d'une sélection est de 22 à 30 %, aucun appelant de LevelUp ne choisirait de sélection, et le chantier touche les mêmes fichiers que le parallélisme ; décision demandée au user, V4.2 à V4.4 suspendus) Conception écrite ICI avant le code : le choix des canaux de V0.6 (valeur zéro = tous les
+- [x] V4.1 (2026-11-23 : conception rendue ; ABANDON de la piste décidé par le user le 2026-11-23, « ok on abandonne le choix des canaux » ; détail : `.ai/V8.3/annexes_decodeur_v160/v4_conception.md` ; elle déconseille le chantier pour la v1.6.0 : environ 73 % du temps est incompressible quel que soit le choix, le gain d'une sélection est de 22 à 30 %, aucun appelant de LevelUp ne choisirait de sélection, et le chantier touche les mêmes fichiers que le parallélisme ; décision demandée au user, V4.2 à V4.4 suspendus) Conception écrite ICI avant le code : le choix des canaux de V0.6 (valeur zéro = tous les
       calques = comportement actuel) ; table des dépendances entre calques, tirée de `layers.go` et des
       étapes de `observe.go` (un calque demandé entraîne ceux dont il se nourrit : identité, pont, fil des
       morts) ; ce que la marche peut ne pas distribuer quand aucun calque demandé n'y a d'intérêt. Les
@@ -840,7 +840,7 @@ ABANDONNÉE le 2026-11-23 sur mesure : gain mesuré de 0,1 à 0,8 % du total (pr
 
 ## Piste G — gains du profil (Sonnet, effort moyen ; ajoutée le 2026-11-23)
 
-Origine : le profil de vitesse (`.ai/annexes_decodeur_v160/profil.md`, sections 3 à 5) montre que, sur les films dont la vue A n'est pas portée (anciennes versions du film), la localisation de la liste d'événements passe par un balayage bit à bit avec décodage d'essai, refait trois fois par trame (marche, canal des morts, canal des vitalités) : 73,5 millions de décodages d'essai sur un film ancien, contre 175 sur un film récent de même taille, qui est 8 fois plus rapide. Aucun item G ne change la sortie : chacun se prouve par ses empreintes.
+Origine : le profil de vitesse (`.ai/V8.3/annexes_decodeur_v160/profil.md`, sections 3 à 5) montre que, sur les films dont la vue A n'est pas portée (anciennes versions du film), la localisation de la liste d'événements passe par un balayage bit à bit avec décodage d'essai, refait trois fois par trame (marche, canal des morts, canal des vitalités) : 73,5 millions de décodages d'essai sur un film ancien, contre 175 sur un film récent de même taille, qui est 8 fois plus rapide. Aucun item G ne change la sortie : chacun se prouve par ses empreintes.
 
 Ordre de lancement : G.2, G.6 et G.7 en parallèle (lancés le 2026-11-23 : agents Sonnet à effort moyen, branches `piste/g2`, `piste/g6`, `piste/g7`, un worktree par agent) ; G.1 après G.2, même zone de code. G.4, G.8, G.5 et G.3 : à décider sur un nouveau profil.
 
@@ -864,25 +864,25 @@ Preuve commune à chaque item : empreintes de `film-bench` identiques au relevé
 - [~] G.3 (2026-11-23 : repris par la piste K, chantier 2) Faire tourner en parallèle, entre eux et d'après la marche, les balayages hors marche ; `decodeFilmVehicleScan` avec `decodeFilmPlacements` dans `balayerMonde`. Sans effet attendu à un fil (DD-3). **À décider sur un nouveau profil.** Note (profil 2, section 8, 2026-11-23) : possible mais PAS tel quel (contexte de film muté, mémos sans verrou) ; gardé en dernier, à décider.
       Gain attendu : -8 à -20 % de durée murale à plusieurs fils (film06 : de 38 % à environ 19 %, borné par `decodeFilmVehicleScan` ; film01 : environ 20 %). Risque : moyen (état partagé du `FilmContext`, caches et verrous à vérifier ; les crochets publient). Fichiers : `replay/film_scan.go` (`balayerPositions`, `balayerMonde`, `balayerPont`, `balayerCapacites`). Preuve : celle de la piste.
 
-- [x] G.10 (2026-11-23 : intégré, `da3bd2c` ; positions par rangs, empreintes des 13 films identiques ; pic du plus gros film −294 Mio, contre −0,4 à −0,5 Gio visés) mémoire : `indexBySlot` sans copie des positions (index de positions de 4 octets au lieu d'une copie de 176 octets par position ; 37 usages de `.pts` dans 11 fichiers de `replay/`). Gain attendu : pic −0,4 à −0,5 Gio sur le plus gros film, alloué −4,8 Gio. Risque moyen ; preuve : empreintes des 13 films. Source : `.ai/annexes_decodeur_v160/profil2.md`, section 6.2 (M1).
-- [x] G.11 (2026-11-24 : consignée dans `.ai/gestes_prod_8_3_0.md` ; confirmée par la régénération réelle : pic d'un enfant 1,64 Gio pour un plafond de 3 Gio, aucun arrêt) note à l'hôte sur le plafond souple de mémoire (`-plafond-gio`) : à 1 Gio, le pic du plus gros film tombe à 1 161 Mio pour +1,3 % de temps (mesuré sur ce seul film). Réglage de l'hôte, pas du décodeur ; à consigner dans la mise en production. Source : `.ai/annexes_decodeur_v160/profil2.md`, section 6.2 (M0).
+- [x] G.10 (2026-11-23 : intégré, `da3bd2c` ; positions par rangs, empreintes des 13 films identiques ; pic du plus gros film −294 Mio, contre −0,4 à −0,5 Gio visés) mémoire : `indexBySlot` sans copie des positions (index de positions de 4 octets au lieu d'une copie de 176 octets par position ; 37 usages de `.pts` dans 11 fichiers de `replay/`). Gain attendu : pic −0,4 à −0,5 Gio sur le plus gros film, alloué −4,8 Gio. Risque moyen ; preuve : empreintes des 13 films. Source : `.ai/V8.3/annexes_decodeur_v160/profil2.md`, section 6.2 (M1).
+- [x] G.11 (2026-11-24 : consignée dans `.ai/gestes_prod_8_3_0.md` ; confirmée par la régénération réelle : pic d'un enfant 1,64 Gio pour un plafond de 3 Gio, aucun arrêt) note à l'hôte sur le plafond souple de mémoire (`-plafond-gio`) : à 1 Gio, le pic du plus gros film tombe à 1 161 Mio pour +1,3 % de temps (mesuré sur ce seul film). Réglage de l'hôte, pas du décodeur ; à consigner dans la mise en production. Source : `.ai/V8.3/annexes_decodeur_v160/profil2.md`, section 6.2 (M0).
 
 Gate de la piste G : G-clone sur les paquets touchés (`-race` pour G.3) ; G-rev, empreinte refigée par le pilote à valeur constante (R-13) ; G-compat ; G-equiv-ref : 20 identiques contre les références de la v1.5.0 ; G-equiv-2p ; relevé complet de `film-bench` sur la machine au repos (fenêtre de mesure, R-8), comparé à `bench/releves/v1.5.0.tsv`.
 
-**Bilan au 2026-11-23 (cinq gains intégrés dans `feat/v1.6.0`, tête `4618ce3`).** Preuve de l'état intégré : suite complète, code 0, 34 paquets, 301 tests sautés, aucun échec ; `go vet` avec et sans l'étiquette de recherche ; lint 0 issue ; équivalence : 20 identiques contre la v1.5.0 ; double passe : 20 artefacts identiques à l'octet, seuls écarts à classer les 20 de l'étape `killsource` ; relevé des 13 films, 5 passes, machine seule : 26 empreintes sur 26 identiques à la v1.5.0 ; empreinte de révision de la grammaire refigée à valeur constante (`grammar-2026-11-22.2`). Gain, tête contre le relevé de référence de la v1.5.0 (pris sous charge) : décodage cumulé 68,2 s → 44,6 s (−34,5 %), total cumulé 71,6 s → 48,3 s (−32,5 %) ; plus gros film 19,6 s → 12,2 s ; film ancien 18,1 s → 10,6 s ; Total Control ancien 9,7 s → 5,9 s ; crâne 4,0 s → 2,5 s ; une Grande bataille récente 2,3 s → 2,2 s. Pic du plus gros film : 2 198 → 1 969 Mio. Relevé rangé dans `.ai/annexes_decodeur_v160/releve_apres_cinq_gains.tsv`.
+**Bilan au 2026-11-23 (cinq gains intégrés dans `feat/v1.6.0`, tête `4618ce3`).** Preuve de l'état intégré : suite complète, code 0, 34 paquets, 301 tests sautés, aucun échec ; `go vet` avec et sans l'étiquette de recherche ; lint 0 issue ; équivalence : 20 identiques contre la v1.5.0 ; double passe : 20 artefacts identiques à l'octet, seuls écarts à classer les 20 de l'étape `killsource` ; relevé des 13 films, 5 passes, machine seule : 26 empreintes sur 26 identiques à la v1.5.0 ; empreinte de révision de la grammaire refigée à valeur constante (`grammar-2026-11-22.2`). Gain, tête contre le relevé de référence de la v1.5.0 (pris sous charge) : décodage cumulé 68,2 s → 44,6 s (−34,5 %), total cumulé 71,6 s → 48,3 s (−32,5 %) ; plus gros film 19,6 s → 12,2 s ; film ancien 18,1 s → 10,6 s ; Total Control ancien 9,7 s → 5,9 s ; crâne 4,0 s → 2,5 s ; une Grande bataille récente 2,3 s → 2,2 s. Pic du plus gros film : 2 198 → 1 969 Mio. Relevé rangé dans `.ai/V8.3/annexes_decodeur_v160/releve_apres_cinq_gains.tsv`.
 
-**Bilan au 2026-11-23 (six gains intégrés, tête `785c38e`).** Mêmes preuves que le bilan précédent, rejouées : suite complète code 0, 34 paquets ; équivalence 20 identiques et double passe identique ; 130 empreintes sur 130 identiques à la v1.5.0 (13 films, 5 passes, machine seule). Décodage cumulé 68,2 s → 34,7 s (−49 %) ; total 71,6 s → 38,3 s ; film le plus ancien 18,1 s → 5,8 s ; Total Control ancien 9,7 s → 3,3 s ; plus gros film 19,6 s → 10,7 s (pic 2 198 → 2 053 Mio) ; Slayer récent 1 123 → 1 000 ms. Relevé : `.ai/annexes_decodeur_v160/releve_apres_six_gains.tsv`.
+**Bilan au 2026-11-23 (six gains intégrés, tête `785c38e`).** Mêmes preuves que le bilan précédent, rejouées : suite complète code 0, 34 paquets ; équivalence 20 identiques et double passe identique ; 130 empreintes sur 130 identiques à la v1.5.0 (13 films, 5 passes, machine seule). Décodage cumulé 68,2 s → 34,7 s (−49 %) ; total 71,6 s → 38,3 s ; film le plus ancien 18,1 s → 5,8 s ; Total Control ancien 9,7 s → 3,3 s ; plus gros film 19,6 s → 10,7 s (pic 2 198 → 2 053 Mio) ; Slayer récent 1 123 → 1 000 ms. Relevé : `.ai/V8.3/annexes_decodeur_v160/releve_apres_six_gains.tsv`.
 
 ## Piste K — films récents : parallélisme (ajoutée le 2026-11-23)
 
 Origine : le user a fixé la priorité le 2026-11-23 : la vitesse compte surtout sur les matchs neufs, donc sur la dernière version du film ; un gain majeur sur un fil se prend, sinon le parallélisme. Seuil du pilote : au moins 15 % du total sur au moins trois films récents sur cinq.
 
-Mesure (`.ai/annexes_decodeur_v160/profil_films_recents.md`) : sur un film récent, 99,996 % des trames sont lues jusqu'au bout et aucune ne part en recherche de repli ; les leviers des films anciens valent donc 0. Le meilleur gain sur un fil vaut 4 à 7 % ; additionnés, sept petits gains feraient 12 à 20 %. **Pas de gain majeur sans parallélisme.** Quatre parcours des images-clés, fonctions du payload, pèsent environ 40 % du temps ; les balayages d'après la marche, 36 à 45 %, équilibrés. Le parallélisme par morceau de la marche a été mesuré à blanc : il passe (70 à 100 % des morceaux) mais ne vise que 22 à 25 % du total, plafonne à −9 à −17 %, et porte le plus de risque : la piste V2 reste abandonnée, cette fois sur mesure.
+Mesure (`.ai/V8.3/annexes_decodeur_v160/profil_films_recents.md`) : sur un film récent, 99,996 % des trames sont lues jusqu'au bout et aucune ne part en recherche de repli ; les leviers des films anciens valent donc 0. Le meilleur gain sur un fil vaut 4 à 7 % ; additionnés, sept petits gains feraient 12 à 20 %. **Pas de gain majeur sans parallélisme.** Quatre parcours des images-clés, fonctions du payload, pèsent environ 40 % du temps ; les balayages d'après la marche, 36 à 45 %, équilibrés. Le parallélisme par morceau de la marche a été mesuré à blanc : il passe (70 à 100 % des morceaux) mais ne vise que 22 à 25 % du total, plafonne à −9 à −17 %, et porte le plus de risque : la piste V2 reste abandonnée, cette fois sur mesure.
 
 Ordre : K.0 et K.C ensemble ; puis les items de K.1 et K.2 tels que la conception relue les découpe, écrits ICI avant leur code.
 
 - [x] K.0 (2026-11-23 : intégré dans `feat/v1.6.0`, tête `daac986` ; preuve : test différentiel contre la forme bit à bit sur 823 millions de positions de payloads réels, cas construits aux frontières, empreintes du document et des faits identiques à la v1.5.0 sur les 13 films ; empreinte de la grammaire refigée à révision constante) Rejet par mot de 64 bits dans la table des datums et dans les en-têtes de joueur. Durée à mesurer machine seule (K.3).
-- [x] K.C (2026-11-23 : rendue, relue par le pilote, rangée dans `.ai/annexes_decodeur_v160/parallelisme_conception.md`) Conception. Elle fait foi pour le détail des items ci-dessous (sa section 5) ; elle a été écrite sur la tête `785c38e`, les agents partent de `daac986` (K.0 a sorti `slotsDEntetesExacts` de la liste des balayages nommés).
+- [x] K.C (2026-11-23 : rendue, relue par le pilote, rangée dans `.ai/V8.3/annexes_decodeur_v160/parallelisme_conception.md`) Conception. Elle fait foi pour le détail des items ci-dessous (sa section 5) ; elle a été écrite sur la tête `785c38e`, les agents partent de `daac986` (K.0 a sorti `slotsDEntetesExacts` de la liste des balayages nommés).
 
 Constats de la conception : les quatre parcours des images-clés sont des fonctions pures ; deux seulement ont déjà un mémo ; les largeurs posées puis restaurées sur le contexte ne gênent pas le chantier 1 ; le pré-passage part au premier accès aux images-clés, là où la preuve des ancres se fige aujourd'hui, et range ses résultats depuis le fil appelant, sans verrou sur un chemin de lecture. Entrée publique : `FilmContext.PoserFils(n)`, nourrie par un champ `Vitesse` de `replay.Options`. À un fil : le chemin d'aujourd'hui, aucun fil lancé, garanti par un test. Le chantier 2 se scinde : 2a, les lectures qui ne dépendent que du film, tournent pendant la marche (gain estimé −8 à −10 %, risque faible) ; 2b, les voies sur un contexte dérivé, se décide après la mesure du chantier 1.
 
@@ -899,7 +899,7 @@ Chantier 1, pré-décodage des images-clés (après les fondations). Preuve de l
 - [x] K.I2 (2026-11-23 : intégré ; même clé que le lecteur existant) Table des datums.
 - [x] K.I3 (2026-11-23 : intégré ; mémo neuf, consulté par le canal des équipes, jamais écrit hors du pré-passage) En-têtes exacts de joueur (mémo neuf).
 - [x] K.I4 (2026-11-23 : intégré ; lemme des records muets prouvé par test ; calcul fait pour tout payload à bipède, le travail en trop reste à mesurer en K.I5) Mots par record, au début du balayage des états (mémo dans le canal) ; lemme des records muets prouvé par test.
-- [x] K.I5 (2026-11-23 : mesuré, 13 films, 5 passes, machine au repos, aucun test d'une autre session pendant les passes ; relevés `.ai/annexes_decodeur_v160/releve_parallelisme_fils{1,2,4,8}.tsv` ; 52 empreintes identiques à la v1.5.0) Mesure à 1, 2, 4 et 8 fils et pic de mémoire.
+- [x] K.I5 (2026-11-23 : mesuré, 13 films, 5 passes, machine au repos, aucun test d'une autre session pendant les passes ; relevés `.ai/V8.3/annexes_decodeur_v160/releve_parallelisme_fils{1,2,4,8}.tsv` ; 52 empreintes identiques à la v1.5.0) Mesure à 1, 2, 4 et 8 fils et pic de mémoire.
       Total cumulé des 13 films : v1.5.0 71,6 s ; un fil 34,8 s (−51 %) ; deux fils 29,0 s (−59 %) ; quatre fils 27,0 s (−62 %) ; huit fils 26,2 s (−63 %).
       Films récents, total par film, v1.5.0 puis 1 / 2 / 4 / 8 fils : Slayer 1 123 ms → 826 / 622 / 570 / 550 ; Bases 1 586 → 1 191 / 891 / 803 / 766 ; Colline 1 371 → 1 048 / 776 / 705 / 675 ; Drapeau d'arène 525 → 399 / 271 / 247 / 236 ; Bombe 1 197 → 903 / 648 / 579 / 547. Soit, sur un film récent, environ −26 % à un fil (effet de K.0), −45 % à deux fils, −50 % à quatre.
       Films anciens : le plus ancien 18,1 s → 5,5 s à un fil, 4,6 s à quatre ; le plus gros 19,6 s → 10,1 s à un fil, 8,8 s à quatre.
@@ -912,9 +912,9 @@ Chantier 2a, lectures qui ne dépendent que du film :
 
 Chantier 2b, voies sur contexte dérivé (J3 à J10 de la conception) :
 - [x] K.J4 (2026-11-23 : intégré ; toutes les suppositions de la conception tiennent ; seule l'étape des poses écrit des mémos froids) Gardes de caractérisation à un fil (tests sur le corpus) : à faire tôt, elles transforment les « déduit » de la conception en « vérifié ».
-- [x] K.2b (2026-11-23 : FAIT sur décision du user, « on continue les chantiers sur la 1.6.0 » ; J3 contexte de voie, J6a à J6c lire et publier séparés, J7 à J9 orchestrateur et voies du monde et des sièges intégrés, tête `4ee6876` ; J5 sans objet : chaque voie copie la table des datums ; preuve : tests et détection de courses code 0, empreintes des 13 films identiques à la v1.5.0 à 1, 2, 4 et 8 fils, ordre des étapes identique. Mesure machine au calme, 5 passes, relevés `.ai/annexes_decodeur_v160/releve_voies_fils{1,2,4,8}.tsv` : total des 13 films 33,5 s à un fil, 25,8 s à deux, 24,2 s à quatre, 23,5 s à huit, contre 34,8 / 29,0 / 27,0 / 26,2 avant les voies ; film récent Slayer 798 / 534 / 479 / 457 ms contre 1 123 ms en v1.5.0. Limites : le détecteur de courses ne couvre que les mini-bobines ; à deux fils demandés, quatre fils sont actifs ; une voie perd les crochets d'observation du parent.) J3, J5, J6a à J6c, J7 à J10 : à décider après K.I5 ; items écrits ici s'ils sont retenus. Avis du pilote après la mesure (2026-11-23) : ne pas les faire dans la v1.6.0. Sur un film récent à quatre fils il reste environ 570 ms, dont 90 de publication ; les voies viseraient au mieux 10 % de plus, pour huit items dont un lourd et le risque le plus élevé de la piste. Décision demandée au user.
+- [x] K.2b (2026-11-23 : FAIT sur décision du user, « on continue les chantiers sur la 1.6.0 » ; J3 contexte de voie, J6a à J6c lire et publier séparés, J7 à J9 orchestrateur et voies du monde et des sièges intégrés, tête `4ee6876` ; J5 sans objet : chaque voie copie la table des datums ; preuve : tests et détection de courses code 0, empreintes des 13 films identiques à la v1.5.0 à 1, 2, 4 et 8 fils, ordre des étapes identique. Mesure machine au calme, 5 passes, relevés `.ai/V8.3/annexes_decodeur_v160/releve_voies_fils{1,2,4,8}.tsv` : total des 13 films 33,5 s à un fil, 25,8 s à deux, 24,2 s à quatre, 23,5 s à huit, contre 34,8 / 29,0 / 27,0 / 26,2 avant les voies ; film récent Slayer 798 / 534 / 479 / 457 ms contre 1 123 ms en v1.5.0. Limites : le détecteur de courses ne couvre que les mini-bobines ; à deux fils demandés, quatre fils sont actifs ; une voie perd les crochets d'observation du parent.) J3, J5, J6a à J6c, J7 à J10 : à décider après K.I5 ; items écrits ici s'ils sont retenus. Avis du pilote après la mesure (2026-11-23) : ne pas les faire dans la v1.6.0. Sur un film récent à quatre fils il reste environ 570 ms, dont 90 de publication ; les voies viseraient au mieux 10 % de plus, pour huit items dont un lourd et le risque le plus élevé de la piste. Décision demandée au user.
 
-- [x] K.3 (2026-11-24 : relevé final fait, machine seule, 13 films, quatre niveaux de fils, 5 passes, médiane du temps total : 35,8 s à 1 fil, 30,1 s à 2, 27,8 s à 4, 26,7 s à 8, contre 71,6 s en v1.5.0 ; empreintes du document et des faits identiques entre les quatre niveaux ; pic du plus gros film 1 869 Mio à 1 fil et 1 704 Mio à 8 fils, sous le plafond de 2 Gio ; pièce : `.ai/annexes_decodeur_v160/l2_vitesse_v160_contre_v150.md`.) Relevé final machine seule sur les 13 films, quatre niveaux de fils ; V0.7 (niveau de fils dans les outils de LevelUp) suit.
+- [x] K.3 (2026-11-24 : relevé final fait, machine seule, 13 films, quatre niveaux de fils, 5 passes, médiane du temps total : 35,8 s à 1 fil, 30,1 s à 2, 27,8 s à 4, 26,7 s à 8, contre 71,6 s en v1.5.0 ; empreintes du document et des faits identiques entre les quatre niveaux ; pic du plus gros film 1 869 Mio à 1 fil et 1 704 Mio à 8 fils, sous le plafond de 2 Gio ; pièce : `.ai/V8.3/annexes_decodeur_v160/l2_vitesse_v160_contre_v150.md`.) Relevé final machine seule sur les 13 films, quatre niveaux de fils ; V0.7 (niveau de fils dans les outils de LevelUp) suit.
 
 Gate de la piste K : à tout niveau de fils, empreintes du document et des faits identiques à un fil sur les 13 films et 20 identiques contre les références ; à un fil, aucun fil lancé ; tests neufs sous `-race -count=3` ; G-rev ; G-compat (ajouts seulement) ; aucun film au-dessus de 3 Gio à aucun niveau.
 
@@ -934,9 +934,9 @@ Gate de la piste K : à tout niveau de fils, empreintes du document et des faits
 
 ## Piste V2 — lecture de plusieurs chunks à la fois (Opus ; s'intègre APRÈS les pistes A à F)
 
-ABANDONNÉE le 2026-11-23 sur analyse : le monde est unique pour tout le film, l'image-clé d'un morceau ne rétablit qu'une partie de l'état, et une liaison survivante sort dans les records publiés ; gain plafonné à 10-15 %. Détail : `.ai/annexes_decodeur_v160/profil2.md`, section 7.
+ABANDONNÉE le 2026-11-23 sur analyse : le monde est unique pour tout le film, l'image-clé d'un morceau ne rétablit qu'une partie de l'état, et une liaison survivante sort dans les records publiés ; gain plafonné à 10-15 %. Détail : `.ai/V8.3/annexes_decodeur_v160/profil2.md`, section 7.
 
-- [!] V2.1 (voir en tête de piste) Instruction sans code, dans `.ai/annexes_decodeur_v160/v2_conception.md` (vague 2) : ce qu'un
+- [!] V2.1 (voir en tête de piste) Instruction sans code, dans `.ai/V8.3/annexes_decodeur_v160/v2_conception.md` (vague 2) : ce qu'un
       chunk hérite du précédent dans notre marche (table d'entités du monde, liaisons des images-clés, table
       anticipée, neufs suspendus, profil de balayage, compteurs de replis, crochets des canaux, marche
       commune de la source de dégât) ; à quelle condition un chunk peut partir d'une copie de l'état ;
@@ -962,7 +962,7 @@ ABANDONNÉE le 2026-11-23 sur analyse : le monde est unique pour tout le film, l
 
 ## Piste A — score et tableau (Sonnet ; Opus pour A.3)
 
-- [x] A.1 (2026-11-23 : trois causes prouvées, rapport `.ai/annexes_decodeur_v160/a1_verdicts_du_score.md`) Mesure sans code, sur les films du parc par le harnais : les cinq Grandes batailles restées
+- [x] A.1 (2026-11-23 : trois causes prouvées, rapport `.ai/V8.3/annexes_decodeur_v160/a1_verdicts_du_score.md`) Mesure sans code, sur les films du parc par le harnais : les cinq Grandes batailles restées
       « incomplètes » sans rang non confirmé ni manque ; la Grande bataille « complète » à tort (points
       publiés au-dessus du tableau) ; le film dont le tableau cesse de monter dans les dernières secondes.
       Cause par film, ou `[!]`.
@@ -1017,14 +1017,14 @@ ABANDONNÉE le 2026-11-23 sur analyse : le monde est unique pour tout le film, l
       de ces builds ; publication du bouton seulement à 90 % d'accord sur tous les builds, sinon `[!]`.
 - [~] C.3 (2026-11-23 : repris par le portage des gestes : les rechargements gagnent l'instant et le compte des copies (`276b1e1`) ; aucun des quatre booléens n'est nommé, laissés tels quels) Sens des quatre booléens d'un rechargement : mesure contre les munitions lues ; nommés s'ils sont
       prouvés, sinon laissés tels quels.
-- [x] C.4 (2026-11-23 : table rendue, `.ai/annexes_decodeur_v160/c4_e5_recoupements.md` ; le contributeur apporte coup de mêlée, lancer, rechargement et déplacement brut ; désaccord sur le bit du saut à trancher par un film récent, avec C.2) Recoupement avec les canaux du contributeur (manche, postures de contrôle, gestes), sans code :
+- [x] C.4 (2026-11-23 : table rendue, `.ai/V8.3/annexes_decodeur_v160/c4_e5_recoupements.md` ; le contributeur apporte coup de mêlée, lancer, rechargement et déplacement brut ; désaccord sur le bit du saut à trancher par un film récent, avec C.2) Recoupement avec les canaux du contributeur (manche, postures de contrôle, gestes), sans code :
       table « son champ, notre champ, lequel reste », versée à l'inventaire P.1 et au dossier P.2.
 - **Gate C** : équivalence attribuée ; poids ajouté au document sous 1 % sur 20 films ; G-clone sur
   `./replay/ ./internal/grammar/` ; G-rev ; G-compat.
 
 ## Piste D — répliques des Spartans (Sonnet ; dans la v1.6.0, DD-4)
 
-- [x] D.1 (2026-11-24 : contrôle fait contre le témoin tiers sur 3 films, d'un seul build lisible par le témoin (il n'en lit que 3 sur 9 essayés) ; comptes lus égaux au témoin message par message (365, 165 et 418 répliques) ; comptes publiés égaux à des écarts expliqués près (annonces avant le coup d'envoi, annonces regroupées par destinataire, répliques de bot publiées sans joueur par choix) ; une réplique publiée sans joueur, hors bot, expliquée par une vie sans tracé (un joueur compte 18 morts pour 17 tracés de vie) : défaut des pistes, pas de la lecture, consigné aux Découvertes. Réserve : un seul build lisible par le témoin. Pièce : `.ai/annexes_decodeur_v160/d1_controle_repliques_contre_temoin.md`.) (2026-11-23 : intégré dans `feat/v1.6.0`, tête `cd8f560`, empreintes des 13 films identiques ; genre 75 = réplique d'un Spartan, genre 76 = annonce ; lus seulement quand un canal le demande, rien de publié ; essai sur un film : 365 répliques, 951 annonces, aucune trame arrêtée ; non coché : contrôle des comptes contre le témoin sur 3 films, à la file des mesures) Lecture par la grammaire des genres 75 et 76 de la vue A (locuteur, identifiant du son, priorité,
+- [x] D.1 (2026-11-24 : contrôle fait contre le témoin tiers sur 3 films, d'un seul build lisible par le témoin (il n'en lit que 3 sur 9 essayés) ; comptes lus égaux au témoin message par message (365, 165 et 418 répliques) ; comptes publiés égaux à des écarts expliqués près (annonces avant le coup d'envoi, annonces regroupées par destinataire, répliques de bot publiées sans joueur par choix) ; une réplique publiée sans joueur, hors bot, expliquée par une vie sans tracé (un joueur compte 18 morts pour 17 tracés de vie) : défaut des pistes, pas de la lecture, consigné aux Découvertes. Réserve : un seul build lisible par le témoin. Pièce : `.ai/V8.3/annexes_decodeur_v160/d1_controle_repliques_contre_temoin.md`.) (2026-11-23 : intégré dans `feat/v1.6.0`, tête `cd8f560`, empreintes des 13 films identiques ; genre 75 = réplique d'un Spartan, genre 76 = annonce ; lus seulement quand un canal le demande, rien de publié ; essai sur un film : 365 répliques, 951 annonces, aucune trame arrêtée ; non coché : contrôle des comptes contre le témoin sur 3 films, à la file des mesures) Lecture par la grammaire des genres 75 et 76 de la vue A (locuteur, identifiant du son, priorité,
       indice de réplique ; annonceur : identifiant du son, destinataires), aujourd'hui traversés sans valeur.
       Contrôle : mêmes comptes que le témoin sur 3 films.
 - [x] D.2 (2026-11-24 : nom court prouvé par hachage, 291 noms, pour les builds HI_1_12_0 et HI_1_13_0 seulement, paquet public `chattername`, intégré en `8fe280c` ; le reste, les anciens builds, est au backlog de LevelUp ; agent lancé le 2026-11-23, branche `piste/d2`) Nom court de la réplique, DANS le décodeur (cadrage du user) : recherche bornée de la
@@ -1116,16 +1116,16 @@ n'écrit sur la branche ; seules y entrent ses PR, une à une, puis les correcti
 correctif de notre côté après le gel lui est annoncé avant d'être poussé. Avant le gel, il peut travailler
 sur le tag `v1.5.0` ; il sait qu'un seul rebase l'attend, sur le commit de gel.
 
-- [~] P.1 (2026-11-23 : remplacé par le portage par nous, voir « Portage par nous » ; `portage_complet_contributeur.md` porte l'inventaire par thème et la table par canal ; inventaire rendu dans `.ai/annexes_decodeur_v160/inventaire_contributeur.md` ; non coché : l'ordre des tags des trois briques et la table par canal, exigés ci-dessous, ne figurent pas encore dans ce rendu) Inventaire en lecture seule de ses copies, en deux parts confiées à deux agents (P.1a le
+- [~] P.1 (2026-11-23 : remplacé par le portage par nous, voir « Portage par nous » ; `portage_complet_contributeur.md` porte l'inventaire par thème et la table par canal ; inventaire rendu dans `.ai/V8.3/annexes_decodeur_v160/inventaire_contributeur.md` ; non coché : l'ordre des tags des trois briques et la table par canal, exigés ci-dessous, ne figurent pas encore dans ce rendu) Inventaire en lecture seule de ses copies, en deux parts confiées à deux agents (P.1a le
       décodeur, P.1b les deux autres briques), pour PRÉPARER l'accueil (aucun code, aucune PR), sur la
       tête de son dépôt au jour de l'item : pour le décodeur, diff de `third_party/film-decoder` contre
       v1.3.6 puis contre v1.5.0 ; pour les deux autres briques, diff à trois voies contre nos v1.4.0 et
       v1.2.0. Par canal : fichiers, schéma qu'il prend chez lui, recouvrement avec la v1.5.0 et avec nos
       pistes (tables de C.4 et E.5), règle du dépôt en jeu, ajout d'une autre brique dont il dépend, sort du
       codec `REPLAYINPUTS30`, dépendance neuve (`woozymasta/bcn`, licence à relire), fichiers du jeu omis.
-      Rendu : `.ai/annexes_decodeur_v160/inventaire_contributeur.md`, avec l'ORDRE DES TAGS des trois
+      Rendu : `.ai/V8.3/annexes_decodeur_v160/inventaire_contributeur.md`, avec l'ORDRE DES TAGS des trois
       briques.
-- [~] P.2 (2026-11-23 : remplacé par le portage par nous, décision du user du 2026-11-23, voir « Portage par nous ») Dossier remis au contributeur, en anglais, `.ai/annexes_decodeur_v160/accueil_contributeur.md`,
+- [~] P.2 (2026-11-23 : remplacé par le portage par nous, décision du user du 2026-11-23, voir « Portage par nous ») Dossier remis au contributeur, en anglais, `.ai/V8.3/annexes_decodeur_v160/accueil_contributeur.md`,
       envoyé par le user. Contenu fermé :
       (a) l'état de départ : tag `v1.5.0` du décodeur (`dc967c2`, document au schéma 126, faits au schéma
       30), brique des cartes v1.4.0, lecteur de fichiers v1.2.0 ; ce que la v1.5.0 a ajouté et qui recouvre
@@ -1328,7 +1328,7 @@ Ordre imposé : R.1, R.2, puis L.1, L.2, L.3. Toute correction après L.1 fait r
   Intégrés dans `feat/v1.6.0` (tête `4618ce3`) : G.2, G.6, G.1, H.1 (largeur d'en-tête d'un bipède calculée après les rejets de tête), G.8' (préfiltre exact des mots de 32 bits d'une image-clé, à la place d'une recherche en table à chaque bit) et G.5 (un essai se défait par un journal d'annulation, au lieu de copier la table des slots). G.7 reste retiré (−4 à −5 % sur le plus gros film seulement, +2 % reproductible sur un film ancien).
   Preuve de chaque gain : test différentiel contre l'ancienne forme gardée en référence de test (G.1 : 15 564 acceptations ; G.5 : 1 520 803 essais de deux films réels, dont 609 422 modifiant le monde, état complet comparé ; H.1 et G.8' : plus de 900 000 occurrences) ; mutants détectés.
   Preuve de l'état intégré : suite complète code 0, 34 paquets, 301 tests sautés, aucun échec ; `go vet` avec et sans l'étiquette de recherche ; lint 0 issue ; équivalence 20 identiques contre la v1.5.0 ; double passe : 20 artefacts identiques à l'octet, seuls écarts à classer les 20 de `killsource` ; relevé des 13 films, 5 passes, machine seule : 26 empreintes sur 26 identiques à la v1.5.0 ; empreinte de révision de la grammaire refigée à valeur constante (`grammar-2026-11-22.2`).
-  Gain, tête contre le relevé de référence de la v1.5.0 (pris sous charge) : décodage cumulé des 13 films 68,2 s → 44,6 s (−34,5 %) ; total cumulé 71,6 s → 48,3 s (−32,5 %) ; plus gros film 19,6 s → 12,2 s ; film ancien 18,1 s → 10,6 s ; crâne 4,0 s → 2,5 s. Pic du plus gros film 2 198 → 1 969 Mio. Relevé : `.ai/annexes_decodeur_v160/releve_apres_cinq_gains.tsv`.
+  Gain, tête contre le relevé de référence de la v1.5.0 (pris sous charge) : décodage cumulé des 13 films 68,2 s → 44,6 s (−34,5 %) ; total cumulé 71,6 s → 48,3 s (−32,5 %) ; plus gros film 19,6 s → 12,2 s ; film ancien 18,1 s → 10,6 s ; crâne 4,0 s → 2,5 s. Pic du plus gros film 2 198 → 1 969 Mio. Relevé : `.ai/V8.3/annexes_decodeur_v160/releve_apres_cinq_gains.tsv`.
   G.4 lancé (agent Sonnet, effort élevé, branche `piste/g4`) ; V2 abandonnée sur analyse (`profil2.md`) ; G.3 gardé en dernier, à décider.
 
 - 2026-11-23 — PISTE G : deux gains intégrés, un retiré
@@ -1340,7 +1340,7 @@ Ordre imposé : R.1, R.2, puis L.1, L.2, L.3. Toute correction après L.1 fait r
 
 - 2026-11-23 — RELEVÉ DE RÉFÉRENCE ET PROFIL : les pistes de vitesse sont revues (aucun commit)
   Relevé de référence de la v1.5.0 rangé (`bench/releves/v1.5.0.tsv`, 13 films, 5 passes) : médianes de 0,5 s (13 morceaux) à 19,6 s (69 morceaux, pic 2 198 Mio pour un plafond de 3 Gio). D'autres processus tournaient pendant la fenêtre : ordres de grandeur sûrs, valeurs à quelques pour cent près non.
-  Profil sur cinq films (`.ai/annexes_decodeur_v160/profil.md`) : décodage plus de 90 % du total, publication 5 à 10 %, décompression moins de 0,5 %, chargement moins de 1 %.
+  Profil sur cinq films (`.ai/V8.3/annexes_decodeur_v160/profil.md`) : décodage plus de 90 % du total, publication 5 à 10 %, décompression moins de 0,5 %, chargement moins de 1 %.
   Anomalie expliquée : sur les films dont la vue A n'est pas portée, la localisation de la liste d'événements refait un balayage bit à bit avec décodage d'essai, trois fois par trame : 73,5 millions de décodages d'essai contre 175 sur un film récent de même taille (ce dernier est 8 fois plus rapide).
   Faits : V0.1, V0.2, V0.3 et V0.6 intégrés dans `feat/v1.6.0` (V0.6 : un fil par défaut, borne 8) ; V0.5 fait ; V0.7 décalé.
   Décisions du pilote : V1 abandonnée (gain de 0,1 à 0,8 %) ; V3.2 abandonnée (déjà mémoïsée) ; V3.3 garde la récupération d'équipement ; V4 gardée ; V2 reportée ; piste G ajoutée.
@@ -1411,7 +1411,7 @@ Ordre imposé : R.1, R.2, puis L.1, L.2, L.3. Toute correction après L.1 fait r
 - 2026-11-23 — L'en-tête de `LU apps/go-api/cmd/killsource/main.go` (lignes 3 à 8) affirme qu'aucun chemin de l'application n'utilise le décodeur killsource : faux (appels de production dans `internal/replaybuild/kills.go:57` et `internal/sync/killcollector/collector_run.go:215`).
 - 2026-11-23 — Un commentaire du test de surface de la façade, `LU apps/go-api/internal/archlint/film_facade_surface_test.go` (ligne 166), dit que `NomPrecisionParArmePasseSautee` et `NomDistancesDeToucheDesactivees` ont quitté la façade en v1.5.0 ; ils y restent, marqués `Deprecated` (`decfilm/replis_obsoletes.go`). Incohérence à trancher.
 - 2026-11-23 — 113 parcours de `map` classés sans effet par un outil, non relus un par un (table sous `Scripts/dec-v160-recup/etape0/maprange_classes3.tsv`) : à relire avant l'intégration de la lecture de plusieurs chunks à la fois.
-- 2026-11-23 — Publication mesurée 3 % plus lente qu'en v1.5.0 (12 à 23 ms sur le plus gros film), sans cause identifiée au profil ; écart accepté par le pilote (moins de 0,3 % d'un rejeu), à remesurer sur la version finale. Le profil du même jour (`.ai/annexes_decodeur_v160/profil2.md`, section 1.2) chiffrait la même régression à +6 à +12 % sur quatre films en A/B : deux mesures d'écart différent, à rapprocher sur la version finale.
+- 2026-11-23 — Publication mesurée 3 % plus lente qu'en v1.5.0 (12 à 23 ms sur le plus gros film), sans cause identifiée au profil ; écart accepté par le pilote (moins de 0,3 % d'un rejeu), à remesurer sur la version finale. Le profil du même jour (`.ai/V8.3/annexes_decodeur_v160/profil2.md`, section 1.2) chiffrait la même régression à +6 à +12 % sur quatre films en A/B : deux mesures d'écart différent, à rapprocher sur la version finale.
 - 2026-11-23 — Des durées prises pendant que d'autres agents mesurent sont inexploitables (une ronde entière faussée) ; les empreintes restent fiables. Les durées se mesurent à part, machine seule.
 - 2026-11-24 (régénération) — `backfill-killsource` décide de sauter un film sur la seule révision de sa couche (vues `_latest` du journal des morts, des vies et du placement) ; les révisions de la grammaire et du profil n'y entrent pas. Comparaison sur 30 films le 2026-11-24 : journal des morts identique ligne à ligne ; vies et tirs non comparés. Entrée du backlog.
 - 2026-11-24 (régénération) — Un film a un profil de build manquant dans la table des profils (`HI_1_5_1`) : le journal des morts l'écarte. Entrée du backlog.

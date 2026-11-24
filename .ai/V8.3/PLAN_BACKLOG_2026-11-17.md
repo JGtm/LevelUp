@@ -146,12 +146,12 @@ Tranché par le pilote (conventions du dépôt, modifiable par le user) :
 
 - [x] 0.1 (fait le 2026-11-17, recalée sur `4f6f249458`) Branche `chore/830-backlog-1117` recalée sur la tête de `origin/release/v8.3.0` du jour du go ;
       création des worktrees des pistes.
-- [x] 0.2 (fait le 2026-11-17 par un agent Sonnet en lecture, recoupé par le pilote ; durée du paquet DuckDB mesurée SOUS CHARGE, 578,7 s : la mesure au calme se refait en tête de la piste A) Témoins AVANT, dans `.ai/annexes_backlog_1117/temoins_avant.md` : nombre de tests et de réussites du
+- [x] 0.2 (fait le 2026-11-17 par un agent Sonnet en lecture, recoupé par le pilote ; durée du paquet DuckDB mesurée SOUS CHARGE, 578,7 s : la mesure au calme se refait en tête de la piste A) Témoins AVANT, dans `.ai/V8.3/annexes_backlog_1117/temoins_avant.md` : nombre de tests et de réussites du
       paquet `internal/platform/duckdb` (`go test -tags=integration -json`), sa durée seule au calme ; sorties des
       tests de caractérisation par minute de l'Escouade (`per_minute_caracterisation_test.go`,
       `per_minute_temoins_test.go`) ; compte du garde-rail des couches (17) et des marqueurs de couleur (95, dont
       19 inertes) ; nombre de tests vitest des dossiers touchés par D.
-- [x] 0.3 (fait le 2026-11-17 : `.ai/annexes_backlog_1117/verification_0_3.md`, écarts et arbitrages au journal) Chaque référence `fichier:ligne` des pistes est rouverte ; un écart avec ce plan est écrit au journal
+- [x] 0.3 (fait le 2026-11-17 : `.ai/V8.3/annexes_backlog_1117/verification_0_3.md`, écarts et arbitrages au journal) Chaque référence `fichier:ligne` des pistes est rouverte ; un écart avec ce plan est écrit au journal
       avant tout code. Pour F : inventaire fermé des symboles à retirer (F.0) figé au journal.
 
 ## Piste A — paquet `internal/platform/duckdb` : base migrée copiée par test (Sonnet)
@@ -195,7 +195,7 @@ Tranché par le pilote (conventions du dépôt, modifiable par le user) :
       `internal/replayartifact`. Tests adaptés, liste fermée : `cmd_tactical_rasters_test.go`, `raster_test.go`,
       `replay_purge_cron_test.go`, `replay_spawn_forecast_test.go`, `tactical_service_rasters_test.go`, test du
       `PathResolver`.
-- [x] B.5 (fait le 2026-11-17 : `.ai/annexes_backlog_1117/mesure_B5.md` : 39 fichiers, environ 320 ms sans cache, 3 ms avec) Mesure écrite au journal : lecture de la Tactique et des réapparitions sur 39 fichiers compressés,
+- [x] B.5 (fait le 2026-11-17 : `.ai/V8.3/annexes_backlog_1117/mesure_B5.md` : 39 fichiers, environ 320 ms sans cache, 3 ms avec) Mesure écrite au journal : lecture de la Tactique et des réapparitions sur 39 fichiers compressés,
       avec et sans cache (banc dans le paquet, retiré à la clôture s'il n'a pas d'usage courant).
 - [x] B.6 (fait le 2026-11-17) `docs/COMMANDS.md` FR et EN si l'extension des fichiers tactiques y est citée.
 - **Gate B** : gate commun Go sur `./internal/domain/title/... ./internal/sync/replayartifacts/...
@@ -252,7 +252,7 @@ Tranché par le pilote (conventions du dépôt, modifiable par le user) :
       `TacticalPlanTueurs.tsx`, `SquadFocusStrip.tsx`, `useSquadPresets.tsx`), chacune avec sa raison ; test de
       date.
 - [x] D.3 (fait le 2026-11-17 : 110 marqueurs puis 91) (Haiku) Les 19 marqueurs `color-allow` inertes sont retirés (la raison reste en commentaire, sans le
-      mot du marqueur) ; liste fermée dans `.ai/annexes_backlog_1117/marqueurs_inertes.md`, écrite en 0.3.
+      mot du marqueur) ; liste fermée dans `.ai/V8.3/annexes_backlog_1117/marqueurs_inertes.md`, écrite en 0.3.
 - [x] D.4 (fait le 2026-11-17) (Haiku) Commentaires faux sur le sprint : `apps/go-api/internal/domain/replaydoc/inventory.go:96-103`
       et `apps/web/src/features/match-replay/model/replayContract.test.ts:131-133`.
 - [x] D.5 (fait le 2026-11-17) (Sonnet, après D.3) `tools/lint-no-hardcoded-colors.lib.mjs` : `shadow`, `from`, `via`, `to` entrent
@@ -284,7 +284,7 @@ Tranché par le pilote (conventions du dépôt, modifiable par le user) :
       `flagReturnS`, postures, doublon des tests, et celles des pistes A à D, F, G une fois fusionnées) ;
       entrées reformulées selon la section 1 (tirs lus, arme d'une touche, écarts du gate, ordre des collines,
       marqueurs et lettres des zones, temps forts « mode », commandes et gestes, test instable, médailles) ;
-      `.ai/annexes_suites_audit/sources.md` : ligne des règles corrigée, note sur l'échantillon des tirs.
+      `.ai/V8.3/annexes_suites_audit/sources.md` : ligne des règles corrigée, note sur l'échantillon des tirs.
 - **Gate E** : aucune entrée de la section 1 sans sort écrit ; relecture croisée du backlog contre ce tableau.
 
 ## Piste F — précision par film : retrait du chemin non exécuté (Sonnet, selon D-5)
@@ -307,7 +307,7 @@ Tranché par le pilote (conventions du dépôt, modifiable par le user) :
 Périmètre : placement local (application de bureau, poste de développement). Couches : handler, port, service,
 file existante ; aucun SQL dans `api/` ni `service/` ; rien ne se décide sur le nom du profil ni sur le slug.
 
-- [x] G.0 (fait le 2026-11-17 : conception relue par le pilote, vérification sur un match passée) (Opus) Conception écrite dans `.ai/annexes_backlog_1117/rejeu_a_la_demande.md` : port
+- [x] G.0 (fait le 2026-11-17 : conception relue par le pilote, vérification sur un match passée) (Opus) Conception écrite dans `.ai/V8.3/annexes_backlog_1117/rejeu_a_la_demande.md` : port
       `port.ReplayGeneration` (demande, état par match), extension de `replayregen.Service` par une file de
       demandes explicites (un film à la fois, verrou `film_decode.lock`, mode jeu, pause), téléchargement et
       archivage du film d'un seul match, jeton du joueur de la page par `auth.RefreshHaloTokensViaStoreFirst`,
@@ -368,7 +368,7 @@ file existante ; aucun SQL dans `api/` ni `service/` ; rien ne se décide sur le
   - **F** : bloquée, voir F.1 (décision du user : reportée au chantier décodeur).
   - **G** : le profil `dev` n'a pas la capacité de régénération ; `can_generate_replays` se dérive du placement (bureau ou développement) et de la capacité du titre, pas de `ReplayRegen` : à écrire en G.0.
 
-- 2026-11-17 — G.0 : conception rendue (`.ai/annexes_backlog_1117/rejeu_a_la_demande.md`, branche `bl1117/g`, `66617729cc`), relue en entier par le pilote. Arbitrages du pilote sur ses questions ouvertes :
+- 2026-11-17 — G.0 : conception rendue (`.ai/V8.3/annexes_backlog_1117/rejeu_a_la_demande.md`, branche `bl1117/g`, `66617729cc`), relue en entier par le pilote. Arbitrages du pilote sur ses questions ouvertes :
   - jeton : le chemin serveur passe par `tokencache.ResolveFreshPlayerTokens(ctx, xuid)`, point d'entrée unique du chemin par joueur dans le processus (échange dédupliqué, aucun marquage « reconnexion requise » sur un échec concurrent), et non par `auth.RefreshHaloTokensViaStoreFirst`, helper des commandes. L'intention de D-4 est tenue : le jeton du joueur de la page, jamais celui d'un autre ;
   - profil suivi sans compte relié : aucun prêt du pool, état « non pris en charge » ; plafond de 10 demandes et 50 issues en constantes nommées ; film retiré après la génération quand l'archive est désactivée ; un échec n'est pas gardé après un redémarrage ; bouton de l'en-tête avec libellé ;
   - contrat : les deux routes ne sont montées que sous la capacité, donc absentes du contrat généré ; G.3 n'ajoute que `can_generate_replays`.

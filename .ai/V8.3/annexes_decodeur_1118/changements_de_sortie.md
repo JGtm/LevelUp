@@ -43,7 +43,7 @@ Mesures sur les 20 films du corpus d'équivalence, un passage par fusion.
 
 # Décodeur v1.5.0 : changements de sortie ajoutés par la quatrième intégration (schéma 126)
 
-À ajouter au registre `.ai/annexes_decodeur_1118/changements_de_sortie.md` (même format). Mesures sur les 20 films du corpus d'équivalence,
+À ajouter au registre `.ai/V8.3/annexes_decodeur_1118/changements_de_sortie.md` (même format). Mesures sur les 20 films du corpus d'équivalence,
 un passage par état (`7f36cca` troisième intégration, `f443fc8` avec l'arbre décalé, puis avec l'émission jetée par la table du mode, puis l'arbre final) ;
 « sur 20 » = films touchés. Le schéma du document reste 126 ; `SchemaDesFaits` reste 30 ; la révision de grammaire reste `grammar-2026-11-22.2` ;
 `objectives.Rev` passe à `objectives-2026-11-22.2`.

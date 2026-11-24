@@ -2,7 +2,7 @@
 
 Liste des gestes à faire en production au déploiement de la 8.3.0. Chaque chantier de la 8.3.0 y ajoute sa section ;
 une section ne touche pas aux autres. Rien de ce qui est écrit ici n'est exécuté tant que l'utilisateur n'a pas donné
-son accord pour le déploiement. Modèles de forme : `.ai/annexes_v8_1_2/gestes_prod_8_2_0.md` et `gestes_prod_8_2_1.md`.
+son accord pour le déploiement. Modèles de forme : `.ai/V8.3/annexes_v8_1_2/gestes_prod_8_2_0.md` et `gestes_prod_8_2_1.md`.
 
 Règles de la 8.2.x, toujours valables (reprises de `gestes_prod_8_2_0.md`) :
 
@@ -16,8 +16,8 @@ Règles de la 8.2.x, toujours valables (reprises de `gestes_prod_8_2_0.md`) :
 
 ## Décodeur de film v1.6.1 (schéma des rejeux 127)
 
-Pièces : plan `.ai/PLAN_DECODEUR_V160_2026-11-23.md` (item L.8), procédure et journal de la régénération locale du
-2026-11-24 (`.ai/annexes_decodeur_v160/l6_regeneration_procedure.md`, `l6_regeneration_reelle_resume.md`), notes de
+Pièces : plan `.ai/V8.3/PLAN_DECODEUR_V160_2026-11-23.md` (item L.8), procédure et journal de la régénération locale du
+2026-11-24 (`.ai/V8.3/annexes_decodeur_v160/l6_regeneration_procedure.md`, `l6_regeneration_reelle_resume.md`), notes de
 version (`docs/RELEASE_NOTES.md`, ligne « Update, for the operator »), `docs/RUNBOOK_DEPLOY_CHECKLIST.md`, entrées
 du backlog sur l'archive des films du site hébergé.
 
@@ -161,7 +161,7 @@ levelup-purge-films.timer`. L'état du correctif à la clôture de la 8.3.0 est 
    un second accord de l'utilisateur, le dossier de repli de D6.
 
 Plafond de mémoire des cuissons (`-plafond-gio`, réglage de l'hôte, pas du décodeur) : à 1 Gio le pic du plus gros film
-tombe à 1 161 Mio pour +1,3 % de temps (mesuré sur ce seul film, `.ai/annexes_decodeur_v160/profil2.md`, section 6.2) ;
+tombe à 1 161 Mio pour +1,3 % de temps (mesuré sur ce seul film, `.ai/V8.3/annexes_decodeur_v160/profil2.md`, section 6.2) ;
 la régénération réelle du 2026-11-24 a donné un pic d'un enfant de 1,64 Gio pour un plafond de 3 Gio, sans aucun arrêt.
 À dimensionner d'après la mémoire du serveur.
 

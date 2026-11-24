@@ -2,7 +2,7 @@
 
 Rédigé le 2026-11-18 sur `release/v8.3.0`. C'est une mesure : aucun code de l'application n'est touché. Les outils de calcul sont des scripts jetables hors dépôt (dossier `scratchpad\teinte` de la session) ; `deltaE`, `simulateCvd`, `contrastRatio` et les cinq palettes sont IMPORTÉS de `apps/web/src/lib/accessibility/` (`colorDistance.ts`, `wcagContrast.ts`, `palettes/`), aucune matrice recopiée. Le relief des quatre cartes témoins vient de `relief.webp` et `relief.json` de la variante (b) de `conception.md` §4.2, décodés selon le §1.
 
-Page de choix pour le user : `.ai/annexes_fonds_relief/teinte_choix.html` (images réduites : `.ai/annexes_fonds_relief/teinte_images/`).
+Page de choix pour le user : `.ai/V8.3/annexes_fonds_relief/teinte_choix.html` (images réduites : `.ai/V8.3/annexes_fonds_relief/teinte_images/`).
 
 ## 1. Verdict
 
@@ -287,6 +287,6 @@ Validation du banc contre D-3 : rouge `#EF4444` sur la rampe Vert, protanopie : 
 
 ## 7. Fichiers
 
-- `.ai/annexes_fonds_relief/teinte.md` : ce document.
-- `.ai/annexes_fonds_relief/teinte_choix.html` : page de choix, une teinte par palette parmi les trois premières, 4 cartes témoins teintées, 4 encres d'essai, sélecteurs de palette, de thème et de vision.
-- `.ai/annexes_fonds_relief/teinte_images/*.gris.png` : le gris ombré (lumière nord-ouest, rampe de clarté `height.low` à `height.high`, formule de la maquette du 2026-11-18) de chacune des quatre cartes, réduit à 600 px de large au plus (ombrage calculé en pleine résolution puis réduit), gris et alpha ; la teinte est appliquée par la page, une seule image par carte pour toutes les teintes.
+- `.ai/V8.3/annexes_fonds_relief/teinte.md` : ce document.
+- `.ai/V8.3/annexes_fonds_relief/teinte_choix.html` : page de choix, une teinte par palette parmi les trois premières, 4 cartes témoins teintées, 4 encres d'essai, sélecteurs de palette, de thème et de vision.
+- `.ai/V8.3/annexes_fonds_relief/teinte_images/*.gris.png` : le gris ombré (lumière nord-ouest, rampe de clarté `height.low` à `height.high`, formule de la maquette du 2026-11-18) de chacune des quatre cartes, réduit à 600 px de large au plus (ombrage calculé en pleine résolution puis réduit), gris et alpha ; la teinte est appliquée par la page, une seule image par carte pour toutes les teintes.

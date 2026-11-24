@@ -3,7 +3,7 @@
 > Inventaire structuré et tasklist de migration des **tables de données** et **indicateurs/KPI cards**
 > à implémenter en composants React natifs (AG Grid Community et CSS/SVG) plutôt qu'en `react-plotly.js`.
 >
-> **Source de référence** : `.ai/CHARTS_AND_TABLES.md` (inventaire exhaustif).
+> **Source de référence** : `.ai/refs/CHARTS_AND_TABLES.md` (inventaire exhaustif).
 > **Raison d'être** : les tableaux et indicateurs simples sont de mauvais candidats pour `react-plotly.js`
 > — ils sont plus performants, ergonomiques et maintenables en natif React.
 

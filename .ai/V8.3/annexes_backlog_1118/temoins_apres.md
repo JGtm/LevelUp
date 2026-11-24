@@ -1,6 +1,6 @@
 # Témoins APRÈS de la branche `chore/830-backlog-1118` (2026-11-23)
 
-Item I.2 du plan `.ai/PLAN_BACKLOG_2026-11-18.md`. Mêmes commandes que dans `temoins_avant.md`, rejouées sur la tête de la branche de version
+Item I.2 du plan `.ai/V8.3/PLAN_BACKLOG_2026-11-18.md`. Mêmes commandes que dans `temoins_avant.md`, rejouées sur la tête de la branche de version
 à jour (une suite à la fois, `--maxWorkers=2`). Aucune correction de code.
 
 ## Table des témoins

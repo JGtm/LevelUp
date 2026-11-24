@@ -77,9 +77,9 @@
 
 - **Version 8.2.0 (branche `release/v8.2.0`, plan `.ai/PLAN_V8_1_2_2026-11-09.md`)** : plan exécuté et relu (relecture
   finale sans P0 ni P1). Restent les gestes du user : contrôles à l'écran (items 5.9 et 7.2 du plan, artefact des
-  vérifications), fusion vers `main`, tag et gestes de production (`.ai/annexes_v8_1_2/gestes_prod_8_2_0.md`). L'item 7.4
+  vérifications), fusion vers `main`, tag et gestes de production (`.ai/V8.3/annexes_v8_1_2/gestes_prod_8_2_0.md`). L'item 7.4
   du plan (numéros de version, notes de version, runbook) n'est pas statué au plan ; ses brouillons sont sous
-  `.ai/annexes_v8_1_2/brouillon_versions_8_2_0_{FR,EN}.md`.
+  `.ai/V8.3/annexes_v8_1_2/brouillon_versions_8_2_0_{FR,EN}.md`.
 - **Plans de la racine de `.ai/` dont le statut dit encore « en cours » ou dont des cases restent vides** (relevé du
   2026-11-14, cases non vérifiées une à une) : `PLAN_REJEU_30IPS_COMPRESSION_2026-11-10.md` (compression par la PR #199,
   cuisson à 30 images par seconde par la PR #207 ; cases B4 à E2 à statuer par la session du chantier, C1 à C4 sont des
@@ -114,7 +114,7 @@ Reste ouvert :
 - 3 films sont bloqués par la règle de reconnaissance du mode (`captures <= rafales`, `flagfilm.go:79` du décodeur). L'un d'eux a PERDU son calque à la v1.6.0 : la lecture de tous les sièges y fait passer les captures lues de 1 à 5, pour 3 rafales (qui sont ici une retransmission périodique du tableau des scores, pas des captures). Règle levée en essai : les 7 vrais porteurs sont trouvés sur 7, erreur cumulée du temps de porteur contre l'API de 114,9 s à 34,1 s. Les deux autres n'avaient pas de calque avant non plus.
 - 42 films n'ont aucune rafale : la règle les écarte, comme avant. Ils demandent une autre condition de reconnaissance, non étudiée (pistes : accord des captures lues avec la courbe d'équipes, rapport vols sur captures pour écarter l'Oddball).
 
-**Pour reprendre :** remplacer la règle par une condition qui ne suppose pas que les rafales comptent des captures, la mesurer sur les 45 films et sur les films hors drapeau (zéro faux positif exigé). Demande une version du décodeur et la régénération des seuls films concernés. Pièce : `.ai/annexes_decodeur_v160/l7_drapeau_calque_perdu.md`. **Effort : M. Priorité : moyenne.**
+**Pour reprendre :** remplacer la règle par une condition qui ne suppose pas que les rafales comptent des captures, la mesurer sur les 45 films et sur les films hors drapeau (zéro faux positif exigé). Demande une version du décodeur et la régénération des seuls films concernés. Pièce : `.ai/V8.3/annexes_decodeur_v160/l7_drapeau_calque_perdu.md`. **Effort : M. Priorité : moyenne.**
 
 ---
 
@@ -139,13 +139,13 @@ Reste ouvert :
 - Accroupis et glissades : sur 7 films seulement (C.1 n'a pas élargi ces deux genres).
 - Lettres des zones : le compteur d'accord avec le rang (B.6) est absent de `coverage.zones`.
 
-**Pour reprendre :** décider, build par build, si une table de réplique ou une règle de geste est à établir pour les builds 1.9 à 1.11, et où publier le compteur des lettres. Pièce : `.ai/annexes_decodeur_v160/l7_mesures_apres_regeneration.md` (sections 1 et 5). **Effort : moyen. Priorité : basse.**
+**Pour reprendre :** décider, build par build, si une table de réplique ou une règle de geste est à établir pour les builds 1.9 à 1.11, et où publier le compteur des lettres. Pièce : `.ai/V8.3/annexes_decodeur_v160/l7_mesures_apres_regeneration.md` (sections 1 et 5). **Effort : moyen. Priorité : basse.**
 
 ---
 
 ### [sync/journal] Alerte « zero-insert prolongé » qui sonne à chaque cycle en prod
 
-**Relevé le 2026-11-22** (plan `.ai/PLAN_FENETRES_ET_SYNC_2026-11-22.md`). `auto_sync: zero-insert prolongé` (`internal/scheduler/auto_sync_run.go`) sonne à chaque cycle pour 4 joueurs de la prod (plus de 11 000 fois chacun depuis juin) alors que leurs matchs arrivent par le déclencheur de fin de partie : le compteur ne voit pas les matchs rangés par une autre voie. Bruit de journal qui masquerait une vraie panne.
+**Relevé le 2026-11-22** (plan `.ai/V8.3/PLAN_FENETRES_ET_SYNC_2026-11-22.md`). `auto_sync: zero-insert prolongé` (`internal/scheduler/auto_sync_run.go`) sonne à chaque cycle pour 4 joueurs de la prod (plus de 11 000 fois chacun depuis juin) alors que leurs matchs arrivent par le déclencheur de fin de partie : le compteur ne voit pas les matchs rangés par une autre voie. Bruit de journal qui masquerait une vraie panne.
 
 ---
 
@@ -163,7 +163,7 @@ Reste ouvert :
 
 ### [match/objectifs] Éliminations liées à l'objectif sur la fiche de match
 
-**Relevé le 2026-11-22** (audit : `.ai/annexes_decodeur_1118/audit_objectifs_levelup.md`). La base porte déjà, par joueur et par match, les statistiques de l'API : porteurs éliminés, éliminations de ceux qui ramènent le drapeau, éliminations en attaque et en défense d'une zone, aides à l'élimination du VIP. La section Objectifs de la fiche de match n'en affiche qu'une (éliminations du VIP) ; l'onglet Objectif de l'Escouade les exploite déjà (familles prendre et défendre). Demande : les afficher aussi sur la fiche de match, par mode, et dans les séries temporelles si elles y ont un sens. Ne dépend pas du décodeur. **Effort : S à M.**
+**Relevé le 2026-11-22** (audit : `.ai/V8.3/annexes_decodeur_1118/audit_objectifs_levelup.md`). La base porte déjà, par joueur et par match, les statistiques de l'API : porteurs éliminés, éliminations de ceux qui ramènent le drapeau, éliminations en attaque et en défense d'une zone, aides à l'élimination du VIP. La section Objectifs de la fiche de match n'en affiche qu'une (éliminations du VIP) ; l'onglet Objectif de l'Escouade les exploite déjà (familles prendre et défendre). Demande : les afficher aussi sur la fiche de match, par mode, et dans les séries temporelles si elles y ont un sens. Ne dépend pas du décodeur. **Effort : S à M.**
 
 ---
 
@@ -175,7 +175,7 @@ Reste ouvert :
 
 ### [rejeu/maquette] Écarts avec les maquettes à juger à l'écran après livraison
 
-**Relevé le 2026-11-18, reformulé le 2026-11-23** (plan `.ai/PLAN_BACKLOG_2026-11-18.md`, Q.1 et Q.2 ; grille `.ai/annexes_refonte_ui_rejeu/conformite_maquettes.md`). Huit écarts sur onze sont réglés ou décidés (boutons carrés, capture sans cartouche, fenêtre de fiche sous le haut du plan, bloc unique du Standard, marges du Plein cadre, tirs à la tête sur le compteur du jeu ; le défilement entier de la fenêtre et le gain dans l'infobulle de « Plan tourné » sont écartés par le user). Restent trois points sans dessin, à faire juger par le user à l'écran : les pictogrammes et le marquage actif des icônes de cadre ; le curseur de volume gardé dans la barre d'une ligne (la maquette n'a qu'une icône) ; le fond d'accent du bouton caméra quand un joueur est suivi. Aucun n'est un défaut constaté. **Effort : faible. Priorité basse.**
+**Relevé le 2026-11-18, reformulé le 2026-11-23** (plan `.ai/V8.3/PLAN_BACKLOG_2026-11-18.md`, Q.1 et Q.2 ; grille `.ai/V8.3/annexes_refonte_ui_rejeu/conformite_maquettes.md`). Huit écarts sur onze sont réglés ou décidés (boutons carrés, capture sans cartouche, fenêtre de fiche sous le haut du plan, bloc unique du Standard, marges du Plein cadre, tirs à la tête sur le compteur du jeu ; le défilement entier de la fenêtre et le gain dans l'infobulle de « Plan tourné » sont écartés par le user). Restent trois points sans dessin, à faire juger par le user à l'écran : les pictogrammes et le marquage actif des icônes de cadre ; le curseur de volume gardé dans la barre d'une ligne (la maquette n'a qu'une icône) ; le fond d'accent du bouton caméra quand un joueur est suivi. Aucun n'est un défaut constaté. **Effort : faible. Priorité basse.**
 
 ---
 
@@ -189,7 +189,7 @@ Reste ouvert :
 
 ### [données] Schéma d'une base joueur selon l'ordre de création
 
-**Relevé le 2026-11-17, reformulé le 2026-11-23** (plan `.ai/PLAN_BACKLOG_2026-11-18.md`, piste S). Fait : test d'égalité dans les deux sens, 16 lignes d'écart avant, 11 colonnes alignées pour les bases neuves, exemption de `csr_pipeline_e2e` retirée. Restent cinq écarts de forme entre une base née de la synchronisation et une base née des migrations : `performance_score` en `FLOAT` contre `DOUBLE` (table et vue), défaut de `sync_meta.updated_at`, défaut `FALSE` de `is_with_friends` et de `is_excluded`. Les fermer demande de modifier une étape de migration déjà jouée en production ; ils sont nommés et datés dans le test de forme. Trois options écrites dans `.ai/annexes_backlog_1118/schema_joueur.md` ; le pilote retient « laisser ». À trancher par le user. **Effort : faible si « laisser ». Priorité basse.**
+**Relevé le 2026-11-17, reformulé le 2026-11-23** (plan `.ai/V8.3/PLAN_BACKLOG_2026-11-18.md`, piste S). Fait : test d'égalité dans les deux sens, 16 lignes d'écart avant, 11 colonnes alignées pour les bases neuves, exemption de `csr_pipeline_e2e` retirée. Restent cinq écarts de forme entre une base née de la synchronisation et une base née des migrations : `performance_score` en `FLOAT` contre `DOUBLE` (table et vue), défaut de `sync_meta.updated_at`, défaut `FALSE` de `is_with_friends` et de `is_excluded`. Les fermer demande de modifier une étape de migration déjà jouée en production ; ils sont nommés et datés dans le test de forme. Trois options écrites dans `.ai/V8.3/annexes_backlog_1118/schema_joueur.md` ; le pilote retient « laisser ». À trancher par le user. **Effort : faible si « laisser ». Priorité basse.**
 
 ---
 
@@ -218,20 +218,20 @@ Pistes : lire l'arbre des actions du mode dans les fichiers du jeu (graphe du mo
 - **34 Grandes batailles à drapeau** : aucun groupe de la table ne porte leur arbre (meilleur accord 13,5 %). Pour reprendre : la source du groupe de scripts dans les fichiers du jeu.
 - **Assaut** : voir « Points de bombe en Assaut » ci-dessus.
 
-Tant que le verdict est faux dans ces modes, ne pas afficher le détail daté des actions de score. Mesure : `.ai/annexes_suites_audit/sources.md` et `.ai/annexes_decodeur_v160/a_score_verdicts_a3_a4_a5_a6.md`. **Effort : à estimer.**
+Tant que le verdict est faux dans ces modes, ne pas afficher le détail daté des actions de score. Mesure : `.ai/V8.3/annexes_suites_audit/sources.md` et `.ai/V8.3/annexes_decodeur_v160/a_score_verdicts_a3_a4_a5_a6.md`. **Effort : à estimer.**
 
 
 ---
 
 ### [décodeur] Tirs, touches et dégâts lus dans le film : lecture suffisante pour 12 % des joueurs seulement
 
-**Relevé le 2026-11-17** (suites de l'audit des versions 8.2.0 à 8.3.0, `.ai/PLAN_SUITES_AUDIT_2026-11-16.md`). **Reformulée le 2026-11-17.** Constat sur pièces : l'échantillon de 8 fixtures était dominé par des builds anciens ; mesure du décodeur sur 193 films : lecture suffisante pour 23 % des joueurs, et le parc du poste est à environ 90 % au build 13. Les totaux de l'API restent la référence ; le film ne sert que pour les joueurs à lecture suffisante. Remesuré le 2026-11-24 après la régénération : 2 673 085 tirs lus avant, 3 256 907 après (+21,8 %), voir l'entrée « Bilan des tirs par joueur après la régénération » et `.ai/annexes_decodeur_v160/l7_mesures_apres_regeneration.md` ; la part de joueurs à lecture suffisante n'a pas été recomptée. Mesure : `.ai/annexes_suites_audit/sources.md`. **Effort : à estimer.**
+**Relevé le 2026-11-17** (suites de l'audit des versions 8.2.0 à 8.3.0, `.ai/PLAN_SUITES_AUDIT_2026-11-16.md`). **Reformulée le 2026-11-17.** Constat sur pièces : l'échantillon de 8 fixtures était dominé par des builds anciens ; mesure du décodeur sur 193 films : lecture suffisante pour 23 % des joueurs, et le parc du poste est à environ 90 % au build 13. Les totaux de l'API restent la référence ; le film ne sert que pour les joueurs à lecture suffisante. Remesuré le 2026-11-24 après la régénération : 2 673 085 tirs lus avant, 3 256 907 après (+21,8 %), voir l'entrée « Bilan des tirs par joueur après la régénération » et `.ai/V8.3/annexes_decodeur_v160/l7_mesures_apres_regeneration.md` ; la part de joueurs à lecture suffisante n'a pas été recomptée. Mesure : `.ai/V8.3/annexes_suites_audit/sources.md`. **Effort : à estimer.**
 
 ---
 
 ### [divers] Test instable sous charge des suites de l'audit (2026-11-17)
 
-**Relevé le 2026-11-17** (suites de l'audit des versions 8.2.0 à 8.3.0, `.ai/PLAN_SUITES_AUDIT_2026-11-16.md`, section Découvertes). **Reformulée le 2026-11-23** (plan `.ai/PLAN_BACKLOG_2026-11-18.md`, K.4, diagnostic seul) : `TestBackfillRegistryNames_BaseTenueParUnAutreProcessus` (`apps/go-api/cmd/levelup`) échoue quand la machine est chargée et passe seul. Aucune course trouvée ; la sortie d'erreur du processus fils, qui était perdue, est maintenant branchée, la lecture du « prêt » a un délai explicite et la sortie du fils est jointe à l'échec. À reprendre s'il échoue de nouveau, avec cette sortie. **Effort : à estimer.**
+**Relevé le 2026-11-17** (suites de l'audit des versions 8.2.0 à 8.3.0, `.ai/PLAN_SUITES_AUDIT_2026-11-16.md`, section Découvertes). **Reformulée le 2026-11-23** (plan `.ai/V8.3/PLAN_BACKLOG_2026-11-18.md`, K.4, diagnostic seul) : `TestBackfillRegistryNames_BaseTenueParUnAutreProcessus` (`apps/go-api/cmd/levelup`) échoue quand la machine est chargée et passe seul. Aucune course trouvée ; la sortie d'erreur du processus fils, qui était perdue, est maintenant branchée, la lecture du « prêt » a un délai explicite et la sortie du fils est jointe à l'échec. À reprendre s'il échoue de nouveau, avec cette sortie. **Effort : à estimer.**
 
 ---
 
@@ -243,7 +243,7 @@ Relevé le 2026-11-16 en lisant OpenSpartan/cartographer (MIT, équipe de Den) :
 
 ### [décodeur/marqueurs] Nommer les états des marqueurs d'objectifs par la liste de cartographer
 
-Relevé le 2026-11-16 : `NAVPOINT_NAMES` de OpenSpartan/cartographer (MIT) liste environ 65 noms dont l'empreinte murmur3 donne les identifiants des marqueurs. **Reformulée le 2026-11-17** : la prémisse est fausse (aucune des 65 empreintes ne figure dans le décodeur, qui ne publie aucun identifiant de marqueur). **Mis à jour le 2026-11-23** (plan du décodeur v1.6.0, item B.6) : la vraie piste est la lettre réelle des zones lue dans le film ; son calcul comme contrôle est fait et mesuré (231 lettres justes sur 231, 77 films de Bases) mais NON intégré, il reste sur la branche `piste/bl-zones` sans appelant. Pour reprendre : un balayage qui publie l'état et l'équipe des marqueurs, la lecture du composant qui arrête les images-clés, les deux compteurs de couverture. Pièce : `.ai/annexes_decodeur_v160/b_zones_verdicts_b3_b4_b6_b7.md`. Créditer la source si la liste est reprise. **Effort : moyen à lourd.**
+Relevé le 2026-11-16 : `NAVPOINT_NAMES` de OpenSpartan/cartographer (MIT) liste environ 65 noms dont l'empreinte murmur3 donne les identifiants des marqueurs. **Reformulée le 2026-11-17** : la prémisse est fausse (aucune des 65 empreintes ne figure dans le décodeur, qui ne publie aucun identifiant de marqueur). **Mis à jour le 2026-11-23** (plan du décodeur v1.6.0, item B.6) : la vraie piste est la lettre réelle des zones lue dans le film ; son calcul comme contrôle est fait et mesuré (231 lettres justes sur 231, 77 films de Bases) mais NON intégré, il reste sur la branche `piste/bl-zones` sans appelant. Pour reprendre : un balayage qui publie l'état et l'équipe des marqueurs, la lecture du composant qui arrête les images-clés, les deux compteurs de couverture. Pièce : `.ai/V8.3/annexes_decodeur_v160/b_zones_verdicts_b3_b4_b6_b7.md`. Créditer la source si la liste est reprise. **Effort : moyen à lourd.**
 
 
 ---
@@ -286,14 +286,14 @@ Crédit : méthode et table de textes de Den (libfilmshell, MIT). Noms sur les a
 
 ### [décodeur] Temps forts de type « mode » du film : ce qu'ils recouvrent
 
-Relevé le 2026-11-17 (PR 17 d'OpenSpartan/libfilmshell), instruit le 2026-11-18 (`.ai/annexes_decodeur_1118/temps_forts_mode.md`) : un temps fort « mode » est l'écho d'une action de score propre au mode, du même joueur, dans la même image ; le décodeur n'a rien à publier de plus. **Mis à jour le 2026-11-23** (plan du décodeur v1.6.0, item F.4) : sur 8 films récents, 409 temps forts « mode » sur 410 ont un objectif ET une action de score du même joueur à 2 s ; ceux sans correspondance viennent des films d'anciens builds où rien ne se publie (refusés par le roster), pas d'un nom manquant. **Reste côté LevelUp** : lire ces temps forts par le nom de l'action de score du rejeu, ou ne les afficher qu'en Bases (la lecture « zone capturée » est fausse hors Bases). Non mesuré : Extraction (aucun film dans le lot). **Effort : S.**
+Relevé le 2026-11-17 (PR 17 d'OpenSpartan/libfilmshell), instruit le 2026-11-18 (`.ai/V8.3/annexes_decodeur_1118/temps_forts_mode.md`) : un temps fort « mode » est l'écho d'une action de score propre au mode, du même joueur, dans la même image ; le décodeur n'a rien à publier de plus. **Mis à jour le 2026-11-23** (plan du décodeur v1.6.0, item F.4) : sur 8 films récents, 409 temps forts « mode » sur 410 ont un objectif ET une action de score du même joueur à 2 s ; ceux sans correspondance viennent des films d'anciens builds où rien ne se publie (refusés par le roster), pas d'un nom manquant. **Reste côté LevelUp** : lire ces temps forts par le nom de l'action de score du rejeu, ou ne les afficher qu'en Bases (la lecture « zone capturée » est fausse hors Bases). Non mesuré : Extraction (aucun film dans le lot). **Effort : S.**
 
 
 ---
 
 ### [base/temps forts] Temps forts « mode » en double, sans code, sur 76 matchs
 
-Relevé le 2026-11-18 (mesure : `.ai/annexes_decodeur_1118/temps_forts_mode.md`, section 5). La table `highlight_events` porte 2 330 événements de type « mode » sans code (`type_hint` NULL, `raw_json` vide) sur 76 matchs. Sur les 33 matchs qui ont aussi des événements de code 10, les 1 284 événements sans code sont tous des doubles d'un événement de code 10 (même joueur, même instant) ; 43 matchs joués entre juin et septembre 2026 n'ont que la forme sans code. Deux écritures différentes du même fait ont donc existé. À faire : trouver l'écrivain de la forme sans code (probablement une ancienne passe), dire si les 43 matchs doivent être repassés, et retirer les doubles par la voie d'écriture prévue (jamais un UPDATE ou un DELETE à la main sur la base partagée). **Effort : S à M.**
+Relevé le 2026-11-18 (mesure : `.ai/V8.3/annexes_decodeur_1118/temps_forts_mode.md`, section 5). La table `highlight_events` porte 2 330 événements de type « mode » sans code (`type_hint` NULL, `raw_json` vide) sur 76 matchs. Sur les 33 matchs qui ont aussi des événements de code 10, les 1 284 événements sans code sont tous des doubles d'un événement de code 10 (même joueur, même instant) ; 43 matchs joués entre juin et septembre 2026 n'ont que la forme sans code. Deux écritures différentes du même fait ont donc existé. À faire : trouver l'écrivain de la forme sans code (probablement une ancienne passe), dire si les 43 matchs doivent être repassés, et retirer les doubles par la voie d'écriture prévue (jamais un UPDATE ou un DELETE à la main sur la base partagée). **Effort : S à M.**
 
 ---
 
@@ -301,20 +301,20 @@ Relevé le 2026-11-18 (mesure : `.ai/annexes_decodeur_1118/temps_forts_mode.md`,
 
 Relevé le 2026-11-16 (montée du décodeur v1.4.1). **Reformulée le 2026-11-17** (fusionnée avec l'entrée « Retrait de l'ancienne précision par film »). Constat sur pièces : les deux lecteurs existent mais ne s'exécutent plus pour Halo Infinite depuis le 2026-09-01 (capacité `match.weapon.accuracy` non exposée) ; 0 ligne dans `weapon_accuracy` et `match_weapon_hit_distance` sur le poste ; aucun lecteur. Rien de faux n'est persisté. Le killcollector et l'ingestion de la précision lisent l'ancien appariement des tirs, qui retrouve 11 % des touches que compte l'API, contre 81 % pour les `shotStats[]` suffisants du décodeur.
 
-**Retrait de l'ancienne précision par film, reporté au chantier décodeur** (décision du user du 2026-11-17). Le code ne s'exécute plus et n'écrit rien, mais le retirer casse `internal/filmreplis` : le décodeur v1.4.1 déclare encore deux replis tenus par LevelUp (`repli_distances_de_touche_desactivees`, `repli_precision_par_arme_passe_sautee`). Ordre : une version du décodeur retire ces deux replis, puis LevelUp supprime `sync/killcollector/hits.go`, le mapper, le persister et la table `match_weapon_hit_distance`. Inventaire fermé : `.ai/annexes_backlog_1117/verification_0_3.md`, section F. `ConfigureFilmAccuracy` n'a aucun appelant de production. Sort : piste F (décision D-5 du plan). **Condition de reprise :** une version du décodeur sans les deux replis ; à défaut, un plan de passage de ces deux lecteurs à `shotStats[]` (changement de données persistées, rétro-remplissage à décider). **Effort : M.**
+**Retrait de l'ancienne précision par film, reporté au chantier décodeur** (décision du user du 2026-11-17). Le code ne s'exécute plus et n'écrit rien, mais le retirer casse `internal/filmreplis` : le décodeur v1.4.1 déclare encore deux replis tenus par LevelUp (`repli_distances_de_touche_desactivees`, `repli_precision_par_arme_passe_sautee`). Ordre : une version du décodeur retire ces deux replis, puis LevelUp supprime `sync/killcollector/hits.go`, le mapper, le persister et la table `match_weapon_hit_distance`. Inventaire fermé : `.ai/V8.3/annexes_backlog_1117/verification_0_3.md`, section F. `ConfigureFilmAccuracy` n'a aucun appelant de production. Sort : piste F (décision D-5 du plan). **Condition de reprise :** une version du décodeur sans les deux replis ; à défaut, un plan de passage de ces deux lecteurs à `shotStats[]` (changement de données persistées, rétro-remplissage à décider). **Effort : M.**
 
 ---
 
 ### [rejeu/drapeau] Porteurs du drapeau faux en grande bataille (au-delà de 8 sièges)
 
-Relevé le 2026-11-16 (phase C du décodeur, C7). **Mis à jour le 2026-11-23** (plan du décodeur v1.6.0, items B.1 et B.2, intégrés) : le drapeau lit désormais tous les sièges du film, une base neutre lue par le film fait un seul drapeau, la suite d'un siège se coupe au changement d'occupant, un porteur immobile garde sa position ; sur 218 joueurs de 13 films, justes à 2 s de l'API : 161 avant, 203 après, aucun juste devenu faux. Restent à instruire : un portage dont le porteur précédent est un bot arrivé en cours de match (piste sans identifiant), le premier occupant d'un siège que le pont par les morts ne nomme pas, un portage faux apparu sur un film à 6 socles (deux drapeaux publiés au lieu de six, risque sur les cartes à 6 socles). Mesure après la régénération du parc (2026-11-24) : temps de porteur à 2 s de l'API juste pour 86,07 % des joueurs avant, 92,71 % après (143 devenus justes, 0 devenu faux) ; au-delà de 8 joueurs 83,27 % puis 93,38 % ; reste l'entrée « Grande bataille : 45 films sans calque de portages du drapeau ». Pièce : `.ai/annexes_decodeur_v160/b1_causes_des_portages_faux.md`. **Effort : M.**
+Relevé le 2026-11-16 (phase C du décodeur, C7). **Mis à jour le 2026-11-23** (plan du décodeur v1.6.0, items B.1 et B.2, intégrés) : le drapeau lit désormais tous les sièges du film, une base neutre lue par le film fait un seul drapeau, la suite d'un siège se coupe au changement d'occupant, un porteur immobile garde sa position ; sur 218 joueurs de 13 films, justes à 2 s de l'API : 161 avant, 203 après, aucun juste devenu faux. Restent à instruire : un portage dont le porteur précédent est un bot arrivé en cours de match (piste sans identifiant), le premier occupant d'un siège que le pont par les morts ne nomme pas, un portage faux apparu sur un film à 6 socles (deux drapeaux publiés au lieu de six, risque sur les cartes à 6 socles). Mesure après la régénération du parc (2026-11-24) : temps de porteur à 2 s de l'API juste pour 86,07 % des joueurs avant, 92,71 % après (143 devenus justes, 0 devenu faux) ; au-delà de 8 joueurs 83,27 % puis 93,38 % ; reste l'entrée « Grande bataille : 45 films sans calque de portages du drapeau ». Pièce : `.ai/V8.3/annexes_decodeur_v160/b1_causes_des_portages_faux.md`. **Effort : M.**
 
 
 ---
 
 ### [rejeu/dégâts] Auteur d'un dégât lu sur l'index brut du film
 
-Relevé le 2026-11-16 (phase C du décodeur, Découvertes). **Reformulée le 2026-11-17.** Constat sur pièces : l'auteur d'un dégât est déjà résolu à l'instant ; seule l'arme de la touche se lit encore par index brut. **Réglé côté décodeur le 2026-11-24** (v1.6.0) : l'arme d'une touche et d'une ligne de dégât se cherche sous le tireur publié, l'index du message ne sert que sans joueur résolu ; sur 19 films le nombre de touches armées ne baisse jamais (un film passe de 2 005 à 2 307, sur 19 films aucune arme changée). **Pour reprendre :** relire le parc après la régénération (v1.6.0 dans LevelUp) ; entrée à clore si l'arme des touches s'y voit. Pièce : `.ai/annexes_decodeur_v160/l1b_enquete_corpus_causes.md`. **Effort : vérification seule.**
+Relevé le 2026-11-16 (phase C du décodeur, Découvertes). **Reformulée le 2026-11-17.** Constat sur pièces : l'auteur d'un dégât est déjà résolu à l'instant ; seule l'arme de la touche se lit encore par index brut. **Réglé côté décodeur le 2026-11-24** (v1.6.0) : l'arme d'une touche et d'une ligne de dégât se cherche sous le tireur publié, l'index du message ne sert que sans joueur résolu ; sur 19 films le nombre de touches armées ne baisse jamais (un film passe de 2 005 à 2 307, sur 19 films aucune arme changée). **Pour reprendre :** relire le parc après la régénération (v1.6.0 dans LevelUp) ; entrée à clore si l'arme des touches s'y voit. Pièce : `.ai/V8.3/annexes_decodeur_v160/l1b_enquete_corpus_causes.md`. **Effort : vérification seule.**
 
 ---
 
@@ -418,7 +418,7 @@ explicite d'inventer le schéma par analogie.
 
 ### [rejeu/trajets] Trajet de Warthog porté par l'humain alors qu'il suit un bot
 
-Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. Film `4f77afc1` : un trajet de Warthog (siège 524, images 279 à 287) porte le xuid de l'humain alors qu'il suit la piste du bot qui le précède, et 8 pistes de bot sont rattachées à l'humain du siège par le pont « premier occupant ». Corriger demande une publication des équipes et des trajets par corps, qui fait aujourd'hui bouger des équipes (joueur `3abf0258`, revenu sous deux index). **Condition de reprise :** à planifier après la 8.1.2. **Effort : M.** Contrôlé le 2026-11-18 sur la tête du décodeur (v1.4.1) : le défaut existe encore sur `4f77afc1` (1 trajet sur 252, le nom vient de la table place vers joueur et non de la vie qui porte le trajet). Traité par l'item J.7 de `.ai/PLAN_DECODEUR_2026-11-18.md`.
+Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. Film `4f77afc1` : un trajet de Warthog (siège 524, images 279 à 287) porte le xuid de l'humain alors qu'il suit la piste du bot qui le précède, et 8 pistes de bot sont rattachées à l'humain du siège par le pont « premier occupant ». Corriger demande une publication des équipes et des trajets par corps, qui fait aujourd'hui bouger des équipes (joueur `3abf0258`, revenu sous deux index). **Condition de reprise :** à planifier après la 8.1.2. **Effort : M.** Contrôlé le 2026-11-18 sur la tête du décodeur (v1.4.1) : le défaut existe encore sur `4f77afc1` (1 trajet sur 252, le nom vient de la table place vers joueur et non de la vie qui porte le trajet). Traité par l'item J.7 de `.ai/V8.3/PLAN_DECODEUR_2026-11-18.md`.
 
 ---
 
@@ -430,7 +430,7 @@ Relevé le 2026-11-10, mis à jour le 2026-11-16 (montée du décodeur v1.4.0). 
 
 ### [rejeu/ti=40] Pièces montées à plus de 15 m de leur porteur
 
-Relevé le 2026-11-10, mesuré le 2026-11-16 (phase C du décodeur). La bande `ti=40` n'a pas de défaut : les 249 parents d'occupation exclus sont des slots qui ont porté un autre archétype. La vraie anomalie est ailleurs : 44 montées sur 9 533 rattachent une pièce à un porteur à plus de 15 m, parce que le porteur est choisi par voisinage de slot (exemple : `58d09c44`). **Condition de reprise :** correction générale côté décodeur, chantier suivant la phase C. **Effort : M.** Contrôlé le 2026-11-18 : `58d09c44` ne se reproduit plus (19 pièces, 0 écart), mais le compteur du document en compte encore 22 sur le parc, sur 4 films (`56ebfc53`, `af43b0c8`, `a26dbcdb`, `cf5d83d5`). Traité par l'item J.8 de `.ai/PLAN_DECODEUR_2026-11-18.md`.
+Relevé le 2026-11-10, mesuré le 2026-11-16 (phase C du décodeur). La bande `ti=40` n'a pas de défaut : les 249 parents d'occupation exclus sont des slots qui ont porté un autre archétype. La vraie anomalie est ailleurs : 44 montées sur 9 533 rattachent une pièce à un porteur à plus de 15 m, parce que le porteur est choisi par voisinage de slot (exemple : `58d09c44`). **Condition de reprise :** correction générale côté décodeur, chantier suivant la phase C. **Effort : M.** Contrôlé le 2026-11-18 : `58d09c44` ne se reproduit plus (19 pièces, 0 écart), mais le compteur du document en compte encore 22 sur le parc, sur 4 films (`56ebfc53`, `af43b0c8`, `a26dbcdb`, `cf5d83d5`). Traité par l'item J.8 de `.ai/V8.3/PLAN_DECODEUR_2026-11-18.md`.
 
 ---
 
@@ -463,7 +463,7 @@ Relevé le 2026-11-15 par levelup-1f à la montée v1.3.9 : l'étape `score` de 
 
 ### [fonds de carte/plan] Plan par mode : découper le plan d'une carte selon le mode joué
 
-**Relevé le 2026-11-18** (décision D-11 de `.ai/PLAN_FONDS_RELIEF_2026-11-18.md`). Principe de Cartographer (Den) : découper le plan d'une carte selon le mode joué (volumes mortels et de sécurité, points d'apparition de la variante, voir `libfilmshell` `NavMesh::rings_within`). **Version visée : 8.3.1**, décision du user du 2026-11-18 (« le temps que je comprenne mieux comment il fait »). **Reprise : après la sortie de la 8.3.0.** Recherche faite le 2026-11-18 : `.ai/annexes_plan_par_mode/recherche.md` (étiquettes de mode `<mode>_include` / `<mode>_exclude` des objets des variantes, murs invisibles dans les instances physiques sans rendu du `sbsp`, volumes de mort natifs dans le tag `levl` ; fermetures de Den retrouvées sur Live Fire et Streets ; méthode et lots proposés).
+**Relevé le 2026-11-18** (décision D-11 de `.ai/V8.3/PLAN_FONDS_RELIEF_2026-11-18.md`). Principe de Cartographer (Den) : découper le plan d'une carte selon le mode joué (volumes mortels et de sécurité, points d'apparition de la variante, voir `libfilmshell` `NavMesh::rings_within`). **Version visée : 8.3.1**, décision du user du 2026-11-18 (« le temps que je comprenne mieux comment il fait »). **Reprise : après la sortie de la 8.3.0.** Recherche faite le 2026-11-18 : `.ai/V8.3/annexes_plan_par_mode/recherche.md` (étiquettes de mode `<mode>_include` / `<mode>_exclude` des objets des variantes, murs invisibles dans les instances physiques sans rendu du `sbsp`, volumes de mort natifs dans le tag `levl` ; fermetures de Den retrouvées sur Live Fire et Streets ; méthode et lots proposés).
 
 **À surveiller (relevé le 2026-11-22).** La demande n° 1 ouverte le 2026-11-17 sur `OpenSpartan/cartographer` (« Initial Minimap and App Startup Flow Improvements », encore ouverte) propose de retoucher à la main les minicartes des cartes les plus jouées en compétition (Aquarius : triangles à 19 m, zone basse inaccessible en bas au milieu). Certaines de ces zones ne sont fermées que dans certains modes : la recherche du 2026-11-18 le montre sur Aquarius (86 Player Blocker `infection_include`, 2 Projectile Blocker `infection_exclude`). Relire la demande et la réponse de Den avant de lancer le plan par mode. État au 2026-11-22 : aucun code ne découpe le plan selon le mode ; une carte affiche le même plan quel que soit le mode joué.
 
@@ -477,25 +477,25 @@ Relevé le 2026-11-15 par levelup-1f à la montée v1.3.9 : l'étape `score` de 
 
 ### [unités] Les « mètres » de l'application sont des unités du jeu d'environ 3 m
 
-**Relevé le 2026-11-18** (conception du fond Relief, `.ai/annexes_fonds_relief/conception.md` §9, mesure sur 1,55 million de points de rejeux : course à 2,2-2,4 unités par seconde, saut de 0,82 à 0,89 unité). Le code et les sidecars des fonds appellent « mètres » les unités du jeu (`metersPerPixel`, `anchorMedianGapM`, « m » des commentaires et des libellés). Toute distance affichée en mètres à partir de ces valeurs est à relire (rayons et distances de la Tactique, distances de tir, échelles). Le fond Relief affiche ses étages en rangs, sans unité (décision D-14 du plan `.ai/PLAN_FONDS_RELIEF_2026-11-18.md`). **Reprise :** à instruire et décider par le user ; vérifier la conversion admise (1 unité = 10 pieds dans les Halo précédents) avant tout changement d'affichage.
+**Relevé le 2026-11-18** (conception du fond Relief, `.ai/V8.3/annexes_fonds_relief/conception.md` §9, mesure sur 1,55 million de points de rejeux : course à 2,2-2,4 unités par seconde, saut de 0,82 à 0,89 unité). Le code et les sidecars des fonds appellent « mètres » les unités du jeu (`metersPerPixel`, `anchorMedianGapM`, « m » des commentaires et des libellés). Toute distance affichée en mètres à partir de ces valeurs est à relire (rayons et distances de la Tactique, distances de tir, échelles). Le fond Relief affiche ses étages en rangs, sans unité (décision D-14 du plan `.ai/V8.3/PLAN_FONDS_RELIEF_2026-11-18.md`). **Reprise :** à instruire et décider par le user ; vérifier la conversion admise (1 unité = 10 pieds dans les Halo précédents) avant tout changement d'affichage.
 
 ---
 
 ### [fonds de carte/Forge] Deux des quatre types de himap.TypesVolumesDeMort ne sont pas des volumes de mort
 
-**Relevé le 2026-11-18** (recherche du plan par mode, `.ai/annexes_plan_par_mode/recherche.md`). « Light probe marker » (type d'objet 29) et « Nav Cutter » (type 28) sont comptés comme volumes de mort par la brique `halo-infinite-map-images` (`himap.TypesVolumesDeMort`, `BoiteDesVolumesDeMort`). Effet possible sur le cadrage des fonds Forge publiés, à mesurer. **Reprise :** à instruire et décider par le user.
+**Relevé le 2026-11-18** (recherche du plan par mode, `.ai/V8.3/annexes_plan_par_mode/recherche.md`). « Light probe marker » (type d'objet 29) et « Nav Cutter » (type 28) sont comptés comme volumes de mort par la brique `halo-infinite-map-images` (`himap.TypesVolumesDeMort`, `BoiteDesVolumesDeMort`). Effet possible sur le cadrage des fonds Forge publiés, à mesurer. **Reprise :** à instruire et décider par le user.
 
 ---
 
 ### [fonds de carte/Forge] L'échelle des primitives Forge n'est pas lue
 
-**Relevé le 2026-11-18** (recherche du plan par mode, `.ai/annexes_plan_par_mode/recherche.md`). Le vecteur d'échelle des objets (`#8/#23` de la variante) n'est pas lu par `mapvar`. 94,7 % des 404 578 primitives du parc ne sont pas à l'échelle 1, alors que `InstanceForge` les pose à l'échelle 1. Effet sur les fonds Forge publiés à mesurer avant tout correctif. **Reprise :** à instruire et décider par le user.
+**Relevé le 2026-11-18** (recherche du plan par mode, `.ai/V8.3/annexes_plan_par_mode/recherche.md`). Le vecteur d'échelle des objets (`#8/#23` de la variante) n'est pas lu par `mapvar`. 94,7 % des 404 578 primitives du parc ne sont pas à l'échelle 1, alors que `InstanceForge` les pose à l'échelle 1. Effet sur les fonds Forge publiés à mesurer avant tout correctif. **Reprise :** à instruire et décider par le user.
 
 ---
 
 ### [outillage] Les 20 variantes natives du dépôt hors ligne sont des fichiers vides
 
-**Relevé le 2026-11-18** (recherche du plan par mode, `.ai/annexes_plan_par_mode/recherche.md`). `.ai/re_dump/mapvar/` porte 20 variantes de cartes natives à 0 octet. À rapatrier (`mapnav-fetch -fichier map.mvar -nom-cuisson`) si un lot les lit. **Reprise :** à instruire et décider par le user.
+**Relevé le 2026-11-18** (recherche du plan par mode, `.ai/V8.3/annexes_plan_par_mode/recherche.md`). `.ai/re_dump/mapvar/` porte 20 variantes de cartes natives à 0 octet. À rapatrier (`mapnav-fetch -fichier map.mvar -nom-cuisson`) si un lot les lit. **Reprise :** à instruire et décider par le user.
 
 ---
 
@@ -513,7 +513,7 @@ Relevé le 2026-11-23. La 8.2.2 (rattrapage de l'historique, issue #213) est dan
 
 ### [décodeur/drapeau] Le compteur `carrierTeamUnknown` porte un nom trompeur
 
-**Relevé le 2026-11-23** (plan du décodeur v1.6.0, item B.3). Sur un film à 6 socles (3 par camp), `carrierTeamUnknown` vaut 32 sur 32 portages, alors que l'équipe du porteur est lue pour 25 joueurs sur 25. Le compteur mesure l'abstention des trois règles qui nomment le DRAPEAU pris par l'équipe (passage de main, retour crédité, chute créditée) : sur une carte à 3 drapeaux par camp « rien ne les départage ». Conséquence mesurable nulle (temps de porteur à 2 s de l'API pour 24 joueurs sur 25). À faire : renommer le compteur (nom publié du document, donc schéma) ou le retirer, avec une version du décodeur ; ne pas le lire comme « équipe inconnue ». Pièce : `.ai/annexes_decodeur_v160/b_zones_verdicts_b3_b4_b6_b7.md`. **Effort : S. Priorité : basse.**
+**Relevé le 2026-11-23** (plan du décodeur v1.6.0, item B.3). Sur un film à 6 socles (3 par camp), `carrierTeamUnknown` vaut 32 sur 32 portages, alors que l'équipe du porteur est lue pour 25 joueurs sur 25. Le compteur mesure l'abstention des trois règles qui nomment le DRAPEAU pris par l'équipe (passage de main, retour crédité, chute créditée) : sur une carte à 3 drapeaux par camp « rien ne les départage ». Conséquence mesurable nulle (temps de porteur à 2 s de l'API pour 24 joueurs sur 25). À faire : renommer le compteur (nom publié du document, donc schéma) ou le retirer, avec une version du décodeur ; ne pas le lire comme « équipe inconnue ». Pièce : `.ai/V8.3/annexes_decodeur_v160/b_zones_verdicts_b3_b4_b6_b7.md`. **Effort : S. Priorité : basse.**
 
 ---
 
@@ -531,7 +531,7 @@ Relevé le 2026-11-23. La 8.2.2 (rattrapage de l'historique, issue #213) est dan
 
 ### [décodeur/pistes] Une vie sans tracé : un joueur à 18 morts pour 17 tracés de vie
 
-**Relevé le 2026-11-24** (contrôle D.1 des répliques contre le témoin tiers). Sur un film, un joueur compte 18 morts pour 17 tracés de vie : la vie qui se termine à la trame 12 998 n'a pas de tracé, la suivante commence à 13 303. Une réplique tombe dans cette vie et reste publiée sans joueur (1 sur 948 répliques contrôlées). La lecture de la réplique est juste ; c'est une vie manquante dans les pistes. Cause non cherchée. Pour reprendre : lister, sur le parc, les joueurs dont le nombre de morts dépasse le nombre de tracés de vie, puis chercher pourquoi la naissance de cette vie n'ouvre pas de tracé. Pièce : `.ai/annexes_decodeur_v160/d1_controle_repliques_contre_temoin.md`. **Effort : S à M. Priorité : basse.**
+**Relevé le 2026-11-24** (contrôle D.1 des répliques contre le témoin tiers). Sur un film, un joueur compte 18 morts pour 17 tracés de vie : la vie qui se termine à la trame 12 998 n'a pas de tracé, la suivante commence à 13 303. Une réplique tombe dans cette vie et reste publiée sans joueur (1 sur 948 répliques contrôlées). La lecture de la réplique est juste ; c'est une vie manquante dans les pistes. Cause non cherchée. Pour reprendre : lister, sur le parc, les joueurs dont le nombre de morts dépasse le nombre de tracés de vie, puis chercher pourquoi la naissance de cette vie n'ouvre pas de tracé. Pièce : `.ai/V8.3/annexes_decodeur_v160/d1_controle_repliques_contre_temoin.md`. **Effort : S à M. Priorité : basse.**
 
 ---
 
@@ -549,7 +549,7 @@ Relevé le 2026-11-23. La 8.2.2 (rattrapage de l'historique, issue #213) est dan
 
 ### [décodeur/corpus] Le contrôle du corpus compte les socles toutes familles confondues
 
-**Relevé le 2026-11-24** (gates finals de la v1.6.0). `padDating.uncovered`, `padDating.ambiguous` et `groundWeapons.unknown` additionnent toutes les familles de socle : chaque famille ajoutée (ici les équipements, 15 socles neufs sur un film) fait rougir 15 témoins sur 19 sans qu'aucun socle d'arme ne régresse (vérifié sur 4 films : les socles anciens sont identiques). Il a fallu trois décisions du manifeste. Pour reprendre : lire ces compteurs par famille de socle (armes, power-ups, équipements), ou comparer sur le sous-ensemble ancien. Pièce : `.ai/annexes_decodeur_v160/l1b_enquete_corpus_causes.md`. **Effort : S. Priorité : basse.**
+**Relevé le 2026-11-24** (gates finals de la v1.6.0). `padDating.uncovered`, `padDating.ambiguous` et `groundWeapons.unknown` additionnent toutes les familles de socle : chaque famille ajoutée (ici les équipements, 15 socles neufs sur un film) fait rougir 15 témoins sur 19 sans qu'aucun socle d'arme ne régresse (vérifié sur 4 films : les socles anciens sont identiques). Il a fallu trois décisions du manifeste. Pour reprendre : lire ces compteurs par famille de socle (armes, power-ups, équipements), ou comparer sur le sous-ensemble ancien. Pièce : `.ai/V8.3/annexes_decodeur_v160/l1b_enquete_corpus_causes.md`. **Effort : S. Priorité : basse.**
 
 ---
 
@@ -573,7 +573,7 @@ Relevé le 2026-11-23. La 8.2.2 (rattrapage de l'historique, issue #213) est dan
 
 ### [décodeur/reprise du parc] `backfill-killsource` saute un film sur la seule révision de sa couche
 
-**Relevé le 2026-11-24** (régénération du parc, v1.6.1). La commande décide de sauter un film d'après la révision du décodeur rangée dans les vues `_latest` du journal des morts, des vies et du placement ; les révisions de la grammaire et du profil n'y entrent pas. Comparaison sur 30 films copiés (reprise forcée) : journal des morts identique ligne à ligne ; les vies (`match_lives`), le placement et les tirs (`weapon_shots`) n'ont pas été comparés. Pour reprendre : refaire la comparaison sur ces trois tables, puis décider si les révisions de la grammaire et du profil doivent entrer dans la décision de saut. Pièce : `.ai/annexes_decodeur_v160/l6_regeneration_reelle_resume.md`. **Effort : S. Priorité : basse.**
+**Relevé le 2026-11-24** (régénération du parc, v1.6.1). La commande décide de sauter un film d'après la révision du décodeur rangée dans les vues `_latest` du journal des morts, des vies et du placement ; les révisions de la grammaire et du profil n'y entrent pas. Comparaison sur 30 films copiés (reprise forcée) : journal des morts identique ligne à ligne ; les vies (`match_lives`), le placement et les tirs (`weapon_shots`) n'ont pas été comparés. Pour reprendre : refaire la comparaison sur ces trois tables, puis décider si les révisions de la grammaire et du profil doivent entrer dans la décision de saut. Pièce : `.ai/V8.3/annexes_decodeur_v160/l6_regeneration_reelle_resume.md`. **Effort : S. Priorité : basse.**
 
 ---
 
@@ -619,7 +619,7 @@ Réglages Discord sans interrupteur web : relais du coach, rejeu prêt, reconnex
 
 | Date | Item |
 |------|------|
-| 2026-11-23 | **[outillage] `scripts/disk-hygiene.ps1` : contrôle « fusionné » vers une branche disparue** — traité (plan `.ai/PLAN_BACKLOG_2026-11-18.md`, K.3) : base résolue (amont de la branche courante, sinon branche par défaut du dépôt), paramètre `-BaseRef`, « base introuvable » journalisé sans arrêt. |
+| 2026-11-23 | **[outillage] `scripts/disk-hygiene.ps1` : contrôle « fusionné » vers une branche disparue** — traité (plan `.ai/V8.3/PLAN_BACKLOG_2026-11-18.md`, K.3) : base résolue (amont de la branche courante, sinon branche par défaut du dépôt), paramètre `-BaseRef`, « base introuvable » journalisé sans arrêt. |
 | 2026-11-23 | **[rejeu/cadres] Rangée de fiches et colonne qui oscillent au seuil de largeur** — traité (plan du 2026-11-18, C.1) : marge de 24 px entre « la rangée tient » et « elle ne tient plus », même marge pour l'emplacement du score. |
 | 2026-11-23 | **[rejeu/cadres] Plein écran du navigateur laissé actif après le retour au Standard** — traité (plan du 2026-11-18, B.3) : la sortie d'un Plein cadre né du geste rend le plein écran natif par tous les chemins ; un plein écran refusé ou absent ne bloque plus le geste suivant. |
 | 2026-11-23 | **[rejeu/fiche] La fenêtre de fiche relit tout le lobby à chaque changement de joueur** — close sur mesure (plan du 2026-11-18, D.6) : la lecture des séries coûte 2,2 à 4,3 ms en médiane, 13,4 ms au pire, sous le seuil de 50 ms ; rien à corriger. |
@@ -664,7 +664,7 @@ Réglages Discord sans interrupteur web : relais du coach, rejeu prêt, reconnex
 | 2026-11-15 | **[logs] Avertissements répétés pendant un long recalcul** (plan `.ai/PLAN_COMPLEMENTS_V8_2_0_2026-11-14.md`, étape 1) : un dépassement de seuil du writer ou d'une lecture se dit une fois par épisode (franchissement, second seuil de 30 s, libération avec durée et lectures retenues), repli du solveur LUSR résumé en une ligne par rejeu avec sa cause, pannes 5xx des services Halo en une ligne par passe, 429 absorbés en INFO. |
 | 2026-11-15 | **[web/couleurs] Infobulle `info-tooltip` au focus clavier seulement, garde-rail de couleurs étendu** (même plan, étape 5) : couche globale des infobulles (survol et focus clavier, visibles en partage d'écran), `ring-offset`, `outline`, `decoration`, `accent`, `caret` et portée de `color-allow` ; reliquats au backlog. |
 | 2026-11-15 | **[kpi/notes] Vie d'un Spartan à 229 points, note de performance des modes à objectif** (plan `.ai/PLAN_COMPLEMENTS_V8_2_0_2026-11-14.md`, étape 7, branche `feat/c820-note`) : mesure sur 1 614 films (compteur « dégâts subis », 229 dans 99,6 % des vies sans recharge de bouclier, 230 dans 0,4 %), `games.DefaultEffectiveHpToKill` et `effective_hp_to_kill` à 229, aide FR/EN ; note à objectif (paquet `internal/sync/objectiveblend` : moyenne symétrique du combat, de l'objectif et du soutien de l'équipe, rangs à mi-rang contre l'historique du joueur dans la famille de mode), métrique `objective_participation` retirée ; `PerformanceScoreRev` et `LUSRRev` montées ensemble (un seul recalcul, test D-14), ADR 0047 et 0006 amendées, notes de version et changelog FR/EN avec les écarts mesurés (médiane +0,6, 90e centile 11,8, 32 % de paliers changés, après le repli de famille du soutien). |
-| 2026-11-15 | **[rejeu] « Seul » et « Masquer » sur tous les calques** (plan `.ai/PLAN_BACKLOG_2026-11-15.md`, lot 4, branche `feat/bl1115-killfx`) : règle du user (tout ce qui appartient au joueur suit la fiche, le décor reste) ; quatorze calques ou éléments branchés sur un prédicat unique (`ownershipShown`), dont les effets de mort par tueur ET victime ; inventaire `.ai/annexes_backlog_1115/calques_seul_masquer.md`. |
+| 2026-11-15 | **[rejeu] « Seul » et « Masquer » sur tous les calques** (plan `.ai/PLAN_BACKLOG_2026-11-15.md`, lot 4, branche `feat/bl1115-killfx`) : règle du user (tout ce qui appartient au joueur suit la fiche, le décor reste) ; quatorze calques ou éléments branchés sur un prédicat unique (`ownershipShown`), dont les effets de mort par tueur ET victime ; inventaire `.ai/V8.3/annexes_backlog_1115/calques_seul_masquer.md`. |
 | 2026-11-15 | **[analysis] Cadences par minute par `analysis.PerMinute`** (plan `.ai/PLAN_BACKLOG_2026-11-15.md`, lot 1, branche `feat/bl1115-minute`) : quatorze sites (et non six) migrés dans `analysis`, `service` et `sync`, valeurs identiques au bit (témoins avant/après en assertions), garde-rail AST `archlint/no_inline_per_minute_test.go` à allowlist vide. |
 | 2026-11-14 | **[release] LevelUp 8.2.0** (plan `.ai/PLAN_V8_1_2_2026-11-09.md`, branche `release/v8.2.0`) : plan 8.1.2 exécuté (tous les points du backlog du 2026-11-09 sauf 17, 18, 24 et 25 : barre latérale, volet des référentiels, sélecteur de dossier, zone du tueur au killfeed, FDA nette, alertes localisées, notes des matchs non convergents, icônes du jeu, nettoyage de l'installeur, licences et identités fictives ; PR #181, #183, #184, #185, #186, #187, #189, #190), correctif 8.1.2 de synchronisation intégré (#193) ; plan d'architecture en 8 étapes (suppressions, interrupteurs, écritures, couche HTTP, stockage, multi-titre, front, clôture ; PR #191, poussé sur la release pour le reste) ; briques consommées comme modules publiés (`github.com/JGtm/...` en v1.0.1, `libs/` et `go.work` supprimés, paquet `internal/briques` ; PR #194, #201, #202, puis montées en v1.1.0 par la #205 et au décodeur v1.3.6 par la #207) ; rejeu à 30 images par seconde (#190, #207), rejeux compressés (#199), lecture complète des paquets du film (#198), fil filtrable, fiche en panneau et Mainmise (#200), destructions de véhicule et occupants tués (#203), fonds de carte tenus par le maillage de navigation (#205), alertes de sécurité des dépendances (#206). Relecture finale par trois relecteurs sans le plan : 0 P0, 0 P1, 3 P2 corrigés. Restent les gestes du user : contrôles à l'écran, fusion vers `main`, gestes de production. |
 | 2026-11-08 | **[archi] Décodeur de film : brique `libs/film` publiable** (plan `.ai/PLAN_FIN_DECOUPLAGE_BRIQUE_FILM_2026-11-02.md`) : réorganisation protocole/exploitation, identifiants fictifs dans les fixtures, README/NOTICE/exemple, ADR 0043 amendée, revue adversariale close (branche `refactor/brique-film-publication`, PR vers `release/v8.1.0`). Reste : tag `libs/film/v0.1.0` (geste du user), lot 5 (jeton Spartan sur redirection, NOTICE gamefiles) et lot 6 (quatre dépôts dédiés) après le bureau et `main`. |
@@ -718,7 +718,7 @@ Réglages Discord sans interrupteur web : relais du coach, rejeu prêt, reconnex
 
 ## 2026-11-23 — Découvertes du plan du backlog des 17 et 18 novembre (notées, non traitées)
 
-Source : journal du plan `.ai/PLAN_BACKLOG_2026-11-18.md`, section « Découvertes ».
+Source : journal du plan `.ai/V8.3/PLAN_BACKLOG_2026-11-18.md`, section « Découvertes ».
 
 - **Colonnes mortes du registre des matchs** : `t0_quality`, `film_match_start_ms` et `playable_duration_seconds` n'ont plus d'écrivain ni de lecteur depuis la piste du coup d'envoi (la dernière n'est ni lue ni écrite). DuckDB refuse `DROP COLUMN` sur une table à clé primaire et index : le retrait demande de reconstruire la table (recette de `internal/migration/append_only_rebuild.go`), à faire à la prochaine reconstruction. Priorité basse.
 - **Écriture concurrente du catalogue de cartes perdue** : `TestAddOverlayEntryConcurrentNePerdPasDEntree` (`internal/mapcatalog`) est instable (1 échec sur 10 passages, sur le code d'avant le plan). Quand le verrou d'écriture ne se pose pas à temps, le code force le passage et une écriture concurrente est perdue : c'est un défaut du code, pas seulement du test. Priorité moyenne.
@@ -726,7 +726,7 @@ Source : journal du plan `.ai/PLAN_BACKLOG_2026-11-18.md`, section « Découvert
 - **Quatre mesures de largeur** dans le rejeu : `useBodyWidth`, l'effet de taille de « Occupation du terrain », `useReplayViewport`, `useContentWidth`. La règle des trois copies appellerait à les réunir.
 - **Corps supprimés sans mort** : 128 corps supprimés appartiennent à un joueur qui a une vie ensuite (ni fin de manche, ni départ, ni bot) ; ils donnent une ligne « mort » non prouvée dans le fil. Cause non instruite (retour d'un joueur parti, réapparition forcée ?).
 - **Durée de l'API différente de « fin moins début »** : 437 matchs, de plus d'une seconde ; non instruit.
-- **Que font les notes quand le temps de jeu d'un joueur manque** : 600 s supposées pour la note de performance, poids et ordre des joueurs partis pour le LUSR (replis R11 à R14 de l'audit du coup d'envoi, `.ai/annexes_backlog_1118/coup_d_envoi.md`). Hors du système du coup d'envoi, validé comme tel par le user.
+- **Que font les notes quand le temps de jeu d'un joueur manque** : 600 s supposées pour la note de performance, poids et ordre des joueurs partis pour le LUSR (replis R11 à R14 de l'audit du coup d'envoi, `.ai/V8.3/annexes_backlog_1118/coup_d_envoi.md`). Hors du système du coup d'envoi, validé comme tel par le user.
 - **Match posé « film absent » alors que son film est archivé** : un match de décembre 2023 (`58e6f72a`) porte le verdict alors que ses 33 morceaux de film sont à l'archive. À instruire (la mesure du plan écarte le défaut général : 0 match sur 251 vus moins de 5 minutes après leur fin).
 - **Rejeux dont le coup d'envoi tombe après la fin du match** : deux rejeux (`ed3b6497`, `dd29957c`, matchs de 21 et 24 s) publient un coup d'envoi hors de la fenêtre du match ; la résolution les refuse et les compte. À recouper avec le plan du décodeur (coup d'envoi lu sur l'horloge).
 - **Limite de la révision des notes** : une publication de rejeu qui change un temps de jeu de quelques secondes ne rejoue pas les notes (limite écrite dans l'ADR 0050).
@@ -777,7 +777,7 @@ section : à la reprise, relire les décisions datées du 2026-11-22 de `config/
 - **Parts d'échec en hausse avec les tirs lus à tout rang** : visée absente (0,12 % → 0,23 % des tirs rattachés, un témoin en porte l'essentiel), projectile au tir ambigu (5,1 % → 6,0 %), tirs sans place sur 6 témoins, tirs embarqués sans trajet sur 2 témoins. À instruire avec le chantier « précision ».
 - **Baisse acceptée du BR75** (user, 2026-11-22 : « Oui on accepte, j'ai un autre chantier à prévoir avec des idées pour la précision ») : deux joueurs de moins à 10 % de l'API après la règle du numéro de tir en retard.
 - **Ancienne précision par film retirée de LevelUp** avec la montée du décodeur v1.5.0 : la table `match_weapon_hit_distance` reste au schéma sans écrivain ni lecteur ; la supprimer ou la réemployer se décide avec ce chantier.
-- **Bilan des tirs par joueur après la régénération (2026-11-24)** : il se rapproche de l'API sur 250 films, mais s'en éloigne de plus de 50 tirs sur 151 films, parfois en passant sous l'API (trop haut en 1.10, trop bas en 1.11 et en Super Fiesta : hypothèse, estimation par la couverture des messages, non vérifiée). Pour reprendre : comparer `shotStats.coverage` à la part de messages non lus sur les dix pires films. Pièce : `.ai/annexes_decodeur_v160/l7_mesures_apres_regeneration.md`, section 3.1 point 4. Priorité moyenne.
+- **Bilan des tirs par joueur après la régénération (2026-11-24)** : il se rapproche de l'API sur 250 films, mais s'en éloigne de plus de 50 tirs sur 151 films, parfois en passant sous l'API (trop haut en 1.10, trop bas en 1.11 et en Super Fiesta : hypothèse, estimation par la couverture des messages, non vérifiée). Pour reprendre : comparer `shotStats.coverage` à la part de messages non lus sur les dix pires films. Pièce : `.ai/V8.3/annexes_decodeur_v160/l7_mesures_apres_regeneration.md`, section 3.1 point 4. Priorité moyenne.
 
 ## Confidentialité du dépôt public (2026-11-23)
 

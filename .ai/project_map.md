@@ -446,7 +446,7 @@ data/
 | `docs/COMMENDATIONS.md` | Commendations (ex "citations") |
 | `docs/COMMENDATIONS_REFERENCE.md` | Référentiel complet des commendations |
 
-### Documentation IA (.ai/) — état au 2026-09-23 (seule section tenue de ce fichier, avec l'îlot du décodeur)
+### Documentation IA (.ai/) — état au 2026-11-24 (seule section tenue de ce fichier, avec l'îlot du décodeur)
 
 > Réécrite par le lot d'archivage du 2026-09-23 : l'ancienne table énumérait 26 chemins qui
 > n'existaient plus (corpus `go_migration*`, `migration/`, `sprints/`, monde Python). Règle
@@ -455,27 +455,29 @@ data/
 > vit sous `.ai/archive/`. Verdict et preuve de chaque document : `.ai/archive/V7.5/README.md`,
 > section « Ce qui est resté à la racine ».
 
+État relevé le 2026-11-24 (rangement de la racine : plans clos, annexes et références déplacés).
+
 | Racine de `.ai/` | Rôle |
 |---|---|
 | `thought_log.md` | Journal des décisions (trimestre courant + précédent ; rotation vers `archive/thought_log_<AAAA>-Q<N>.md`) |
 | `project_map.md` | Ce fichier (historique gelé, hors cette section et l'îlot du décodeur) |
 | `BACKLOG.md` | Tâches et reports centralisés |
-| `PLAN_DECODEUR_FILM_2026-09-13.md`, `HANDOFF_DECODEUR_FILM_SERIE5_2026-09-22.md` | Décodeur de film : plan et handoff de la série 5 (lot 5.26 en cours) |
-| `PLAN_*` ouverts (finitions, niveaux d'armes, prises nettes, libellés en dur, tactique suite, restes v2, duels, frise, fiches compactes, ajustements pré-v7.5, fork et release, équipement gâchis, orchestration, quantum, repli game changers, retours rejeu/match view) | Chantiers vivants — un plan par chantier, source de vérité de son avancement |
-| `HANDOFF_ASSAUT_DESAMORCAGE_2026-09-04.md`, `HANDOFF_VEHICULES_2026-09-04.md`, `DECOUVERTES_TACTIQUE_2026-09-07.md`, `PROCEDURE_BASCULE_LEVELUP_2026-09-13.md` | Handoffs, registre de découvertes et procédure encore ouverts |
-| `REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` | Équipement : à lire avant toute affirmation (CLAUDE.md) |
-| `ETAT_DE_L_ART_KILLWEAPON.md`, `ADDENDUM_ETAT_DE_L_ART_2026-07-26.md`, `README_KILLWEAPON_INDEX.md`, `GUIDE_WEAPON_SHOTS.md`, `ETAT_DE_L_ART_FORGE_PALETTE_ZONES.md`, `ARCHITECTURE_CIBLE_DECODEUR_FILM_2026-09-12.md`, `AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md` | Références du film et des armes, citées par du code, un ADR ou un plan vivant |
-| `REFERENCE_WEAPON_IDS.md`, `I18N_REFERENCE.md`, `ENRICHMENTS_CATALOG.md`, `CHARTS_AND_TABLES.md`, `MCC_UNOFFICIAL_API_REFERENCE.md`, `STEAKTACULAR.md`, `duckdb_7659_upstream_report.md` | Références transverses (armes, i18n, enrichissements, graphes, API MCC, comeback, rapport DuckDB amont) |
-| `HANDOFF_DECODEUR_FILM_2026-09-13.md`, `PREPARATION_M2_PAS_4_A_6_2026-09-17.md`, `PREPARATION_M4_ORDRE_ET_FRONTIERES_2026-09-17.md`, `PLAN_ARME_FAVORITE_BRIEFING_EXPLORER_2026-09-17.md`, `PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md`, `PLAN_EXPLORER_PORTEE_FRAGS_2026-09-17.md`, `PLAN_ESCOUADE_HORS_CADRE_2026-09-09.md`, `PLAN_FINALISATION_REJEU_2D.md`, `PLAN_MASTER_FILM_KILLFEED_REJEU.md`, `PLAN_OBJECTIFS_TEMPS_REEL.md`, `PLAN_DEPS_ECHARTS_TS7_2026-07-27.md`, `PLAN_REVUE_ANALYTIQUE_TIMESERIES_SQUAD_2026-07.md` | À ARBITRER (le 2026-09-23) : restés en place faute de preuve nette de clôture, ou parce que `PLAN_DECODEUR_FILM_2026-09-13.md` les cite ; la question posée pour chacun est dans `.ai/archive/V7.5/README.md` |
+| `REGISTRE_REPORTS.md` | Registre des reports, alimenté à chaque clôture de plan |
+| `gestes_prod_8_3_0.md` | Gestes de production de la version en cours |
+| `PLAN_MAITRE_8_3_0_2026-11-17.md`, `PLAN_REJEU_3D_2026-11-15.md`, `PLAN_TEMPS_FORTS_2026-11-15.md`, `PLAN_POSITIONS_DE_FORCE_V3_2026-10-27.md` | Plans dont des cases restent ouvertes |
+| `PLAN_ANTAGONISTES_TUILES_2026-11-22.md` | Plan livré, gardé à la racine jusqu'à la validation à l'écran du user |
 
 | Sous-dossier de `.ai/` | Contenu |
 |---|---|
-| `V7.5/` | Archives de chantier v7.5 (`film_re/`, `killweapon/`, `replay2d/`, `chantiers/`, `cartes/`, `icones/`, `dumps/`, `v2/`, `outillage/`, …) — index `V7.5/README.md` ; registre des reports `REGISTRE_REPORTS.md` (racine de `.ai/`) |
-| `archive/` | Tout ce qui précède v7.5 (V6, V7, V7.1, journaux trimestriels) |
-| `V7.2/`, `V7.2.1/`, `V7.3/` | Plans des versions 7.2 à 7.3 |
+| `V8.3/` | Plans clos des versions 8.1.2 à 8.3.0 et leurs annexes (`annexes_*`) |
+| `archive/` | Versions closes (`v6.0`, `V7` à `V7.5`, `V8`), journaux trimestriels ; index v7.5 : `archive/V7.5/README.md` |
+| `annexes_rejeu_3d/` | Annexes du plan du rejeu 3D (plan ouvert) |
+| `refs/` | Références transverses : tables du film, armes, i18n, enrichissements, graphes, API MCC, rapport DuckDB amont |
 | `H5_EXPLORATION/` | Exploration Halo 5 (registre des reports H5) |
-| `AUDIT_V75_DEPUIS_V7.3.0_2026-09-05_annexes/` | Vérifications par worker de l'audit `V7.5/v2/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05.md` |
-| `charts_specs/`, `mocks/`, `diagnostics/`, `baselines/`, `migrations/`, `refs/` | Spécifications de graphes, maquettes, diagnostics, baselines, notes de migration, références externes |
+| `baselines/` | Baselines de tests lues par la CI et le Makefile |
+| `charts_specs/` | Spécifications de graphes, lues par `tools/specs/echarts-converter` |
+| `migrations/` | Notes de migration (`squashed/`) |
+| `re_dump/` | Dumps du jeu, local, ignoré par git |
 
 ## Problèmes Connus
 

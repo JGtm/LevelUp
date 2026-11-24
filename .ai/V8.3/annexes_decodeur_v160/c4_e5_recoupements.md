@@ -5,7 +5,7 @@ Date : 2026-11-23. Lecture seule : aucun code modifié, aucun test, aucun décod
 Références :
 - Notre décodeur : tête de la branche `feat/v1.6.0` (commit `daac986`). Chemins relatifs à ce dépôt.
 - Copie du contributeur : tête `a66b791` de son dépôt, dossier `third_party/film-decoder/`. Lue par l'API, en lecture seule. Chemins relatifs à cette copie.
-- Inventaire de référence : `.ai/annexes_decodeur_v160/inventaire_contributeur.md` du dépôt LevelUp.
+- Inventaire de référence : `.ai/V8.3/annexes_decodeur_v160/inventaire_contributeur.md` du dépôt LevelUp.
 
 Marquage : **vérifié** = relu dans le fichier ou vérifié par recherche sur le code. **déduit** = raisonné, non rejoué.
 

@@ -1,6 +1,6 @@
 # Grille de conformité aux maquettes — refonte de la page du rejeu (2026-11-17)
 
-Relevé fait par le pilote le 2026-11-17 sur les copies de `.ai/annexes_refonte_ui_rejeu/maquettes/`
+Relevé fait par le pilote le 2026-11-17 sur les copies de `.ai/V8.3/annexes_refonte_ui_rejeu/maquettes/`
 (canevas https://claude.ai/artifact/GkqDthVG6jGxx3A5WLfXrr, version 26). Sert de référence aux briefs des
 agents, à la relecture sur pièces de chaque item d'interface, à la revue finale R.1 et à la validation R.4 du
 plan `.ai/PLAN_REFONTE_UI_REJEU_2026-11-15.md`. L'audit 0.3 la complète et la corrige contre le code ; toute
@@ -8,7 +8,7 @@ ligne ajoutée ou modifiée porte sa date.
 
 Passe de l'audit 0.3 faite le 2026-11-17 contre le code de `release/v8.3.0` (`3ae75c78f5`) : les ajouts sont
 marqués « (audit 0.3, 2026-11-17) ». Les constats, avec fichier et ligne, et les questions au user sont dans
-`.ai/annexes_refonte_ui_rejeu/audit_conception.md`. Aucune ligne retirée, aucun écart voulu ajouté.
+`.ai/V8.3/annexes_refonte_ui_rejeu/audit_conception.md`. Aucune ligne retirée, aucun écart voulu ajouté.
 (audit 0.3, 2026-11-17)
 
 ## Règle
@@ -189,7 +189,7 @@ propose une forme pour chacun ; quand il y a un vrai choix de forme, il est mont
 
 ## Passe de la livraison Q.2 (2026-11-22, commit `9277c6fa73`)
 
-Relevée le 2026-11-23 d'après le diff du commit et le code de `release/v8.3.0`. Statut de chaque point de la liste des onze écarts de l'instruction `.ai/annexes_backlog_1118/ecarts_maquettes.md` :
+Relevée le 2026-11-23 d'après le diff du commit et le code de `release/v8.3.0`. Statut de chaque point de la liste des onze écarts de l'instruction `.ai/V8.3/annexes_backlog_1118/ecarts_maquettes.md` :
 
 | Point | Sujet | Statut |
 |---|---|---|

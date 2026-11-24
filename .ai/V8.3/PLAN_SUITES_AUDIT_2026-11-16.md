@@ -187,7 +187,7 @@ Décisions du pilote à l'étape 0, consignées :
       - règles de la variante : part des matchs où chaque champ est écrit ; usages possibles relevés (délai de
         réapparition pour le repli de A.5, tirs alliés, pénalités), sans rien brancher.
       Sortie : un tableau « source, accord, cas où l'une a raison contre l'autre, source recommandée » dans
-      `.ai/annexes_suites_audit/sources.md`, soumis au user. B.3 et B.4 n'avancent qu'après sa réponse ; les
+      `.ai/V8.3/annexes_suites_audit/sources.md`, soumis au user. B.3 et B.4 n'avancent qu'après sa réponse ; les
       autres pistes n'attendent pas.
 - [x] 0.6 D-3 : 0 rejeu non compressé dans le parc local (1 455 `.json.gz`) ; 0 en prod d'après le journal du
       2026-11-14 (non relu sur le serveur : aucune opération sur le VPS dans ce plan).
@@ -398,7 +398,7 @@ Décisions du pilote à l'étape 0, consignées :
 
 Chaque compte rendu a été rouvert sur pièces par le pilote (commits, `git status` vide, motifs visés comptés).
 
-- 0.5 : tableau remis au user (`.ai/annexes_suites_audit/sources.md`). Aucun vrai doublon ; réponse attendue pour
+- 0.5 : tableau remis au user (`.ai/V8.3/annexes_suites_audit/sources.md`). Aucun vrai doublon ; réponse attendue pour
   B.3 et B.4.
 - Piste A (8 commits). Écarts : A.3, l'accord est retiré aussi (il comparait le film au repli, retiré par A.5) ;
   A.6, `source` retiré et format 7 -> 8, mais `debut_de_manche` GARDÉ : il est lu

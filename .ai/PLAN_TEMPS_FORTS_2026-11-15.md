@@ -236,7 +236,7 @@ détection et clips » (EN seul) avec crédit à csstat pour la démarche, note 
   rapporter beaucoup mais les points notables si »). Le document de rejeu publie chaque action de score d'un
   joueur avec son nom et ses points (`scoreActions[]` : capture et vol du drapeau, zone capturée, contrôle de
   la colline, destruction de véhicule, aide par IEM, élimination du porteur...). Les temps forts « mode » du
-  film en sont l'écho (mesure : `.ai/annexes_decodeur_1118/temps_forts_mode.md`). Les points de l'action
+  film en sont l'écho (mesure : `.ai/V8.3/annexes_decodeur_1118/temps_forts_mode.md`). Les points de l'action
   donnent un poids lu dans le film, sans table à écrire : une action à gros points est notable, une petite
   non. Limite connue : aucune action de score publiée en Total Control.
 

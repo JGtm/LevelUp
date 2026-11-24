@@ -2,7 +2,7 @@
 
 Statut : **go du user le 2026-11-10, exécution en cours**. Exécution sous le skill `plan-execution`.
 
-Référence visuelle : https://claude.ai/artifact/Hpw99Ki4YEXT9ZQj1M3sZR. Sources des maquettes copiées dans `.ai/annexes_maquettes_rejeu/` (`ReplayPage.dc.html`, `ChronoPage.dc.html`, `ChronoReel.dc.html`, `MainmisePage.dc.html`, `Main.dc.html`). L'exécutant lit la source de la maquette du lot avant de coder : elle fait foi pour la disposition, les libellés et les durées d'animation ; le code de l'application fait foi pour les composants, les tokens et les règles.
+Référence visuelle : https://claude.ai/artifact/Hpw99Ki4YEXT9ZQj1M3sZR. Sources des maquettes copiées dans `.ai/V8.3/annexes_maquettes_rejeu/` (`ReplayPage.dc.html`, `ChronoPage.dc.html`, `ChronoReel.dc.html`, `MainmisePage.dc.html`, `Main.dc.html`). L'exécutant lit la source de la maquette du lot avant de coder : elle fait foi pour la disposition, les libellés et les durées d'animation ; le code de l'application fait foi pour les composants, les tokens et les règles.
 
 ## 0. Objectif et critère de succès
 

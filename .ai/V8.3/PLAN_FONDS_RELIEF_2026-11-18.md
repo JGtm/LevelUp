@@ -226,7 +226,7 @@ et R.2.
       environ 3 m, pas 1 m ; le dossier des fonds doublerait (+40 à 55 Mo) ; 1,4 à 11,9 % des pixels du fond
       publié n'ont pas de hauteur à la recuisson, cause à établir en B.1. Seuls les deux calques des zones nommées
       de la Tactique portent une hauteur. Suivi : sol porteur, seuil 0,5 u, délai 300 ms. Cinq questions au user,
-      section 9 du document.) Conception par un agent **Fable**, en lecture seule. Rendu : `.ai/annexes_fonds_relief/conception.md`,
+      section 9 du document.) Conception par un agent **Fable**, en lecture seule. Rendu : `.ai/V8.3/annexes_fonds_relief/conception.md`,
       qui fixe :
       - le format des fichiers par carte. Proposition à éprouver : `<clé>.relief.webp` (R, G = hauteur du
         dessus sur 16 bits, B = drapeaux, A = 0 ou 255 seulement, parce qu'une alpha intermédiaire se
@@ -246,7 +246,7 @@ et R.2.
 - [x] 0.2 (fait le 2026-11-18, `inventaire.md` : 68 cartes cuisables sur 114. Non cuisables : Live Fire (traitée
       par A.0 et B.4), Thunderhead et Heavies (aucun maillage, 0.4), et 43 cartes Forge dont la variante `.mvar`
       manque à `.ai/re_dump/mapvar/` ; d'où l'item B.0.) Inventaire, par carte du catalogue, de ce que la cuisson locale peut produire : carte native installée,
-      fichiers Forge présents, maillage présent. Rendu : `.ai/annexes_fonds_relief/inventaire.md`. Une carte non
+      fichiers Forge présents, maillage présent. Rendu : `.ai/V8.3/annexes_fonds_relief/inventaire.md`. Une carte non
       cuisable est nommée, avec la raison.
 - [x] 0.3 (fait le 2026-11-18 : `teinte.md`, page publiée https://claude.ai/artifact/JuyH5hNB9kQfu1D9yFCzak. AUCUNE
       teinte ne tient le seuil de D-3 partout (0 sur 64 combinaisons) : le contour actuel des marqueurs
@@ -385,7 +385,7 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
 
 ## 7. Lot D — web
 
-- [x] D.1 (fait le 2026-11-18 : `.ai/annexes_fonds_relief/maquette_commandes.html`, publiée
+- [x] D.1 (fait le 2026-11-18 : `.ai/V8.3/annexes_fonds_relief/maquette_commandes.html`, publiée
       https://claude.ai/artifact/BDcT8eLynSt2X74j5Yb9aF ; VALIDÉE par le user le 2026-11-18, « ok pour tes recos »,
       avec ces choix qui font foi pour D.3, D.4 et D.6 :
       (1) toutes les commandes dans le panneau « Vue » du rejeu, aucun raccourci sur la toile ;
@@ -494,7 +494,7 @@ Consignées ici, jamais traitées dans ce plan.
 ## 10. Reprise de session
 
 Lire, dans l'ordre : la dernière entrée de `.ai/thought_log.md` qui cite ce plan, les cases de ce fichier,
-`.ai/annexes_fonds_relief/`, puis `git log --oneline -10` de `feat/fonds-relief` et du dépôt de la brique.
+`.ai/V8.3/annexes_fonds_relief/`, puis `git log --oneline -10` de `feat/fonds-relief` et du dépôt de la brique.
 Reprendre au premier item non coché de chaque piste dont la dépendance est close. Vérifier avec `ListAgents`
 qu'aucune session ne tient déjà un worktree `C:/t/relief-*`.
 
@@ -519,7 +519,7 @@ qu'aucune session ne tient déjà un worktree `C:/t/relief-*`.
 
 - 2026-11-18 — go du user ; D-8 (8.3.0) et D-11 (plan par mode en 8.3.1) changées, le reste retenu. Plan inscrit
   au plan maître (N22 à N26). Maquette du 2026-11-18 versionnée pour les agents :
-  `.ai/annexes_fonds_relief/maquette_2026-11-18.html` (code de la page seul ; les données des cartes restent hors
+  `.ai/V8.3/annexes_fonds_relief/maquette_2026-11-18.html` (code de la page seul ; les données des cartes restent hors
   dépôt). Vague 1 lancée : 0.1, 0.2, 0.4, A.0, D.1.
 - 2026-11-18 — décision technique du pilote (constat du lot C) : l'index des fonds du décodeur
   (`replay.MapBackgroundIndexFor`, décodeur v1.4.1) et `images_publiees_test.go` lisent tout `*.json` du dossier

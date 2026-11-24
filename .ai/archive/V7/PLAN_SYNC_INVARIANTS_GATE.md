@@ -49,7 +49,7 @@ runtime. Une seule source de définitions.
 | `xuid_alias_missing` | WARN | xuid humain de participants sans alias gamertag. **Caveat** : vérifie shared.xuid_aliases ; post-ADR-0008 la source canonique est la DB globale → migrer le check quand le handle global sera câblé (Phase 4) |
 | `pair_name_uuid` | WARN | pair_name UUID brut (trou catalogue assets, 2026-06-09) |
 
-Extension 2026-06-10 (2e passe, depuis `.ai/ENRICHMENTS_CATALOG.md`) : +7
+Extension 2026-06-10 (2e passe, depuis `.ai/refs/ENRICHMENTS_CATALOG.md`) : +7
 invariants couvrant les classes désync watermark LUSR, orphelins ART
 (registry/medals), citations, PSA et alias gamertag.
 

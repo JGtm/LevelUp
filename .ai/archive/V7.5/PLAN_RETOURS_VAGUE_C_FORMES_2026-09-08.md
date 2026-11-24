@@ -6,7 +6,7 @@
 > recuissons 0.4 et 3.2. Les cases ci-dessous n'ont pas été cochées une à une : le plan maître
 > (statuts, commits, gates, revues) fait foi. Reste ouvert ici : rien.
 
-> Issu de `.ai/diagnostics/RETOURS_2026-09-08/DIAGNOSTIC_RETOURS_UTILISATEUR_2026-09-08.md`,
+> Issu de `.ai/archive/V7.5/RETOURS_2026-09-08/DIAGNOSTIC_RETOURS_UTILISATEUR_2026-09-08.md`,
 > §§ 1, 18, 18bis, 20, 20bis, 22. **Exécution sous le contrat du skill `plan-execution`.**
 
 ## Objectif et critère de succès

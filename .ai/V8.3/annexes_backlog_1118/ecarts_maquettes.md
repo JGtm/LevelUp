@@ -1,7 +1,7 @@
 # Écarts avec les maquettes — instruction Q.1 (2026-11-18)
 
 Instruction en lecture seule des onze points de l'entrée « Écarts avec les maquettes à juger à l'écran »
-de `.ai/BACKLOG.md`, contre les maquettes de `.ai/annexes_refonte_ui_rejeu/maquettes/` (HTML lus ;
+de `.ai/BACKLOG.md`, contre les maquettes de `.ai/V8.3/annexes_refonte_ui_rejeu/maquettes/` (HTML lus ;
 aucune image : le dossier ne contient que des fichiers `.dc.html` et `canvas.json`, rendus non regardés),
 la grille `conformite_maquettes.md`, l'audit `audit_conception.md`, la revue finale
 `revue_finale_2026-11-18.md` et le plan `.ai/V8.3/PLAN_REFONTE_UI_REJEU_2026-11-15.md` (décisions D-1 à D-24,

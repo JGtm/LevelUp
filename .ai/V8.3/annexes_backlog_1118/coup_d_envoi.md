@@ -1,6 +1,6 @@
 # Coup d'envoi du match : audit T.0 (2026-11-18)
 
-Item T.0 de `.ai/PLAN_BACKLOG_2026-11-18.md` (piste T). Lecture seule : aucun code de production modifié, base lue
+Item T.0 de `.ai/V8.3/PLAN_BACKLOG_2026-11-18.md` (piste T). Lecture seule : aucun code de production modifié, base lue
 sur une COPIE (`shared_matches_v2.duckdb` copiée le 2026-11-18 à 12:14, original jamais ouvert, aucun serveur
 LevelUp actif au moment de la copie), 1 455 rejeux du poste lus un fichier à la fois.
 

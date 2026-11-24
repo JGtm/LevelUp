@@ -1,6 +1,6 @@
 # Plan — Refonte page Communauté > Relations (Hub segmentable)
 
-> Statut : PLAN (validé sur mocks `.ai/mocks/relations/relations-mockups.html`, proposition 1 « Hub segmentable »).
+> Statut : PLAN (validé sur mocks `.ai/archive/V7.5/mocks_relations/relations-mockups.html`, proposition 1 « Hub segmentable »).
 > Mémoire liée : `project_relations_page_redesign`, `feedback_fr_ui_no_anglicisms_solid_pills`.
 
 ## Objectif & critère de succès

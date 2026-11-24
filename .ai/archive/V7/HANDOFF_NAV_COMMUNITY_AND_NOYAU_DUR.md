@@ -6,7 +6,7 @@
 ## TL;DR — où on en est
 
 - **Refactor nav** (rename `/palmares`→`/community` + re-nesting + unification onglets) : **Phases 1 & 2 FAITES et vérifiées**, commitées sur la branche `refactor/nav-community-routes`. **NON poussé, NON déployé.** **Phase 3 (la plus grosse) reste à faire.**
-- **Card « Noyau dur »** : narration jugée trop faible. **8 mockups HTML livrés** (`.ai/mocks/relations/noyau-dur-cards.html`), **en attente du choix de l'utilisateur** avant implémentation.
+- **Card « Noyau dur »** : narration jugée trop faible. **8 mockups HTML livrés** (`.ai/archive/V7.5/mocks_relations/noyau-dur-cards.html`), **en attente du choix de l'utilisateur** avant implémentation.
 - **Déjà en prod** (origin/main) : la refonte Relations v2 (pills) + v3 (graphe cumulé/FDA/store de préférences). Rien à refaire dessus.
 
 ---
@@ -44,7 +44,7 @@ Détail complet : voir le plan + le rapport de l'agent Plan (dans l'historique d
 
 ## 2. Card « Noyau dur » — narration (EN ATTENTE DE DÉCISION)
 
-L'utilisateur trouve la KPI card `CoreSummaryCard` (résumé en haut de la page Relations) trop descriptive (compte + WR moyen + 2 noms). **8 mockups** de narration : ouvrir `.ai/mocks/relations/noyau-dur-cards.html`.
+L'utilisateur trouve la KPI card `CoreSummaryCard` (résumé en haut de la page Relations) trop descriptive (compte + WR moyen + 2 noms). **8 mockups** de narration : ouvrir `.ai/archive/V7.5/mocks_relations/noyau-dur-cards.html`.
 
 - **Code à modifier** : `CoreSummaryCard` dans `apps/web/src/features/palmares/PalmaresRelationsPage.tsx` (≈ lignes 137-197).
 - **Reco proposée** : n°1 « L'effet noyau » (le lift WR vs moyenne, coloré) — combo gagnant avec le « roc » de la n°2 en sous-titre. Sans backend : n°2 (phrase + roc) ou n°7 (mini-classement top 3).
@@ -70,4 +70,4 @@ L'utilisateur trouve la KPI card `CoreSummaryCard` (résumé en haut de la page 
 4. Vérif à chaque étape : `npm run build` (regen routeTree) → `npm run typecheck` → `npx vitest run` (dangerouslyDisableSandbox) → eslint + `node tools/{lint-no-hardcoded-colors,lint-no-hardcoded-fields,knip-ratchet}.mjs`. Ignorer l'échec pré-existant `HomeSpartanIdentityBanner`.
 5. Commit sélectif par phase (jamais `add -A`), prélude CGO. Push + merge main (= déploiement) **sur accord**.
 
-Réfs : [[project_relations_page_redesign]] · plan `zany-growing-marble.md` · mocks `.ai/mocks/relations/{relations-mockups-v2.html, noyau-dur-cards.html}`.
+Réfs : [[project_relations_page_redesign]] · plan `zany-growing-marble.md` · mocks `.ai/archive/V7.5/mocks_relations/{relations-mockups-v2.html, noyau-dur-cards.html}`.

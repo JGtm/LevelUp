@@ -7,7 +7,7 @@ les étapes 0 à 3, puis pour les étapes 4 à 8 le même jour. Lectures de prod
 **Rattachement : ce chantier fait partie de la v8.1.2 (utilisateur, 2026-11-10).** Le plan
 `.ai/PLAN_V8_1_2_2026-11-09.md` est tenu par une autre session : il reste à y inscrire ce chantier.
 
-Annexe : `.ai/annexes_architecture_2026-11-10/commandes_sans_utilisateur.txt`.
+Annexe : `.ai/V8.3/annexes_architecture_2026-11-10/commandes_sans_utilisateur.txt`.
 
 ## 0. Objectif et critère de succès
 

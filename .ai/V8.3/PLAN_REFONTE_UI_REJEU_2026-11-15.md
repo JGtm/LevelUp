@@ -10,7 +10,7 @@ partagés, borne machine, conformité aux maquettes) et par le plan `.ai/PLAN_BA
 E.4 : sprints et sauts, médailles du fil, mesures par build, garde du score). Les amendements sont marqués
 « (amendé le 2026-11-17) » à leur place. Worktrees : `C:/t/ui-<piste>`, sans aucune jonction.
 
-**Conformité aux maquettes** : la grille `.ai/annexes_refonte_ui_rejeu/conformite_maquettes.md` fait partie de
+**Conformité aux maquettes** : la grille `.ai/V8.3/annexes_refonte_ui_rejeu/conformite_maquettes.md` fait partie de
 ce plan. Hors de ses 11 écarts voulus, la maquette fait foi. Le brief de tout agent d'interface porte les
 fichiers de maquette de son tableau et les lignes de la grille qu'il réalise ; son compte rendu statue chaque
 ligne avec sa preuve ; le pilote relit la fixation DOM contre la grille avant de cocher.
@@ -268,7 +268,7 @@ Vagues :
 
 ## 1 quater. Gate 0 (2026-11-17) : décisions du user et amendements de l'audit
 
-Source : `.ai/annexes_refonte_ui_rejeu/audit_conception.md` (audit 0.3, Fable, constats recoupés sur pièces
+Source : `.ai/V8.3/annexes_refonte_ui_rejeu/audit_conception.md` (audit 0.3, Fable, constats recoupés sur pièces
 par le pilote sur quatre points). **Cette section prévaut sur le texte des items quand ils diffèrent.**
 
 ### Décisions du user (2026-11-17, réponses à des questions fermées)
@@ -488,7 +488,7 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
       `.avant.html`. Gate : les fixations existent et un test les relit à l'identique.
 - [!] 0.2 (outil de mesure PRÊT sur la branche `ui/m1`, jamais lancé : la mesure se fait à l'écran du user, qui ne l'a pas encore lancée ; reportée au registre) M-1 : script de mesure (page de démonstration du rejeu, toile à 720 puis 1080 px de haut sur une
       carte haute et une carte large) qui relève le tas JS au pic et la durée des cuissons au redimensionnement.
-      L'agent l'écrit ; le user le lance à son écran ; résultats dans `.ai/annexes_refonte_ui_rejeu/mesure_m1.md`.
+      L'agent l'écrit ; le user le lance à son écran ; résultats dans `.ai/V8.3/annexes_refonte_ui_rejeu/mesure_m1.md`.
       Préparé le 2026-11-17 sur la branche de mesure `ui/m1` (`eac9627e47`, worktree `C:/t/ui-m1`, jamais
       fusionnée) : plafond et hauteur forcés par deux clés du stockage local (5 lignes marquées dans
       `hooks/useReplayViewport.ts`), script de console, mode d'emploi en 10 étapes et tableau vide ; ligne
@@ -638,7 +638,7 @@ les localise, rien n'est recalculé à côté.
       Mesures sur le parc, en lisant les documents de rejeu DÉJÀ générés (aucune génération) : part des matchs
       dont le score par action est déclaré complet ; part des joueurs dont la lecture des tirs est jugée
       suffisante ; sur trois films, boucliers tombés à zéro contre dégâts subis (plausibilité de D-21, recharges
-      comprises). Résultats dans `.ai/annexes_refonte_ui_rejeu/mesure_t0.md`. Une part trop faible pour valoir
+      comprises). Résultats dans `.ai/V8.3/annexes_refonte_ui_rejeu/mesure_t0.md`. Une part trop faible pour valoir
       l'affichage est rapportée au user avant T.3.
 - [x] T.1 (vérifié le 2026-11-18 par MESURE sur le parc réel et non par une fixture, aucun document ne portant la feuille : 14 033 joueurs comparés, frags égaux à 99,96 %, morts et assistances à 99,93 %, 1 438 matchs sur 1 448 égaux en tout ; ancien libellé :) (CODE FAIT le 2026-11-17, `readPlayerInstantSeries` puis `playerInstantStatsAt` ; RESTE, case ouverte : la fixation « fin de match = tableau de score » sur un match RÉEL, aucun document du dépôt ne portant à la fois le calque de score et la feuille ; à faire avec T.0 sur un rejeu régénéré — dépendance : fin de la régénération du parc) `model/playerInstantStats.ts` : à l'image lue, FDA, meilleure série et série en cours, tirs à la tête
       (une élimination dont le coup fatal n'est pas mesuré ne compte ni oui ni non), parfaits (médaille datée),
@@ -771,6 +771,6 @@ Ce qui est vu en route et hors périmètre se note ici, daté, sans être trait�
   `release/v8.3.0` (la 8.2.0, qui porte le code inventorié, doit y être fusionnée) ; vérifier l'état du plan 3D
   (point de contact sur `ReplayCanvas.tsx`, section 1 ter).
 - Maquettes : canevas https://claude.ai/artifact/GkqDthVG6jGxx3A5WLfXrr (version 26). Copie des tableaux dans
-  `.ai/annexes_refonte_ui_rejeu/maquettes/` (les fonds de carte y sont des liens du canevas, ils ne s'affichent
+  `.ai/V8.3/annexes_refonte_ui_rejeu/maquettes/` (les fonds de carte y sont des liens du canevas, ils ne s'affichent
   pas hors de lui). Font foi : A, J, K, L, D, H (titres de `canvas.json`).
 - Reprise : lire ce plan en entier, puis le skill `plan-execution` ; commencer par le lot 0.

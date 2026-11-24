@@ -402,4 +402,4 @@ apps/desktop/src-tauri/pack-staging.fingerprint
 data/desktop/
 data/levelup.lock
 # Annexes images des fonds au maillage (preuves locales, lourdes)
-.ai/annexes_fonds_navmesh/
+.ai/V8.3/annexes_fonds_navmesh/

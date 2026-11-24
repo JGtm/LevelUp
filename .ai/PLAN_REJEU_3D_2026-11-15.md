@@ -1,7 +1,7 @@
 # PLAN — Rejeu en 3D dans l'application de bureau (2026-11-15)
 
 Statut : **rédigé le 2026-11-15 ; D-1 à D-9 et D-11 tranchés par le user le 2026-11-15 ;
-D-10 (HUD) se tranche sur maquette ; D-12 retenu sous réserve du découpage du contributeur (0.2) ; D-13 (repère 3D des listes) attend sa validation ; le source du contributeur est à recevoir ; puis le go.
+D-10 (HUD) se tranche sur maquette ; D-12 retenu sous réserve du découpage du contributeur (0.2) ; D-13 (repère 3D des listes) attend sa validation ; D-19 (préparation automatique ou à la demande, file d'attente, parcours du user) est à instruire puis à trancher ; le source du contributeur est à recevoir ; puis le go.
 Exécution en pistes parallèles (section 1 bis) : Sonnet par défaut, Haiku, Opus si nécessaire, Fable pour l'audit 0.8 et la revue finale R.1.**
 Contrat d'exécution : skill `plan-execution` (ordre strict dans chaque piste, un item clos et vérifié avant le suivant,
 aucune case vide à la clôture, zéro fix hors périmètre, découvertes en section 8). Grille relue : skill
@@ -80,6 +80,50 @@ réécrites quand le contributeur aura répondu sur le découpage (D-15) ; d'ici
     fragment d'URL.
 - **Attendu.** Du contributeur : son accord sur D-15 et sur la remontée de ses changements dans les trois
   briques. La note destinée à ses agents lui a été transmise le 2026-11-22 puis retirée du dépôt ; elle se relit dans le commit `d65dadaa39`.
+
+**Amendé le 2026-11-24** à la demande du user (« il faut réfléchir à la génération auto et/ou à la demande des
+replays 3D […] c'est vraiment plus long et lourd que le 2D donc faut penser à l'expérience utilisateur de bout
+en bout »). Ce bloc ouvre une décision ; il ne tranche rien.
+
+- **D-19 — quand et comment un rejeu 3D se prépare : À INSTRUIRE (item 0.9), puis à trancher par le user.**
+  - Ce que le plan dit aujourd'hui : construction à la demande seulement (D-11, tranchée le 2026-11-15),
+    une file à une construction à la fois (B.4), un état « file, pourcentage, place occupée » (B.5), aucune
+    construction anticipée. Le plan ne dit rien de ce que le user voit et peut faire entre le clic sur « 3D » et
+    la scène affichée, ni de la préparation automatique. D-19 rouvre ce point de D-11 et de B.4.
+  - Trois modes à comparer, sur les mesures M-1 (durée, taille, mémoire d'une construction) :
+    1. à la demande seule (état actuel du plan) ;
+    2. automatique : la carte d'un match se prépare après sa synchronisation ou la génération de son rejeu 2D,
+       hors du mode jeu, bornée par le plafond du cache et la garde d'espace libre de D-11 ; à borner aussi dans
+       son périmètre (derniers matchs seulement, cartes les plus jouées, ou bibliothèques communes seules) ;
+    3. mixte : bibliothèques communes et cartes récentes préparées d'avance, le reste à la demande.
+  - File d'attente : dire si une file est nécessaire et laquelle. Deux modèles à lire avant de choisir :
+    - LevelUp, rejeu 2D : `internal/replayregen` (demandes persistées dans un fichier, reprise au redémarrage,
+      un film à la fois, doublon sans effet, plafond de dix demandes, attente pendant une partie, pause, rang
+      dans la file et étape « téléchargement » puis « construction » rendus à la page) ;
+    - projet voisin `csstat` (dossier parent, `apps/api/src/queues/index.ts`, `workers/replay.worker.ts`,
+      `routes/matches.ts`) : file dédiée à la génération du rejeu, séparée de l'analyse du match pour ne pas la
+      bloquer ; un travail à la fois ; identifiant de travail stable par match, donc un second clic rend le
+      travail en cours ; progression par paliers ; notification à celui qui a demandé, à la fin comme à
+      l'échec ; drapeau « en cours » remis à zéro quand aucun travail vivant ne le porte ; génération
+      automatique après l'analyse, coupée pour les traitements de masse afin de ne pas saturer la file. Sa
+      mécanique repose sur Redis et BullMQ, exclus ici (bureau autonome, serveur Go) : c'est le procédé qui se
+      reprend, pas l'outil.
+    - Question propre à la 3D : l'unité de travail est la CARTE (et les bibliothèques communes), pas le match.
+      Plusieurs demandes de matchs joués sur la même carte se rangent sur une seule construction.
+  - Expérience de bout en bout, à écrire puis à maquetter (prototype interactif) avant tout code :
+    - premier usage : durée et place annoncées avant de lancer la préparation des bibliothèques communes ;
+    - au clic sur « 3D » d'un match dont la carte n'est pas prête : durée estimée, rang dans la file, étape en
+      cours, pourcentage ; le rejeu 2D reste utilisable pendant l'attente ;
+    - le user quitte la page ou l'application : la construction continue ou reprend, et il est prévenu quand
+      c'est prêt (notification de l'application, repère sur le match) ;
+    - annuler une demande, changer d'avis, demander plusieurs matchs d'affilée ;
+    - échec, place insuffisante, jeu mis à jour pendant la construction, partie lancée pendant la construction ;
+    - sens du repère « rejeu 3D » (D-13) : « ouvrable tout de suite » ou « à préparer », et un moyen de préparer
+      un match sans l'ouvrir ;
+    - priorité entre une préparation automatique en cours et une demande explicite du user.
+  - Sortie attendue de 0.9 : `annexes_rejeu_3d/generation_et_file.md` (comparaison chiffrée des trois modes,
+    recommandation, parcours écrit), puis la maquette. Les items B.4, B.5, B.6, C.5 et E.1 à E.5 se réécrivent
+    selon la décision.
 
 Constats relus sur pièces le 2026-11-15 sur `origin/release/v8.2.0` (`0ccbed4e2c`) et sur le binaire
 `infinite-theater-3d-0.1.0-test.8` du contributeur llampwall (lu, non lancé). L'exécutant les RE-VÉRIFIE
@@ -395,7 +439,12 @@ Vagues qui en découlent, pour lecture rapide :
       sans mesure est écartée (pas de lot de performance sans mesure). Rendu :
       `annexes_rejeu_3d/audit_optimisations.md`. Le user retient ou écarte chaque proposition ; une
       proposition retenue devient un item des lots B ou C, avec son témoin avant / après.
-- **Gate 0 :** annexes présentes, chiffres écrits, 0.7 statué, chaque proposition de 0.8 retenue ou écartée par le user.
+- [ ] 0.9 (ajouté le 2026-11-24, D-19) Instruire la préparation des rejeux 3D : à la demande, automatique ou
+      mixte ; besoin et forme de la file d'attente (lecture de `internal/replayregen` et du projet voisin
+      `csstat`) ; parcours du user de bout en bout. Après 0.3 (les durées et tailles de M-1 décident). Rendu :
+      `annexes_rejeu_3d/generation_et_file.md`, puis maquette interactive validée par le user. Aucun item des
+      lots B, C et E touchant la file ou le repère ne démarre avant la décision D-19.
+- **Gate 0 :** annexes présentes, chiffres écrits, 0.7 statué, chaque proposition de 0.8 retenue ou écartée par le user, D-19 tranchée par le user.
 
 ## 4. Lot A — installation du jeu : question, recherche, réglage
 

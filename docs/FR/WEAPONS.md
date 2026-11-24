@@ -194,7 +194,7 @@ Les variantes cosmétiques sont repliées sur leur arme canonique via
 
 La liste autoritative des WID (hex confirmé -> nom) vit dans `weaponEntries` au
 sein de `filmshell/catalogue.go`, et est dupliquée en notes de recherche dans
-`.ai/REFERENCE_WEAPON_IDS.md`.
+`.ai/refs/REFERENCE_WEAPON_IDS.md`.
 
 ---
 
@@ -385,5 +385,5 @@ le catalogue des Weapon IDs sont documentés séparément et **non dupliqués ic
 
 - `.ai/RESEARCH_THEATER_RE.md` — structure des chunks film/théâtre, notes de
   rétro-ingénierie dead-state et kill-feed.
-- `.ai/REFERENCE_WEAPON_IDS.md` — catalogue des Weapon IDs et recherche de
+- `.ai/refs/REFERENCE_WEAPON_IDS.md` — catalogue des Weapon IDs et recherche de
   résolution.

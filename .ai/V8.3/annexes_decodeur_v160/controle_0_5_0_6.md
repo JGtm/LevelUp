@@ -1,6 +1,6 @@
 # Contrôles 0.5 et 0.6 du plan v1.6.0 (lecture seule)
 
-Date : 2026-11-23. Plan : `LevelUp-wt-int/.ai/PLAN_DECODEUR_V160_2026-11-23.md`.
+Date : 2026-11-23. Plan : `LevelUp-wt-int/.ai/V8.3/PLAN_DECODEUR_V160_2026-11-23.md`.
 Décodeur : `Scripts/dec-v160`, branche `feat/v1.6.0`, HEAD `dc967c2`, identique au tag `v1.5.0`
 (tag annoté, pointe sur `dc967c2`, vérifié par `git log -1 v1.5.0`). Arbre de travail propre.
 Abréviations : DEC = `dec-v160`, LU = `LevelUp-wt-int` (là où se trouve le plan ; les chemins LU
@@ -46,7 +46,7 @@ Fausse = le symbole n'est pas là ; Partielle = une partie juste, une partie fau
 | LU `apps/go-api/cmd/replay-corpus-gate/bake.go:72` (4 Gio) | Juste | `const plafondMemoireGate = 4` |
 | Plafonds 3 Gio prod / 2 Gio mesure (DEC `memguard/memguard.go`) | Juste | `DefaultLimitGiB = 3` (ligne 39), `MeasureLimitGiB = 2` (ligne 45) |
 | LU `.ai/REGISTRE_REPORTS.md:362-363` | Juste | 362 = phase des images-clés (trois lecteurs, environ 30 %) ; 363 = sonde de calibration (1,5 %) |
-| LU `.ai/annexes_marche_complete/temoins_duree.txt` | Présent | 10 lignes de témoins hors commentaires (« dix témoins » confirmé) |
+| LU `.ai/V8.3/annexes_marche_complete/temoins_duree.txt` | Présent | 10 lignes de témoins hors commentaires (« dix témoins » confirmé) |
 | DEC `replay/testdata/equivalence/` | Présent | 43 fichiers (non compté film par film) |
 | DEC « aucun dossier `cmd/` » | Juste | pas de `cmd/` à la racine de DEC |
 | DEC « aucun catalogue de bornes de carte » | Non vérifié | non cherché |

@@ -1,3 +1,10 @@
+## [2026-11-24] Rangement de la racine de `.ai/` et décision ouverte sur la préparation des rejeux 3D — Complété
+
+- **Décision** : la racine de `.ai/` ne garde que le backlog, le registre des reports, le journal, la cartographie, les gestes de production de la 8.3.0 et les plans à cases ouvertes (plan maître, rejeu 3D, temps forts, positions de force), plus le plan des antagonistes, que son statut garde à la racine jusqu'à la validation à l'écran. Sept plans clos et quinze dossiers d'annexes descendent dans `.ai/V8.3/`, sept documents de référence dans `.ai/refs/`, deux dossiers de septembre dans `.ai/archive/V7.5/`.
+- **Résultats** : chemins réécrits dans 55 fichiers versionnés (backlog, registre, plans, cinq documents de `docs/`, `.gitignore` pour le dossier local des annexes du maillage) ; table de la racine refaite dans `project_map.md`. Le journal et ses archives ne sont pas réécrits.
+- **Plan du rejeu 3D** : décision D-19 ouverte et item 0.9 ajouté (préparation à la demande, automatique ou mixte ; besoin d'une file d'attente, sur le modèle de `internal/replayregen` et du projet voisin `csstat` ; parcours du user de bout en bout). Rien n'est tranché.
+- **Suite** : six plans déjà rangés dans `.ai/V8.3/` gardent des cases ouvertes (gestes et contrôles à l'écran du user pour l'essentiel) : à statuer avec le user.
+
 ## [2026-11-24] Clôture du plan du décodeur v1.6.0 — Complété
 
 - **Décision** : le plan est clos : tous les items statués (78 faits, 25 couverts ailleurs, 25 non traités avec motif, 0 case vide). Les travaux d'écran sur les répliques (table des textes et des voix, maquette) sortent du plan vers le backlog de LevelUp ; le reste des reports est au backlog et au registre des reports.

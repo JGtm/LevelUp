@@ -99,7 +99,7 @@ Total : 17 fichiers, attendu 17. Confirme. Douze (lignes 1 a 3 et 5 a 13) sont l
 
 ## 4. Marqueurs `color-allow`
 
-Critere d'inertie (etabli en lisant `tools/lint-no-hardcoded-colors.lib.mjs`, fonction `scanLine`) : un marqueur est inerte quand, sans lui, `scanLine(chemin, ligne)` rend une liste vide pour sa ligne. Detail et liste fermee : `.ai/annexes_backlog_1117/marqueurs_inertes.md`. La mesure neutralise le mot `color-allow` de la ligne puis rappelle `scanLine`.
+Critere d'inertie (etabli en lisant `tools/lint-no-hardcoded-colors.lib.mjs`, fonction `scanLine`) : un marqueur est inerte quand, sans lui, `scanLine(chemin, ligne)` rend une liste vide pour sa ligne. Detail et liste fermee : `.ai/V8.3/annexes_backlog_1117/marqueurs_inertes.md`. La mesure neutralise le mot `color-allow` de la ligne puis rappelle `scanLine`.
 
 | Mesure | Valeur | Attendu |
 |---|---|---|

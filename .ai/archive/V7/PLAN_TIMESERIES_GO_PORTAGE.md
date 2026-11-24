@@ -803,7 +803,7 @@ Les onglets Go actuels `cumul` / `form` / `intensity` peuvent être absorbés da
 - Plan méta fondations : [PLAN_META_FOUNDATIONS_GO.md](PLAN_META_FOUNDATIONS_GO.md)
 - **Spec ECharts graphes** : [SPEC_ECHARTS_TIMESERIES.md](SPEC_ECHARTS_TIMESERIES.md) — `buildOption` pour les 13 graphes, tokens, helpers partagés, champs Go manquants
 - Audit teammates : [docs/AUDIT_TEAMMATES_V7_COCKPIT.md](../docs/AUDIT_TEAMMATES_V7_COCKPIT.md)
-- Charts existants : [.ai/CHARTS_AND_TABLES.md](CHARTS_AND_TABLES.md)
+- Charts existants : [.ai/refs/CHARTS_AND_TABLES.md](CHARTS_AND_TABLES.md)
 - Migration gaps : [docs/MIGRATION_GAP_PYTHON_TO_GO.md](../docs/MIGRATION_GAP_PYTHON_TO_GO.md)
 
 ### 7.5 Variante allégée — « 60 % de parité en 3 jours »

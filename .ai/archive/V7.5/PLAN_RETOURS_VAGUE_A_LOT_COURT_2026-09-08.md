@@ -1,6 +1,6 @@
 # Plan — Vague A : le lot court (7 correctifs prouvés)
 
-> Issu de `.ai/diagnostics/RETOURS_2026-09-08/DIAGNOSTIC_RETOURS_UTILISATEUR_2026-09-08.md`.
+> Issu de `.ai/archive/V7.5/RETOURS_2026-09-08/DIAGNOSTIC_RETOURS_UTILISATEUR_2026-09-08.md`.
 > **Exécution sous le contrat du skill `plan-execution`** — ordre strict, aucun report, chaque item
 > statué. Ce plan ne redit pas le contrat, il s'y soumet.
 

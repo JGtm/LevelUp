@@ -1156,7 +1156,7 @@ Pour chaque match — Slayer Ranked, BTB Open, Firefight, Oddball objectif, FFA 
 
 ## 12. Fonctions de viz latentes — jugées non pertinentes pour le portage initial
 
-> Source : croisement `.ai/CHARTS_AND_TABLES.md` (généré 2026-04-01) vs code réel v7/cockpit audité le 2026-04-26.
+> Source : croisement `.ai/refs/CHARTS_AND_TABLES.md` (généré 2026-04-01) vs code réel v7/cockpit audité le 2026-04-26.
 >
 > Ces fonctions existent dans `src/visualization/` mais ont été **délibérément retirées** de la match view lors de la simplification v7/cockpit. Elles sont jugées **hors périmètre des phases 1 à 9**. Une réévaluation est possible en **phase finale (post-Phase 9)** uniquement si les retours utilisateurs le justifient. Ne pas les porter par défaut.
 

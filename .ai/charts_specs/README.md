@@ -4,7 +4,7 @@
 
 ## Pourquoi
 
-`.ai/CHARTS_AND_TABLES.md` est un **inventaire** descriptif (~80 visuels listés, type/axes/source). Il ne suffit pas pour **reproduire à l'identique** un chart en Go : il manque la requête de données, les paramètres de calcul (lissage, KDE, IQR), le layout Plotly détaillé, les hovertemplates, les états vides, la composition de page.
+`.ai/refs/CHARTS_AND_TABLES.md` est un **inventaire** descriptif (~80 visuels listés, type/axes/source). Il ne suffit pas pour **reproduire à l'identique** un chart en Go : il manque la requête de données, les paramètres de calcul (lissage, KDE, IQR), le layout Plotly détaillé, les hovertemplates, les états vides, la composition de page.
 
 Ce dossier complète l'inventaire avec une **spec reproductible** par chart, calibrée pour qu'un développeur Go puisse rebâtir le visuel sans relire le code Python.
 

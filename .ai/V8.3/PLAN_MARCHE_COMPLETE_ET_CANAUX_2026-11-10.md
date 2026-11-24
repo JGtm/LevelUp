@@ -5,7 +5,7 @@ quand elle est gratuite, pas de sur-ingénierie, rendus dans un chantier sépar�
 skill `plan-execution`.
 Origine : analyse de `OpenSpartan/libfilmshell` (décodeur de Dend, Rust, MIT, publié le 2026-11-09) et
 critique reçue sur le décodeur (« very hacky », « inefficient », « odd heuristics »).
-Annexes : `.ai/annexes_marche_complete/` (corpus mesuré, sondes hors dépôt).
+Annexes : `.ai/V8.3/annexes_marche_complete/` (corpus mesuré, sondes hors dépôt).
 
 ## 0. Objectif et critères de succès
 
