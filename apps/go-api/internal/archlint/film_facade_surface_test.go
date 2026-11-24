@@ -475,7 +475,10 @@ const plafondSurfaceFacade = 181 // 2026-11-22 — decodeur v1.5.0 : 182 - 2 (de
 //	                                           (`service/replayview`) : rechargements, eliminations avec leurs marques,
 //	                                           commande de deplacement, et la table des medailles que le decodeur
 //	                                           declare desormais. Aucun retrait.
-const plafondSurfaceReplay = 338 // 2026-11-22 — decodeur v1.5.0 : 332 + 6 ; cf. l historique ci-dessus
+//	339  decodeur v1.6.0 (2026-11-24)               base 338 re-mesuree. +1 : `replay.OptionsVitesse`, le porteur du
+//	                                           nombre de fils du decodeur (`replay.Options.Vitesse`), que
+//	                                           `replaybuild` pose depuis la configuration de l installation. Aucun retrait.
+const plafondSurfaceReplay = 339 // 2026-11-24 — decodeur v1.6.0 : 338 + 1 ; cf. l historique ci-dessus
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //
