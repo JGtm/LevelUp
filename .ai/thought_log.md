@@ -1,3 +1,9 @@
+## [2026-11-24] Montée du décodeur v1.6.0 dans LevelUp : lecture sur plusieurs fils, relecture et correctifs — En cours
+
+- **Décision** : le décodeur passe à la v1.6.0 (schéma 127, fichier des faits 31) ; le nombre de fils est réglé une fois dans la configuration d'après le profil de déploiement (1 sur le serveur hébergé et la démo, 4 sur le bureau et en développement) et suit la requête de construction jusqu'au décodeur ; la table des formes d'équipement déployées du manifeste est passée au décodeur ; un socle d'équipement, de toute famille, se nomme par le libellé du document, joue le son d'apparition d'équipement et prend l'encre des équipements.
+- **Résultats** : la relecture a rendu six constats, corrigés. Nom des socles de grappin, de répulseur et de propulseur (18 socles sur 29 dans les documents de référence affichaient leur clé) ; son et encre d'arme sur un socle d'équipement ; chaque maillon du nombre de fils (requête de l'enfant, enfant, action d'administration, crochet de synchronisation) et la table des formes déployées ont chacun un test qui rougit quand la ligne est retirée (vérifié par mutation) ; un commentaire de test faux réécrit ; deux exclusions de garde-rails resserrées à la seule commande de la brique. Les sept tests d'`archlint` rouges à cause du code de la brique publiée restent la dette connue.
+- **Suite** : correctif v1.6.1 de la brique, puis fusion et régénération unique des rejeux.
+
 ## [2026-11-23] Rattrapage du coup d'envoi : un rejeu illisible ne bloque plus, la valeur se lit dans le fichier d'en-tête — Complété
 
 - **Décision** : un rejeu illisible se traite comme un rejeu absent (la valeur rangée d'un film est gardée, sinon repli sur la source suivante), seul un échec d'écriture retient la révision ; le coup d'envoi est rangé dans le fichier d'en-tête de l'artefact par son écrivain, la lecture complète ne sert plus que de repli et complète l'en-tête.
