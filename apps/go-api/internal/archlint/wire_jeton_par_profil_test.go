@@ -20,17 +20,21 @@ package archlint
 
 import (
 	"go/ast"
+	"regexp"
 	"sort"
 	"strings"
 	"testing"
 )
 
 const (
-	racineWireJetons      = "internal/api/wire"
-	appelRafraichirJeton  = "RefreshHaloTokensViaStoreFirst"
-	appelParcoursProfils  = "LoadPlayers"
-	prefixeDateExemptions = "2026-"
+	racineWireJetons     = "internal/api/wire"
+	appelRafraichirJeton = "RefreshHaloTokensViaStoreFirst"
+	appelParcoursProfils = "LoadPlayers"
 )
+
+// debutRaisonDateeJetons : une raison d'exemption commence par une date AAAA-MM-JJ valide (mois 01 a 12,
+// jour 01 a 31), de n'importe quelle annee, suivie d'un separateur.
+var debutRaisonDateeJetons = regexp.MustCompile(`^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])\b`)
 
 // exemptionsJetonParProfil : « fichier:fonction » -> raison datée. Vide.
 var exemptionsJetonParProfil = map[string]string{}
@@ -126,8 +130,8 @@ func TestWireSansJetonParcourantLesProfils(t *testing.T) {
 
 func TestExemptionsJetonParProfilDatees(t *testing.T) {
 	for cle, raison := range exemptionsJetonParProfil {
-		if !strings.HasPrefix(raison, prefixeDateExemptions) {
-			t.Errorf("%s : l'exemption commence par une date (« 2026-MM-JJ : raison »), obtenu %q", cle, raison)
+		if !debutRaisonDateeJetons.MatchString(raison) {
+			t.Errorf("%s : l'exemption commence par une date (« AAAA-MM-JJ : raison »), obtenu %q", cle, raison)
 		}
 	}
 }
@@ -183,5 +187,31 @@ func f() { cfg.LoadPlayers("x") }`, 0},
 	inutile := fautesJetonParProfil(nil, map[string]string{"internal/api/wire/x.go:f": "2026-11-18 : test"})
 	if len(inutile) != 1 {
 		t.Errorf("exemption inutile non signalée : %v", inutile)
+	}
+}
+
+// Le motif de date accepte toute année et refuse ce qui n'est pas une date AAAA-MM-JJ valide.
+func TestDebutRaisonDateeJetons(t *testing.T) {
+	cases := []struct {
+		raison string
+		want   bool
+	}{
+		{"2026-11-18 : test", true},
+		{"2027-01-05 : test", true},
+		{"2031-12-31 : test", true},
+		{"2026- : annee seule", false},
+		{"26-11-18 : annee sur deux chiffres", false},
+		{"2027-13-01 : mois 13", false},
+		{"2027-00-10 : mois 00", false},
+		{"2027-01-32 : jour 32", false},
+		{"2027-01-1 : jour sur un chiffre", false},
+		{"2027-01-05x : date collee a du texte", false},
+		{"le 2027-01-05 : date non initiale", false},
+		{"", false},
+	}
+	for _, tc := range cases {
+		if got := debutRaisonDateeJetons.MatchString(tc.raison); got != tc.want {
+			t.Errorf("%q : accepte=%v, attendu %v", tc.raison, got, tc.want)
+		}
 	}
 }

@@ -13,12 +13,12 @@ import { getAscensionText } from './i18n'
 import type { Locale } from '@/lib/i18n/locale'
 import type { Streak } from './types'
 
-/** Classe du badge de statut (couleurs d'état UI génériques, cf. CLAUDE.md §20). */
+/** Classe du badge de statut (couleurs d'état UI génériques, cf. CLAUDE.md règle 12). */
 function streakStatusBadgeClass(status: Streak['status']): string {
   return status === 'active'
-    ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' // color-allow(tailwind): emerald status badge active (CLAUDE.md §20)
+    ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' // color-allow(tailwind): emerald status badge active (CLAUDE.md règle 12)
     : status === 'paused'
-      ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300' // color-allow(tailwind): amber status badge paused (CLAUDE.md §20)
+      ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300' // color-allow(tailwind): amber status badge paused (CLAUDE.md règle 12)
       : 'bg-muted text-muted-foreground'
 }
 
@@ -124,7 +124,7 @@ export function StreakCard({ streak: s, locale, t, compact = false }: StreakCard
           </div>
         )}
         {!nextTier && s.status === 'active' && (
-          <div className="text-emerald-700 dark:text-emerald-300"> {/* color-allow(tailwind): emerald streak active at max multiplier (CLAUDE.md §20) */}
+          <div className="text-emerald-700 dark:text-emerald-300"> {/* color-allow(tailwind): emerald streak active at max multiplier (CLAUDE.md règle 12) */}
             {t.streakAtMaxMultiplier}
           </div>
         )}

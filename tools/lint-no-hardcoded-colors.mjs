@@ -12,7 +12,7 @@
  *   - `getSeriesColors(n, tokens[])` (séries)
  *   - les palettes brutes centralisées dans `apps/web/src/lib/accessibility/palettes/`.
  *
- * Exceptions tolérées (cf. CLAUDE.md §20) :
+ * Exceptions tolérées (cf. CLAUDE.md règle 12) :
  *   - couleurs de rareté Halo (Battlepass, `rarity.ts`)
  *   - couleurs structurelles de layout SVG (fond de piste, bordure)
  *   - couleurs UI génériques sans signification métier (liked/rose, warning/amber)
@@ -134,7 +134,7 @@ console.log(
 // soit être remplacée par un token (`tokenCssVar` / classe thème
 // `bg-warning`/`text-success`/etc.), soit annotée `// color-allow:` avec
 // une justification (couleur structurelle SVG, fallback API, thématique
-// Spartan UI, like rose, etc. — cf. CLAUDE.md §20).
+// Spartan UI, like rose, etc. — cf. CLAUDE.md règle 12).
 const RATCHET_THRESHOLD = 0
 
 if (violations.length > RATCHET_THRESHOLD) {

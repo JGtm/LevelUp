@@ -31,8 +31,6 @@ import (
 //
 // Super Fiesta et Husky Raid sont des catégories distinctes (le cockpit Python les regroupait
 // sous Fiesta) : ce sont des rotations d'événement que les joueurs identifient.
-//
-// Source de référence Python : `git show v7/cockpit:src/analysis/mode_categories.py`.
 
 // Catégories canoniques retournées par InferCategory. Stables : étiquettes de l'interface et
 // valeurs stockées dans match_registry.mode_category.

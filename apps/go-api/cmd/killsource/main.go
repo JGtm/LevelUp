@@ -1,11 +1,10 @@
 // Commande killsource — exercer le decodeur de la SOURCE DE DEGAT sur un film Theater, seul.
 //
-// A QUOI ELLE SERT. AUCUN CHEMIN D EXECUTION DE L APPLICATION ne passe encore par le paquet
-// `internal/games/halo_infinite/film/internal/facts/killsource` : son unique importeur cote application est le
-// pont `internal/sync/killsource_bridge.go`, ecrit d avance et lui-meme sans appelant. Le paquet
-// est donc autonome, et il doit pouvoir etre teste a fond avant d etre branche. Cette commande est
-// ce moyen. Elle ne touche ni la base, ni le reseau, ni les fichiers du jeu : elle lit des chunks
-// sur le disque et affiche ce que le decodeur en tire.
+// A QUOI ELLE SERT. L application utilise ce decodeur : elle passe par la facade `decfilm` de la
+// brique `halo-infinite-film-decoder` (par exemple `levelup backfill-killsource`). Cette commande
+// l exerce sur UN film, seule, pour le tester a fond et lire son rapport. Elle ne touche ni la
+// base, ni le reseau, ni les fichiers du jeu : elle lit des chunks sur le disque et affiche ce que
+// le decodeur en tire.
 //
 // LES DEUX VERITES SONT TOUJOURS AFFICHEES COTE A COTE, et c est le point de toute la sortie :
 // le kill-feed dit QUI RECOIT LE CREDIT, le dead-state dit D OU VIENT LE DEGAT FATAL. Les deux

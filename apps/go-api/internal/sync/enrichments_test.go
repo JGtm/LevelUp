@@ -450,7 +450,7 @@ func TestComputeAndPersistHadBotTeammate_FromStartBrief_PassesNormalThresholds(t
 	}
 }
 
-func TestComputeAndPersistHadBotTeammate_MadinaRealCase_FALSE(t *testing.T) {
+func TestComputeAndPersistHadBotTeammate_RealCase_FALSE(t *testing.T) {
 	shared, player := setupEnrichmentsTestDBs(t)
 	const selfXUID = "2623439693412443"
 

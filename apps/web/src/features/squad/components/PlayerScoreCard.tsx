@@ -44,7 +44,7 @@ const SCORE_LABEL_VAR: Record<string, string> = {
 
 /**
  * PlayerScoreCard rend une carte compacte avec le score + label + comparaison.
- * Les couleurs sont appliquées via CSS variables (CLAUDE.md §20).
+ * Les couleurs sont appliquées via CSS variables (CLAUDE.md règle 12).
  */
 export function PlayerScoreCard({
   gamertag,

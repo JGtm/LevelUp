@@ -1803,7 +1803,7 @@ HEAD au parc de développement et rendait PERTE sur les 7 témoins au meilleur �
 gate qui échoue toujours ne gate rien) :
 
 - `--reference=base` (**défaut**) : cuit chaque témoin DEUX FOIS — une fois avec le code du
-  HEAD, une fois avec le code d'une **révision de base** (défaut : `origin/feat/v75` si le
+  HEAD, une fois avec le code d'une **révision de base** (défaut : `origin/main` si le
   HEAD en diffère, sinon `HEAD^` — un worktree détaché temporaire est créé pour la révision de
   base et retiré ensuite, même en échec) — puis compare les deux artefacts frais. Toute perte
   sort en code 1. C'est le gate à lancer avant tout merge : le signal est binaire, une perte ne

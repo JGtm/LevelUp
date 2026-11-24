@@ -89,8 +89,9 @@ export type SemanticToken =
   // l'utilisateur (PLAN_COULEURS_STATS_COMBAT_2026-09-17) et verrouillées par
   // combatStatTokens.test.ts. RÈGLE : une couleur qui dit « frag / mort / assistance »
   // passe par ces jetons ; une couleur d'équipe, de joueur ou d'issue reste la sienne.
-  // La PART de dégâts d'une assistance se dit en tons (opacités 35 / 65 / 100 %) de la
-  // couleur du sens, jamais par une autre teinte.
+  // La PART de dégâts d'une assistance se dit en tons de la couleur du sens (trois
+  // clarté OKLCH du jeton, calculées par `tokenTone`, jamais des opacités), jamais par une
+  // autre teinte.
   | 'stat-kills'
   | 'stat-deaths'
   | 'stat-assists'

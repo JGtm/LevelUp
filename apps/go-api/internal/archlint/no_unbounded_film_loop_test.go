@@ -132,7 +132,7 @@ func TestNoUnboundedFilmLoop(t *testing.T) {
 		return nil
 	})
 	if err != nil {
-		t.Fatalf("walk apps/go-api et libs/film: %v", err)
+		t.Fatalf("walk apps/go-api: %v", err)
 	}
 	if len(violations) > 0 {
 		t.Errorf("site(s) de construction d'artefact NON DECLARE(S) (%d).\n"+
@@ -337,7 +337,7 @@ func TestPasDeSentinelleBruteHorsFilmproc(t *testing.T) {
 		return nil
 	})
 	if err != nil {
-		t.Fatalf("walk apps/go-api et libs/film: %v", err)
+		t.Fatalf("walk apps/go-api: %v", err)
 	}
 	if len(violations) > 0 {
 		t.Errorf("plafond memoire SOUPLE pose hors de %s (%d).\n"+

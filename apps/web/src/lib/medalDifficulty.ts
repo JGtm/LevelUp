@@ -4,7 +4,7 @@
  * Les 4 niveaux correspondent aux couleurs officielles du jeu (PGCR) :
  * Normal=vert, Heroic=bleu, Legendary=violet, Mythic=rouge.
  *
- * Exception couleur autorisée : rarity/difficulty Halo (CLAUDE.md §20).
+ * Exception couleur autorisée : rarity/difficulty Halo (CLAUDE.md règle 12).
  * Utiliser dropShadowForDifficulty() sur <img> (drop-shadow suit la forme PNG transparente)
  * et boxShadowForDifficulty() sur les fallbacks texte (border-radius rectangulaire).
  */

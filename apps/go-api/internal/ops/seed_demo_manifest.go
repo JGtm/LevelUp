@@ -24,12 +24,11 @@ import (
 const demoManifestVersion = "1"
 
 // DemoManifest gèle la sélection de matchs d'une démo pour un couple (gamertag, titre).
-// Committé sous config/demo/<gamertag>/<slug>.json.
+// Committé sous config/demo/<gamertag>/<slug>.json, sans identifiant de joueur (xuid).
 type DemoManifest struct {
 	Version        string             `json:"version"`
 	TitleSlug      string             `json:"title_slug"`
 	SourceGamertag string             `json:"source_gamertag,omitempty"`
-	SourceXUID     string             `json:"source_xuid,omitempty"`
 	GeneratedAt    string             `json:"generated_at,omitempty"`
 	GeneratedBy    string             `json:"generated_by,omitempty"`
 	Notes          string             `json:"notes,omitempty"`
