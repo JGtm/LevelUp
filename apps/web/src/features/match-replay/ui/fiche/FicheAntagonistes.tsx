@@ -12,7 +12,7 @@
  *
  * Les noms portent l'encre de leur camp (jetons, `campInk`, vu du point de vue de la page comme la colonne des
  * équipes). La lecture vient de la fabrique du rejeu (`ReplayAntagonists`) : ni rapprochement de clés ni décompte
- * ici. Les bots n'ont pas de titre (cf. `replayAntagonists`) : leur fiche est celle de l'état vide.
+ * ici. Les bots comptent comme tout joueur, dans les deux rôles (cf. `replayAntagonists`).
  */
 import { Fragment, useMemo, type ReactNode } from 'react'
 

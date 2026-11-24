@@ -5,6 +5,7 @@ import type { ReplayFeedEntry, ReplayKill } from './killFeedLogic'
 import {
   antagonistKillsOf,
   antagonistSubjectKey,
+  botKillsOf,
   createReplayAntagonists,
 } from './replayAntagonists'
 
@@ -100,11 +101,10 @@ describe("createReplayAntagonists : l'index d'un sujet", () => {
     expect(at.victim).toEqual({ holder: FOE2, count: 1, tiedWith: [] })
   })
 
-  it("ignore une victime bot : un bot n'est jamais un antagoniste", () => {
-    const feed = [killEntry(ME, '', 1000, 'Spartan-117'), killEntry(ME, 'bid(3.0)', 1500)]
-    const index = createReplayAntagonists(feed, campagne).forSubject(ME)
-    expect(index.changes).toEqual([])
-    expect(index.at(9999)).toEqual({ nemesis: null, victim: null })
+  it('un bot est un antagoniste comme un autre : la victime bot du sujet est son souffre-douleur', () => {
+    const feed = [killEntry(ME, '', 1000, 'Spartan-117'), killEntry(ME, '', 1500, 'Spartan-117')]
+    const at = createReplayAntagonists(feed, campagne).forSubject(ME).at(1500)
+    expect(at.victim).toEqual({ holder: BOT_FOE, count: 2, tiedWith: [] })
   })
 
   it('ignore un tueur sans victime nommée', () => {
@@ -112,11 +112,18 @@ describe("createReplayAntagonists : l'index d'un sujet", () => {
     expect(createReplayAntagonists(feed, campagne).forSubject(ME).changes).toEqual([])
   })
 
-  it('ne donne aucun antagoniste à un sujet bot', () => {
-    const feed = [killEntry(FOE1, '', 1000, 'Spartan-117'), killEntry(BOT_FOE, FOE1, 2000)]
-    const index = createReplayAntagonists(feed, campagne).forSubject(BOT_FOE)
-    expect(index.changes).toEqual([])
-    expect(index.at(9999)).toEqual({ nemesis: null, victim: null })
+  it('un sujet bot a ses antagonistes : l’adversaire qui l’élimine est sa némésis, celui qu’il élimine sa victime', () => {
+    const feed = [killEntry(ME, '', 1000, 'Spartan-117'), killEntry(ME, '', 1200, 'Spartan-117')]
+    const botKills = [{ killer: BOT_FOE, victim: ALLY, t: 2000 }, { killer: BOT_FOE, victim: ALLY, t: 2500 }]
+    const at = createReplayAntagonists(feed, campagne, botKills).forSubject(BOT_FOE).at(2500)
+    expect(at.nemesis).toEqual({ holder: ME, count: 2, tiedWith: [] })
+    expect(at.victim).toEqual({ holder: ALLY, count: 2, tiedWith: [] })
+  })
+
+  it('une élimination dont un bot est l’auteur (lue dans le film) fait de lui la némésis de sa victime', () => {
+    const botKills = [{ killer: BOT_FOE, victim: ME, t: 3000 }]
+    const at = createReplayAntagonists([], campagne, botKills).forSubject(ME).at(3000)
+    expect(at.nemesis).toEqual({ holder: BOT_FOE, count: 1, tiedWith: [] })
   })
 
   it('compte tous les autres joueurs en mêlée générale (équipe -1)', () => {
@@ -178,5 +185,30 @@ describe('createReplayAntagonists : cache par (document, sujet)', () => {
     expect(source.forViewpoint('xuid(feuille)')).toBe(source.forSubject('film-me'))
     expect(source.forViewpoint('xuid(feuille)').at(1000).nemesis?.holder).toBe(FOE1)
     expect(source.forViewpoint(null)).toBe(source.forSubject(null))
+  })
+})
+
+describe('botKillsOf : les éliminations d’un bot lues dans le film', () => {
+  const doc = (rows: Array<{ t: number; xuid: string; victim?: string }>) => ({
+    frameIntervalMs: 100,
+    eliminations: rows,
+  }) as unknown as Parameters<typeof botKillsOf>[0]
+
+  it('ne garde que les éliminations dont le tueur est un bot, à leur instant sur l’axe du rejeu', () => {
+    const rows = [
+      { t: 10, xuid: BOT_FOE, victim: ME },
+      { t: 20, xuid: FOE1, victim: ME },
+    ]
+    expect(botKillsOf(doc(rows), campagne)).toEqual([{ killer: BOT_FOE, victim: ME, t: 1000 }])
+  })
+
+  it('ignore une élimination de bot sans victime : aucune victime n’est devinée', () => {
+    expect(botKillsOf(doc([{ t: 10, xuid: BOT_FOE }]), campagne)).toEqual([])
+  })
+
+  it('une victime bot est rendue par sa clé du film', () => {
+    expect(botKillsOf(doc([{ t: 10, xuid: BOT_FOE, victim: botKey('Autre') }]), campagne)).toEqual([
+      { killer: BOT_FOE, victim: botKey('Autre'), t: 1000 },
+    ])
   })
 })

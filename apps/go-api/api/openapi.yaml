@@ -14033,16 +14033,21 @@ components:
           type: boolean
         perfect:
           type: boolean
+        place:
+          format: int64
+          type: integer
         t:
           format: int64
           type: integer
         victim:
           type: string
+        victimPlace:
+          format: int64
+          type: integer
         xuid:
           type: string
       required:
         - t
-        - xuid
       type: object
     EliminationCoverage:
       additionalProperties: false
@@ -26474,6 +26479,9 @@ components:
       properties:
         name:
           type: string
+        place:
+          format: int64
+          type: integer
         points:
           format: int64
           type: integer
@@ -26482,11 +26490,13 @@ components:
           type: integer
         target:
           type: string
+        targetPlace:
+          format: int64
+          type: integer
         xuid:
           type: string
       required:
         - t
-        - xuid
         - name
         - points
       type: object

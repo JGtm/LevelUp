@@ -153,7 +153,7 @@ export function ReplayPage() {
   const model = useReplayModel(data, replayContext, modelSettings, viewpoint.xuid)
   // LES ANTAGONISTES (némésis, souffre-douleur) : la fabrique est construite ICI, une fois, sur le fil et le roster
   // du modèle ; les cadres la reçoivent dans la vue (`antagonists`) et chaque surface lit son index depuis elle.
-  const antagonists = useReplayAntagonists(model.feed, model.players)
+  const antagonists = useReplayAntagonists(model.feed, model.players, data)
   // LE PANNEAU DE JOUEUR : son état naît avec la page et avec le match, jamais mémorisé, et NE TOUCHE PAS
   // au point de vue. Le joueur SUIVI est ce même joueur regardé (`viewpoint.xuid`).
   const playerPanel = usePlayerPanel(matchId, model.players, viewpoint.xuid)

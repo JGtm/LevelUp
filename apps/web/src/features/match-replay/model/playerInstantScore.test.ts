@@ -63,6 +63,19 @@ describe('playerInstantScore — la tuile et la fiche lisent la même valeur', (
     for (const p of players) expect(series.get(p.xuid)).toEqual({ ticks: null, absence: 'score-incomplet' })
   })
 
+  it('un bot : ses actions de score, désignées par place sans identifiant, donnent son score', () => {
+    const base = instantDoc()
+    const sansBid = base.scoreActions.filter((a) => a.xuid !== 'bid(7.0)')
+    // La même action du bot (100 points à l'image 40), telle que le décodeur l'écrit : la place du roster (2), pas d'identifiant.
+    const doc = instantDoc({
+      scoreActions: [...sansBid, { t: 40, place: 2, name: 'killPersonalScore', points: 100 }] as never,
+    })
+    const { players, tuiles } = lectures(doc)
+    const marc = instantPlayer(players, 'bot:Marc')
+    expect(playerScoreAt(tuiles, marc, 39)).toBe(0)
+    expect(playerScoreAt(tuiles, marc, INSTANT_LAST_FRAME)).toBe(100)
+  })
+
   it('le calque de score du film ne décide pas : décalé d’une image, il n’est pas lu', () => {
     const base = instantDoc()
     const calque = {

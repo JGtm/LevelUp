@@ -26,6 +26,8 @@ import { normalizeScoreTimeline } from '@/lib/replay/scoreTimeline'
 import { markTranslocationCuts } from '@/lib/replay/translocationCuts'
 import type { ReplayDocument } from '@/lib/api/types'
 
+import { placeOwnerResolver } from './placeOwner'
+import { eliminationsWithKeys, scoreActionsWithKeys } from './placedRows'
 import type { ReplayDocumentReady, ReplayStep, ReplayXY } from './replayReadyTypes'
 
 /**
@@ -75,6 +77,10 @@ export type {
  * qui tranche, et `calquePresent` (features/match-replay/model) porte cette lecture en un point.
  */
 export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentReady {
+  // LA TABLE D'IDENTITÉ DES PLACES est le roster du document : un bot, sans identifiant, désigne ses éliminations et ses
+  // actions de score par sa place (`placedRows.ts`).
+  const roster = (raw.roster ?? []).map((e) => ({ ...e, presence: e.presence ?? [] }))
+  const ownerOf = placeOwnerResolver(roster)
   const sceneryLives = new Set((raw.vehicleScenery?.hidden ?? []).map((h) => vehicleLifeKey(h.slot, h.gen)))
   return {
     ...raw,
@@ -232,7 +238,7 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // Les médailles (schéma 117), le score par action (schéma 121), l'horloge de manche et les comptes à
     // rebours de réapparition (schéma 120) : des tableaux plats, absents = rien de posé sur ce film.
     medals: raw.medals ?? [],
-    scoreActions: raw.scoreActions ?? [],
+    scoreActions: scoreActionsWithKeys(raw.scoreActions ?? [], ownerOf),
     // Les touches, les dégâts et le bilan de tirs (schéma 125) : des estimations, qui ne se montrent que sous
     // `shotStats[].sufficient`. Absents = rien de posé sur ce film.
     hits: raw.hits ?? [],
@@ -242,7 +248,7 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // des tableaux plats ; absents = rien de posé sur ce film, `coverage.reloads` et `coverage.eliminations` disent si
     // le calque a été lu.
     reloads: raw.reloads ?? [],
-    eliminations: raw.eliminations ?? [],
+    eliminations: eliminationsWithKeys(raw.eliminations ?? [], ownerOf),
     // Les gestes du joueur (coup de mêlée, lancer amorcé, schéma 127) : un tableau plat ; absent = rien de posé sur ce
     // film, `coverage.gestures` dit si le calque a été lu et si la porte de cadence l'a laissé passer.
     gestures: raw.gestures ?? [],
@@ -266,7 +272,7 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // place. Comblée à VIDE quand elle manque — un artefact antérieur au schéma 69 n'en publie
     // aucune, et `seatLogic.publieDesPresences` le lit au niveau du DOCUMENT pour retomber sur
     // l'enveloppe des vies (repli daté) ; jamais un intervalle inventé ici.
-    roster: (raw.roster ?? []).map((e) => ({ ...e, presence: e.presence ?? [] })),
+    roster,
     // Le SCORE DANS LE TEMPS (schéma 12) : quatre étages de tableaux nullables comblés d'un
     // coup (cf. normalizeScoreTimeline). L'OBJET, lui, garde le droit d'être absent.
     scoreTimeline: normalizeScoreTimeline(raw.scoreTimeline),

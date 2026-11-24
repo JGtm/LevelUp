@@ -272,19 +272,17 @@ describe('un bot n’est jamais marqué', () => {
       now: () => 0,
     })
 
-  it('ni le bot que le point de vue élimine, ni pendant la pulsation, mais bien l’humain', () => {
-    // Le bot est la victime (sans xuid, nommée) : jamais un souffre-douleur ; l'humain l'est.
+  it('le bot que le point de vue élimine compte comme l’humain : chacun a son titre', () => {
     const feed = [entry('S', '', 'Brute', 1000), entry('S', '', 'Brute', 1500), entry('S', 'e1', '', 2000)]
     const reader = lire(createReplayAntagonists(feed, roster).forViewpoint('S'), { 1: 'S', 2: 'e1', 3: 'bot:Brute' })
     reader.advance(900, 3000)
-    expect(reader.titlesOfSlot(3, 5000)).toEqual([])
-    expect(reader.titlesOfSlot(2, 5000)).toEqual([{ role: 'victim', count: 1, motion: { kind: 'gain', progress: 0 } }])
+    expect(reader.titlesOfSlot(3, 5000)).toEqual([{ role: 'victim', count: 2, motion: { kind: 'gain', progress: 0 } }])
+    expect(reader.titlesOfSlot(2, 5000)).toEqual([])
   })
 
-  it('le point de vue bot n’a aucun antagoniste', () => {
-    const reader = lire(createReplayAntagonists([entry('e1', 'bot:Brute', '', 1000)], roster).forViewpoint('bot:Brute'), { 2: 'e1' })
+  it('le point de vue bot a ses antagonistes : l’adversaire qui l’élimine est sa némésis', () => {
+    const reader = lire(createReplayAntagonists([entry('S', '', 'Brute', 1000)], roster).forViewpoint('bot:Brute'), { 1: 'S' })
     reader.advance(900, 3000)
-    expect(reader.titlesOfSlot(2, 5000)).toEqual([])
-    expect(reader.pulsing()).toBe(false)
+    expect(reader.titlesOfSlot(1, 5000)).toEqual([{ role: 'nemesis', count: 1, motion: { kind: 'gain', progress: 0 } }])
   })
 })

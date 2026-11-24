@@ -17,14 +17,20 @@
  * L'ADVERSAIRE se lit du point de vue du SUJET : `allegiance.ofXuid(clé) === false`, l'allégeance
  * du film bâtie avec le sujet pour référence (une fiche de joueur n'a pas le point de vue de la
  * page). Autre camp selon le film, tout autre joueur en mêlée générale ; sans équipe connue
- * (`null`), personne n'est compté. UN BOT N'EST JAMAIS UN ANTAGONISTE, et un sujet bot n'en a
- * aucun : le fil ne porte aucune élimination dont un bot est l'auteur, et un titre sans
- * contrepartie ne se lit pas.
+ * (`null`), personne n'est compté.
+ *
+ * LES BOTS COMPTENT COMME TOUT JOUEUR, dans les deux rôles. Le fil de la base nomme la victime bot
+ * (par son nom, `botKey`) mais ne porte aucune élimination dont un bot est l'AUTEUR : celles-ci se
+ * lisent dans le film (`botKillsOf` : `eliminations[]`, où la frontière a ramené la place du bot à sa
+ * clé `bot:<nom>`), et seulement celles-là, pour ne rien compter deux fois. Une élimination de bot
+ * sans victime nommée est ignorée : aucune victime n'est devinée.
  *
  * Pur : ni React ni DOM. Le hook `useReplayAntagonists` ne fait que mémoïser la fabrique.
  */
 import { buildAntagonists, type AntagonistKill, type Antagonists } from '@/lib/antagonists/antagonists'
 import { buildFilmAllegiance } from '@/lib/replay/filmAllegiance'
+import { frameToMs } from '@/lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '@/lib/replay/replayNormalize'
 import { botKey, type ReplayPlayer } from '@/lib/replay/rosterLogic'
 
 import type { ReplayFeedEntry } from './killFeedLogic'
@@ -33,7 +39,7 @@ import { trackedPlayerOf } from './playerPanelLogic'
 /** Préfixe des clés de bot du film (`botKey`). */
 const BOT_KEY_PREFIX = botKey('')
 
-/** Index sans antagoniste, partagé : sujet inconnu, absent du roster, ou bot. */
+/** Index sans antagoniste, partagé : sujet inconnu ou absent du roster. */
 const NO_ANTAGONISTS: Antagonists = buildAntagonists([], '', () => false)
 
 /** Les antagonistes d'un match, par sujet. Un index par (fabrique, sujet), construit à la demande. */
@@ -92,28 +98,43 @@ export function antagonistKillsOf(
   return out
 }
 
+/** Ce que `botKillsOf` lit du document : les éliminations (clés du film) et la cadence. */
+export type BotKillsDocument = Pick<ReplayDocumentReady, 'eliminations' | 'frameIntervalMs'>
+
+/**
+ * botKillsOf — les éliminations DONT UN BOT EST L'AUTEUR, lues dans le film, aux clés du film et à leur instant sur
+ * l'axe du rejeu. Le fil de la base n'en porte aucune ; les éliminations d'un humain, elles, sont déjà dans le fil.
+ */
+export function botKillsOf(doc: BotKillsDocument, players: readonly ReplayPlayer[]): AntagonistKill[] {
+  const byKey = playersByKey(players)
+  const out: AntagonistKill[] = []
+  for (const e of doc.eliminations) {
+    if (!isBotKey(e.xuid, byKey) || !e.victim) continue
+    out.push({ killer: e.xuid, victim: byKey.get(e.victim)?.xuid ?? e.victim, t: frameToMs(e.t, doc) })
+  }
+  return out
+}
+
 /** Vrai pour une clé de bot du film, ou un joueur que le roster déclare bot. */
 function isBotKey(key: string, byKey: ReadonlyMap<string, ReplayPlayer>): boolean {
   return key.startsWith(BOT_KEY_PREFIX) || byKey.get(key)?.bot === true
 }
 
 /**
- * createReplayAntagonists — la fabrique des index d'un match (un fil, un roster). À reconstruire
- * quand le fil ou le roster change : le cache des index en vit.
+ * createReplayAntagonists — la fabrique des index d'un match (un fil, un roster, les éliminations de bots du
+ * film). À reconstruire quand l'un d'eux change : le cache des index en vit.
  */
 export function createReplayAntagonists(
   feed: readonly ReplayFeedEntry[],
   players: readonly ReplayPlayer[],
+  botKills: readonly AntagonistKill[] = [],
 ): ReplayAntagonists {
-  const kills = antagonistKillsOf(feed, players)
-  const byKey = playersByKey(players)
+  const kills = [...antagonistKillsOf(feed, players), ...botKills]
   const cache = new Map<string, Antagonists>()
 
   const build = (subjectKey: string): Antagonists => {
-    if (isBotKey(subjectKey, byKey)) return NO_ANTAGONISTS
     const allegiance = buildFilmAllegiance(players, subjectKey)
-    const isFoe = (other: string): boolean => !isBotKey(other, byKey) && allegiance.ofXuid(other) === false
-    return buildAntagonists(kills, subjectKey, isFoe)
+    return buildAntagonists(kills, subjectKey, (other) => allegiance.ofXuid(other) === false)
   }
 
   const forSubject = (subjectKey: string | null): Antagonists => {

@@ -6980,9 +6980,13 @@ export interface components {
             headshot?: boolean;
             perfect?: boolean;
             /** Format: int64 */
+            place?: number;
+            /** Format: int64 */
             t: number;
             victim?: string;
-            xuid: string;
+            /** Format: int64 */
+            victimPlace?: number;
+            xuid?: string;
         };
         EliminationCoverage: Record<string, never>;
         EmpriseEquipment: {
@@ -12221,11 +12225,15 @@ export interface components {
         ScoreAction: {
             name: string;
             /** Format: int64 */
+            place?: number;
+            /** Format: int64 */
             points: number;
             /** Format: int64 */
             t: number;
             target?: string;
-            xuid: string;
+            /** Format: int64 */
+            targetPlace?: number;
+            xuid?: string;
         };
         ScoreActionCoverage: {
             /** Format: int64 */

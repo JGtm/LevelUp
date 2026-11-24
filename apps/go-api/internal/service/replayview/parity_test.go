@@ -188,34 +188,9 @@ func comparerLesTroisRacines(t *testing.T, f *remplisseur) {
 	fond := bg.Interface().(mapfondsidecar.MapBackground)
 	zones := co.Interface().(replay.MapCalloutsEntry)
 
-	comparer(t, "ReplayDocument", sansLignesDeBot(stocke), replayview.FromArtifact(stocke), racines[0].stocke)
+	comparer(t, "ReplayDocument", stocke, replayview.FromArtifact(stocke), racines[0].stocke)
 	comparer(t, "MapBackground", fond, *replayview.MapBackgroundOf(&fond), racines[1].stocke)
 	comparer(t, "MapCalloutsEntry", zones, *replayview.MapCalloutsOf(&zones), racines[2].stocke)
-}
-
-// sansLignesDeBot rend le document stocke tel que la projection DOIT le servir : les actions de score et les eliminations
-// d'un bot (sans identifiant, designees par `place`) n'y sont pas, faute de joueur sous lequel les ranger
-// (`testutil.ReplayChampsNonServis`, `Elimination.Place`). La nullite des tranches est preservee.
-func sansLignesDeBot(d replay.ReplayDocument) replay.ReplayDocument {
-	if d.ScoreActions != nil {
-		kept := make([]replay.ScoreAction, 0, len(d.ScoreActions))
-		for _, a := range d.ScoreActions {
-			if a.XUID != "" {
-				kept = append(kept, a)
-			}
-		}
-		d.ScoreActions = kept
-	}
-	if d.Eliminations != nil {
-		kept := make([]replay.Elimination, 0, len(d.Eliminations))
-		for _, e := range d.Eliminations {
-			if e.XUID != "" {
-				kept = append(kept, e)
-			}
-		}
-		d.Eliminations = kept
-	}
-	return d
 }
 
 // TestProjectionPreserveLaNullite : une tranche nulle reste nulle, une tranche vide reste

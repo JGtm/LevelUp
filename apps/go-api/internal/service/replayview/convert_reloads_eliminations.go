@@ -18,29 +18,11 @@ func toReloadCoverage(v replay.ReloadCoverage) replaydoc.ReloadCoverage {
 	return replaydoc.ReloadCoverage{StoppedFrames: v.StoppedFrames, WithoutPlayer: v.WithoutPlayer}
 }
 
-// identified dit si une ligne du film nomme son joueur : depuis le schema 127 le decodeur publie aussi les lignes d'un bot,
-// qui n'a pas d'identifiant et se designe par `place` (champ que l'API ne sert pas). Une ligne sans identifiant ne peut
-// etre rangee sous aucun joueur : la servir avec un identifiant vide la ferait ranger sous la meme cle que toute autre
-// ligne sans identifiant, donc sous le mauvais joueur. Elle est ecartee, comme les autres champs de bot sans lecteur
-// (`testutil.ReplayChampsNonServis`).
-func identified(xuid string) bool { return xuid != "" }
-
-// sliceOfIdentified projette les lignes dont `xuid` nomme un joueur, la nullite de `in` preservee (cf. [sliceOf]).
-func sliceOfIdentified[S, D any](in []S, xuid func(S) string, conv func(S) D) []D {
-	if in == nil {
-		return nil
-	}
-	out := make([]D, 0, len(in))
-	for _, v := range in {
-		if identified(xuid(v)) {
-			out = append(out, conv(v))
-		}
-	}
-	return out
-}
-
 func toElimination(v replay.Elimination) replaydoc.Elimination {
-	return replaydoc.Elimination{T: v.T, XUID: v.XUID, Victim: v.Victim, Headshot: v.Headshot, Perfect: v.Perfect}
+	return replaydoc.Elimination{
+		T: v.T, XUID: v.XUID, Place: v.Place, Victim: v.Victim, VictimPlace: v.VictimPlace,
+		Headshot: v.Headshot, Perfect: v.Perfect,
+	}
 }
 
 func toEliminationCoverage(replay.EliminationCoverage) replaydoc.EliminationCoverage {
