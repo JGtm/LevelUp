@@ -221,7 +221,7 @@ Dans le dépôt de la brique (`halo-infinite-film-decoder`), sur une branche et 
 - [x] M.2 (2026-11-24 : publiée, https://claude.ai/artifact/FZKvRLrcujrfnFMQac2kYk ; sources `annexes_backlog_1124/maquette_reglages/` ; vue par le pilote dans un navigateur, sans erreur de console ; lignedans l'artefact des vérifications) Maquette au plus près de la vraie application (D-6) : prototype interactif publié en artefact, tous les réglages, répliques comprises,
       compromis préréglages et réglage fin ; ligne dans l artefact des vérifications.
 - [x] M.3 (validée le 2026-11-24 : « Je valide la variante A elle est ouf », D-15) Validation du user (citation consignée ici). Une remarque n'est pas une validation.
-- [ ] M.4 Implémentation conforme à la maquette, après la fusion de C. Migration des préférences existantes.
+- [x] M.4 (`34cce33ae3` à `7c9de6e7de`, fusion `b28e67c5d1` : modèle par table, panneau à cinq rubriques, préréglages souples, Mes vues, accès rapide, point de vue depuis la fiche ; grille `maquette_reglages/conformite.md`, 20 écarts motivés) Implémentation conforme à la maquette, après la fusion de C. Migration des préférences existantes.
 - **Gate M :** gates web, grille de conformité à la maquette, vérification EN LECTURE.
 
 ### Piste R — répliques des Spartans (après M.3 et D-8)
@@ -371,3 +371,13 @@ dépendance est close.
   `persist`, `migration`, `sync`, `halo_infinite` : tout à 0, sauf le test de poste déjà en découverte.
   Révisions montées : `kickoff-2026-11-24b`, `perf-2026-11-24b`, `lusr-2026-11-24b`, `lu2`,
   `placement-2026-11-24`. Gestes de production inscrits.
+- 2026-11-25 — M.4 rendue, relue par le pilote, trois corrections demandées puis fusion (`b28e67c5d1`) :
+  traits du relief gardés par fond (le rendu validé du Plan ne change pas, ni dans la Tactique ni dans
+  « Occupation du terrain ») ; aucun réglage partagé avec une autre page n'est écrit par un préréglage ou une
+  vue (garde-rail `sharedSettings.guard.test.tsx`, 29 réglages couverts) ; « Prendre le point de vue » dans la
+  fiche. Écarts retenus : une vue se rattache à l'un des six enjeux lus du film ; « Réinitialiser » ne touche
+  pas aux traits du relief. Gates du pilote sur la branche intégrée : typecheck à 0 ; vitest de `src/lib`,
+  `match-replay`, Tactique et fiche de match : 10 339 tests, 0 échec. Trois lignes à l'artefact.
+- 2026-11-25 — CI : quatrième cause de rouge, intermittente (`EnvironmentTeardownError` dans un test de la
+  toile du rejeu). Cause : l'échec de la requête du manifeste des véhicules journalisait et redessinait après
+  le démontage. Corrigé avec son test, vu en échec par mutation (`8c4800dde8`).
