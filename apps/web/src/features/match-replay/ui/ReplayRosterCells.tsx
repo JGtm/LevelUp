@@ -25,7 +25,7 @@ import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { catalogText } from '../i18n/catalogLabel'
 import { freshness, msToFrames, READING_FADE } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import { LOADOUT_SRC_BIRTH } from '../../../lib/replay/rosterLogic'
+import { LOADOUT_SRC_BIRTH } from '../../../lib/replay/slotReadings'
 
 type ReplayText = (typeof REPLAY_TEXT)[ReplayLocale]
 

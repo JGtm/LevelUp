@@ -51,6 +51,11 @@ func MountAdminMonitoringRoutes(
 	coverageH := handlers.NewAdminWeaponCoverageHandler(reg.WeaponCoverage)
 	coverageH.Mount(r.With(middleware.NoStore), apiOpt)
 
+	// Rejeux rangés par version de schéma (courants, à l'ancien schéma, illisibles), par titre.
+	// GET /monitoring/replay-schema.
+	replaySchemaH := handlers.NewAdminReplaySchemaHandler(reg.ReplaySchemaReport)
+	replaySchemaH.Mount(r.With(middleware.NoStore), apiOpt)
+
 	// Trous d'intérieur LUSR (garde-fou notes LUSR) + action replay par joueur.
 	// GET /monitoring/lusr-gaps?title= ; POST /monitoring/lusr-gaps/{player}/recompute.
 	lusrH := handlers.NewAdminLUSRGapsHandler(reg.LUSRGapsReport, reg.RecomputeLUSRGapsForPlayer)

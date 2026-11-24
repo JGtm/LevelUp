@@ -19,6 +19,7 @@ import { catalogText } from '../i18n/catalogLabel'
 import type { ReplayLocale } from '../i18n/i18n'
 import type { KillBreakdown } from './killBreakdown'
 import { killBreakdownAt } from './killBreakdown'
+import { playerGesturesAt } from './playerGestureStats'
 import { medalGroupsOf, type MedalGroup } from './playerInstantMedals'
 import type { PlayerShotEstimates, PlayerRank } from './playerInstantEstimates'
 import { playerInstantEstimatesAt } from './playerInstantEstimates'
@@ -108,14 +109,24 @@ export interface PickupsView {
 /**
  * La section des gestes : une valeur par ligne, `null` = pas de ligne (zéro, ou grandeur que le document ne permet pas
  * d'établir). `moveEstimated` : la couverture dit qu'une part des commandes de déplacement n'a pas été publiée, le temps
- * est une estimation. `reloadsMinimum` : le compte de rechargements est un plancher (le film perd des messages sur
- * certaines trames, ou des rechargements sans joueur), l'écran le dit.
+ * est une estimation. `reloadsMinimum` et `gesturesMinimum` : le compte est un plancher (le film perd des messages sur
+ * certaines trames, ou des gestes sans joueur), l'écran le dit. Les sauts se lisent au bouton quand le film le publie
+ * (`jumpsEstimated` faux), sinon ils sont l'estimation dérivée de la vitesse verticale.
  */
 export interface GesturesView {
   sprintMs: number | null
   moveMs: number | null
   moveEstimated: boolean
   jumps: number | null
+  /** Vrai quand `jumps` est dérivé de la vitesse verticale ; faux quand il est lu au bouton de saut. */
+  jumpsEstimated: boolean
+  /** Appuis sur le bouton d'accroupi, lus dans les commandes du film (films à pleine cadence). */
+  crouches: number | null
+  /** Coups de mêlée et lancers amorcés, lus dans les messages du film (films à pleine cadence). */
+  melee: number | null
+  throwStarts: number | null
+  /** Le compte de mêlée et de lancers est un plancher (trame arrêtée, geste sans joueur). */
+  gesturesMinimum: boolean
   reloads: number | null
   reloadsMinimum: boolean
 }
@@ -252,8 +263,14 @@ export function playerInstantViewAt(s: PlayerInstantSources, frame: number): Pla
   const movement = playerMovementStatsAt(s.movement, frame)
   const weaponsPicked = countOrNull(throwsPickups.weaponPickups)
   const grenadesPicked = countOrNull(throwsPickups.grenadePickups)
+  const gestured = playerGesturesAt(s.gestures, frame)
   const sprintMs = positiveOrNull(movement.sprintMs)
-  const jumps = positiveOrNull(movement.jumps)
+  // Le bouton de saut, quand le film le publie, remplace l'estimation dérivée : une lecture vaut mieux qu'un calcul.
+  const jumpsRead = gestured.jumpPresses !== null
+  const jumps = positiveOrNull(jumpsRead ? gestured.jumpPresses : movement.jumps)
+  const crouches = positiveOrNull(gestured.crouches)
+  const melee = positiveOrNull(gestured.melee)
+  const throwStarts = positiveOrNull(gestured.throwStarts)
   const moveMs = positiveOrNull(movement.moveMs)
   const reloaded = playerReloadsAt(s.reloads, frame)
   const reloads = positiveOrNull(reloaded.count)
@@ -269,16 +286,20 @@ export function playerInstantViewAt(s: PlayerInstantSources, frame: number): Pla
     pickups: weaponsPicked === null && grenadesPicked === null ? null : { weapons: weaponsPicked, grenades: grenadesPicked },
     equipment: playerEquipmentStatsAt(s.equipment, frame)?.families ?? [],
     medals: medalGroupsOf(stats.medals, s.doc),
-    gestures:
-      sprintMs === null && moveMs === null && jumps === null && reloads === null
-        ? null
-        : {
-            sprintMs,
-            moveMs,
-            moveEstimated: moveMs !== null && movement.moveEstimated,
-            jumps,
-            reloads,
-            reloadsMinimum: reloads !== null && reloaded.minimum,
-          },
+    gestures: [sprintMs, moveMs, jumps, crouches, melee, throwStarts, reloads].every((v) => v === null)
+      ? null
+      : {
+          sprintMs,
+          moveMs,
+          moveEstimated: moveMs !== null && movement.moveEstimated,
+          jumps,
+          jumpsEstimated: !jumpsRead,
+          crouches,
+          melee,
+          throwStarts,
+          gesturesMinimum: (melee !== null || throwStarts !== null) && gestured.minimum,
+          reloads,
+          reloadsMinimum: reloads !== null && reloaded.minimum,
+        },
   }
 }

@@ -3,7 +3,7 @@
  * lecture, rangées par document (le lobby entier) et par joueur. Sans React.
  *
  * DEUX NIVEAUX, parce que deux durées de vie. Ce qui se lit pour tout le lobby — score et rang, tirs, équipement,
- * sprint, sauts, commande de déplacement et rechargements — ne dépend que du document et de ses joueurs (`readInstantDocSeries`) : changer de joueur ne le
+ * sprint, sauts, commande de déplacement, rechargements et gestes — ne dépend que du document et de ses joueurs (`readInstantDocSeries`) : changer de joueur ne le
  * relit pas. Ce qui se lit pour un joueur — compteurs, éliminations, lancers, médailles — en dépend aussi
  * (`readPlayerInstantSources`). Le rendu appelle chacun dans un `useMemo` et interroge ensuite `playerInstantViewAt`
  * à chaque image, sans rien relire du document.
@@ -24,6 +24,12 @@ import {
   type EquipmentSeriesIndex,
   type PlayerEquipmentSeries,
 } from './playerEquipmentStats'
+import {
+  gestureSeriesOf,
+  readGestureSeries,
+  type GestureSeriesIndex,
+  type PlayerGestureSeries,
+} from './playerGestureStats'
 import { readInstantEstimatesSeries, type InstantEstimatesSeries } from './playerInstantEstimates'
 import { readPlayerInstantSeries, type PlayerInstantSeries } from './playerInstantStats'
 import {
@@ -46,6 +52,7 @@ export interface InstantDocSeries {
   equipment: EquipmentSeriesIndex
   movement: MovementSeriesIndex
   reloads: ReloadSeriesIndex
+  gestures: GestureSeriesIndex
 }
 
 /** readInstantDocSeries lit, pour le lobby entier, ce qui ne dépend pas du joueur ouvert. */
@@ -55,6 +62,7 @@ export function readInstantDocSeries(doc: ReplayDocumentReady, players: readonly
     equipment: readEquipmentSeries(doc, players),
     movement: readMovementSeries(doc, players),
     reloads: readReloadSeries(doc, players),
+    gestures: readGestureSeries(doc, players),
   }
 }
 
@@ -85,6 +93,7 @@ export interface PlayerInstantSources {
   equipment: PlayerEquipmentSeries | null
   movement: PlayerMovementSeries | null
   reloads: PlayerReloadSeries | null
+  gestures: PlayerGestureSeries | null
   estimates: InstantEstimatesSeries
   /** Le nom d'une arme par sa clé du registre, ou `null` quand aucun nom n'est connu. */
   weaponName: (weaponKey: string) => string | null
@@ -114,6 +123,7 @@ export function readPlayerInstantSources(input: PlayerInstantSourcesInput): Play
     equipment: equipmentSeriesOf(docSeries.equipment, player),
     movement: movementSeriesOf(docSeries.movement, player),
     reloads: reloadSeriesOf(docSeries.reloads, player),
+    gestures: gestureSeriesOf(docSeries.gestures, player),
     estimates: docSeries.estimates,
     weaponName: (key) => fromFeed.get(key) || weaponIcons.get(key)?.label || null,
   }

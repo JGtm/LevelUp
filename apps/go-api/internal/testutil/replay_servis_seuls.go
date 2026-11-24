@@ -41,17 +41,7 @@ type BaliseServieDifferente struct {
 // Les deux gardes qui comparent les documents (`service/replayview/parity_test.go` et
 // `internal/filmcorpus/document_shape_jumeaux_test.go`) admettent cette difference et elle seule : la balise stockee
 // et la balise servie doivent valoir exactement `Stocke` et `Servi`.
-var ReplayBalisesServiesDifferentes = map[string]BaliseServieDifferente{
-	"ScoreAction.XUID": balisesXUID,
-	"Elimination.XUID": balisesXUID,
-}
-
-var balisesXUID = BaliseServieDifferente{
-	Stocke: "xuid,omitempty", Servi: "xuid",
-	Motif: "2026-11-24 (decodeur v1.6.1) : un bot n'a pas d'identifiant, la ligne stockee omet `xuid` et le designe par `place` ; " +
-		"le servi ne porte que des lignes de joueur identifie (`ConvertReplay` ecarte les autres), le champ y est toujours " +
-		"present et le contrat l'exige : `omitempty` y contredirait `required` (contracttest).",
-}
+var ReplayBalisesServiesDifferentes = map[string]BaliseServieDifferente{}
 
 // ReplayTypesServisSeuls : les TYPES du document servi qui n'existent que pour un champ de
 // `ReplayChampsServisSeuls`, par nom de type, avec la date de la decision. Les gardes les visitent sans leur

@@ -16,13 +16,8 @@ import type { CardFxScene } from '../model/playerCardReadings'
 import { drawablePlacements } from '../model/spawnedObjects'
 import { frameToMs, msToFrames } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import {
-  buildSlotOwnership,
-  campResolver,
-  vitalityPresence,
-  type ReplayPlayer,
-  type VitalityPresence,
-} from '../../../lib/replay/rosterLogic'
+import { buildSlotOwnership, campResolver, type ReplayPlayer } from '../../../lib/replay/rosterLogic'
+import { vitalityPresence, type VitalityPresence } from '../../../lib/replay/playerState'
 
 /**
  * Estompage COMPLET d'une lecture de vitalité à 6 s : la même graduation que le bouclier

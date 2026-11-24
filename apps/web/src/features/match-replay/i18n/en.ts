@@ -1,6 +1,7 @@
 /** Textes du rejeu 2D en anglais (contrat : `i18nContract.ts`). */
 import type { ReplayText } from './i18nContract'
 import { EN_FEED_LINES } from './feedLines.i18n'
+import { EN_HILL_SEQUENCE } from './hillSequence.i18n'
 import { EN_LIVES } from './lives.i18n'
 import { EN_RELIEF } from './relief.i18n'
 import { EN_RESPAWN_FORECAST } from './respawnForecast.i18n'
@@ -98,6 +99,7 @@ export const EN_TEXT = {
   lives: EN_LIVES,
   relief: EN_RELIEF,
   respawnForecast: EN_RESPAWN_FORECAST,
+  hillSequence: EN_HILL_SEQUENCE,
   feedLines: EN_FEED_LINES,
   killFeedNoAssistHint:
     'Death without an assist: the death carries its event in the film, and it names no one.',

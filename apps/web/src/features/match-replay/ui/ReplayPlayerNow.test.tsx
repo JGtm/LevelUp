@@ -14,7 +14,8 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 
-import { buildPlayers, vitalityPresence, type ReplayPlayer } from '@/lib/replay/rosterLogic'
+import { buildPlayers, type ReplayPlayer } from '@/lib/replay/rosterLogic'
+import { vitalityPresence } from '@/lib/replay/playerState'
 
 import { testReplayDoc } from '../test/testDoc'
 import type { ReadingAges } from '../hooks/useCardScene'

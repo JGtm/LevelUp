@@ -67,6 +67,7 @@ type Coverage struct {
 	DeathsPaths  *DeathsPathsCoverage `json:"deathsPaths,omitempty"`
 	Reloads      *ReloadCoverage      `json:"reloads,omitempty"`
 	Eliminations *EliminationCoverage `json:"eliminations,omitempty"`
+	Gestures     *GestureCoverage     `json:"gestures,omitempty"`
 }
 
 // FallbackHit est un repli du décodeur et son nombre de déclenchements sur la cuisson qui a

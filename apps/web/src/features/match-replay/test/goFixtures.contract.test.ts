@@ -52,13 +52,9 @@ import {
   sceneBounds,
   trackWindow,
 } from '@/lib/replay/replayLogic'
-import {
-  buildPlayers,
-  buildSlotOwnership,
-  groupByTeam,
-  loadoutAt,
-  vitalityPresence,
-} from '@/lib/replay/rosterLogic'
+import { buildPlayers, buildSlotOwnership, groupByTeam } from '@/lib/replay/rosterLogic'
+import { vitalityPresence } from '@/lib/replay/playerState'
+import { loadoutAt } from '@/lib/replay/slotReadings'
 
 import { hasAbilityChargeLayer } from '../model/abilityChargeLogic'
 import { buildEquipmentUsage } from '../model/equipmentUsageLogic'

@@ -15,6 +15,7 @@ import type { ObjectiveFeedStat } from '../model/objectiveFeedLogic'
 import type { FeedLinesText } from './feedLines.i18n'
 import type { EquipmentUsageText } from './equipmentUsage.i18n'
 import type { FramesText } from './frames.i18n'
+import type { HillSequenceText } from './hillSequence.i18n'
 import type { LivesText } from './lives.i18n'
 import type { ReliefText } from './relief.i18n'
 import type { PlayerInstantText } from './playerInstant.i18n'
@@ -205,6 +206,8 @@ export interface ReplayText {
   relief: ReliefText
   /** La probabilité de réapparition (interrupteur du groupe « Vies » et textes du calque) : `respawnForecast.i18n.ts`. */
   respawnForecast: RespawnForecastText
+  /** La suite des collines jouées du Roi de la colline (pastille posée sur la carte) : `hillSequence.i18n.ts`. */
+  hillSequence: HillSequenceText
   /** Les lignes d'objectif du fil hors action nommée (badge, assistances, manche, crâne, colline) : `feedLines.i18n.ts`. */
   feedLines: FeedLinesText
   killFeedNoAssistHint: string

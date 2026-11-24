@@ -123,7 +123,9 @@ describe('playerInstantView — Alpha, tout est lu, à la fin du match', () => {
   })
 
   it('gestes : temps de sprint cumulé et sauts ; sans couverture, ni déplacement ni rechargements', () => {
-    expect(v.gestures).toEqual({ sprintMs: 4000, moveMs: null, moveEstimated: false, jumps: 3, reloads: null, reloadsMinimum: false })
+    expect(v.gestures).toEqual({
+      sprintMs: 4000, moveMs: null, moveEstimated: false, jumps: 3, jumpsEstimated: true, crouches: null, melee: null, throwStarts: null, gesturesMinimum: false, reloads: null, reloadsMinimum: false,
+    })
   })
 
   it('un document qui ne déclare pas le calque des médailles : ni éliminations parfaites ni médaille, jamais un zéro', () => {
@@ -149,7 +151,9 @@ describe('playerInstantView — la fiche suit l’image lue', () => {
     expect(v.kills?.classes.map((c) => [c.classKey, c.atInstant])).toEqual([['shoulder', 2], ['grenade', 0], ['heavy', 1]])
     expect(v.grenadesThrown).toEqual([{ name: 'Fragmentation', count: 2 }, { name: 'Plasma', count: 1 }])
     expect(v.pickups).toEqual({ weapons: 2, grenades: 1 })
-    expect(v.gestures).toEqual({ sprintMs: 2000, moveMs: null, moveEstimated: false, jumps: 2, reloads: null, reloadsMinimum: false })
+    expect(v.gestures).toEqual({
+      sprintMs: 2000, moveMs: null, moveEstimated: false, jumps: 2, jumpsEstimated: true, crouches: null, melee: null, throwStarts: null, gesturesMinimum: false, reloads: null, reloadsMinimum: false,
+    })
   })
 
   it('les valeurs ne reculent jamais d’une image à l’autre', () => {
@@ -312,7 +316,9 @@ describe('playerInstantView — rechargements et temps en commande de déplaceme
 
   it('Alpha : les rechargements et le temps tenu, cumulés à la fin du match', () => {
     const v = lecteur('A', { doc: lu })(FIN)
-    expect(v.gestures).toEqual({ sprintMs: 4000, moveMs: 3000, moveEstimated: false, jumps: 3, reloads: 3, reloadsMinimum: false })
+    expect(v.gestures).toEqual({
+      sprintMs: 4000, moveMs: 3000, moveEstimated: false, jumps: 3, jumpsEstimated: true, crouches: null, melee: null, throwStarts: null, gesturesMinimum: false, reloads: 3, reloadsMinimum: false,
+    })
   })
 
   it('suivent l’image lue, sans reculer', () => {
@@ -346,5 +352,67 @@ describe('playerInstantView — rechargements et temps en commande de déplaceme
     const v = lecteur('E', { doc })(FIN)
     expect(v.gestures?.moveMs).toBeNull()
     expect(v.gestures?.reloads).toBe(1)
+  })
+})
+
+describe('playerInstantView — gestes lus : mêlée, lancers amorcés, accroupi et saut au bouton', () => {
+  const base = instantDoc()
+  const carried = { gated: 0, stoppedFrames: 0, withoutPlayer: 0 }
+  const gestures = [
+    { t: 30, place: 0, kind: 'melee' },
+    { t: 90, place: 0, kind: 'melee' },
+    { t: 95, place: 0, kind: 'throwStart' },
+    { t: 40, place: 1, kind: 'melee' },
+  ]
+  const commands = [
+    { slot: 512, kind: 'crouchCommand', t0: 20, t1: 30 },
+    { slot: 512, kind: 'crouchCommand', t0: 100, t1: 110 },
+    { slot: 512, kind: 'jumpCommand', t0: 50, t1: 50 },
+  ]
+  const docWith = (gestureCoverage: object | undefined, over: Record<string, unknown> = {}) =>
+    instantDoc({
+      coverage: {
+        ...base.coverage,
+        ...(gestureCoverage ? { gestures: gestureCoverage } : {}),
+        stances: { ...base.coverage?.stances, byKind: { sprint: 2, crouchCommand: 2, jumpCommand: 1 } },
+      } as never,
+      gestures,
+      stances: [...base.stances, ...commands],
+      ...over,
+    } as never)
+
+  it('Alpha : mêlée, lancers amorcés et accroupissements cumulés, et le saut lu au bouton à la place de l’estimation', () => {
+    const v = lecteur('A', { doc: docWith(carried) })(FIN)
+    expect(v.gestures).toMatchObject({
+      melee: 2, throwStarts: 1, crouches: 2, jumps: 1, jumpsEstimated: false, gesturesMinimum: false,
+    })
+  })
+
+  it('suivent l’image lue, sans reculer', () => {
+    const lire = lecteur('A', { doc: docWith(carried) })
+    expect(lire(25).gestures).toMatchObject({ melee: null, crouches: 1 })
+    expect(lire(60).gestures).toMatchObject({ melee: 1, throwStarts: null, jumps: 1 })
+    expect(lire(FIN).gestures).toMatchObject({ melee: 2, throwStarts: 1, crouches: 2 })
+  })
+
+  it('un film qui ne porte pas les gestes (porte de cadence) : aucune ligne de mêlée ni de lancer, le saut reste estimé', () => {
+    const sans = instantDoc({
+      coverage: { ...base.coverage, gestures: { ...carried, gated: 9 } } as never,
+      gestures: [],
+    } as never)
+    const v = lecteur('A', { doc: sans })(FIN)
+    expect(v.gestures).toMatchObject({ melee: null, throwStarts: null, crouches: null, jumps: 3, jumpsEstimated: true })
+  })
+
+  it('une trame arrêtée fait de la mêlée et des lancers un minimum', () => {
+    const v = lecteur('A', { doc: docWith({ ...carried, stoppedFrames: 2 }) })(FIN)
+    expect(v.gestures).toMatchObject({ melee: 2, gesturesMinimum: true })
+  })
+
+  it('un joueur qui n’a fait aucun geste n’a pas de ligne (zéro mesuré, jamais écrit)', () => {
+    const v = lecteur('E', { doc: docWith(carried) })(FIN)
+    expect(v.gestures?.melee).toBe(1)
+    expect(v.gestures?.throwStarts).toBeNull()
+    expect(v.gestures?.crouches).toBeNull()
   })
 })

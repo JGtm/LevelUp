@@ -22,7 +22,7 @@ const feed: ReplayFeedEntry[] = [
 
 describe('useReplayAntagonists', () => {
   it('rend la fabrique des index, stable tant que le fil et le roster ne changent pas', () => {
-    const { result, rerender } = renderHook(({ f, p }) => useReplayAntagonists(f, p), {
+    const { result, rerender } = renderHook(({ f, p }) => useReplayAntagonists(f, p, undefined), {
       initialProps: { f: feed, p: players },
     })
     const first = result.current
@@ -33,7 +33,7 @@ describe('useReplayAntagonists', () => {
   })
 
   it('reconstruit la fabrique (donc les index) quand le fil change', () => {
-    const { result, rerender } = renderHook(({ f, p }) => useReplayAntagonists(f, p), {
+    const { result, rerender } = renderHook(({ f, p }) => useReplayAntagonists(f, p, undefined), {
       initialProps: { f: feed, p: players },
     })
     const first = result.current

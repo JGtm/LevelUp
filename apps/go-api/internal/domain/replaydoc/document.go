@@ -90,6 +90,7 @@ type ReplayDocument struct {
 	Identity            *IdentitySection         `json:"identity,omitempty"`
 	Reloads             []Reload                 `json:"reloads,omitempty"`
 	Eliminations        []Elimination            `json:"eliminations,omitempty"`
+	Gestures            []Gesture                `json:"gestures,omitempty"`
 	// Layers dit, CALQUE PAR CALQUE, SOUS QUELLE REVISION DE COUCHE il a ete produit (schema 62).
 	// La cle est la balise JSON du calque a cette racine ; la valeur est `source-...`,
 	// `profile-...`, `grammar-...`, `killsource-...` ou `publication-<schemaVersion>`.

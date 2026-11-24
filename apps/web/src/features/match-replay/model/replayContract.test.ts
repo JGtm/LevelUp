@@ -100,6 +100,8 @@ const NULLABLE_ARRAYS = [
   // des estimations comblées à vide par la frontière ; aucun tableau imbriqué.
   'damage',
   'eliminations',
+  // `gestures` (schéma 127) : le coup de mêlée et le lancer amorcé de chaque joueur, comblés à vide par la frontière.
+  'gestures',
   'hits',
   'shotStats',
   'inventory',
@@ -293,6 +295,7 @@ const NULLABLE_ARRAY_PATHS = [
   'grenadeReads',
   'damage',
   'eliminations',
+  'gestures',
   'grenades',
   'hits',
   'inventory',

@@ -186,12 +186,30 @@ export type ReplayFireBurstReady = Omit<NonNullable<ReplayDocument['bursts']>[nu
 }
 
 /**
+ * ReplayEliminationReady — une élimination dont le tueur et la victime sont des CLÉS DU FILM : le xuid d'un humain, ou
+ * `bot:<nom>` pour un bot, que le décodeur désigne par sa place sans identifiant (`placedRows.ts`). Le tueur est
+ * toujours résolu ; la victime est absente quand le film ne la donne pas ou que sa place ne se résout pas.
+ */
+export type ReplayEliminationReady = Omit<
+  NonNullable<ReplayDocument['eliminations']>[number],
+  'xuid' | 'place' | 'victim' | 'victimPlace'
+> & { xuid: string; victim?: string }
+
+/** ReplayScoreActionReady — une action de score dont le destinataire et la cible sont des clés du film (même règle). */
+export type ReplayScoreActionReady = Omit<
+  NonNullable<ReplayDocument['scoreActions']>[number],
+  'xuid' | 'place' | 'target' | 'targetPlace'
+> & { xuid: string; target?: string }
+
+/**
  * ReplayDocumentReady — le document tel que le rendu a le droit de le lire : chaque
  * tableau est présent, jamais null, et les coordonnées ont retrouvé leur arité.
  */
 export type ReplayDocumentReady = Omit<
   ReplayDocument,
   | 'abilities'
+  | 'eliminations'
+  | 'scoreActions'
   | 'coverage'
   | 'abilityCharges'
   | 'abilityImpulses'
@@ -212,6 +230,7 @@ export type ReplayDocumentReady = Omit<
   | 'grenadeReads'
   | 'damage'
   | 'eliminations'
+  | 'gestures'
   | 'grenades'
   | 'hits'
   | 'identity'
@@ -380,7 +399,8 @@ export type ReplayDocumentReady = Omit<
    */
   grenadeReads: ReplayGrenadeReadReady[]
   damage: NonNullable<ReplayDocument['damage']>
-  eliminations: NonNullable<ReplayDocument['eliminations']>
+  eliminations: ReplayEliminationReady[]
+  gestures: NonNullable<ReplayDocument['gestures']>
   grenades: NonNullable<ReplayDocument['grenades']>
   hits: NonNullable<ReplayDocument['hits']>
   inventory: ReplayInventoryReady[]
@@ -393,7 +413,7 @@ export type ReplayDocumentReady = Omit<
   reloads: NonNullable<ReplayDocument['reloads']>
   respawnCountdowns: NonNullable<ReplayDocument['respawnCountdowns']>
   roundClock: NonNullable<ReplayDocument['roundClock']>
-  scoreActions: NonNullable<ReplayDocument['scoreActions']>
+  scoreActions: ReplayScoreActionReady[]
   shotStats: NonNullable<ReplayDocument['shotStats']>
   roster: ReplayRosterEntryReady[]
   /**

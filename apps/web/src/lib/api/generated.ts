@@ -750,6 +750,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/monitoring/replay-schema": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Monitoring dashboard: stored replays counted by schema version (current, on an older schema, unreadable), per title (admin auth required) */
+        get: operations["getAdminMonitoringReplaySchema"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/monitoring/resources": {
         parameters: {
             query?: never;
@@ -4920,6 +4937,23 @@ export interface components {
             postsync_steps: components["schemas"]["PerfCallStats"][] | null;
             postsync_total: components["schemas"]["PerfCallStats"];
         };
+        AdminReplaySchema: {
+            /** Format: int64 */
+            current_schema: number;
+            generated_at: string;
+            titles: components["schemas"]["AdminReplaySchemaTitle"][] | null;
+        };
+        AdminReplaySchemaTitle: {
+            /** Format: int64 */
+            behind: number;
+            /** Format: int64 */
+            current: number;
+            title_slug: string;
+            /** Format: int64 */
+            total: number;
+            /** Format: int64 */
+            unreadable: number;
+        };
         AdminResourcesResponse: {
             budgets?: {
                 [key: string]: unknown;
@@ -6677,6 +6711,7 @@ export interface components {
             /** Format: int64 */
             filmMajorVersion?: number;
             flagCarries?: components["schemas"]["FlagCarriesCoverage"];
+            gestures?: components["schemas"]["GestureCoverage"];
             grapple?: components["schemas"]["GrappleCoverage"];
             grenadeReads?: components["schemas"]["GrenadeReadCoverage"];
             grenades: components["schemas"]["LayerCoverage"];
@@ -6979,9 +7014,13 @@ export interface components {
             headshot?: boolean;
             perfect?: boolean;
             /** Format: int64 */
+            place?: number;
+            /** Format: int64 */
             t: number;
             victim?: string;
-            xuid: string;
+            /** Format: int64 */
+            victimPlace?: number;
+            xuid?: string;
         };
         EliminationCoverage: Record<string, never>;
         EmpriseEquipment: {
@@ -8160,6 +8199,21 @@ export interface components {
             t: number;
             /** Format: float */
             v: number;
+        };
+        Gesture: {
+            kind: string;
+            /** Format: int64 */
+            place: number;
+            /** Format: int64 */
+            t: number;
+        };
+        GestureCoverage: {
+            /** Format: int64 */
+            gated: number;
+            /** Format: int64 */
+            stoppedFrames: number;
+            /** Format: int64 */
+            withoutPlayer: number;
         };
         GrappleCoverage: {
             /** Format: int64 */
@@ -11998,6 +12052,7 @@ export interface components {
             frameIntervalMs?: number;
             geometry?: components["schemas"]["MapObject"][] | null;
             geometryBounds?: components["schemas"]["Bounds"];
+            gestures?: components["schemas"]["Gesture"][] | null;
             grappleLines?: components["schemas"]["GrappleLine"][] | null;
             grenadeLabels?: components["schemas"]["Label"][] | null;
             grenadeReads?: components["schemas"]["GrenadeRead"][] | null;
@@ -12194,11 +12249,15 @@ export interface components {
         ScoreAction: {
             name: string;
             /** Format: int64 */
+            place?: number;
+            /** Format: int64 */
             points: number;
             /** Format: int64 */
             t: number;
             target?: string;
-            xuid: string;
+            /** Format: int64 */
+            targetPlace?: number;
+            xuid?: string;
         };
         ScoreActionCoverage: {
             /** Format: int64 */
@@ -17580,6 +17639,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminPerfStats"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getAdminMonitoringReplaySchema: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminReplaySchema"];
                 };
             };
             /** @description Error */

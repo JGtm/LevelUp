@@ -21,7 +21,7 @@ const sources = import.meta.glob('/src/**/*.{ts,tsx}', {
   eager: true,
 }) as Record<string, string>
 
-const CANONICAL = '/src/lib/replay/rosterLogic.ts'
+const CANONICAL = '/src/lib/replay/slotReadings.ts'
 
 /**
  * Le littéral qui signe une ré-inline : le repli « la plus proche à venir » compare deux âges
@@ -30,7 +30,7 @@ const CANONICAL = '/src/lib/replay/rosterLogic.ts'
 const AHEAD_FALLBACK = /!ahead\s*\|\|\s*age\s*>\s*ahead\.age/
 
 describe('garde-rail report de lecture canonique', () => {
-  it('le repli « lecture à venir » n’est écrit que dans rosterLogic.ts', () => {
+  it('le repli « lecture à venir » n’est écrit que dans slotReadings.ts', () => {
     const offenders = Object.entries(sources)
       .filter(([path]) => path !== CANONICAL)
       .filter(([, code]) => AHEAD_FALLBACK.test(code))
@@ -42,7 +42,7 @@ describe('garde-rail report de lecture canonique', () => {
     ).toEqual([])
   })
 
-  it('rosterLogic.ts n’en garde qu’UNE seule écriture', () => {
+  it('slotReadings.ts n’en garde qu’UNE seule écriture', () => {
     const code = sources[CANONICAL] ?? ''
     const hits = code.match(new RegExp(AHEAD_FALLBACK.source, 'g')) ?? []
     expect(hits.length, 'nearestReading doit rester le seul porteur de la règle').toBe(1)

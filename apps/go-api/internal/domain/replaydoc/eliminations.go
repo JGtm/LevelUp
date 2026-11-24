@@ -6,12 +6,18 @@ package replaydoc
 // Elimination est UNE élimination d'un joueur : la frame où son compteur d'éliminations monte, le tueur (xuid
 // décimal), la victime quand le film la donne, et deux marques que le jeu écrit dans ses compteurs. Une marque est
 // vraie, fausse ou ABSENTE (inconnue) : un inconnu ne se lit jamais comme un faux. `perfect` ne vaut jamais faux.
+//
+// UN BOT N'A PAS D'IDENTIFIANT : le tueur bot s'écrit `place` (l'index de joueur du film, le même espace que
+// `roster[].filmIndex`), sans `xuid` ; la victime bot s'écrit `victimPlace`, sans `victim`. Un champ et son jumeau
+// `place` s'excluent. Le lecteur rattache la place à son joueur par le roster du document.
 type Elimination struct {
-	T        int    `json:"t"`
-	XUID     string `json:"xuid"`
-	Victim   string `json:"victim,omitempty"`
-	Headshot *bool  `json:"headshot,omitempty"`
-	Perfect  *bool  `json:"perfect,omitempty"`
+	T           int    `json:"t"`
+	XUID        string `json:"xuid,omitempty"`
+	Place       *int   `json:"place,omitempty"`
+	Victim      string `json:"victim,omitempty"`
+	VictimPlace *int   `json:"victimPlace,omitempty"`
+	Headshot    *bool  `json:"headshot,omitempty"`
+	Perfect     *bool  `json:"perfect,omitempty"`
 }
 
 // EliminationCoverage est la couverture du calque des éliminations : sa PRÉSENCE dit que le tableau des scores du film

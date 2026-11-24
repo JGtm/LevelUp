@@ -6,10 +6,9 @@
  * du rechargement et range, par joueur, une série triée ; `playerReloadsAt` répond pour une image par dichotomie, sans
  * rien relire.
  *
- * QUI EST CE JOUEUR. Un index désigne UN joueur quand une seule identité du roster le porte (`rosterEntryKey`). Quand
- * plusieurs identités le portent (un joueur parti puis son remplaçant, des bots qui partagent un index), l'index ne
- * suffit pas : le rechargement revient à l'identité dont la PRÉSENCE publiée couvre son image (`presence`, bornes
- * `from` à `toMax`), à elle seule. Zéro ou plusieurs identités présentes : il ne revient à personne, jamais à tous.
+ * QUI EST CE JOUEUR : `placeOwnerResolver` (`lib/replay/placeOwner.ts`), la seule lecture d'une place du film par le
+ * roster. Un index porté par plusieurs identités se départage par leur présence ; sinon le rechargement ne revient à
+ * personne, jamais à tous.
  *
  * CE QUE LE DOCUMENT PUBLIE. Un rechargement est un fait daté `{t, place}` : ni l'arme, ni la fin du rechargement.
  * Un client compte des rechargements par joueur, rien de plus.
@@ -28,7 +27,8 @@
  */
 import { lastIndexAt } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import { rosterEntryKey, type ReplayPlayer } from '../../../lib/replay/rosterLogic'
+import { placeOwnerResolver } from '../../../lib/replay/placeOwner'
+import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
 import { identityKeys } from './playerInstantStats'
 
 /** Ce que la lecture rend pour une image : tout est cumulé depuis le début du match. */
@@ -54,34 +54,6 @@ export type ReloadSeriesSource = Pick<ReplayDocumentReady, 'reloads' | 'roster' 
 /** Rien n'est établi : la réponse d'un joueur sans série, partagée (elle est immuable). */
 const NOT_ESTABLISHED: PlayerReloads = { count: null, minimum: false }
 
-/** Une identité du roster qui porte un index, avec ses présences. */
-type RosterEntry = ReloadSeriesSource['roster'][number]
-
-/** La présence publiée d'une entrée couvre-t-elle l'image ? La borne haute est `toMax`, à défaut `to`. */
-function presentAt(entry: RosterEntry, frame: number): boolean {
-  return entry.presence.some((p) => frame >= p.from && frame <= (p.toMax ?? p.to))
-}
-
-/**
- * ownerKeyOf rend la clé de roster du joueur qui a rechargé : celle de l'unique identité de l'index, ou à défaut de
- * l'unique identité présente à l'image. `null` : aucune, ou plusieurs.
- */
-function ownerKeyOf(candidates: readonly RosterEntry[] | undefined, frame: number): string | null {
-  if (candidates === undefined) return null
-  const keys = new Set<string>()
-  for (const entry of candidates) {
-    const key = rosterEntryKey(entry)
-    if (key) keys.add(key)
-  }
-  if (keys.size === 1) return [...keys][0]
-  const present = new Set<string>()
-  for (const entry of candidates) {
-    const key = rosterEntryKey(entry)
-    if (key && presentAt(entry, frame)) present.add(key)
-  }
-  return present.size === 1 ? [...present][0] : null
-}
-
 /**
  * readReloadSeries lit, une fois par document, les rechargements de chaque joueur du roster. `players` est le roster du
  * film (`buildPlayers`). Un rechargement dont l'index ne désigne aucune entrée du roster, ou que la présence ne permet
@@ -93,10 +65,9 @@ export function readReloadSeries(doc: ReloadSeriesSource, players: readonly Repl
   const minimum = coverage !== undefined && (coverage.stoppedFrames > 0 || coverage.withoutPlayer > 0)
   const byOwner = new Map<string, number[]>()
   if (coverage !== undefined) {
-    const entriesByPlace = new Map<number, RosterEntry[]>()
-    for (const entry of doc.roster) entriesByPlace.set(entry.filmIndex, [...(entriesByPlace.get(entry.filmIndex) ?? []), entry])
+    const ownerOf = placeOwnerResolver(doc.roster)
     for (const r of doc.reloads) {
-      const key = ownerKeyOf(entriesByPlace.get(r.place), r.t)
+      const key = ownerOf(r.place, r.t)
       if (key === null) continue
       const list = byOwner.get(key)
       if (list) list.push(r.t)

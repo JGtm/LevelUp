@@ -6,7 +6,8 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { buildPlayers, vitalityPresence } from '@/lib/replay/rosterLogic'
+import { buildPlayers } from '@/lib/replay/rosterLogic'
+import { vitalityPresence } from '@/lib/replay/playerState'
 
 import { testReplayDoc } from '../test/testDoc'
 import { gaugePct, playerNowReadings, readingAgeTitle } from './playerNowReadings'

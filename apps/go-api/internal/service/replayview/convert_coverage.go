@@ -62,6 +62,7 @@ func toCoverage(v replay.Coverage) replaydoc.Coverage {
 		DeathsPaths:       ptrOf(v.DeathsPaths, toDeathsPathsCoverage),
 		Reloads:           ptrOf(v.Reloads, toReloadCoverage),
 		Eliminations:      ptrOf(v.Eliminations, toEliminationCoverage),
+		Gestures:          ptrOf(v.Gestures, toGestureCoverage),
 	}
 }
 
