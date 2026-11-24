@@ -187,11 +187,11 @@ Gates communs. Go : `go build ./... && go vet ./...`, tests des paquets touchés
 
 - [~] E.1 (déjà corrigé le 2026-11-22, commit `84ec5ed295` ; étape 0) Ménage du disque : épargner worktrees enregistrés et dépôts à commits non poussés (si 0.2 le dit
       encore à faire), journal de ce qui est épargné.
-- [ ] E.2 (H) Commentaires périmés, libellé de garde-rail faux, doc d'une commande (EN et FR).
-- [ ] E.3 Garde-rail des jetons figé sur 2026 ; garde « processus enfants » qui balaie un dossier disparu ;
+- [x] E.2 (`395b4b82e4` : 23 fichiers, sans effet à l'écran ; le « libellé de garde-rail faux » n'est pas identifié avec certitude, deux messages d'un test de garde corrigés) Commentaires périmés, libellé de garde-rail faux, doc d'une commande (EN et FR).
+- [x] E.3 (`ff05b2b2b5` : garde des dates indifférente à l'année ; le balayage `libs/` de la garde des processus enfants est ACTIF, il désigne les briques du cache de modules : gardé, commentaire corrigé ; test à octet nul introuvable et non reproduit sur ce poste) Garde-rail des jetons figé sur 2026 ; garde « processus enfants » qui balaie un dossier disparu ;
       test au nom de fichier invalide sous Windows.
-- [ ] E.4 (H) Pseudos réels : trois noms de tests, surnoms dans les tests, fichiers hors `apps/`.
-- [ ] E.5 `seed-demo --emit-manifest` n'écrit plus l'identifiant réel du joueur source.
+- [x] E.4 (`389c8731ca` : trois noms de tests et leurs 13 lignes de la référence ; D-14) Pseudos réels : trois noms de tests, surnoms dans les tests, fichiers hors `apps/`.
+- [x] E.5 (`3fe2325280` : champ retiré de l'émission et des deux manifestes, aucun code ne le lisait) `seed-demo --emit-manifest` n'écrit plus l'identifiant réel du joueur source.
 - **Gate E :** gates Go et web, `go test ./...` complet (renommages de tests et référence des tests).
 
 ### Piste F — décodeur : pièces montées (D-10)
@@ -307,3 +307,9 @@ dépendance est close.
   tiennent, aucun P0 ; 4 retenus à corriger dans le lot (journal de fin de résolution faux, acquisition
   publique endormie, course sur `MarkUnhealthy` exposée à chaque démarrage, tâche différée lancée à l'arrêt),
   2 en découverte.
+- 2026-11-24 — PISTE E rendue, contrôlée sur pièces et fusionnée (`0648caa1df`). Gate de l'agent : build,
+  vet, tests de 86 paquets, intégration de quatre paquets, lint des couleurs, typecheck, tous à 0. La
+  comparaison complète des tests à la référence (`check_test_baseline.sh`, 40 minutes) n'est pas jouée : elle
+  fait partie de `make gate-push`, avant `main`. Découvertes : deux autres gardes figées sur « 2026- »
+  (`checkpoint_single_site_test.go`, `no_inline_per_minute_test.go`) ; `pkg/duckdbbackup` lance restic hors
+  garde ; un pseudo reste dans `.gitignore`, deux scripts de banc et l'ADR 0018.
