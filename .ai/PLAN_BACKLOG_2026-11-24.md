@@ -146,12 +146,12 @@ Gates communs. Go : `go build ./... && go vet ./...`, tests des paquets touchés
 ### Piste B — page du match (Go et web)
 
 - [!] B.1 (écarté par le user le 2026-11-24, D-14 : volume nul sur Halo Infinite, 6 éliminations sur Halo 5) Cartes Némésis : victime ambiguë nommée, ou éliminations gardées dans le fil.
-- [ ] B.2 Ordre déterministe des sections « rencontres » et « némésis » de l'onglet d'équipe.
-- [ ] B.3 Éliminations liées à l'objectif sur la fiche de match, par mode ; séries temporelles si elles y ont
+- [x] B.2 (`562b0efb26` : tri à départage stable ; la section « némésis » n'existe plus côté serveur) Ordre déterministe des sections « rencontres » et « némésis » de l'onglet d'équipe.
+- [x] B.3 (`15f9300c3b`, web seul : six colonnes dans la section Objectifs ; séries temporelles non faites, sens seulement en cumul par période, coût moyen, notées en découverte) Éliminations liées à l'objectif sur la fiche de match, par mode ; séries temporelles si elles y ont
       un sens (règle : Sessions, séries temporelles, Escouade).
-- [ ] B.4 Tableau « Impact des coéquipiers » : pas de bloc sans signal d'équipe, largeur minimale des colonnes,
+- [x] B.4 (`3590da8093` : bloc non publié sans équipe alliée lue, colonne de match à 44 px au moins, à juger à l'écran) Tableau « Impact des coéquipiers » : pas de bloc sans signal d'équipe, largeur minimale des colonnes,
       sept ré-exports sans lecteur retirés.
-- [ ] B.5 Champs servis sans lecteur (`nemesis_duels`, `medal_name`, bloc du golden) et fonctions d'analyse
+- [x] B.5 (`c583d1eca3` : champs et fonctions retirés, plus la source d'historique Halo 5 qui ne servait qu'à `LoadMatchSummaries` ; contrat régénéré) Champs servis sans lecteur (`nemesis_duels`, `medal_name`, bloc du golden) et fonctions d'analyse
       sans appelant : supprimés avec leurs tests, `make generate-types`.
 - **Gate B :** gates Go et web, témoins 0.3 comparés (seuls les écarts voulus), contrat OpenAPI régénéré.
 
@@ -249,7 +249,12 @@ dépendance est close.
 
 ## 9. Découvertes
 
-(vide)
+- (piste B) `raw_json.medal_name` des événements de médaille est encore écrit (flux principal, complétion, passe et commande de rattrapage) sans lecteur.
+- (piste B) `MatchViewRepo.LookupMedalMetaByName` sans appelant de production ; `MatchHistoryService.dataAdapter` assigné, jamais lu ; `mapMatchSummaries` de Halo 5 peut-être sans appelant.
+- (piste B) Le pied de la grille de valeurs affiche « 0 » pour une colonne dont toutes les valeurs sont absentes.
+- (piste B) Le snapshot de surface du contrat est en retard sur des ajouts antérieurs.
+- (piste B) Séries temporelles des éliminations d'objectif : possibles en cumul par période, coût moyen.
+- (revue du pool) Le plafond du pool n'est pas tenu si un compte arrive pendant le remplissage (sans effet : la production ne pose pas de plafond) ; un retrait de consentement fait pendant une reconnexion peut être ignoré jusqu'au re-scan suivant (motif antérieur) ; deux tests du pool échouent quand on les répète sous détection de courses.
 
 ## 10. Journal d'exécution
 
@@ -293,3 +298,12 @@ dépendance est close.
   l'ouverture du panneau : 29 aujourd'hui, 14 en A, 19 en B. M.3 attend le user.
 - 2026-11-24 — M.3 close : variante A validée par le user, sans réglage de langue des répliques (D-15). M.4
   part après la fusion de la piste C (mêmes fichiers).
+- 2026-11-24 — PISTE B (B.2 à B.5) rendue, contrôlée par le pilote sur pièces et fusionnée (`0ffd0bd25b`).
+  Gate de l'agent : build, vet, tests des paquets touchés, intégration de `platform/duckdb` et `teammates`,
+  lint, contrat et types frais, typecheck, vitest ciblé (1 801 tests), tous à 0. Rien n'est vu à l'écran :
+  trois lignes à l'artefact des vérifications. B.6 (mètres) repart dans le même worktree.
+- 2026-11-24 — PISTE D rendue (D.1 `a1990f6270`, D.2 `bf3718ed37`, D.3 `94723378ab`), en revue adversariale
+  avant fusion (deux relecteurs Sonnet). Relecteur du pool : 6 constats recevables, 14 conditions qui
+  tiennent, aucun P0 ; 4 retenus à corriger dans le lot (journal de fin de résolution faux, acquisition
+  publique endormie, course sur `MarkUnhealthy` exposée à chaque démarrage, tâche différée lancée à l'arrêt),
+  2 en découverte.
