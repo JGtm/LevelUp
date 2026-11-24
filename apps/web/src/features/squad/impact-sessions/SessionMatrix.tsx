@@ -97,6 +97,22 @@ interface MatrixProps {
   ariaLabel: string
 }
 
+/** Les largeurs de colonnes : joueur, rôles et score fixes ; les colonnes de match se partagent le reste. */
+function MatrixColgroup({ row, view }: { row: ImpactRowView; view: ImpactSessionsView }) {
+  return (
+    <colgroup>
+      <col style={{ width: PLAYER_COL_PX }} />
+      {row.matches.map((m) => (
+        <col key={m.matchId} />
+      ))}
+      {view.roleOrder.map((role) => (
+        <col key={role} style={{ width: ROLE_COL_PX }} />
+      ))}
+      <col style={{ width: SCORE_COL_PX }} />
+    </colgroup>
+  )
+}
+
 export function SessionMatrix({ row, view, impact, text, locale, inkOf, ariaLabel }: MatrixProps) {
   const scoreStates = scoreCellStates(row.players)
   const statesByRole = Object.fromEntries(
@@ -111,16 +127,7 @@ export function SessionMatrix({ row, view, impact, text, locale, inkOf, ariaLabe
       style={{ minWidth: matrixMinWidthPx(row.matches.length, view.roleOrder.length) }}
       aria-label={ariaLabel}
     >
-      <colgroup>
-        <col style={{ width: PLAYER_COL_PX }} />
-        {row.matches.map((m) => (
-          <col key={m.matchId} />
-        ))}
-        {view.roleOrder.map((role) => (
-          <col key={role} style={{ width: ROLE_COL_PX }} />
-        ))}
-        <col style={{ width: SCORE_COL_PX }} />
-      </colgroup>
+      <MatrixColgroup row={row} view={view} />
       <thead>
         <tr className="border-b border-border/60 text-xs font-medium text-muted-foreground">
           <th scope="col" className="py-2 pl-9 pr-2.5 text-left font-medium">
