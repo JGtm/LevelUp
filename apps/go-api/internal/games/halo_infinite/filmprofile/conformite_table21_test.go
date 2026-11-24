@@ -70,7 +70,7 @@ var tablesDuProfil = []struct {
 	{"tableProfilInvariants", 12},        // 12 depuis la fusion du lot 2.2 (2026-09-17) : `Movement.WorldObject` entre dans la table
 	{"tableProfilGrenade", 7},            // lot 3.3.1 (2026-09-17) : l amorce du record de creation de projectile, par BUILD
 	{"tableProfilGrenadeSansSection", 2}, // lot 3.3.1 : les deux majeures sans section d identification
-	{"tableProfilEcriture", 17},          // trois dispositions d ecriture par build, sur trois builds
+	{"tableProfilEcriture", 17},          // 17 lignes : une par couple (build, champ d ecriture) que EcritureDuBuildPour pose a vrai ; un build absent n en a aucune
 }
 
 // lignesAttenduesParTable : le total des quatre, calcule une fois.
