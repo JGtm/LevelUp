@@ -81,6 +81,11 @@ Cible confirmée par le user le 2026-11-24 : la **8.3.0**.
   À coder par la source unique des langues (`config/locales.toml`, repli sur l'anglais), sans comparaison
   de langue en dur. La maquette publiée montre encore ce réglage : il ne se code pas.
 
+- **D-16 — Emprise, part « hors radar » des vies (user, 2026-11-24 : « Ok avec ta reco par rapport aux
+  calculs »).** Le calcul est corrigé maintenant (la portée du radar est transmise au décodeur en unités du
+  jeu) ; les vies déjà rangées se recalculent à la prochaine passe sur le parc, sans passe lancée exprès.
+  Un match sans film garde sa valeur. Item B.7.
+
 ## 2. Orchestration
 
 - Pilote : cette session. Elle ne code pas, relit chaque compte rendu sur pièces, intègre, lance la suite web
@@ -158,6 +163,9 @@ Gates communs. Go : `go build ./... && go vet ./...`, tests des paquets touchés
 - [x] B.6 (`98dfbdace2`, `c1695f5ef0`, `01f81e8414`, `002ed9703a` : helper web et jumeau Go avec garde-rails, radar comparé dans une seule unité, 11 familles de distances converties, 22 champs documentés) « Mètres » (D-11) : chaque distance affichée convertie par un seul helper (Go et web), avec son
       garde-rail ; noms internes trompeurs (`metersPerPixel` et voisins) laissés si aucun affichage n'en
       dépend, renommage noté en découverte sinon.
+
+- [ ] B.7 Emprise (D-16) : portée du radar convertie avant d'être transmise au décodeur ; lecteurs de
+      `radar_m` et `beyond_ms` relus ; la prochaine passe sur le parc recalcule l'existant.
 
 ### Piste C — rejeu (web, un peu de Go)
 
@@ -352,3 +360,4 @@ dépendance est close.
   complétion, forme « document », fonction sans appelant, durée « manifestement fausse » (humains seuls,
   marge de 10 s), test discriminant, fenêtre de la Mainmise, commentaires du compteur. En découverte : 524
   temps de jeu écrêtés sur la base du poste par la révision non publiée du 22/11.
+- 2026-11-24 — D-16 : le user retient la recommandation sur l'Emprise ; B.7 lancé dans le worktree de la piste B.
