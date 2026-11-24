@@ -10,6 +10,7 @@
  */
 import { screenLengthPx } from '@/lib/replay/screenSizes'
 import type { TacticalContribution } from '@/lib/api/types'
+import { gameUnitsToMeters } from '@/lib/formatters/distance'
 
 /** Le rôle de l'autre joueur : le tueur d'une mort, la victime d'un frag. */
 export type RoleDuPoint = 'tueur' | 'victime'
@@ -109,10 +110,10 @@ function fini(p: PointMonde | undefined): p is PointMonde {
   return p !== undefined && Number.isFinite(p.x) && Number.isFinite(p.y)
 }
 
-/** distanceEnMetres — la distance 2D entre l'événement et l'autre joueur, au mètre ; `null` si un point manque. */
+/** distanceEnMetres — la distance 2D entre l'événement et l'autre joueur, en MÈTRES au mètre (les points sont en unités du jeu) ; `null` si un point manque. */
 export function distanceEnMetres(c: Pick<TacticalContribution, 'point' | 'autre_point'>): number | null {
   if (!fini(c.point) || !fini(c.autre_point)) return null
-  return Math.round(Math.hypot(c.autre_point.x - c.point.x, c.autre_point.y - c.point.y))
+  return Math.round(gameUnitsToMeters(Math.hypot(c.autre_point.x - c.point.x, c.autre_point.y - c.point.y)))
 }
 
 /** pointsDeLaCouche — les traits et points à peindre pour les contributions de la zone. */

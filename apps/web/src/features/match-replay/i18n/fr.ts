@@ -1,4 +1,6 @@
 /** Textes du rejeu 2D en français (contrat : `i18nContract.ts`). */
+import { gameUnitsToMeters } from '@/lib/formatters/distance'
+
 import type { ReplayText } from './i18nContract'
 import { FR_FEED_LINES } from './feedLines.i18n'
 import { FR_LIVES } from './lives.i18n'
@@ -33,8 +35,8 @@ export const FR_TEXT = {
   contractUnknownKeysFmt: (keys) => `clé(s) inconnue(s) : ${keys}`,
   contractInvalidFieldFmt: (path, detail) => `${path} : ${detail}`,
   contractMalformed: 'document non conforme au contrat',
-  offscreenMarkerFmt: (name, meters) => `${name} · ${Math.round(meters)} m`,
-  offscreenGroupMarkerFmt: (count, meters) => `${count} joueurs · ${Math.round(meters)} m`,
+  offscreenMarkerFmt: (name, units) => `${name} · ${Math.round(gameUnitsToMeters(units))} m`,
+  offscreenGroupMarkerFmt: (count, units) => `${count} joueurs · ${Math.round(gameUnitsToMeters(units))} m`,
   openAtNoOriginTitle: 'Instant non calé sur cet artefact',
   openAtNoOriginDescription:
     'Le lien demandait un instant précis, mais l’origine du film n’est pas établie pour ce rejeu : l’instant ne peut pas être atteint exactement. Régénération nécessaire — le rejeu s’ouvre au début.',

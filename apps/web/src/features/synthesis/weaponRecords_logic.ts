@@ -13,6 +13,7 @@
  * Aucun libellé produit ici ne dit « portée de l'arme » : c'est un usage mesuré du joueur.
  */
 import type { WeaponDistanceRecordRow } from '@/lib/api/types'
+import { gameUnitsToMeters } from '@/lib/formatters/distance'
 import { intlLocale } from '@/lib/formatters'
 import type { ManifestLocale } from '@/lib/i18n/format'
 
@@ -34,8 +35,24 @@ export const RULER_LABEL_MIN_GAP_PX = 14
  *  réel n'est pas mesurable avant le rendu et une erreur d'un ou deux pixels ne fait pas se
  *  chevaucher deux libellés séparés de 14 px. */
 export const RULER_CHAR_PX = 6.8
-/** Pas des graduations, en mètres. */
+/** Arrondi de la borne haute de l'axe, en mètres (la dizaine). */
 export const RULER_TICK_STEP_M = 10
+/** Les pas de graduation possibles, en mètres : le plus fin qui garde au plus 12 repères est retenu. */
+const RULER_TICK_STEPS_M = [10, 25, 50, 100, 250, 500] as const
+const RULER_MAX_TICKS = 12
+
+/** Le pas des graduations d'une règle de `maxMeters` mètres : lisible, jamais plus de 12 repères. */
+export function rulerTickStep(maxMeters: number): number {
+  return RULER_TICK_STEPS_M.find((s) => maxMeters / s <= RULER_MAX_TICKS) ?? RULER_TICK_STEPS_M[RULER_TICK_STEPS_M.length - 1]
+}
+
+/**
+ * Une ligne du contrat écrite en mètres : `record_m` et `median_m` sont servis en UNITÉS DU JEU, la règle
+ * et son infobulle lisent des mètres (`lib/formatters/distance`). La conversion se fait ici, une fois.
+ */
+export function weaponRecordRowInMeters(row: WeaponDistanceRecordRow): WeaponDistanceRecordRow {
+  return { ...row, record_m: gameUnitsToMeters(row.record_m), median_m: gameUnitsToMeters(row.median_m) }
+}
 /** Largeur de repli quand le conteneur n'est pas encore mesuré (ou sans ResizeObserver). */
 export const RULER_FALLBACK_WIDTH_PX = 960
 
@@ -192,7 +209,8 @@ export function weaponRecordsLayout(
       : bottomStart
 
   const ticks: number[] = []
-  for (let m = 0; m <= maxMeters; m += RULER_TICK_STEP_M) ticks.push(m)
+  const step = rulerTickStep(maxMeters)
+  for (let m = 0; m <= maxMeters; m += step) ticks.push(m)
 
   return {
     width,

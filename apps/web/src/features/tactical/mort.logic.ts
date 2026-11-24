@@ -16,6 +16,7 @@ import type {
   TacticalSequence,
 } from '@/lib/api/types'
 import { intlLocale } from '@/lib/formatters'
+import { gameUnitsToMeters } from '@/lib/formatters/distance'
 import type { Locale } from '@/lib/i18n/locale'
 
 import type { TacticalText } from './i18n'
@@ -91,7 +92,7 @@ export function totalDeLaRose(rose: readonly number[]): number {
   return rose.reduce((s, n) => s + n, 0)
 }
 
-/** metresEntiers — un nombre de mètres au mètre. */
+/** metresEntiers — un nombre de MÈTRES au mètre (les distances du contrat, en unités du jeu, se convertissent avant). */
 export function metresEntiers(v: number, locale: Locale): string {
   return new Intl.NumberFormat(intlLocale(locale), { maximumFractionDigits: 0 }).format(Math.round(v))
 }
@@ -130,8 +131,8 @@ function ligneDeCoequipier(t: TacticalText, m: TacticalCoequipier, locale: Local
     role: 'coequipier',
     texte: nom,
     marque: m.dans_le_rayon ? 'plein' : 'creux',
-    distanceMort: m.distance_mort_m == null ? null : metresEntiers(m.distance_mort_m, locale),
-    distanceTueur: m.distance_tueur_m == null ? null : metresEntiers(m.distance_tueur_m, locale),
+    distanceMort: m.distance_mort_m == null ? null : metresEntiers(gameUnitsToMeters(m.distance_mort_m), locale),
+    distanceTueur: m.distance_tueur_m == null ? null : metresEntiers(gameUnitsToMeters(m.distance_tueur_m), locale),
   }
 }
 
@@ -254,7 +255,7 @@ export function distancesDEtape(t: TacticalText, seq: TacticalSequence, etape: n
       cle: `${a.role}-${a.xuid ?? a.gamertag ?? ''}`,
       role: a.role === 'tueur' ? 'tueur' : 'coequipier',
       nom: a.gamertag || t.mortDetailUnnamed,
-      distance: p ? metresEntiers(Math.hypot(p.x - e.centre.x, p.y - e.centre.y), locale) : null,
+      distance: p ? metresEntiers(gameUnitsToMeters(Math.hypot(p.x - e.centre.x, p.y - e.centre.y)), locale) : null,
       marque: a.role !== 'coequipier' || !p ? 'aucune' : (e.dans_le_rayon_xuids ?? []).includes(a.xuid ?? '') ? 'plein' : 'creux',
     })
   }

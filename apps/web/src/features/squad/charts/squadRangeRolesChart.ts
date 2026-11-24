@@ -24,6 +24,7 @@ import {
   legendEntries,
 } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
+import { gameUnitsToMeters } from '@/lib/formatters/distance'
 
 import {
   moyenneGlissante,
@@ -100,7 +101,7 @@ interface EchartPointDatum {
 
 /** Bornes de l'axe Y : l'amplitude observée, arrondie au mètre et jamais plus serrée
  *  que ±`MIN_AMPLITUDE_M` — une escouade homogène ne doit pas voir son bruit grossi. */
-const MIN_AMPLITUDE_M = 5
+const MIN_AMPLITUDE_M = gameUnitsToMeters(5)
 
 function bornesY(
   series: SeriePortee[],

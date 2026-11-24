@@ -59,9 +59,9 @@ describe('fiche d’une mort', () => {
   it('le tueur d’abord, puis les coéquipiers visibles du plus proche au plus loin, puis en attente', () => {
     const l = lignesDeLaFiche(t, MORT_COMPLETE, 'fr')
     expect(l.map((x) => x.role)).toEqual(['tueur', 'coequipier', 'coequipier', 'coequipier'])
-    expect(l[0]).toMatchObject({ texte: 'Hollow Vex · BR75', distanceMort: '15' })
-    expect(l[1]).toMatchObject({ texte: 'Kestrel 77', marque: 'plein', distanceMort: '12', distanceTueur: '27' })
-    expect(l[2]).toMatchObject({ texte: 'NovaDrift', marque: 'creux', distanceMort: '20' })
+    expect(l[0]).toMatchObject({ texte: 'Hollow Vex · BR75', distanceMort: '46' })
+    expect(l[1]).toMatchObject({ texte: 'Kestrel 77', marque: 'plein', distanceMort: '37', distanceTueur: '82' })
+    expect(l[2]).toMatchObject({ texte: 'NovaDrift', marque: 'creux', distanceMort: '61' })
     expect(l[3]).toMatchObject({ texte: 'Brisk Otter · en attente de réapparition', marque: 'aucune', distanceMort: null })
   })
 
@@ -126,8 +126,8 @@ describe('scènes du plan', () => {
 
   it('distances d’étape : au centre du cercle, « — » sans position', () => {
     const d = distancesDEtape(t, SEQUENCE, 4, 'fr')
-    expect(d.find((x) => x.role === 'tueur')?.distance).toBe('15')
-    expect(d.find((x) => x.role === 'coequipier')?.distance).toBe('12')
+    expect(d.find((x) => x.role === 'tueur')?.distance).toBe('46')
+    expect(d.find((x) => x.role === 'coequipier')?.distance).toBe('37')
     expect(distancesDEtape(t, SEQUENCE, 7, 'fr').find((x) => x.role === 'tueur')?.distance).toBeNull()
   })
 })

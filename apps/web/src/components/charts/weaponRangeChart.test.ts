@@ -12,6 +12,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { EChartsThemeColors } from '@/lib/echarts/themeColors'
 import type { WeaponRangeRow, WeaponRangeSide } from '@/lib/api/types'
+import { gameUnitsToMeters as M } from '@/lib/formatters/distance'
 
 import {
   WEAPON_RANGE_ROW_PX,
@@ -53,6 +54,8 @@ const side = (o: Partial<WeaponRangeSide>): WeaponRangeSide => ({
   ...o,
 })
 
+// LES LIGNES DU CONTRAT SONT EN UNITÉS DU JEU : `weaponRangeLines` les convertit en mètres (× 3,048) ;
+// le graphe, son axe et son infobulle lisent des mètres (`M` ci-dessous).
 const ROWS: WeaponRangeRow[] = [
   {
     weapon_key: 'hinf_melee',
@@ -146,7 +149,8 @@ describe('weaponRangeChartHeight / weaponRangeAxisMax', () => {
   })
 
   it('l’axe est COMMUN aux deux côtés : il couvre le plus grand p90, arrondi aux 5 m', () => {
-    expect(weaponRangeAxisMax(weaponRangeLines(ROWS))).toBe(55)
+    // 52 unités du jeu = 158,5 m -> 160.
+    expect(weaponRangeAxisMax(weaponRangeLines(ROWS))).toBe(160)
   })
 
   it('plancher de 5 m : un corpus tout au contact ne dégénère pas l’axe', () => {
@@ -168,15 +172,15 @@ describe('buildWeaponRangeOption — l’axe et la série', () => {
       'hinf_commando',
       'Mêlée',
     ])
-    expect(o.xAxis.max).toBe(55)
+    expect(o.xAxis.max).toBe(160)
     // Les graduations de distance ne collent pas au dernier bâton.
     expect(o.xAxis.axisLabel.margin).toBe(WEAPON_RANGE_X_LABEL_GAP_PX)
     expect(o.series[0].type).toBe('custom')
     // Une donnée par ligne, porteuse de la borne d'axe (dimensions encodées en x).
     expect(o.series[0].data).toEqual([
-      [0, 0, 55],
-      [1, 0, 55],
-      [2, 0, 55],
+      [0, 0, 160],
+      [1, 0, 160],
+      [2, 0, 160],
     ])
   })
 })
@@ -200,8 +204,8 @@ describe('renderItem — la géométrie des deux bâtons', () => {
 
   it('le bâton court de p10 à p90 (coordonnées de l’API, jamais recalculées)', () => {
     const rect = melee().children[0]
-    expect(rect.shape.x).toBe(0.9 * 2)
-    expect(rect.shape.width).toBeCloseTo((2.6 - 0.9) * 2, 10)
+    expect(rect.shape.x).toBeCloseTo(M(0.9) * 2, 10)
+    expect(rect.shape.width).toBeCloseTo((M(2.6) - M(0.9)) * 2, 10)
     expect(rect.shape.height).toBe(7)
   })
 
@@ -209,10 +213,10 @@ describe('renderItem — la géométrie des deux bâtons', () => {
     const losange = melee().children[1]
     const cy = 100 + 2 * WEAPON_RANGE_ROW_PX - 5.5
     expect(losange.shape.points).toEqual([
-      [1.4 * 2, cy - 5],
-      [1.4 * 2 + 5, cy],
-      [1.4 * 2, cy + 5],
-      [1.4 * 2 - 5, cy],
+      [M(1.4) * 2, cy - 5],
+      [M(1.4) * 2 + 5, cy],
+      [M(1.4) * 2, cy + 5],
+      [M(1.4) * 2 - 5, cy],
     ])
     expect(losange.style.stroke).toBe('#ffffff')
   })
@@ -239,8 +243,8 @@ describe('infobulle', () => {
   it('donne les trois valeurs des deux côtés', () => {
     const html = tooltip(2)
     expect(html).toContain('<b>Mêlée</b> — p10 · médiane · p90')
-    expect(html).toContain('Mes frags — 133 : 0.9 m · <b>1.4 m</b> · 2.6 m')
-    expect(html).toContain('Mes morts — 96 : 0.9 m · <b>1.5 m</b> · 2.8 m')
+    expect(html).toContain(`Mes frags — 133 : ${M(0.9)} m · <b>${M(1.4)} m</b> · ${M(2.6)} m`)
+    expect(html).toContain(`Mes morts — 96 : ${M(0.9)} m · <b>${M(1.5)} m</b> · ${M(2.8)} m`)
   })
 
   it('le côté absent n’a pas de ligne — ni zéro, ni absence dite', () => {

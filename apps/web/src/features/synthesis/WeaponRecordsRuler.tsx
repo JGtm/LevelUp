@@ -42,6 +42,7 @@ import {
   formatMeters,
   labelBaselineY,
   resolveRecordLabel,
+  weaponRecordRowInMeters,
   weaponRecordsLayout,
   type RulerItem,
 } from './weaponRecords_logic'
@@ -94,7 +95,8 @@ export function WeaponRecordsRuler({ records, playerSlug }: WeaponRecordsRulerPr
   const width = useMeasuredWidth(hostRef)
   // Le contrat sérialise toujours `weapons` (jamais `null`), mais le type généré ne le sait
   // pas : le repli vide protège le rendu sans inventer de donnée.
-  const weapons = useMemo(() => records.weapons ?? [], [records.weapons])
+  // Les distances du contrat sont en unités du jeu : la règle, ses libellés et son infobulle sont en mètres.
+  const weapons = useMemo(() => (records.weapons ?? []).map(weaponRecordRowInMeters), [records.weapons])
   const layout = useMemo(() => weaponRecordsLayout(weapons, locale, width), [weapons, locale, width])
   const [hover, setHover] = useState<{ item: RulerItem; x: number; y: number } | null>(null)
 

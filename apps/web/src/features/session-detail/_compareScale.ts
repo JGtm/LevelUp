@@ -11,6 +11,7 @@
  */
 import type { MatchRangeBlock, SessionCompareEntry, SessionDetailMatchRow } from '@/lib/api/types'
 import { cumulativeSigned } from '@/lib/charts/cumulativeSeries'
+import { gameUnitsToMeters } from '@/lib/formatters/distance'
 import { netLives } from '@/lib/charts/netLives'
 import { engagementGapEvents } from '@/lib/charts/engagementGap'
 
@@ -68,7 +69,7 @@ export function rangeDeltaDomain(
   const ecarts = [a, b].flatMap(
     (bloc) =>
       bloc?.profiles?.flatMap((p) =>
-        (p.players ?? []).filter((j) => j.measured > 0).map((j) => Math.abs(j.lobby_delta_m)),
+        (p.players ?? []).filter((j) => j.measured > 0).map((j) => gameUnitsToMeters(Math.abs(j.lobby_delta_m))),
       ) ?? [],
   )
   if (ecarts.length === 0) return undefined

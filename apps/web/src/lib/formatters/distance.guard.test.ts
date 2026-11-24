@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { scanSources } from '../archScan.testutil'
+import { SCAN_TIMEOUT_MS, scanSources } from '../archScan.testutil'
 
 const FACTEUR = /(?<![\d.])0?\.3048(?!\d)|(?<![\d.])3\.048(?!\d)/
 
@@ -21,7 +21,7 @@ describe('garde-rail : un seul foyer du facteur unités → mètres', () => {
       .filter((s) => s.rel !== 'lib/formatters/distance.ts' && FACTEUR.test(s.text))
       .map((s) => s.rel)
     expect(fautifs).toEqual([])
-  })
+  }, SCAN_TIMEOUT_MS)
 
   it('et distance.ts le porte bien — sans quoi ce test ne garderait rien', () => {
     expect(FACTEUR.test(readFileSync(join(__dirname, 'distance.ts'), 'utf8'))).toBe(true)

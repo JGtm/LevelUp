@@ -1,4 +1,6 @@
 /** Textes du rejeu 2D en anglais (contrat : `i18nContract.ts`). */
+import { gameUnitsToMeters } from '@/lib/formatters/distance'
+
 import type { ReplayText } from './i18nContract'
 import { EN_FEED_LINES } from './feedLines.i18n'
 import { EN_LIVES } from './lives.i18n'
@@ -33,8 +35,8 @@ export const EN_TEXT = {
   contractUnknownKeysFmt: (keys) => `unknown key(s): ${keys}`,
   contractInvalidFieldFmt: (path, detail) => `${path}: ${detail}`,
   contractMalformed: 'document does not match the contract',
-  offscreenMarkerFmt: (name, meters) => `${name} · ${Math.round(meters)} m`,
-  offscreenGroupMarkerFmt: (count, meters) => `${count} players · ${Math.round(meters)} m`,
+  offscreenMarkerFmt: (name, units) => `${name} · ${Math.round(gameUnitsToMeters(units))} m`,
+  offscreenGroupMarkerFmt: (count, units) => `${count} players · ${Math.round(gameUnitsToMeters(units))} m`,
   openAtNoOriginTitle: 'Instant not calibrated on this artifact',
   openAtNoOriginDescription:
     'The link asked for a precise instant, but the film origin is not established for this replay: the instant cannot be reached exactly. Regeneration needed — the replay opens from the start.',
