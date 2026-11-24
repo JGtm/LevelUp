@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/observability"
+
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
@@ -140,5 +142,47 @@ func TestCoupDEnvoi_MatchAbsentDuRegistre(t *testing.T) {
 	var n int
 	if err := db.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM match_registry`).Scan(&n); err != nil || n != 0 {
 		t.Fatalf("lignes = %d (err %v), attendu 0", n, err)
+	}
+}
+
+// Entre la lecture de l'état du match (segment de lecture) et son écriture (segment d'écriture),
+// le rattrapage peut avoir écrit : le plan lu est périmé. La résolution se refait sous le segment
+// d'écriture, sur ce que la base porte alors. Ici le rattrapage a posé, entre les deux, exactement
+// ce que la publication allait écrire : la résolution fraîche ne trouve plus rien à changer, aucun
+// match n'est écrit (un plan périmé l'aurait réécrit).
+func TestCoupDEnvoi_ResoutSousLeWriterQuandUnAutreAEcritEntreLesDeux(t *testing.T) {
+	db := baseRegistre(t)
+	start := time.Date(2026, 9, 2, 18, 0, 0, 0, time.UTC)
+	inscrireAuRegistre(t, db, "m-course", start, 0)
+	poserDuree(t, db, "m-course", 600)
+	inscrireJoueur(t, db, "m-course", "2603225103667623", start.Add(time.Second), 599)
+
+	acquis := 0
+	d := depsSurBase(db, &acquis)
+	lectureFaite := d.WithRead
+	d.WithRead = func(ctx context.Context, step string, fn func(*sql.DB)) {
+		lectureFaite(ctx, step, fn)
+		// Le rattrapage écrit ce que la publication s'apprête à écrire (coup d'envoi du rejeu, temps de jeu).
+		if _, err := db.ExecContext(ctx, `UPDATE match_registry SET real_start_time = ?, real_start_source = 'film'
+			WHERE match_id = 'm-course'`, start.Add(26304*time.Millisecond)); err != nil {
+			t.Errorf("écriture intercalée: %v", err)
+		}
+		if _, err := db.ExecContext(ctx, `UPDATE match_participants SET time_played_seconds = 573
+			WHERE match_id = 'm-course'`); err != nil {
+			t.Errorf("écriture intercalée: %v", err)
+		}
+	}
+	b := &bilanDerivations{}
+	t0 := int64(26_304)
+	avant := observability.LoadCounterT("halo_infinite", CompteurCoupDEnvoiEcrits)
+	ecrireCoupsDEnvoi(context.Background(), d, b, preparerCoupsDEnvoi(context.Background(), d, b, []artefactLu{lu("m-course", &t0)}))
+	if got := observability.LoadCounterT("halo_infinite", CompteurCoupDEnvoiEcrits) - avant; got != 0 {
+		t.Errorf("matchs écrits = %d, attendu 0 : le plan lu avant l'écriture intercalée était périmé", got)
+	}
+	if b.aEchoue("m-course") {
+		t.Error("le match est en échec")
+	}
+	if _, src, tp := etatCoupDEnvoi(t, db, "m-course", "2603225103667623"); src != "film" || tp != 573 {
+		t.Errorf("état = (%q, %d), attendu (film, 573)", src, tp)
 	}
 }

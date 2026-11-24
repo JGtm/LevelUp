@@ -182,3 +182,44 @@ func TestResolve_DureeDuRegistreFausse(t *testing.T) {
 		t.Fatalf("temps de jeu = %+v : la durée est fausse, les valeurs rangées restent", p.TimePlayed)
 	}
 }
+
+// Un coup d'envoi `film` rangé, gardé parce que le rejeu n'est plus lisible, est contrôlé contre la
+// fenêtre du match comme un coup d'envoi lu : hors fenêtre il est refusé (compté), et le match
+// retombe sur l'estimation. Dans la fenêtre, ou dans la fenêtre bornée par le plus long temps de
+// jeu quand la durée du registre est fausse, il est gardé tel quel.
+func TestResolve_FilmGardeControleContreLaFenetre(t *testing.T) {
+	start := time.Date(2026, 11, 18, 12, 0, 0, 0, time.UTC)
+	cas := []struct {
+		nom      string
+		duree    int
+		joue     int
+		offset   float64
+		garde    bool
+		source   timeline.KickoffSource
+		horsBorn bool
+	}{
+		{"dans la fenêtre", 600, 580, 26, true, timeline.KickoffSourceFilm, false},
+		{"après la durée du match", 600, 580, 700, false, timeline.KickoffSourceAPI, true},
+		{"durée fausse, dans le temps de jeu", 21, 462, 38, true, timeline.KickoffSourceFilm, false},
+		{"durée fausse, au-delà du temps de jeu", 21, 462, 700, false, timeline.KickoffSourceAPI, true},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			d := c.duree
+			m := Match{
+				MatchID: "m1", StartUTC: start, DurationSeconds: &d,
+				RealStart: at(start, c.offset), Source: timeline.KickoffSourceFilm,
+				Participants: []Participant{
+					{XUID: "2603225103667623", FirstJoined: at(start, 20), PresentAtBeginning: true, TimePlayed: ip(c.joue)},
+				},
+			}
+			for _, f := range []Film{{State: FilmAbsent}, {State: FilmUnreadable}} {
+				p := Resolve(m, f)
+				if p.FilmKept != c.garde || p.Kickoff.Source != c.source || p.Kickoff.FilmOutOfBounds != c.horsBorn {
+					t.Fatalf("film %v : gardé=%v source=%q horsBornes=%v, attendu %v/%q/%v",
+						f.State, p.FilmKept, p.Kickoff.Source, p.Kickoff.FilmOutOfBounds, c.garde, c.source, c.horsBorn)
+				}
+			}
+		})
+	}
+}
