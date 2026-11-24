@@ -74,6 +74,13 @@ Cible confirmée par le user le 2026-11-24 : la **8.3.0**.
   - Cartes Némésis (B.1) : écarté, entrée retirée du backlog.
   - Pseudos réels (E.4) : limité aux trois noms de tests.
 
+- **D-15 — maquette des réglages validée par le user le 2026-11-24 : variante A (rubriques en onglets).** Citation :
+  « hyper stylé !!!! Je valide la variante A elle est ouf !!! ». La variante B (repliable avec recherche)
+  n'est pas retenue. Une seule modification demandée : **aucun réglage de langue des répliques**. Les
+  répliques sont en français quand l'interface est en français, en anglais dans toute autre langue.
+  À coder par la source unique des langues (`config/locales.toml`, repli sur l'anglais), sans comparaison
+  de langue en dur. La maquette publiée montre encore ce réglage : il ne se code pas.
+
 ## 2. Orchestration
 
 - Pilote : cette session. Elle ne code pas, relit chaque compte rendu sur pièces, intègre, lance la suite web
@@ -205,7 +212,7 @@ Dans le dépôt de la brique (`halo-infinite-film-decoder`), sur une branche et 
       où ils vivent, ce qu'ils règlent, leurs défauts. Rendu : `annexes_backlog_1124/reglages_inventaire.md`.
 - [x] M.2 (2026-11-24 : publiée, https://claude.ai/artifact/FZKvRLrcujrfnFMQac2kYk ; sources `annexes_backlog_1124/maquette_reglages/` ; vue par le pilote dans un navigateur, sans erreur de console ; lignedans l'artefact des vérifications) Maquette au plus près de la vraie application (D-6) : prototype interactif publié en artefact, tous les réglages, répliques comprises,
       compromis préréglages et réglage fin ; ligne dans l artefact des vérifications.
-- [ ] M.3 Validation du user (citation consignée ici). Une remarque n'est pas une validation.
+- [x] M.3 (validée le 2026-11-24 : « Je valide la variante A elle est ouf », D-15) Validation du user (citation consignée ici). Une remarque n'est pas une validation.
 - [ ] M.4 Implémentation conforme à la maquette, après la fusion de C. Migration des préférences existantes.
 - **Gate M :** gates web, grille de conformité à la maquette, vérification EN LECTURE.
 
@@ -284,3 +291,5 @@ dépendance est close.
   retour, Mes vues, vue par défaut, vue par mode), accès rapide épinglable, variantes A (onglets) et B
   (repliable avec recherche), comparaison avec le panneau actuel, répliques intégrées. Commandes visibles à
   l'ouverture du panneau : 29 aujourd'hui, 14 en A, 19 en B. M.3 attend le user.
+- 2026-11-24 — M.3 close : variante A validée par le user, sans réglage de langue des répliques (D-15). M.4
+  part après la fusion de la piste C (mêmes fichiers).
