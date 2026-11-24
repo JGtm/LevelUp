@@ -494,8 +494,13 @@ func (p *poolImpl) appendSlotLocked(ctx context.Context, src CredentialSource, r
 
 // MarkUnhealthy invalide un token après 401/403 et déclenche un Resolver.Refresh asynchrone.
 func (p *poolImpl) MarkUnhealthy(gamertag string, reason error) {
+	// Index ET slot lus sous le même verrou : un ajout concurrent (résolution de fond, re-scan) réalloue p.slots.
 	p.slotMu.RLock()
 	slotIdx, ok := p.slotsByKey[gtKey(p.titleSlug, gamertag)]
+	var slot *slot
+	if ok {
+		slot = p.slots[slotIdx]
+	}
 	p.slotMu.RUnlock()
 
 	if !ok {
@@ -503,8 +508,6 @@ func (p *poolImpl) MarkUnhealthy(gamertag string, reason error) {
 			"gamertag", gamertag)
 		return
 	}
-
-	slot := p.slots[slotIdx]
 
 	// Marquer malsain.
 	slot.mu.Lock()

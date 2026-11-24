@@ -613,3 +613,30 @@ func TestBackground_SansRemplissageEchecImmediat(t *testing.T) {
 		})
 	}
 }
+
+// TestMarkUnhealthy_PendantDesAjoutsDeSlots : MarkUnhealthy lit son slot sous le verrou des slots ; les ajouts
+// concurrents (résolution de fond, re-scan) ne doivent pas faire une course de données (`go test -race`).
+func TestMarkUnhealthy_PendantDesAjoutsDeSlots(t *testing.T) {
+	r := newCtxResolver(func(string) time.Duration { return 0 })
+	p, err := NewPool(context.Background(), r, bgSources("A"), PoolOptions{AllowEmpty: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer p.Close()
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 300; i++ {
+			src := CredentialSource{Gamertag: fmt.Sprintf("N%03d", i), TitleSlug: "halo_infinite", XUID: fmt.Sprintf("%d", 5000+i), RefreshToken: "rt"}
+			_ = p.AddOrUpdateSource(context.Background(), src)
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 300; i++ {
+			p.MarkUnhealthy("A", errors.New("401"))
+		}
+	}()
+	wg.Wait()
+}
