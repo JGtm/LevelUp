@@ -261,3 +261,8 @@ dépendance est close.
   `sync` et `halo_5`, typecheck, vitest ciblé, tous à 0 ; les tests de convergence de `cmd/server` restent
   à la CI. Deux vérifications à l'écran mises à jour dans l'artefact (carte et aide de synchronisation).
   Entrée « Reporter la 8.2.2 » retirée du backlog.
+- 2026-11-24 — pistes A, B, C et D lancées (un agent Sonnet et un worktree `LevelUp-wt-bl24-<piste>` chacune,
+  branches `bl24/a` à `bl24/d` prises sur la release après le report). Précision de D-9 : chaque branche de
+  piste se fusionne directement dans `release/v8.3.0` à son gate, sans branche d'intégration intermédiaire.
+  Tenus hors des consignes en attendant le user : B.1, B.6, la partie « durée fausse au registre » de A.3.
+  E et F partent quand une place d'agent se libère (borne de 4).
