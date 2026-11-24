@@ -80,16 +80,16 @@ beforeEach(() => {
 })
 
 describe('TacticalRejeuTile — la couche « autre joueur »', () => {
-  it('la distance s’écrit « à 23 m » (FR) ou « 23 m away » (EN), seulement avec les deux points', () => {
+  it('la distance s’écrit « à 71 m » (FR) ou « 71 m away » (EN), seulement avec les deux points', () => {
     rendre('fr', null)
     const distances = screen.getAllByTestId('tactical-rejeu-distance')
     expect(distances).toHaveLength(1)
-    expect(distances[0]).toHaveTextContent('à 23 m')
+    expect(distances[0]).toHaveTextContent('à 71 m') // 23,4 unités du jeu × 3,048
   })
 
   it('en anglais', () => {
     rendre('en', null)
-    expect(screen.getByTestId('tactical-rejeu-distance')).toHaveTextContent('23 m away')
+    expect(screen.getByTestId('tactical-rejeu-distance')).toHaveTextContent('71 m away')
   })
 
   it('la tuile du point survolé ressort, les autres non', () => {

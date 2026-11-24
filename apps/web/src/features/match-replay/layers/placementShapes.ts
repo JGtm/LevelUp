@@ -275,14 +275,15 @@ export function drawSeekerImpulse(
 // --- CHAMP DE RÉPARATION ------------------------------------------------------------------
 
 /**
- * Rayon du champ de réparation, en mètres monde. VALEUR DÉCLARÉE, PAS MESURÉE, PAS OFFICIELLE.
+ * Rayon du champ de réparation, en unités du jeu (coordonnées monde). VALEUR DÉCLARÉE, PAS MESURÉE, PAS OFFICIELLE.
+ * Le « m » du nom dit une UNITÉ DU JEU (coordonnées monde), pas un mètre : la valeur est réglée à l'œil sur ces unités.
  *
  * LES TROIS SOURCES POSSIBLES SONT VIDES, ET IL FAUT LE DIRE : le film ne porte aucune portée
  * (ni dans le record de création, ni dans la vie de l'objet — même constat que pour le
  * détecteur) ; la source officielle qui chiffre le détecteur ne chiffre pas ce champ ; et rien
- * n'a été mesuré dans le corpus. 3 m — 6 m de diamètre — est un choix d'ÉCRAN, calibré sur ce
+ * n'a été mesuré dans le corpus. 3 unités — 6 de diamètre — est un choix d'ÉCRAN, calibré sur ce
  * que le dôme du jeu abrite (un joueur et un coéquipier), et il reste sous la portée officielle
- * du détecteur (4,25 m) pour que les deux disques ne se confondent pas.
+ * du détecteur (4,25 wu) pour que les deux disques ne se confondent pas.
  *
  * LE POINTILLÉ DE SA BORNE PORTE CETTE RÉSERVE À L'ÉCRAN (cf. UNCERTAIN_DASH) : l'anneau du
  * capteur est plein parce que sa portée est publiée, celui du champ est pointillé parce que la

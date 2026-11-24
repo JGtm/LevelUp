@@ -21,7 +21,7 @@ import (
 	"sort"
 )
 
-// RayonEvaluationM est le rayon de l'echelle « rayon » : 8 m.
+// RayonEvaluationM est le rayon de l'echelle « rayon », en unites du jeu : 8 unites (24,4 m).
 const RayonEvaluationM = 8.0
 
 // Metriques est le resultat d'une evaluation, en pourcentages (0..100).

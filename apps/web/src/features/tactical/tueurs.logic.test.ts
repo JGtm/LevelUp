@@ -37,10 +37,11 @@ describe('roleDeLaFace — la face décide, jamais la lecture', () => {
 })
 
 describe('distanceEnMetres', () => {
-  it('distance 2D arrondie au mètre', () => {
-    expect(distanceEnMetres({ point: { x: 0, y: 0 }, autre_point: { x: 3, y: 4 } })).toBe(5)
-    expect(distanceEnMetres({ point: { x: 0, y: 0 }, autre_point: { x: 23.4, y: 0 } })).toBe(23)
-    expect(distanceEnMetres({ point: { x: 0, y: 0 }, autre_point: { x: 23.6, y: 0 } })).toBe(24)
+  it('distance 2D des points (unités du jeu) écrite en mètres, arrondie au mètre', () => {
+    // 5 unités du jeu × 3,048 = 15,24 m ; 7,6 unités = 23,16 m ; 7,9 unités = 24,08 m.
+    expect(distanceEnMetres({ point: { x: 0, y: 0 }, autre_point: { x: 3, y: 4 } })).toBe(15)
+    expect(distanceEnMetres({ point: { x: 0, y: 0 }, autre_point: { x: 7.6, y: 0 } })).toBe(23)
+    expect(distanceEnMetres({ point: { x: 0, y: 0 }, autre_point: { x: 7.9, y: 0 } })).toBe(24)
   })
   it('absente quand un point manque', () => {
     expect(distanceEnMetres({ point: { x: 0, y: 0 } })).toBeNull()
@@ -54,8 +55,8 @@ describe('pointsDeLaCouche', () => {
   it('mort -> tueur, frag -> victime, avec l’index de la contribution', () => {
     const pts = pointsDeLaCouche([contribution({ face: 'mort', ...p }), contribution({ face: 'frag', ...p })])
     expect(pts.map((x) => [x.index, x.role, x.distanceM])).toEqual([
-      [0, 'tueur', 5],
-      [1, 'victime', 5],
+      [0, 'tueur', 15],
+      [1, 'victime', 15],
     ])
     expect(pts[0]?.vers).toEqual({ x: 4, y: 5 })
     expect(pts[0]?.de).toEqual({ x: 1, y: 1 })

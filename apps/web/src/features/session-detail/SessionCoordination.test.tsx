@@ -32,6 +32,7 @@ import { SessionRangeCard } from './SessionRangeCard'
 import { COORDINATION_TEXT } from './coordinationI18n'
 import { bandCaption, buildAppuiBand, buildAppuiGaugeRows } from './coordinationModel'
 import { nuagePortee, pointDeLaSession, seuilsServis } from './sessionRange.logic'
+import { gameUnitsToMeters } from '@/lib/formatters/distance'
 
 // ECharts (canvas) ne peint pas dans jsdom : la carte de portée se lit par son cadre et sa légende.
 vi.mock('echarts-for-react', () => ({ default: () => null }))
@@ -249,7 +250,8 @@ describe('Carte Portée des engagements (lot W, D23-4)', () => {
   it('peint la session à l’encre du joueur et la période en gris, le point creux reste creux', () => {
     const nuage = nuagePortee(REFERENCE, BLOC_SESSION, 'moi')
     const data = option(nuage).series[0].data
-    expect(data.map((d) => d.value[1])).toEqual([4, -4, -6, -2])
+    // Le contrat sert des unités du jeu (écarts 4, -4, -6, -2) ; le nuage est en mètres.
+    expect(data.map((d) => d.value[1])).toEqual([4, -4, -6, -2].map(gameUnitsToMeters))
     expect(data[0].itemStyle.color).toBe('#999')
     expect(data[2].itemStyle.color).toBe('#111')
     // Le dernier point est de la session ET sous le plancher : creux, contour à l'encre.
@@ -259,14 +261,14 @@ describe('Carte Portée des engagements (lot W, D23-4)', () => {
 
   it('assied les bandes sur les SEUILS SERVIS, sans jamais les recalculer', () => {
     const nuage = nuagePortee(REFERENCE, BLOC_SESSION, 'moi')
-    expect(nuage.seuils).toEqual({ bas: -5, haut: 1 })
+    expect(nuage.seuils).toEqual({ bas: gameUnitsToMeters(-5), haut: gameUnitsToMeters(1) })
     // Les tiers des écarts mesurés vaudraient (-4, -4) : la carte ne les invente pas.
     const opt = option(nuage)
     const zones = opt.series[0].markArea!.data
     // Trois bandes de rôle + la fenêtre de surbrillance.
     expect(zones).toHaveLength(4)
-    expect(zones[1][0].yAxis).toBe(-5)
-    expect(zones[2][0].yAxis).toBe(1)
+    expect(zones[1][0].yAxis).toBeCloseTo(gameUnitsToMeters(-5), 9)
+    expect(zones[2][0].yAxis).toBeCloseTo(gameUnitsToMeters(1), 9)
     expect(zones[3][0].xAxis).toBe(1.5)
     expect(zones[3][1].xAxis).toBe(3.5)
     expect(zones[3][0].name).toBe(t.rangeThisSession)

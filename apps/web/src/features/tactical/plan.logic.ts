@@ -8,6 +8,7 @@
  * rampe (valeur basse, ou négative sur une lecture signée) en bas.
  */
 import type { EchelleTactique, TacticalRaster } from '@/lib/api/types'
+import { gameUnitsToMeters } from '@/lib/formatters/distance'
 import type { Locale } from '@/lib/i18n/locale'
 
 import { cssRotation, type QuarterTurns } from '@/lib/replay/orientation'
@@ -37,6 +38,11 @@ const ARRETS_DE_LEGENDE = 9
  * ou les portées du radar, les matchs sans portée et les morts écartées ; les zones servies hors du
  * cadre du fond (`peintes` = celles posées sur le fond).
  */
+/** Le pas de la grille servi en unités du jeu, écrit en mètres au dixième (0,5 unité → 1,5 m). */
+function pasEnMetres(pasUnites: number): number {
+  return Math.round(gameUnitsToMeters(pasUnites) * 10) / 10
+}
+
 export function infoDuPlan(
   t: TacticalText,
   locale: Locale,
@@ -45,7 +51,7 @@ export function infoDuPlan(
   peintes: number,
 ): string {
   const source = lectureDeRejeu(question) ? t.planInfoSourceReplay : t.planInfoSourceJournal
-  const parts = [t.planInfo(lecture.matchs_retenus, source, lecture.pas_m, TACTICAL_CELL_FLOOR)]
+  const parts = [t.planInfo(lecture.matchs_retenus, source, pasEnMetres(lecture.pas_m), TACTICAL_CELL_FLOOR)]
   if (question === 'gagne') {
     parts.push(t.planInfoGagne(lecture.matchs_victoire, lecture.matchs_defaite, TACTICAL_CELL_FLOOR))
   }

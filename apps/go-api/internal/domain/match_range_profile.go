@@ -32,11 +32,11 @@ type MatchRangePlayer struct {
 	// Gamertag est vide quand l'appelant ne nomme pas ce joueur (il n'est alors jamais
 	// inventé côté Go : le client retombe sur le xuid).
 	Gamertag string `json:"gamertag,omitempty"`
-	// MedianM est la médiane, en mètres, des distances de ses frags MESURÉS du match.
-	MedianM float64 `json:"median_m"`
+	// MedianM est la médiane, en unités du jeu, des distances de ses frags MESURÉS du match.
+	MedianM float64 `json:"median_m" doc:"Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit."`
 	// LobbyDeltaM est `MedianM - LobbyMedianM` : SIGNÉ, positif au-dessus du lobby. C'est
 	// l'axe du nuage de l'Escouade et la hauteur du bâton de la session.
-	LobbyDeltaM float64 `json:"lobby_delta_m"`
+	LobbyDeltaM float64 `json:"lobby_delta_m" doc:"Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit."`
 	// Measured est le nombre de frags mesurés du joueur sur ce match — le dénominateur de
 	// sa médiane. Toujours >= 1 : un joueur sans frag mesuré est ABSENT, jamais à zéro.
 	Measured int `json:"measured"`
@@ -58,7 +58,7 @@ type MatchRangeProfile struct {
 	Players []MatchRangePlayer `json:"players"`
 	// LobbyMedianM est la médiane des distances de TOUS les frags mesurés du match — le
 	// référentiel. Elle porte sur le lobby entier même quand `Players` n'a qu'une ligne.
-	LobbyMedianM float64 `json:"lobby_median_m"`
+	LobbyMedianM float64 `json:"lobby_median_m" doc:"Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit."`
 	// LobbyMeasured est le nombre de frags mesurés du match, tous joueurs confondus.
 	LobbyMeasured int `json:"lobby_measured"`
 }
@@ -101,11 +101,11 @@ type RangeReferenceBlock struct {
 	// RoleLowM / RoleHighM sont les deux bandes de rôle : tiers 1/3 et 2/3 des écarts au
 	// lobby des matchs de la période à au moins 5 frags mesurés. ABSENTS (nil) sous 3
 	// points pleins — deux matchs ne font pas un habituel.
-	RoleLowM  *float64 `json:"role_low_m,omitempty"`
-	RoleHighM *float64 `json:"role_high_m,omitempty"`
+	RoleLowM  *float64 `json:"role_low_m,omitempty" doc:"Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit."`
+	RoleHighM *float64 `json:"role_high_m,omitempty" doc:"Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit."`
 	// PeriodMedianDeltaM est l'écart au lobby MÉDIAN de la période, sur les mêmes points
 	// pleins. Absent avec les deux bandes.
-	PeriodMedianDeltaM *float64 `json:"period_median_delta_m,omitempty"`
+	PeriodMedianDeltaM *float64 `json:"period_median_delta_m,omitempty" doc:"Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit."`
 	// MatchesMeasured / MatchesTotal sont les DEUX TERMES de la couverture de la période
 	// (matchs porteurs d'au moins un frag mesuré sur matchs du scope), jamais leur
 	// quotient — le pourcentage se calcule là où il s'affiche.

@@ -21,7 +21,7 @@
  */
 import type { SynthesisWeaponRange, WeaponRangeRow, WeaponRangeSide } from '@/lib/api/types'
 
-import type { WeaponRangeLine } from './weaponRangeChart'
+import { weaponRangeSideInMeters, type WeaponRangeLine } from './weaponRangeChart'
 
 /** Le bloc de portée d'un joueur, ou son absence. */
 export type WeaponRangeBlock = SynthesisWeaponRange | null | undefined
@@ -38,7 +38,7 @@ export interface RoleAxisEntry {
 /** Le côté demandé d'une ligne du contrat, normalisé en `null` s'il n'est pas mesuré. */
 function sideOf(row: WeaponRangeRow | undefined, side: RangeSideKey): WeaponRangeSide | null {
   if (!row) return null
-  return (side === 'kills' ? row.kills : row.deaths) ?? null
+  return weaponRangeSideInMeters(side === 'kills' ? row.kills : row.deaths)
 }
 
 /**

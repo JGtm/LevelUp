@@ -58,8 +58,8 @@ describe('WeaponRecordsRuler', () => {
     const ruler = screen.getByTestId('weapon-records-ruler')
     expect(within(ruler).getByText('BR75')).toBeInTheDocument()
     expect(within(ruler).getByText('S7 Sniper')).toBeInTheDocument()
-    expect(within(ruler).getByText('52,7 m')).toBeInTheDocument()
-    expect(within(ruler).getByText('96,4 m')).toBeInTheDocument()
+    expect(within(ruler).getByText('160,6 m')).toBeInTheDocument() // 52,7 unités du jeu × 3,048
+    expect(within(ruler).getByText('293,8 m')).toBeInTheDocument() // 96,4 unités × 3,048
     expect(within(ruler).getAllByTestId('weapon-record-item')).toHaveLength(2)
     const heading = flat(screen.getByRole('heading', { level: 3 }).textContent)
     expect(heading).toContain('2 armes')
@@ -112,8 +112,8 @@ describe('WeaponRecordsRuler', () => {
     fireEvent.mouseMove(br, { clientX: 100, clientY: 40 })
     const tip = flat(screen.getByTestId('weapon-records-tooltip').textContent)
     expect(tip).toContain('BR75')
-    expect(tip).toContain('52,7 m')
-    expect(tip).toContain('médiane 13,6 m · 281 frags')
+    expect(tip).toContain('160,6 m')
+    expect(tip).toContain('médiane 41,5 m · 281 frags')
     expect(tip).toContain('Fragmentation')
     expect(tip).toContain('28 août 2026')
   })
@@ -144,7 +144,7 @@ describe('WeaponRecordsRuler', () => {
   it('en anglais, les libellés et les nombres suivent la locale', () => {
     useAppShellStore.setState({ locale: 'en' })
     renderWithProviders(<WeaponRecordsRuler records={records} playerSlug="JGtm" />)
-    expect(screen.getByText('96.4 m')).toBeInTheDocument()
+    expect(screen.getByText('293.8 m')).toBeInTheDocument()
     expect(flat(screen.getByRole('heading', { level: 3 }).textContent)).toContain('Distance records by weapon')
   })
 })

@@ -36,6 +36,7 @@ import {
   getTooltipBase,
   type EChartsThemeColors,
 } from '@/components/charts/_utils'
+import { gameUnitsToMeters } from '@/lib/formatters/distance'
 import type { MatchKillDistanceWeapon } from '@/lib/api/types'
 
 /** Longueur au-delà de laquelle un gamertag est tronqué sur l'axe (l'infobulle garde tout). */
@@ -115,9 +116,10 @@ export function killDistanceRows(players: readonly KillDistancePlayerInput[]): K
         weapon: entry.label,
         player: p.gamertag,
         kills: w.measured_kills,
-        min: w.min_distance_m,
-        max: w.max_distance_m,
-        avg: w.avg_distance_m,
+        // Le contrat sert des unités du jeu ; le graphe et ses infobulles sont en mètres.
+        min: gameUnitsToMeters(w.min_distance_m),
+        max: gameUnitsToMeters(w.max_distance_m),
+        avg: gameUnitsToMeters(w.avg_distance_m),
       })
     }
   }

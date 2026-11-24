@@ -67,14 +67,14 @@ type TacticalMapCard struct {
 	// Bornes est le cadre du monde couvert par ces cellules.
 	Bornes BornesMonde `json:"bornes,omitempty"`
 
-	// PasM est le pas de la grille du mini-plan, en metres (TacticalTuilePasM).
-	PasM float64 `json:"pas_m,omitempty"`
+	// PasM est le pas de la grille du mini-plan, en unités du jeu (TacticalTuilePasM).
+	PasM float64 `json:"pas_m,omitempty" doc:"Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit."`
 
 	// Echelle porte les quantiles p50/p95 du mini-plan — l'etalonnage de la peinture.
 	Echelle EchelleTactique `json:"echelle,omitempty"`
 }
 
-// TacticalTuilePasM est le pas de grille du mini-plan d'une vignette, en metres.
+// TacticalTuilePasM est le pas de grille du mini-plan d'une vignette, en unités du jeu.
 //
 // PLUS GROSSIER QUE LE PLAN D'UNE CARTE (0,5 a 2 m), et c'est la raison d'etre de la
 // constante : a 200 px de large pour une carte de 100 m, une cellule de 2 m ferait 4 px.
@@ -135,9 +135,9 @@ type TacticalRaster struct {
 	MatchsVictoire int `json:"matchs_victoire"`
 	MatchsDefaite  int `json:"matchs_defaite"`
 
-	// PasM est le pas de la grille en metres, et Bornes le rectangle englobant les
+	// PasM est le pas de la grille en unités du jeu, et Bornes le rectangle englobant les
 	// cellules LISIBLES — le cadre que le peintre doit couvrir.
-	PasM   float64     `json:"pas_m"`
+	PasM   float64     `json:"pas_m" doc:"Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit."`
 	Bornes BornesMonde `json:"bornes"`
 
 	Cellules []CelluleTactique `json:"cellules"`
@@ -195,7 +195,7 @@ type TacticalRaster struct {
 	// RayonsRadarM : les portees de radar DISTINCTES des matchs de la lecture « isole »
 	// (regulation.toml [radar_range_m]), triees croissant — jamais une moyenne, qui ne serait la
 	// regle d'aucun match. Vide sur les autres lectures.
-	RayonsRadarM []float64 `json:"rayons_radar_m,omitempty"`
+	RayonsRadarM []float64 `json:"rayons_radar_m,omitempty" doc:"Portée du radar en vrais mètres (18 en arène, 24 en Grande bataille), pas en unités du jeu."`
 
 	// MortsEquipeATerre : les morts ECARTEES de la lecture « isole » parce qu'AUCUN
 	// coequipier n'etait en mesure d'accompagner (tous morts, partis, ou aucun).

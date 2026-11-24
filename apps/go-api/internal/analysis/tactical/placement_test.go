@@ -6,10 +6,16 @@ package tactical
 import (
 	"testing"
 
+	"levelup/go-api/internal/analysis/gameunits"
 	"levelup/go-api/internal/domain"
 )
 
-func metres(v float64) *float64 { return &v }
+// metres : la distance du film (en unités du jeu) d'un coéquipier situé à `v` VRAIS mètres : la
+// portée du radar (18 m) est en vrais mètres, les distances du film en unités.
+func metres(v float64) *float64 { u := gameunits.MetersToUnits(v); return &u }
+
+// unites : une distance du film, déjà en unités du jeu (aucune conversion).
+func unites(v float64) *float64 { return &v }
 
 func ctxMort(match, victime string, t int64, d *float64) domain.ContexteDeMort {
 	return domain.ContexteDeMort{MatchID: match, VictimXUID: victime, TimeMs: t, PlusProcheM: d, Visibles: 1}
@@ -17,9 +23,9 @@ func ctxMort(match, victime string, t int64, d *float64) domain.ContexteDeMort {
 
 func TestContexteLePlusProche_ToleranceEtVictime(t *testing.T) {
 	ctxs := []domain.ContexteDeMort{
-		ctxMort("m1", "v1", 10_000, metres(4)),
-		ctxMort("m1", "v2", 11_000, metres(9)), // autre victime, plus proche dans le temps
-		ctxMort("m2", "v1", 11_000, metres(7)), // autre match
+		ctxMort("m1", "v1", 10_000, unites(4)),
+		ctxMort("m1", "v2", 11_000, unites(9)), // autre victime, plus proche dans le temps
+		ctxMort("m2", "v1", 11_000, unites(7)), // autre match
 	}
 	if c := ContexteLePlusProche(ctxs, "m1", "v1", 11_500); c == nil || *c.PlusProcheM != 4 {
 		t.Fatalf("à 1 500 ms (borne comprise) : attendu le contexte de v1 dans m1, obtenu %+v", c)
@@ -34,8 +40,8 @@ func TestContexteLePlusProche_ToleranceEtVictime(t *testing.T) {
 
 func TestContexteLePlusProche_LePlusProcheDansLeTemps(t *testing.T) {
 	ctxs := []domain.ContexteDeMort{
-		ctxMort("m1", "v1", 10_000, metres(4)),
-		ctxMort("m1", "v1", 10_900, metres(12)),
+		ctxMort("m1", "v1", 10_000, unites(4)),
+		ctxMort("m1", "v1", 10_900, unites(12)),
 	}
 	if c := ContexteLePlusProche(ctxs, "m1", "v1", 10_600); c == nil || *c.PlusProcheM != 12 {
 		t.Fatalf("attendu le contexte à 300 ms, obtenu %+v", c)

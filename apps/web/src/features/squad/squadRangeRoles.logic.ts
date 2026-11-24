@@ -23,6 +23,7 @@
 import { truncateMap } from '@/lib/charts/matchLabels'
 import type { MatchRangeProfile } from '@/lib/api/types'
 import { movingMean } from '@/lib/charts/stats'
+import { gameUnitsToMeters } from '@/lib/formatters/distance'
 
 /** Frags mesurés minimaux pour qu'une médiane de match compte (point plein). */
 export const PLANCHER_MESURE = 5
@@ -126,8 +127,9 @@ export function seriesPortee(
         mapName: profil.map_name,
         xuid: joueur.xuid,
         gamertag,
-        medianeM: joueur.median_m,
-        ecartM: joueur.lobby_delta_m,
+        // Le contrat sert des unités du jeu ; le nuage, ses bandes et ses infobulles sont en mètres.
+        medianeM: gameUnitsToMeters(joueur.median_m),
+        ecartM: gameUnitsToMeters(joueur.lobby_delta_m),
         mesures: joueur.measured,
         plein: joueur.measured >= PLANCHER_MESURE,
       })

@@ -41,11 +41,11 @@ type SynthesisWeaponRange struct {
 	// sans garde.
 	Weapons []WeaponRangeRow `json:"weapons"`
 
-	// MedianKillsM / MedianDeathsM : les deux médianes GLOBALES, en mètres — le diagnostic
+	// MedianKillsM / MedianDeathsM : les deux médianes GLOBALES, en unités du jeu — le diagnostic
 	// en deux nombres, au-dessus du graphe. Calculées sur TOUS les frags mesurés, jamais
 	// comme une moyenne des médianes par arme (qui pèserait autant un couteau qu'un fusil).
-	MedianKillsM  float64 `json:"median_kills_m"`
-	MedianDeathsM float64 `json:"median_deaths_m"`
+	MedianKillsM  float64 `json:"median_kills_m" doc:"Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit."`
+	MedianDeathsM float64 `json:"median_deaths_m" doc:"Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit."`
 
 	// MeasuredKills / TotalKills, MeasuredDeaths / TotalDeaths : la couverture. Les totaux
 	// viennent du scope canonique (les frags et morts du joueur sur la période), les
@@ -93,22 +93,22 @@ type WeaponRangeSide struct {
 	// Measured est l'effectif du côté — le dénominateur de tout le reste.
 	Measured int `json:"measured"`
 
-	// P10, Median, P90 : la portée mesurée, en mètres. p10 -> p90 et NON min -> max (D6) :
+	// P10, Median, P90 : la portée mesurée, en unités du jeu. p10 -> p90 et NON min -> max (D6) :
 	// sur des centaines de frags, le minimum et le maximum décrivent deux accidents (un tir
 	// de mêlée, un tir chanceux à travers la carte).
-	P10    float64 `json:"p10"`
-	Median float64 `json:"median"`
-	P90    float64 `json:"p90"`
+	P10    float64 `json:"p10" doc:"Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit."`
+	Median float64 `json:"median" doc:"Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit."`
+	P90    float64 `json:"p90" doc:"Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit."`
 
-	// MinM / MaxM : les distances EXTRÊMES observées, en mètres — POUR L'INFOBULLE SEULE.
+	// MinM / MaxM : les distances EXTRÊMES observées, en unités du jeu — POUR L'INFOBULLE SEULE.
 	// Elles répondent à « jusqu'où
 	// est-il allé », que p10 -> p90 ne dit pas. Elles NE SE TRACENT JAMAIS : les porter dans
 	// la géométrie du bâton ferait exactement ce que ce bâton refuse — décrire deux accidents.
 	// Sur une ligne d'une seule mesure, min == max == médiane, et c'est exact.
 	//
 	// La Synthèse les IGNORE : la section existante n'affiche rien de plus qu'avant.
-	MinM float64 `json:"min_m"`
-	MaxM float64 `json:"max_m"`
+	MinM float64 `json:"min_m" doc:"Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit."`
+	MaxM float64 `json:"max_m" doc:"Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit."`
 
 	// AbovePct / LevelPct / BelowPct : la ventilation du dénivelé, EN POURCENTAGE 0..100
 	// (convention `*Pct` du dépôt), VUE DU CÔTÉ DEMANDÉ. Côté morts, « d'en haut » veut
@@ -134,8 +134,8 @@ type WeaponBelowThreshold struct {
 // la distance un temps-pour-tuer (1,5 s) avant le coup fatal, validé le 2026-09-06 : écart
 // médian 1,24 m sur 87 cas, contre un gate de 2 m écrit avant la mesure.
 type SynthesisOpening struct {
-	// MedianM est la médiane des distances d'entame des FRAGS, en mètres.
-	MedianM float64 `json:"median_m"`
+	// MedianM est la médiane des distances d'entame des FRAGS, en unités du jeu.
+	MedianM float64 `json:"median_m" doc:"Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit."`
 	// MeasuredKills est le nombre de frags dont l'entame est mesurée — la couverture du
 	// proxy, à publier telle quelle (« 618 frags mesurés »).
 	MeasuredKills int `json:"measured_kills"`
@@ -160,7 +160,7 @@ type SynthesisOpeningDelta struct {
 	// l'entame`. NÉGATIF = l'engagement se ferme. Calculée frag par frag et JAMAIS entre
 	// deux médianes : les deux couvertures ne décrivent pas la même population
 	// d'engagements (cf. analysis.WeaponOpeningDelta).
-	MedianM float64 `json:"median_m"`
+	MedianM float64 `json:"median_m" doc:"Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit."`
 	// ClosingSharePct est la part des frags appariés dont la distance se ferme, en
 	// pourcentage 0..100.
 	ClosingSharePct float64 `json:"closing_share_pct"`

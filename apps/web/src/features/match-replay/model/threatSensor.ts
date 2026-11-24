@@ -18,12 +18,11 @@
  * location-based marking, giving more permanence and coverage ». C'est un marquage de LIEU,
  * pas de personne — d'où l'appartenance mesurée À L'INSTANT DU PING (plus bas).
  *
- * L'UNITÉ EST UNE SUPPOSITION, ET ELLE EST ÉCRITE. Les positions du rejeu sont en mètres
- * monde ; « wu » est l'unité monde de Slipspace, SUPPOSÉE ici valoir 1 m. 4,25 m de rayon
- * (8,5 m de diamètre) est plausible pour un capteur d'arène ; l'autre conversion parfois
- * citée (3,048 m/wu) donnerait 26 m de diamètre, invraisemblable sur une carte de 50 m. Le
- * jour où une portée serait MESURÉE dans le film, elle remplacerait la constante — et la
- * remplacerait seule.
+ * L'UNITÉ EST CELLE DU REJEU. « wu » est l'unité monde de Slipspace, celle des positions du
+ * rejeu : le rayon de 4,25 wu se lit donc tel quel dans les coordonnées du plan, sans conversion.
+ * Une unité vaut 10 pieds, soit 3,048 m (`lib/formatters/distance`) : le capteur couvre environ
+ * 13 m de rayon, 26 m de diamètre. Le jour où une portée serait MESURÉE dans le film, elle
+ * remplacerait la constante — et la remplacerait seule.
  *
  * IL PINGE, IL NE RESPIRE PAS (correction du 2026-08-17). Le premier rendu faisait osciller
  * le rayon du disque de ±6 % autour d'une portée déclarée à 8 m : une respiration lente, qui
@@ -39,8 +38,8 @@
  * rayon À L'INSTANT DU PING portent une marque pendant 0,75 s. Trois choix, tous conséquences
  * de la source :
  *  - L'APPARTENANCE SE MESURE AU PING, jamais à l'image courante : la source parle de
- *    « location-based marking », et 0,75 s de course valent ~3 m à la vitesse de base d'un
- *    Spartan, soit les trois quarts du rayon. Tester « maintenant » marquerait les entrants
+ *    « location-based marking », et 0,75 s de course valent ~1,7 unité à la vitesse de course
+ *    mesurée (2,2 à 2,4 unités par seconde), soit environ 40 % du rayon. Tester « maintenant » marquerait les entrants
  *    et démarquerait les sortants — exactement l'inverse de ce que le capteur affirme.
  *  - LA MARQUE SUIT LA VIE : elle est dessinée à la position COURANTE, comme le contour du
  *    jeu suit sa cible. Un halo laissé trois mètres derrière un point qui bouge se lirait
@@ -73,8 +72,8 @@ import { isAliveAt, positionAt } from '../../../lib/replay/replayLogic'
 import type { ReplayTrackReady } from '../../../lib/replay/replayNormalize'
 
 /**
- * Rayon du capteur, en mètres monde. VALEUR OFFICIELLE (« Sensor Radius: 4.25wu »), sous la
- * supposition d'unité écrite en tête : 1 wu = 1 m.
+ * Rayon du capteur, en unités du jeu (coordonnées du rejeu). VALEUR OFFICIELLE (« Sensor Radius:
+ * 4.25wu »), exprimée dans cette même unité : aucune conversion à l'usage.
  */
 export const SENSOR_RADIUS_M = 4.25
 

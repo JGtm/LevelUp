@@ -44,8 +44,8 @@ type TacticalCoequipier struct {
 	Point *TacticalPoint `json:"point,omitempty"`
 	// DistanceMortM : distance horizontale a la victime ; DistanceTueurM : au tueur, quand la
 	// position du tueur est mesuree. Deux decimales, absentes hors du statut visible.
-	DistanceMortM  *float64 `json:"distance_mort_m,omitempty"`
-	DistanceTueurM *float64 `json:"distance_tueur_m,omitempty"`
+	DistanceMortM  *float64 `json:"distance_mort_m,omitempty" doc:"Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit."`
+	DistanceTueurM *float64 `json:"distance_tueur_m,omitempty" doc:"Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit."`
 }
 
 // TacticalEquipeALaMort est l'equipe de la victime a l'instant de sa mort.
@@ -53,7 +53,7 @@ type TacticalEquipeALaMort struct {
 	// Statut : TacticalStatut*. Absent quand le match n'a pas de portee de radar connue.
 	Statut string `json:"statut,omitempty"`
 	// RayonM : la portee du radar du match, en metres. Absente quand elle n'est pas connue.
-	RayonM *float64 `json:"rayon_m,omitempty"`
+	RayonM *float64 `json:"rayon_m,omitempty" doc:"Portée du radar en vrais mètres (18 en arène, 24 en Grande bataille), pas en unités du jeu."`
 	// Coequipiers : tous les coequipiers de la victime, tries par xuid.
 	Coequipiers []TacticalCoequipier `json:"coequipiers"`
 }
@@ -74,8 +74,8 @@ type TacticalBilanMorts struct {
 	Rose []int `json:"rose"`
 	// MedianeTueurM : distance mediane victime -> tueur ; MedianePlusProcheM : distance mediane au
 	// coequipier visible le plus proche. Absentes sans mesure.
-	MedianeTueurM      *float64 `json:"mediane_tueur_m,omitempty"`
-	MedianePlusProcheM *float64 `json:"mediane_plus_proche_m,omitempty"`
+	MedianeTueurM      *float64 `json:"mediane_tueur_m,omitempty" doc:"Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit."`
+	MedianePlusProcheM *float64 `json:"mediane_plus_proche_m,omitempty" doc:"Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit."`
 }
 
 // TacticalBilanZone est le bilan de la zone selectionnee : `Morts` pour les lectures qui comptent
@@ -175,7 +175,7 @@ type TacticalSequenceEtape struct {
 
 // TacticalSequence est la sequence d'une mort.
 type TacticalSequence struct {
-	RayonM float64 `json:"rayon_m"`
+	RayonM float64 `json:"rayon_m" doc:"Portée du radar en vrais mètres (18 en arène, 24 en Grande bataille), pas en unités du jeu."`
 	// TraineMs : la duree de la traine tracee derriere chaque acteur (4 s).
 	TraineMs int `json:"traine_ms"`
 	// PasMs : le pas d'echantillonnage des traces.

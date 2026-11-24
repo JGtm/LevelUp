@@ -360,6 +360,24 @@ suivent OpenSpartan Cartographer (Den, MIT) ; l'algorithme est écrit en Go.
 Référence : `docs/adr/0048-map-backgrounds-held-by-navigation-mesh.md`, `docs/adr/0049-relief-map-background-and-floor-cut.md`,
 `docs/COMMANDS.md` section « mapfond-build ».
 
+### 3.7 Unités de distance
+
+Les positions du rejeu et toutes les distances qui en sont tirées (base, API, document de rejeu) sont en
+**unités du jeu**, pas en mètres. Une unité du jeu vaut 10 pieds, soit **3,048 m**. Un champ nommé `_m` qui vient
+d'une mesure du film (`distance_mort_m`, `median_m`, `pas_m`, `lobby_delta_m`, ...) est donc en unités du jeu : les
+noms de champs ne sont pas renommés, et le contrat les documente comme tels. Les seuls vrais mètres sont les portées
+de radar annoncées par le jeu (18 m en arène, 24 m en Grande bataille ; `regulation.toml [radar_range_m]`, servies
+sous `rayon_m` et `rayons_radar_m`).
+
+- **Affichage** : une distance écrite « m » passe par `formatGameDistance` (`apps/web/src/lib/formatters/distance.ts`),
+  qui convertit et arrondit (une décimale sous 10 m, le mètre au-delà). Les gabarits de texte portent l'unité « m » et
+  reçoivent le nombre déjà converti.
+- **Comparaison** : une valeur en vrais mètres (la portée du radar) se ramène en unités du jeu par
+  `gameunits.MetersToUnits` (Go) ou `metersToGameUnits` (web) avant d'être comparée à une distance du film.
+- **Un seul foyer du facteur** : `internal/analysis/gameunits` (Go) et `lib/formatters/distance.ts` (web). Le littéral
+  `3.048` est interdit ailleurs (gardes `archlint/gameunits_factor_test.go` et `distance.guard.test.ts`), et un test
+  de parité tient les deux valeurs égales.
+
 ---
 
 ## 4. Exemple de bout en bout

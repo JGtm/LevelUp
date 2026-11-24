@@ -28,7 +28,7 @@ func entreeDeBase() EntreeSequence {
 		Tueur: &ActeurSequence{Role: domain.TacticalRoleTueur, XUID: "900",
 			Vies: vie(piste(0, 200, func(int) float32 { return 140 }, 0))},
 		Coequipiers: []ActeurSequence{{Role: domain.TacticalRoleCoequipier, XUID: "222",
-			Vies: vie(piste(0, 200, func(int) float32 { return 118 }, 0))}},
+			Vies: vie(piste(0, 200, func(int) float32 { return 105.9 }, 0))}},
 		FrameIntervalMs: pasImage, MortFilmMs: 10_000, MortMatchMs: 12_000, T0Ms: &t0, RayonM: 18,
 	}
 }
@@ -62,13 +62,15 @@ func TestSequence_CompteDansLeRayon_BorneInclusive(t *testing.T) {
 	for _, e := range seq.Etapes {
 		par[e.OffsetMs] = e
 	}
-	// a -4000 : centre x = 60, coequipier a 118 -> 58 m : hors rayon, mais positionne.
+	// a -4000 : centre x = 60, coequipier a 105,9 -> 45,9 unites (140 m) : hors rayon, mais positionne.
 	if e := par[-4000]; e.DansLeRayon != 0 || e.Positionnes != 1 || len(e.DansLeRayonXUIDs) != 0 {
 		t.Errorf("-4000 : %+v", e)
 	}
-	// a 0 : centre x = 100, coequipier a 118 -> 18 m pile : dans le rayon (borne inclusive).
+	// a 0 : centre x = 100, coequipier a 105,9 -> 5,9 unites (17,98 m) : dans le rayon de 18 m. Le rayon
+	// est en vrais metres, les positions en unites du jeu ; la borne inclusive est eprouvee sur
+	// `coordination.APortee`.
 	if e := par[0]; e.DansLeRayon != 1 || len(e.DansLeRayonXUIDs) != 1 || e.DansLeRayonXUIDs[0] != "222" {
-		t.Errorf("0 : %+v, 18 m pour un rayon de 18 m est dans le rayon", e)
+		t.Errorf("0 : %+v, 5,9 unites (18 m) pour un rayon de 18 m est dans le rayon", e)
 	}
 }
 
@@ -141,7 +143,7 @@ func TestSequence_VictimeSansPositionAlaMort(t *testing.T) {
 }
 
 func TestEquipeDeLaMort_StatutDistancesEtOrdre(t *testing.T) {
-	x1, y1, d1 := 6.0, 0.0, 6.0
+	x1, y1, d1 := 5.0, 0.0, 5.0 // 5 unites = 15,2 m, dans un rayon de 18 m
 	x2, y2, d2 := 30.0, 0.0, 30.0
 	ctx := domain.ContexteDeMort{Visibles: 2, HorsDeVue: 1, EnAttente: 0, Total: 3, PlusProcheM: &d1}
 	lignes := []domain.MateDeMort{
@@ -149,7 +151,7 @@ func TestEquipeDeLaMort_StatutDistancesEtOrdre(t *testing.T) {
 		{MateXUID: "999", Etat: domain.TacticalMateHorsDeVue},
 		{MateXUID: "222", Etat: domain.TacticalMateVisible, X: &x1, Y: &y1, DistanceM: &d1},
 	}
-	tueur := &domain.TacticalPoint{X: 6, Y: 8}
+	tueur := &domain.TacticalPoint{X: 5, Y: 8}
 	eq := EquipeDeLaMort(ctx, lignes, 18, true, tueur)
 	if eq.Statut != domain.TacticalStatutAccompagnee || eq.RayonM == nil || *eq.RayonM != 18 {
 		t.Fatalf("statut/rayon = %q / %v", eq.Statut, eq.RayonM)
@@ -163,7 +165,7 @@ func TestEquipeDeLaMort_StatutDistancesEtOrdre(t *testing.T) {
 		t.Errorf("coequipier proche = %+v (distance au tueur attendue 8)", proche)
 	}
 	if lointain := eq.Coequipiers[2]; lointain.DansLeRayon {
-		t.Errorf("a 30 m d'un rayon de 18 : hors rayon, %+v", lointain)
+		t.Errorf("a 30 unites (91 m) d'un rayon de 18 m : hors rayon, %+v", lointain)
 	}
 	if hors := eq.Coequipiers[1]; hors.Point != nil || hors.DistanceMortM != nil || hors.DansLeRayon {
 		t.Errorf("hors de vue : ni position ni distance, %+v", hors)

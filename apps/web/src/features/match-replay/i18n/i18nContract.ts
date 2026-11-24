@@ -95,18 +95,19 @@ export interface ReplayText {
   /**
    * L'ÉTIQUETTE DE LA FLÈCHE HORS CADRE (plan escouade hors cadre, chantier B, décision D2,
    * 2026-09-10) : le nom du joueur (ou du porteur d'objectif) ET la distance jusqu'à sa
-   * position réelle, hors du cadre visible à zoom serré (2x/3x). Le symbole du mètre (« m »)
+   * position réelle, hors du cadre visible à zoom serré (2x/3x). La distance reçue est en UNITÉS DU
+   * JEU (positions du rejeu) : elle s'écrit en mètres (`gameUnitsToMeters`). Le symbole du mètre (« m »)
    * est IDENTIQUE en français et en anglais — ce n'est pas un anglicisme à traduire — mais la
    * composition passe quand même par ce contrat pour garder la parité de typage (règle
    * CLAUDE.md n°1 : toute string UI en FR ET EN).
    */
-  offscreenMarkerFmt: (name: string, meters: number) => string
+  offscreenMarkerFmt: (name: string, gameUnits: number) => string
   /**
    * LA MÊME ÉTIQUETTE, PLUSIEURS OCCUPANTS SANS CONDUCTEUR NOMMÉ (lot 4.4, véhicule hors
    * cadre, 2026-09-10) : un véhicule à plusieurs occupants dont aucun nom ne peut porter seul
    * l'étiquette (cf. `vehiclesPaint.vehicleOffscreenText`) affiche un COMPTE plutôt qu'un nom.
    */
-  offscreenGroupMarkerFmt: (count: number, meters: number) => string
+  offscreenGroupMarkerFmt: (count: number, gameUnits: number) => string
   /**
    * AVIS « INSTANT NON CALÉ » : un lien tactique demandait un instant sur l'horloge du MATCH,
    * mais l'artefact de ce match n'a pas d'origine du film (`matchClock` rend `null`). Le rejeu

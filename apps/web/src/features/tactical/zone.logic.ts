@@ -9,6 +9,7 @@
  */
 import type { CelluleTactique, TacticalCelluleReponse, TacticalContribution } from '@/lib/api/types'
 import { intlLocale } from '@/lib/formatters'
+import { gameUnitsToMeters } from '@/lib/formatters/distance'
 import type { Locale } from '@/lib/i18n/locale'
 import { formatClock, OUVERTURE_AVANT_EVENEMENT_MS } from '@/lib/replay/replayLogic'
 
@@ -117,13 +118,13 @@ function metres(v: number, locale: Locale): string {
   return v < 0 ? `−${n}` : n
 }
 
-/** coordonneesDeZone — « x −14…−12 m · y 4…6 m » : l'étendue monde de la cellule au pas servi. */
+/** coordonneesDeZone — « x −14…−12 m · y 4…6 m » : l'étendue monde de la cellule au pas servi (unités du jeu), écrite en mètres. */
 export function coordonneesDeZone(t: TacticalText, col: number, lig: number, pasM: number, locale: Locale): string {
   return t.zoneCoords(
-    metres(col * pasM, locale),
-    metres((col + 1) * pasM, locale),
-    metres(lig * pasM, locale),
-    metres((lig + 1) * pasM, locale),
+    metres(gameUnitsToMeters(col * pasM), locale),
+    metres(gameUnitsToMeters((col + 1) * pasM), locale),
+    metres(gameUnitsToMeters(lig * pasM), locale),
+    metres(gameUnitsToMeters((lig + 1) * pasM), locale),
   )
 }
 
@@ -217,7 +218,8 @@ function badgeDe(t: TacticalText, c: TacticalContribution, locale: Locale): stri
   if (c.face !== 'mort' || !c.placement) return undefined
   const d = c.placement.distance_m
   if (d === undefined || d === null) return c.placement.seul ? t.tileAlone : undefined
-  const texte = d < 1 ? '< 1' : new Intl.NumberFormat(intlLocale(locale)).format(Math.floor(d))
+  const metresD = gameUnitsToMeters(d)
+  const texte = metresD < 1 ? '< 1' : new Intl.NumberFormat(intlLocale(locale)).format(Math.floor(metresD))
   return c.placement.seul ? t.tileAloneAt(texte) : t.tileNearAt(texte)
 }
 

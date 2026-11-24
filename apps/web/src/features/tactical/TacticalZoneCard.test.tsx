@@ -90,7 +90,7 @@ function contribution(extra: Partial<TacticalContribution> = {}): TacticalContri
     arme_label: 'Fusil de combat à longue portée',
     mode_label: 'Assassin',
     score_label: '50 - 42',
-    placement: { seul: true, distance_m: 30.7 },
+    placement: { seul: true, distance_m: 10.1 },
     ...extra,
   }
 }
@@ -149,7 +149,7 @@ describe('TacticalZoneCard — la zone sélectionnée', () => {
     rendre()
     const carte = screen.getByTestId('tactical-zone-card')
     expect(screen.getByTestId('tactical-zone-title')).toHaveTextContent('Nid blindé')
-    expect(carte).toHaveTextContent('x −14…−12 m · y 4…6 m')
+    expect(carte).toHaveTextContent('x −42,7…−36,6 m · y 12,2…18,3 m')
     expect(screen.getByTestId('tactical-zone-value')).toHaveTextContent('3')
     expect(carte).toHaveTextContent(t.units.morts)
     expect(carte).toHaveTextContent('4 matchs distincts')

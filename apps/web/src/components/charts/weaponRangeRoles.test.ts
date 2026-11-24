@@ -18,6 +18,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { SynthesisWeaponRange, WeaponRangeSide } from '@/lib/api/types'
+import { gameUnitsToMeters as M } from '@/lib/formatters/distance'
 
 import { roleAxis, roleLabel, roleRangeLines } from './weaponRangeRoles'
 
@@ -119,8 +120,9 @@ describe('roleAxis / roleRangeLines — un axe unique pour tous les graphes', ()
   it('superpose A en haut et B en bas, sur le côté demandé', () => {
     const axis = roleAxis([a, b], nomDeRole)
     const precision = roleRangeLines(axis, a, b, 'kills').find((l) => l.weaponKey === 'precision')!
-    expect(precision.top?.median).toBe(20)
-    expect(precision.bottom?.median).toBe(25)
+    // Le contrat sert des unités du jeu ; les lignes sont en mètres.
+    expect(precision.top?.median).toBeCloseTo(M(20), 10)
+    expect(precision.bottom?.median).toBeCloseTo(M(25), 10)
   })
 
   /**
@@ -145,7 +147,7 @@ describe('roleAxis / roleRangeLines — un axe unique pour tous les graphes', ()
     expect(env.top).toBeNull()
     expect(env.bottom).toBeNull()
     // A vs C la porte côté C.
-    expect(paires[1].find((l) => l.weaponKey === 'environmental')!.bottom?.median).toBe(8)
+    expect(paires[1].find((l) => l.weaponKey === 'environmental')!.bottom?.median).toBeCloseTo(M(8), 10)
   })
 
   it('une ligne sans mesure de ce côté est rendue vide, jamais filtrée', () => {
@@ -154,7 +156,7 @@ describe('roleAxis / roleRangeLines — un axe unique pour tous les graphes', ()
     expect(morts.map((l) => l.weaponKey)).toEqual(axis.map((e) => e.weaponKey))
     const precision = morts.find((l) => l.weaponKey === 'precision')!
     expect(precision.top).toBeNull()
-    expect(precision.bottom?.median).toBe(18)
+    expect(precision.bottom?.median).toBeCloseTo(M(18), 10)
     const melee = morts.find((l) => l.weaponKey === 'melee')!
     expect(melee.top).toBeNull()
     expect(melee.bottom).toBeNull()
