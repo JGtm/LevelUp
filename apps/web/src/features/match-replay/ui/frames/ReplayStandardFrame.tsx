@@ -90,7 +90,7 @@ function standardColumn(view: ReplayFrameView) {
               player={focus.player}
               solo={focus.solo}
               onSolo={() => playerPanel.onSolo(focus.player.xuid)}
-              viewpoint={ficheViewpointOf(focus.player, view.viewpoint)}
+              takeViewpoint={ficheViewpointOf(focus.player, view.viewpoint)}
               onClose={playerPanel.onClose}
               doc={doc}
               frame={playFrame}

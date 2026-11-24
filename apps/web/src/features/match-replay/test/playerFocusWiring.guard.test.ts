@@ -13,6 +13,10 @@
  * ET LE POINT DE VUE (item 4.6) : Seul, Masquer et Suivre ne décident ni de l'encre de camp, ni du
  * roster, ni de la frise. Le panneau ne lit donc ni n'écrit `useReplayViewpoint` : un lien entre les
  * deux ferait changer la couleur de tout le rejeu quand on masque un joueur.
+ *
+ * « Prendre le point de vue » (fiche) est une action À PART, explicite, posée par les cadres (`ficheViewpointOf`) : le corps
+ * de la fiche ne fait que la TRANSPORTER (`takeViewpoint`) jusqu'au bouton, sans jamais lire le point de vue. Seul, Masquer
+ * et Suivre restent sans lien avec lui.
  */
 import { describe, expect, it } from 'vitest'
 

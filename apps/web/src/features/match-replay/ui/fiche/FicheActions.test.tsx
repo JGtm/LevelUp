@@ -74,7 +74,7 @@ describe('les libellés et les infobulles', () => {
 
 describe('« Prendre le point de vue »', () => {
   const montrer = (viewpoint: FicheViewpoint, locale: 'fr' | 'en' = 'fr') =>
-    render(<FicheActions name="JGtm" solo={false} onSolo={vi.fn()} locale={locale} viewpoint={viewpoint} />)
+    render(<FicheActions name="JGtm" solo={false} onSolo={vi.fn()} locale={locale} takeViewpoint={viewpoint} />)
 
   it('sans point de vue donné, la fiche ne porte que « Seul » (le bouton n’existe pas)', () => {
     monter()

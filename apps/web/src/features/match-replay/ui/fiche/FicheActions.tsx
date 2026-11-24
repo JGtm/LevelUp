@@ -30,10 +30,10 @@ interface FicheActionsProps {
   onSolo: () => void
   locale: ReplayLocale
   /** Le point de vue de la page, pour ce joueur ; absent = pas de bouton. */
-  viewpoint?: FicheViewpoint
+  takeViewpoint?: FicheViewpoint
 }
 
-export function FicheActions({ name, solo, onSolo, locale, viewpoint }: FicheActionsProps) {
+export function FicheActions({ name, solo, onSolo, locale, takeViewpoint }: FicheActionsProps) {
   const t = REPLAY_TEXT[locale]
   const text = t.playerPanel.solo
   return (
@@ -48,14 +48,14 @@ export function FicheActions({ name, solo, onSolo, locale, viewpoint }: FicheAct
       >
         {solo ? text.labelActive : text.label}
       </button>
-      {viewpoint && !viewpoint.current && (
+      {takeViewpoint && !takeViewpoint.current && (
         <button
           type="button"
           className={`${BUTTON_CLASS} ${IDLE_CLASS} mt-1.5 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-background`}
-          disabled={viewpoint.inert}
-          title={viewpoint.inert ? t.viewpointNoData : t.playerPanel.viewpoint.hint}
+          disabled={takeViewpoint.inert}
+          title={takeViewpoint.inert ? t.viewpointNoData : t.playerPanel.viewpoint.hint}
           {...PRESS_GUARDS}
-          onClick={viewpoint.onTake}
+          onClick={takeViewpoint.onTake}
         >
           {t.playerPanel.viewpoint.label}
         </button>
