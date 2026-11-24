@@ -84,6 +84,7 @@ func main() {
 	work := flag.String("work", "", "dossier de travail pour les morceaux téléchargés, effacés après chaque job (défaut : <repo>/data/cache, cache film du dépôt — jamais effacé)")
 	poll := flag.Duration("poll", defaultPollInterval, "cadence d'interrogation quand la file est vide")
 	once := flag.Bool("once", false, "prendre un seul job puis sortir")
+	fils := flag.Int("fils", 1, "fils que le decodeur peut employer pour lire un film (1 = un seul ; la sortie n'en depend pas)")
 	memLimit := flag.Int("mem-limit-gib", memguard.DefaultLimitGiB,
 		"plafond mémoire dur du décodage de CHAQUE job, en GiB (0 = désarmé ; cf. libs/film/memguard.Arm)")
 	flag.Parse()
@@ -128,6 +129,7 @@ func main() {
 		workDir:     workDir,
 		keepsFilms:  keepsFilms,
 		memLimitGiB: *memLimit,
+		fils:        *fils,
 	}
 	slog.InfoContext(ctx, "replay-worker: démarré",
 		"worker_id", identity.workerID, "url", *url, "work_dir", workDir,

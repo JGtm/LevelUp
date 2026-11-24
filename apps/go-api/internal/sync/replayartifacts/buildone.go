@@ -61,6 +61,9 @@ type BuildOneRequest struct {
 	// construction (le type porte ses etiquettes JSON) et minuscules — au plus les lignes des
 	// joueurs, deux scores et deux chaines.
 	Facts port.MatchFacts
+	// DecoderThreads : le nombre de fils que le decodeur peut employer dans l'enfant (cf.
+	// `config.DeploymentCapabilities.DecoderThreads`) ; 0 = un fil.
+	DecoderThreads int
 }
 
 // BuildOneResult : les octets d'UN artefact et CE QU'A COUTE leur construction.
@@ -147,6 +150,18 @@ func ConstruireEtRanger(ctx context.Context, build BuildOneFunc, req BuildOneReq
 	return stored, res, nil
 }
 
+// SpawnBuildOneAvecFils est SpawnBuildOne avec le nombre de fils du decodeur de l'installation (cf.
+// `config.DeploymentCapabilities.DecoderThreads`) : la valeur est posee sur chaque requete, l'enfant la recoit.
+func SpawnBuildOneAvecFils(fils int) BuildOneFunc { return avecFils(SpawnBuildOne, fils) }
+
+// avecFils pose `fils` sur chaque requete que recoit `build`.
+func avecFils(build BuildOneFunc, fils int) BuildOneFunc {
+	return func(ctx context.Context, req BuildOneRequest) (BuildOneResult, error) {
+		req.DecoderThreads = fils
+		return build(ctx, req)
+	}
+}
+
 // SpawnBuildOne est la strategie de PRODUCTION : elle delegue a un enfant borne (plafond
 // memoire dur, priorite CPU basse) qui rend les octets sans rien ecrire.
 //
@@ -155,12 +170,13 @@ func ConstruireEtRanger(ctx context.Context, build BuildOneFunc, req BuildOneReq
 // la synchronisation. L'inverse ferait un cycle d'import.
 func SpawnBuildOne(ctx context.Context, req BuildOneRequest) (BuildOneResult, error) {
 	res, err := replaychild.Spawn(ctx, replaychild.Request{
-		MatchID:   req.MatchID,
-		TitleSlug: req.TitleSlug,
-		RepoRoot:  req.RepoRoot,
-		MapNames:  req.MapNames,
-		FilmDir:   req.FilmDir,
-		Facts:     req.Facts,
+		MatchID:        req.MatchID,
+		TitleSlug:      req.TitleSlug,
+		RepoRoot:       req.RepoRoot,
+		MapNames:       req.MapNames,
+		FilmDir:        req.FilmDir,
+		Facts:          req.Facts,
+		DecoderThreads: req.DecoderThreads,
 	})
 	if err != nil {
 		return BuildOneResult{}, err

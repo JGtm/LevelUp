@@ -94,6 +94,8 @@ func runBackfillReplayUn(cfg *config.AppConfig, o replayBackfillOptions, cacheRo
 		return filmrun.CodePreparation
 	}
 
+	builder = builder.AvecFils(cfg.Capabilities.DecoderThreads)
+
 	pr := cfg.PathResolver()
 	faits := chargerFaitsUnMatch(ctx, pr, o.titleSlug, o.one)
 	filmDir := filmcache.ChunkDir(cacheRoot, titlePkg.FilmShortMatchID(o.one))

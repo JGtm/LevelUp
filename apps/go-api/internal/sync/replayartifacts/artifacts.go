@@ -145,7 +145,7 @@ func NewHook(cfg *config.AppConfig, store SettingsReader, enqueue EnqueueFunc) *
 		FilmRoot:  cfg.PathResolver().FilmArchiveDir,
 		// LA CUISSON PART DANS UN ENFANT BORNE, TOUJOURS (lot BUILDALL) : le serveur ne
 		// decode plus un film dans son propre processus.
-		BuildOne: SpawnBuildOne,
+		BuildOne: SpawnBuildOneAvecFils(cfg.Capabilities.DecoderThreads),
 	}
 }
 

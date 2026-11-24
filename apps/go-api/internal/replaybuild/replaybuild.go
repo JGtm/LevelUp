@@ -95,6 +95,8 @@ type Builder struct {
 	// sansEcritureDesFaits : la cuisson n'ECRIT pas ses faits sur disque (cf.
 	// `SansEcritureDesFaits`).
 	sansEcritureDesFaits bool
+	// fils : le nombre de fils que le decodeur peut employer (cf. `AvecFils`). 0 = un fil.
+	fils int
 	// observer recoit chaque etape de BuildBytes et de BuildFromFilm avec sa sortie (cf.
 	// replay/observe.go et cmd/replay-equiv). Nil = aucun appel, aucun cout.
 	observer replay.Observer

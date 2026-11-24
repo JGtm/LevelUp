@@ -69,6 +69,7 @@ func (r *ServiceRegistry) RunReplayBuild(ctx context.Context, titleSlug, matchID
 	return construireRejeuAdmin(ctx, replayartifacts.SpawnBuildOne, replayartifacts.BuildOneRequest{
 		MatchID: fullID, TitleSlug: titleSlug, RepoRoot: r.cfg.RepoRoot,
 		MapNames: names, FilmDir: filmcache.ChunkDir(cacheRoot, short), Facts: facts,
+		DecoderThreads: r.cfg.Capabilities.DecoderThreads,
 	})
 }
 

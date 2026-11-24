@@ -71,6 +71,7 @@ func (b *Builder) buildReplayOptions(ctx context.Context,
 		MapQuant:         &entry,
 		EquipmentEnergy:  b.energieCatalog(ctx),
 		Observe:          b.observe,
+		Vitesse:          replay.OptionsVitesse{Fils: b.fils},
 		SpawnPoints:      cat.spawnPts,
 		SpawnPointsState: cat.spawnPointsState,
 	}

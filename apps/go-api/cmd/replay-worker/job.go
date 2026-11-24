@@ -87,8 +87,10 @@ type worker struct {
 	// memLimitGiB : le plafond mémoire dur de CHAQUE job (0 = désarmé). Cf. libs/film/memguard.Arm,
 	// armé ci-dessous dans processJob.
 	memLimitGiB int
-	jobsDone    int64
-	jobsFailed  int64
+	// fils : le nombre de fils que le decodeur peut employer dans chaque job (drapeau `-fils`).
+	fils       int
+	jobsDone   int64
+	jobsFailed int64
 }
 
 // processJob traite un job pris de bout en bout et en rend le résultat. Ne
@@ -255,6 +257,7 @@ func (w *worker) buildAndSend(ctx context.Context, job *domain.BuildQueueJob) (s
 	if err != nil {
 		return "", fmt.Errorf("catalogue de titre indisponible : %w", err)
 	}
+	builder = builder.AvecFils(w.fils)
 	// L'OUVRIER N'A PAS DE BASE : les faits du match lui arrivent DANS LE JOB, résolus par le
 	// web au moment de la mise en file (cf. domain.BuildQueuePayload.Facts). C'est ce qui lui
 	// permet de rendre un artefact COMPLET sans jamais toucher une DuckDB.
