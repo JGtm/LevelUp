@@ -42,7 +42,7 @@ import (
 // rangée dans `match_usage_films.levelup_rev` et comparée par `levelup backfill-usage-summary` :
 // un match dont la passe courante porte une autre révision est re-dérivé. À CHANGER dès qu'une
 // règle de `analysis/shieldcycle` ou `analysis/revenge`, ou leur jointure ici, change de résultat.
-const UsageLevelUpRev = "lu1"
+const UsageLevelUpRev = "lu2"
 
 // EntreesMesuresUsage : ce que les mesures lisent en base, pour UN match, avant tout writer.
 type EntreesMesuresUsage struct {
@@ -60,7 +60,13 @@ func AttacherMesuresLevelUp(s *replay.UsageSummary, doc *replay.ReplayDocument, 
 		return persist.UsageLevelUp{}
 	}
 	m := mesurerMatch(doc, in)
-	out := persist.UsageLevelUp{Rev: UsageLevelUpRev, Players: map[string]persist.UsageLevelUpPlayer{}}
+	out := persist.UsageLevelUp{Players: map[string]persist.UsageLevelUpPlayer{}}
+	// La révision ne se pose que si le fil des morts ET les équipes ont été lus : sans eux les
+	// vengeances ne sont pas mesurées, et la révision ferait croire le match à jour au rattrapage
+	// (qui compare cette valeur). Laissée vide, il reprend le match.
+	if in.Frags.Read && len(in.Equipes) > 0 {
+		out.Rev = UsageLevelUpRev
+	}
 	seen := make(map[string]bool, len(s.Players))
 	for i := range s.Players {
 		x := s.Players[i].XUID

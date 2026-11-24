@@ -132,6 +132,9 @@ type KillSourceCollector struct {
 	// AvecPorteeDuRadar) — cf. placement_des_vies.go. Vide = porteurs du drapeau sans socles,
 	// lignes sans portee.
 	placement depsDuPlacement
+	// filmComplet : le film du match est-il complet a l archive ? nil = non controle. Quand il
+	// dit oui, la passe ne pose PAS MBitFilmAbsent (cf. film_absent_reconcile.go).
+	filmComplet func(matchID string) bool
 }
 
 // NewKillSourceCollector construit le collecteur.

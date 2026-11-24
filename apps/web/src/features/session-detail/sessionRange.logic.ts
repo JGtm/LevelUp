@@ -34,6 +34,7 @@ import {
   type SeuilsRoles,
 } from '@/features/squad/squadRangeRoles.logic'
 import type { MatchRangeBlock, MatchRangeProfile, RangeReferenceBlock } from '@/lib/api/types'
+import { gameUnitsToMeters } from '@/lib/formatters/distance'
 
 export { FENETRE_ROLE, PLANCHER_MESURE, TAILLE_POINT_MIN }
 export type { PointPortee, RoleDePortee, SeriePortee, SeuilsRoles }
@@ -65,7 +66,8 @@ export function seuilsServis(reference: RangeReferenceBlock | null | undefined):
   const bas = reference?.role_low_m
   const haut = reference?.role_high_m
   if (bas == null || haut == null) return null
-  return { bas, haut }
+  // Servis en unités du jeu, comme les écarts : les bandes sont lues en mètres avec eux.
+  return { bas: gameUnitsToMeters(bas), haut: gameUnitsToMeters(haut) }
 }
 
 /**

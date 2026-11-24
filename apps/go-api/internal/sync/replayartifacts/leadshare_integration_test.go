@@ -188,3 +188,50 @@ func TestMainmise_UnCampMuetPorteSaLigneAZero(t *testing.T) {
 		t.Errorf("camp muet : %d ms en tete, attendu 0", leadMS)
 	}
 }
+
+// IdentitesMainmise rend la durée de la FENÊTRE du match, la même règle que la résolution du coup d'envoi
+// (timeline.MatchWindowSeconds) : la durée du registre, sauf quand elle est manifestement fausse (plus
+// courte que le plus long temps de jeu d'un joueur humain, marge comprise). Début ET fin de la fenêtre de
+// la Mainmise la lisent ; les bots ne comptent pas.
+func TestIdentitesMainmise_LaFenetreSuitLaRegleDuMatch(t *testing.T) {
+	db := baseRegistre(t)
+	quand := temoinT0()
+	cas := []struct {
+		id      string
+		duree   int
+		humain  int
+		bot     int
+		attendu int64
+	}{
+		{"m-fausse", 21, 462, 0, 462},    // durée fausse : le temps de jeu borne la fenêtre
+		{"m-bot", 917, 900, 947, 917},    // un bot ne rend pas la durée fausse
+		{"m-marge", 600, 601, 0, 600},    // sous la marge, la durée reste tenue
+		{"m-juste", 600, 580, 0, 600},    // cas ordinaire
+		{"m-fausse2", 24, 677, 700, 677}, // le bot n'élargit pas non plus une durée fausse
+	}
+	for _, c := range cas {
+		if _, err := db.Exec(`INSERT INTO match_registry
+			(match_id, start_time, start_time_utc, backfill_completed, map_name, pair_name, duration_seconds)
+			VALUES (?, ?, ?, 0, 'Recharge', 'Arena:Slayer', ?)`, c.id, quand, quand, c.duree); err != nil {
+			t.Fatalf("insert registre %s: %v", c.id, err)
+		}
+		inscrireJoueur(t, db, c.id, "2603225103667623", quand, c.humain)
+		if c.bot > 0 {
+			inscrireJoueur(t, db, c.id, "bid(1.0)", quand, c.bot)
+		}
+	}
+	ids := make([]string, 0, len(cas))
+	for _, c := range cas {
+		ids = append(ids, c.id)
+	}
+	got, err := IdentitesMainmise(context.Background(), db, ids)
+	if err != nil {
+		t.Fatalf("IdentitesMainmise: %v", err)
+	}
+	for _, c := range cas {
+		d := got[c.id].DurationSeconds
+		if d == nil || *d != c.attendu {
+			t.Errorf("%s : fenêtre = %v, attendu %d", c.id, d, c.attendu)
+		}
+	}
+}

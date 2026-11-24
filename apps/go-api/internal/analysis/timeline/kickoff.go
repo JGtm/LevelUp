@@ -14,7 +14,7 @@ import (
 // un changement de logique sans changement de nombre se signale en changeant cette valeur. Les notes
 // lisent ce que cette résolution écrit : l'empreinte des révisions de notation hache KickoffRev
 // (TestScoringParametersMatchRevision, paquet sync), donc la changer impose de les monter aussi.
-const KickoffRev = "kickoff-2026-11-22"
+const KickoffRev = "kickoff-2026-11-24b"
 
 // KickoffSource dit d'où vient le coup d'envoi rangé d'un match. Valeurs rangées dans
 // `match_registry.real_start_source` : `film`, `api`, ou vide (coup d'envoi inconnu).
@@ -67,6 +67,10 @@ type KickoffInput struct {
 	// DurationSeconds : la durée du match ; nil ou nulle = inconnue (seule la borne zéro du coup
 	// d'envoi du rejeu s'applique alors).
 	DurationSeconds *int
+	// LongestPlayedSeconds : le plus long temps de jeu rangé des JOUEURS (humains) du match ; nil = inconnu.
+	// Quand la durée du registre est plus courte (durée manifestement fausse, cf.
+	// [DurationUnreliable]), il borne la fenêtre du match à sa place.
+	LongestPlayedSeconds *int
 	// Participations : les arrivées des joueurs, lues seulement quand le rejeu ne décide pas.
 	Participations []ParticipationT0Input
 }
@@ -76,11 +80,15 @@ type KickoffInput struct {
 // quand elle est négative ou au-delà de son seuil), sinon inconnu. Le rejeu est pris tel que le
 // document le publie : aucun détecteur n'est rejoué ici ; seule sa plausibilité se vérifie, par la
 // fenêtre du match elle-même (ni négatif, ni au-delà de la durée), et un coup d'envoi hors de
-// cette fenêtre compte comme un rejeu qui n'en publie pas.
+// cette fenêtre compte comme un rejeu qui n'en publie pas. La durée du registre est parfois fausse
+// (21 s pour un match de 7 minutes) : quand elle est plus courte que le plus long temps de jeu d'un
+// joueur, c'est ce temps de jeu qui borne la fenêtre ([MatchWindowSeconds]), et un coup d'envoi juste
+// n'est pas refusé pour cette raison.
 func ResolveKickoff(in KickoffInput) Kickoff {
 	outOfBounds := false
 	if in.FilmT0Ms != nil {
-		if FilmWithinMatch(*in.FilmT0Ms, in.DurationSeconds) {
+		window := MatchWindowSeconds(in.DurationSeconds, in.LongestPlayedSeconds)
+		if FilmWithinMatch(*in.FilmT0Ms, window) {
 			return Kickoff{Source: KickoffSourceFilm, OffsetMs: *in.FilmT0Ms}
 		}
 		outOfBounds = true
@@ -90,6 +98,35 @@ func ResolveKickoff(in KickoffInput) Kickoff {
 		return Kickoff{Source: KickoffSourceUnknown, Estimate: q, FilmOutOfBounds: outOfBounds}
 	}
 	return Kickoff{Source: KickoffSourceAPI, OffsetMs: t0, Estimate: q, FilmOutOfBounds: outOfBounds}
+}
+
+// DurationMismatchMarginSeconds est l'excédent de temps de jeu au-dessus duquel la durée du registre est
+// « manifestement fausse ». En dessous, l'écart est celui des horloges (arrivée et départ comptés à la
+// seconde, durée de l'API différente de fin moins début) et la durée reste tenue pour juste : sans marge,
+// un joueur à une seconde de trop élargissait la fenêtre du match (un coup d'envoi après la fin réelle
+// aurait été accepté) et le temps de jeu de tout le match n'était plus recalculé. Mesure sur la base du
+// poste le 2026-11-24 : l'excédent minimum d'un vrai cas de durée fausse (21 s pour 462 s jouées, 24 s
+// pour 677 s...) est de 30 s ; 10 s tient les écarts d'horloge en dehors, avec 20 s de marge de sécurité.
+const DurationMismatchMarginSeconds = 10
+
+// DurationUnreliable dit si la durée du registre est manifestement fausse : connue, et plus courte que le
+// plus long temps de jeu d'un JOUEUR du match de plus de [DurationMismatchMarginSeconds] (un joueur ne joue
+// pas plus longtemps que le match ; les bots n'entrent pas dans ce temps de jeu, l'appelant ne lui passe
+// que des humains). Faux quand l'une des deux valeurs manque : rien ne contredit alors la durée.
+func DurationUnreliable(durationSeconds, longestPlayedSeconds *int) bool {
+	return durationSeconds != nil && *durationSeconds > 0 &&
+		longestPlayedSeconds != nil && *longestPlayedSeconds > *durationSeconds+DurationMismatchMarginSeconds
+}
+
+// MatchWindowSeconds rend la durée qui borne la fenêtre du match : celle du registre, sauf quand elle
+// est manifestement fausse ([DurationUnreliable]) — c'est alors le plus long temps de jeu. C'est la
+// seule règle qui accepte ou refuse un coup d'envoi du rejeu (ResolveKickoff, et le coup d'envoi
+// du rejeu gardé par sync/kickoff.Resolve).
+func MatchWindowSeconds(durationSeconds, longestPlayedSeconds *int) *int {
+	if DurationUnreliable(durationSeconds, longestPlayedSeconds) {
+		return longestPlayedSeconds
+	}
+	return durationSeconds
 }
 
 // FilmWithinMatch dit si un coup d'envoi du rejeu tombe dans la fenêtre du match : [0, durée], ou

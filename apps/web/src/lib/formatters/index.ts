@@ -22,6 +22,7 @@ export {
   formatDurationHM,
 } from './duration'
 export { displayRatingLabel, formatRankDelta } from './rating'
+export { METERS_PER_GAME_UNIT, formatGameDistance, gameUnitsToMeters, metersToGameUnits } from './distance'
 export { formatOffensiveConversion, formatDefensiveResistance, effectiveDmgPerFrag } from './combatYield'
 export {
   dowLabels,

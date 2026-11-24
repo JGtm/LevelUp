@@ -17,20 +17,22 @@ import (
 //
 //	m1 / 1 000   ma mort par Rival : deux coequipiers hors de vue -> aucun visible ;
 //	m1 / 2 000   mon frag.
-//	m2 / 3 000   un coequipier visible a 10 m (rayon 24 m) -> accompagnee.
-//	m2 / 4 000   contexte a 4 500 ms, coequipier visible a 30 m -> visible hors rayon.
+//	m2 / 3 000   un coequipier visible a 6 unites du jeu, 18,3 m (rayon 24 m) -> accompagnee.
+//	m2 / 4 000   contexte a 4 500 ms, coequipier visible a 30 unites, 91 m -> visible hors rayon.
+//
+// Les distances du corpus sont en UNITES DU JEU ; le rayon (18 m, 24 m) est en vrais metres.
 func corpusEquipe() *mockTacticalRepo {
 	repo, _ := corpusDetail()
 	repo.contextes = []domain.ContexteDeMort{
 		{MatchID: "m1", VictimXUID: tsMoi, TimeMs: 1000, Visibles: 0, HorsDeVue: 2, Total: 2},
-		{MatchID: "m2", VictimXUID: tsMoi, TimeMs: 3000, PlusProcheM: m(10), Visibles: 1, Total: 1},
+		{MatchID: "m2", VictimXUID: tsMoi, TimeMs: 3000, PlusProcheM: m(6), Visibles: 1, Total: 1},
 		{MatchID: "m2", VictimXUID: tsMoi, TimeMs: 4500, PlusProcheM: m(30), Visibles: 1, Total: 1},
 	}
 	repo.mates = []domain.MateDeMort{
 		{MatchID: "m1", VictimXUID: tsMoi, TimeMs: 1000, MateXUID: "900", Etat: domain.TacticalMateHorsDeVue},
 		{MatchID: "m1", VictimXUID: tsMoi, TimeMs: 1000, MateXUID: tsAmi, Gamertag: "Ami", Etat: domain.TacticalMateHorsDeVue},
 		{MatchID: "m2", VictimXUID: tsMoi, TimeMs: 3000, MateXUID: tsAmi, Gamertag: "Ami", Etat: domain.TacticalMateVisible,
-			X: m(2.3), Y: m(12.3), DistanceM: m(10)},
+			X: m(2.3), Y: m(12.3), DistanceM: m(6)},
 		{MatchID: "m2", VictimXUID: tsMoi, TimeMs: 4500, MateXUID: tsAmi, Gamertag: "Ami", Etat: domain.TacticalMateVisible,
 			X: m(32.4), Y: m(2.4), DistanceM: m(30)},
 	}
@@ -68,7 +70,7 @@ func TestEquipe_StatutsEtCoequipiers(t *testing.T) {
 		t.Fatalf("m2 / 3000 : equipe = %+v", eq)
 	}
 	ami := eq.Coequipiers[0]
-	if !ami.DansLeRayon || ami.Gamertag != "Ami" || ami.Point == nil || *ami.DistanceMortM != 10 {
+	if !ami.DansLeRayon || ami.Gamertag != "Ami" || ami.Point == nil || *ami.DistanceMortM != 6 {
 		t.Errorf("coequipier = %+v", ami)
 	}
 	// la distance au tueur est celle du coequipier (2.3, 12.3) au point du tueur (9, 9).
@@ -76,7 +78,7 @@ func TestEquipe_StatutsEtCoequipiers(t *testing.T) {
 		t.Errorf("distance au tueur = %v, want 7.47", ami.DistanceTueurM)
 	}
 	if c[3].Equipe == nil || c[3].Equipe.Statut != domain.TacticalStatutVisibleHorsRayon || c[3].Equipe.Coequipiers[0].DansLeRayon {
-		t.Errorf("m2 / 4000 : equipe = %+v (30 m hors d'un rayon de 24 m)", c[3].Equipe)
+		t.Errorf("m2 / 4000 : equipe = %+v (30 unites, 91 m : hors d'un rayon de 24 m)", c[3].Equipe)
 	}
 	if c[1].Equipe != nil {
 		t.Errorf("un frag n'a pas d'equipe : %+v", c[1].Equipe)
@@ -103,8 +105,8 @@ func TestEquipe_BilanEnNSurM(t *testing.T) {
 	if somme != 3 {
 		t.Errorf("rose = %v, want trois tueurs ranges", m.Rose)
 	}
-	if m.MedianeTueurM == nil || m.MedianePlusProcheM == nil || *m.MedianePlusProcheM != 20 {
-		t.Errorf("medianes = %v / %v (plus proche : 10 et 30 -> 20)", m.MedianeTueurM, m.MedianePlusProcheM)
+	if m.MedianeTueurM == nil || m.MedianePlusProcheM == nil || *m.MedianePlusProcheM != 18 {
+		t.Errorf("medianes = %v / %v (plus proche : 6 et 30 -> 18)", m.MedianeTueurM, m.MedianePlusProcheM)
 	}
 }
 

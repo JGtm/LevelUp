@@ -8088,7 +8088,10 @@ export interface components {
             team: number;
         };
         FlagReturnZone: {
-            /** Format: float */
+            /**
+             * Format: float
+             * @description Rayon de la zone en unités du jeu (1 unité = 3,048 m), pas en mètres.
+             */
             radiusM: number;
             /** Format: float */
             resetSeconds?: number;
@@ -9765,14 +9768,23 @@ export interface components {
             xuid: string;
         };
         MatchKillDistanceWeapon: {
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit.
+             */
             avg_distance_m: number;
             label?: string;
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit.
+             */
             max_distance_m: number;
             /** Format: int64 */
             measured_kills: number;
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit.
+             */
             min_distance_m: number;
             weapon_key: string;
         };
@@ -9962,18 +9974,27 @@ export interface components {
         };
         MatchRangePlayer: {
             gamertag?: string;
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit.
+             */
             lobby_delta_m: number;
             /** Format: int64 */
             measured: number;
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit.
+             */
             median_m: number;
             xuid: string;
         };
         MatchRangeProfile: {
             /** Format: int64 */
             lobby_measured: number;
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit.
+             */
             lobby_median_m: number;
             map_name?: string;
             match_id: string;
@@ -11801,12 +11822,21 @@ export interface components {
             matches_measured: number;
             /** Format: int64 */
             matches_total: number;
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit.
+             */
             period_median_delta_m?: number;
             profiles: components["schemas"]["MatchRangeProfile"][] | null;
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit.
+             */
             role_high_m?: number;
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit.
+             */
             role_low_m?: number;
         };
         RankDelta: {
@@ -14180,13 +14210,19 @@ export interface components {
             delta?: components["schemas"]["SynthesisOpeningDelta"];
             /** Format: int64 */
             measured_kills: number;
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit.
+             */
             median_m: number;
         };
         SynthesisOpeningDelta: {
             /** Format: double */
             closing_share_pct: number;
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit.
+             */
             median_m: number;
             /** Format: int64 */
             n: number;
@@ -14290,9 +14326,15 @@ export interface components {
             measured_deaths: number;
             /** Format: int64 */
             measured_kills: number;
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit.
+             */
             median_deaths_m: number;
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit.
+             */
             median_kills_m: number;
             opening?: components["schemas"]["SynthesisOpening"];
             /** Format: int64 */
@@ -14336,9 +14378,15 @@ export interface components {
             equipe_a_terre: number;
             /** Format: int64 */
             examinees: number;
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit.
+             */
             mediane_plus_proche_m?: number;
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit.
+             */
             mediane_tueur_m?: number;
             rose: number[] | null;
             /** Format: int64 */
@@ -14389,9 +14437,15 @@ export interface components {
         };
         TacticalCoequipier: {
             dans_le_rayon: boolean;
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit.
+             */
             distance_mort_m?: number;
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit.
+             */
             distance_tueur_m?: number;
             gamertag?: string;
             point?: components["schemas"]["TacticalPoint"];
@@ -14426,7 +14480,10 @@ export interface components {
         };
         TacticalEquipeALaMort: {
             coequipiers: components["schemas"]["TacticalCoequipier"][] | null;
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Portée du radar en vrais mètres (18 en arène, 24 en Grande bataille), pas en unités du jeu.
+             */
             rayon_m?: number;
             statut?: string;
         };
@@ -14454,7 +14511,10 @@ export interface components {
             map_name: string;
             /** Format: int64 */
             matchs: number;
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit.
+             */
             pas_m?: number;
             sous_plancher: boolean;
             /** Format: int64 */
@@ -14481,7 +14541,10 @@ export interface components {
             volume_index: number;
         };
         TacticalPlacement: {
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit.
+             */
             distance_m?: number;
             seul: boolean;
         };
@@ -14517,12 +14580,16 @@ export interface components {
             matchs_victoire: number;
             /** Format: int64 */
             morts_equipe_a_terre?: number;
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit.
+             */
             pas_m: number;
             /** Format: int64 */
             points_ignores: number;
             question: string;
             qui: string;
+            /** @description Portée du radar en vrais mètres (18 en arène, 24 en Grande bataille), pas en unités du jeu. */
             rayons_radar_m?: number[] | null;
             voisines?: components["schemas"]["TacticalRaster"][] | null;
             zones?: components["schemas"]["CalloutZone"][] | null;
@@ -14574,7 +14641,10 @@ export interface components {
             mort: components["schemas"]["TacticalPoint"];
             /** Format: int64 */
             pas_ms: number;
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Portée du radar en vrais mètres (18 en arène, 24 en Grande bataille), pas en unités du jeu.
+             */
             rayon_m: number;
             /** Format: int64 */
             traine_ms: number;
@@ -15773,10 +15843,16 @@ export interface components {
             label?: string;
             /** Format: int64 */
             measured: number;
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit.
+             */
             median_m: number;
             record: components["schemas"]["WeaponRecordFrag"];
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit.
+             */
             record_m: number;
             weapon_key: string;
         };
@@ -15830,17 +15906,32 @@ export interface components {
             below_pct: number;
             /** Format: double */
             level_pct: number;
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit.
+             */
             max_m: number;
             /** Format: int64 */
             measured: number;
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit.
+             */
             median: number;
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit.
+             */
             min_m: number;
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit.
+             */
             p10: number;
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit.
+             */
             p90: number;
         };
         WeaponRecordFrag: {

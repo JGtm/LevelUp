@@ -10,6 +10,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { MatchRangeProfile } from '@/lib/api/types'
+import { metersToGameUnits } from '@/lib/formatters/distance'
 
 import {
   categoriesMatchs,
@@ -37,13 +38,15 @@ function profil(
     match_id: `m${i}`,
     played_at: `2026-09-${String(10 + i).padStart(2, '0')}T20:00:00Z`,
     map_name: map,
-    lobby_median_m: 20,
+    // Le contrat sert des UNITÉS DU JEU ; les écarts et médianes de ce fichier s'écrivent en mètres
+    // (ce que lisent les points du nuage) : le jeu d'essai les ramène en unités avant le contrat.
+    lobby_median_m: metersToGameUnits(20),
     lobby_measured: 60,
     players: joueurs.map((j) => ({
       xuid: j.xuid,
       gamertag: j.gamertag,
-      median_m: 20 + j.delta,
-      lobby_delta_m: j.delta,
+      median_m: metersToGameUnits(20 + j.delta),
+      lobby_delta_m: metersToGameUnits(j.delta),
       measured: j.measured ?? 10,
     })),
   }
@@ -97,7 +100,8 @@ describe('seuilsRoles / roleDeEcart', () => {
   it('rend les TIERS des points pleins, pas des mètres en dur', () => {
     const serie = serieDe([0, 3, 6, 9])
     const seuils = seuilsRoles([serie])
-    expect(seuils).toEqual({ bas: quantileLineaire([0, 3, 6, 9], 1 / 3), haut: quantileLineaire([0, 3, 6, 9], 2 / 3) })
+    expect(seuils!.bas).toBeCloseTo(quantileLineaire([0, 3, 6, 9], 1 / 3), 9)
+    expect(seuils!.haut).toBeCloseTo(quantileLineaire([0, 3, 6, 9], 2 / 3), 9)
     // Une escouade entièrement « longue » garde TROIS rôles internes.
     const longue = serieDe([20, 24, 28, 32])
     const s2 = seuilsRoles([longue])!
@@ -176,8 +180,8 @@ describe('quantileLineaire', () => {
 describe('typage', () => {
   it('un point porte sa médiane BRUTE à côté de son écart — l’infobulle dit les deux', () => {
     const p: PointPortee = serieDe([3])!.points[0]
-    expect(p.medianeM).toBe(23)
-    expect(p.ecartM).toBe(3)
+    expect(p.medianeM).toBeCloseTo(23, 9)
+    expect(p.ecartM).toBeCloseTo(3, 9)
   })
 })
 
@@ -196,7 +200,8 @@ describe('lignesRuban', () => {
   it('la case porte écart, frags mesurés et plein : le petit échantillon se dit dans l’infobulle', () => {
     const serie = serieDe([6, 6, 6, 6, 6], [10, 10, 10, 10, PLANCHER_MESURE - 1])
     const dernier = lignesRuban([serie], seuils)[0].cellules[4]
-    expect(dernier).toMatchObject({ ordre: 4, plein: false, role: null, ecartM: 6, mesures: PLANCHER_MESURE - 1 })
+    expect(dernier).toMatchObject({ ordre: 4, plein: false, role: null, mesures: PLANCHER_MESURE - 1 })
+    expect(dernier.ecartM).toBeCloseTo(6, 9)
   })
 
   it('sans seuils : aucun rôle, toutes les cases vides ; sans série : aucune ligne', () => {

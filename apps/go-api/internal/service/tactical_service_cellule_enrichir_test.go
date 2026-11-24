@@ -109,7 +109,7 @@ func corpusDetail() (*mockTacticalRepo, *fakeCelluleMatchs) {
 	}
 	repo.contextes = []domain.ContexteDeMort{
 		{MatchID: "m1", VictimXUID: tsMoi, TimeMs: 1000, Visibles: 0, HorsDeVue: 2},
-		{MatchID: "m2", VictimXUID: tsMoi, TimeMs: 3000, PlusProcheM: m(10), Visibles: 1},
+		{MatchID: "m2", VictimXUID: tsMoi, TimeMs: 3000, PlusProcheM: m(6), Visibles: 1},
 		{MatchID: "m2", VictimXUID: tsMoi, TimeMs: 4500, PlusProcheM: m(30), Visibles: 1},
 	}
 	base := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
@@ -206,7 +206,7 @@ func TestDetail_ChaqueChamp(t *testing.T) {
 		{mode: "Assassin", score: "50 - 42", kind: "points", arme: "BR75 (fr)",
 			placement: &domain.TacticalPlacement{Seul: true}, rejeu: true},
 		{mode: "Assassin", score: "50 - 42", kind: "points", categorie: "Headshot", rejeu: true},
-		{mode: "Oddball", score: "2 - 1", kind: "rounds", placement: &domain.TacticalPlacement{DistanceM: m(10)}},
+		{mode: "Oddball", score: "2 - 1", kind: "rounds", placement: &domain.TacticalPlacement{DistanceM: m(6)}},
 		{mode: "Oddball", score: "2 - 1", kind: "rounds", placement: &domain.TacticalPlacement{Seul: true, DistanceM: m(30)}},
 	}
 	if len(got.Contributions) != len(want) {

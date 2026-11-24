@@ -63,7 +63,7 @@ func TestRoseDepuis_RepereDuPlan(t *testing.T) {
 }
 
 func TestStatutDeLaMort_QuatreStatuts(t *testing.T) {
-	d := func(v float64) *float64 { return &v }
+	d := metres // vrais mètres → distance du film, en unités du jeu
 	cas := []struct {
 		nom                 string
 		visibles, horsDeVue int

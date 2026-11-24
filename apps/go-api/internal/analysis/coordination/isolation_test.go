@@ -5,10 +5,13 @@ package coordination
 import (
 	"testing"
 
+	"levelup/go-api/internal/analysis/gameunits"
 	"levelup/go-api/internal/domain"
 )
 
-func metres(v float64) *float64 { return &v }
+// metres : la distance du film (en unités du jeu) d'un coéquipier situé à `v` VRAIS mètres. Les
+// portées du radar (18 m, 24 m) sont en vrais mètres, les distances du film en unités.
+func metres(v float64) *float64 { u := gameunits.MetersToUnits(v); return &u }
 
 // mort pose une mort a examiner : la distance au coequipier visible le plus proche, et combien
 // de coequipiers etaient en mesure d'accompagner.

@@ -112,13 +112,39 @@ func TestResumeUsage_MesuresDeLevelUp(t *testing.T) {
 		t.Errorf("m-sans-fil/111 = %+v %+v %+v, attendu bouclier mesure et vengeance NULL (fil des morts absent)", b, r, v)
 	}
 
-	for _, id := range []string{"m-lu", "m-sans-fil"} {
+	// Révision : posée sur le match mesuré en entier, laissée VIDE sur celui dont le fil des morts n'a
+	// pas été lu (le rattrapage le reprendra, il ne le croit pas à jour).
+	for id, attendue := range map[string]string{"m-lu": UsageLevelUpRev, "m-sans-fil": ""} {
 		var rev sql.NullString
 		if err := db.QueryRow(`SELECT levelup_rev FROM match_usage_films_latest WHERE match_id = ?`, id).Scan(&rev); err != nil {
 			t.Fatalf("levelup_rev %s: %v", id, err)
 		}
-		if !rev.Valid || rev.String != UsageLevelUpRev {
-			t.Errorf("%s : levelup_rev = %+v, attendu %q", id, rev, UsageLevelUpRev)
+		if rev.String != attendue {
+			t.Errorf("%s : levelup_rev = %+v, attendu %q", id, rev, attendue)
+		}
+	}
+}
+
+// Deux frags au même instant se lisent dans le même ordre quel que soit l'ordre dans lequel ils ont été
+// écrits : le tri n'a pas de départage caché dans l'ordre d'insertion.
+func TestLireFragsDuFilDesMorts_OrdreDeterministeALegalite(t *testing.T) {
+	db := baseRegistre(t)
+	insererFrag(t, db, "m-ab", "A", "B", 5000)
+	insererFrag(t, db, "m-ab", "C", "D", 5000)
+	insererFrag(t, db, "m-ba", "C", "D", 5000)
+	insererFrag(t, db, "m-ba", "A", "B", 5000)
+
+	frags, err := LireFragsDuFilDesMorts(context.Background(), db, []string{"m-ab", "m-ba"})
+	if err != nil {
+		t.Fatalf("LireFragsDuFilDesMorts: %v", err)
+	}
+	ab, ba := frags["m-ab"].Kills, frags["m-ba"].Kills
+	if len(ab) != 2 || len(ba) != 2 {
+		t.Fatalf("frags lus : %d et %d, attendu 2 et 2", len(ab), len(ba))
+	}
+	for i := range ab {
+		if ab[i] != ba[i] {
+			t.Fatalf("ordre dépendant de l'insertion : %+v contre %+v", ab, ba)
 		}
 	}
 }

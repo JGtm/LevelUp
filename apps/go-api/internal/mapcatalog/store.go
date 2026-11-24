@@ -78,6 +78,13 @@ const (
 	pasAttenteVerrou   = 25 * time.Millisecond
 )
 
+// ouvrirVerrou crée le fichier de verrou en exclusivité. Une variable de paquet pour une seule raison :
+// la couture qui laisse un test obtenir l'erreur « accès refusé » que Windows rend quand l'autre
+// écrivain est en train de supprimer le fichier, sans compter sur un entrelacement de goroutines.
+var ouvrirVerrou = func(chemin string) (*os.File, error) {
+	return os.OpenFile(chemin, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+}
+
 // prendreVerrou pose un verrou consultatif a cote du catalogue et rend sa fonction de retrait.
 //
 // # LE DOSSIER SE CREE AVANT LE VERROU (constat C3 de la revue A-R1, 2026-09-06)
@@ -90,9 +97,14 @@ const (
 // sur la cause, puis ecrivait SANS exclusion mutuelle. Mesure : 8 ecrivains concurrents sur un
 // dossier absent ne conservaient qu'UNE carte sur 8, avec quatre `rename` en echec dur.
 //
-// # UN VERROU TENU EST UN `EEXIST`, ET RIEN D'AUTRE
+// # UN VERROU TENU EST UN `EEXIST`, OU UN ACCES REFUSE PENDANT QU'IL SE LIBERE
 //
-// Toute autre erreur d'ouverture (droits, dossier disparu entre-temps) n'est pas une attente :
+// Sous Windows, creer le fichier pendant que son detenteur le supprime rend « acces refuse » (ou un
+// partage refuse), pas « existe deja » : [verrouTenu] les traite comme un verrou tenu et les reessaie
+// jusqu'au delai. Les passer en force perdait l'entree de l'autre ecrivain (le test de concurrence
+// echouait environ une fois sur dix).
+//
+// Toute AUTRE erreur d'ouverture (disque plein, chemin invalide) n'est pas une attente :
 // la reessayer pendant deux secondes puis se tromper de diagnostic est pire que de le dire tout
 // de suite. Ces cas passent en force IMMEDIATEMENT, avec un journal qui nomme l'erreur reelle.
 //
@@ -109,12 +121,12 @@ func prendreVerrou(chemin string) func() {
 	}
 	fin := time.Now().Add(dureeAttenteVerrou)
 	for {
-		f, err := os.OpenFile(verrou, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+		f, err := ouvrirVerrou(verrou)
 		if err == nil {
 			_ = f.Close()
 			return func() { _ = os.Remove(verrou) }
 		}
-		if !errors.Is(err, fs.ErrExist) {
+		if !verrouTenu(err) {
 			slog.Warn("mapcatalog: verrou d'ecriture impossible a poser — passage force",
 				"verrou", verrou, "err", err,
 				"consequence", "une ecriture concurrente pourrait perdre une entree")
@@ -128,6 +140,13 @@ func prendreVerrou(chemin string) func() {
 		}
 		time.Sleep(pasAttenteVerrou)
 	}
+}
+
+// verrouTenu dit si l'erreur d'ouverture du verrou veut dire « un autre écrivain le tient » : le fichier
+// existe déjà, ou — sous Windows — l'accès ou le partage est refusé parce que son détenteur est en train
+// de le supprimer. Ce sont des attentes, pas des pannes : elles se réessaient jusqu'au délai.
+func verrouTenu(err error) bool {
+	return errors.Is(err, fs.ErrExist) || errors.Is(err, fs.ErrPermission) || partageRefuse(err)
 }
 
 // AddOverlayEntry ajoute UNE entree a l'OVERLAY NON VERSIONNE si sa cle n'y est pas encore.

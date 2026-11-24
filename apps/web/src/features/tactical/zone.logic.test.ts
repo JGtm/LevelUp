@@ -78,8 +78,9 @@ describe('zoneLaPlusChaude (D10)', () => {
 
 describe('coordonneesDeZone et valeurAffichee', () => {
   it('x et y de la cellule, en mètres, signe moins typographique', () => {
-    expect(coordonneesDeZone(t, -7, 2, 2, 'fr')).toBe('x −14…−12 m · y 4…6 m')
-    expect(coordonneesDeZone(t, 3, 0, 0.5, 'fr')).toBe('x 1,5…2 m · y 0…0,5 m')
+    // Le pas et les cellules sont en unités du jeu (× 3,048 pour les mètres).
+    expect(coordonneesDeZone(t, -7, 2, 2, 'fr')).toBe('x −42,7…−36,6 m · y 12,2…18,3 m')
+    expect(coordonneesDeZone(t, 3, 0, 0.5, 'fr')).toBe('x 4,6…6,1 m · y 0…1,5 m')
   })
 
   it('une lecture signée porte son signe, une lecture simple non', () => {
@@ -121,11 +122,11 @@ describe('modeleDeTuile — la mini-tuile d’une contribution', () => {
   })
 
   it('la distance sous le mètre s’écrit « < 1 m » (FR et EN), jamais « à 0 m »', () => {
-    const proche = contribution({ point: { x: 0, y: 0 }, autre_point: { x: 0.3, y: 0 } })
+    const proche = contribution({ point: { x: 0, y: 0 }, autre_point: { x: 0.1, y: 0 } })
     expect(modeleDeTuile(t, proche, 'fr', 'UTC', null).distance).toBe('< 1 m')
     expect(modeleDeTuile(getTacticalText('en'), proche, 'en', 'UTC', null).distance).toBe('< 1 m away')
     const loin = contribution({ point: { x: 0, y: 0 }, autre_point: { x: 4, y: 0 } })
-    expect(modeleDeTuile(t, loin, 'fr', 'UTC', null).distance).toBe('à 4 m')
+    expect(modeleDeTuile(t, loin, 'fr', 'UTC', null).distance).toBe('à 12 m') // 4 unités du jeu = 12,2 m
   })
 
   it('un frag, une entrée, une réapparition : leur fait', () => {
@@ -138,9 +139,9 @@ describe('modeleDeTuile — la mini-tuile d’une contribution', () => {
     const badge = (placement: TacticalContribution['placement']) =>
       modeleDeTuile(t, contribution({ placement }), 'fr', 'UTC', null).badge
     expect(badge({ seul: true })).toBe('seul')
-    expect(badge({ seul: true, distance_m: 30.7 })).toBe('seul · 30 m')
-    expect(badge({ seul: false, distance_m: 17.9 })).toBe('près · 17 m')
-    expect(badge({ seul: false, distance_m: 0.4 })).toBe('près · < 1 m')
+    expect(badge({ seul: true, distance_m: 10.1 })).toBe('seul · 30 m') // 10,1 unités du jeu = 30,8 m
+    expect(badge({ seul: false, distance_m: 5.9 })).toBe('près · 17 m') // 5,9 unités = 17,98 m
+    expect(badge({ seul: false, distance_m: 0.3 })).toBe('près · < 1 m') // 0,3 unité = 0,91 m
   })
 
   it('jamais de badge sur un frag', () => {
@@ -156,7 +157,7 @@ describe('modeleDeTuile — la mini-tuile d’une contribution', () => {
   it('le texte complet (infobulle) et le lien de rejeu à l’instant', () => {
     const m = modeleDeTuile(
       t,
-      contribution({ arme_label: 'Fusil de combat', placement: { seul: true, distance_m: 30.7 } }),
+      contribution({ arme_label: 'Fusil de combat', placement: { seul: true, distance_m: 10.1 } }),
       'fr',
       'UTC',
       'Victoire',

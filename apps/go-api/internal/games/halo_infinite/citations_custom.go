@@ -83,14 +83,27 @@ func computeWinsStrongholds(ctx domain.CitationContext) int {
 }
 
 // computeAnnexionForcee : séries de 3 captures de zone sans mort entre elles.
-// Utilise highlight_events si disponibles, sinon fallback sur awards["zone_captured"] / 3.
+// Utilise highlight_events si disponibles ET si le match est une partie de Bases, sinon
+// fallback sur awards["zone_captured"] / 3. Hors Bases, un temps fort « mode » n'est pas une
+// capture de zone. Une capture = un (joueur, instant) : un temps fort écrit deux fois (forme
+// sans code puis forme avec code, ou recopie d'un rejeu) ne compte qu'une fois.
 func computeAnnexionForcee(ctx domain.CitationContext) int {
-	if len(ctx.Events) > 0 {
+	if len(ctx.Events) > 0 && isStrongholdsMode(ctx) {
 		streak := 0
 		total := 0
+		type capture struct {
+			xuid   string
+			timeMS int64
+		}
+		vues := make(map[capture]struct{})
 		for _, e := range ctx.Events {
 			switch e.EventType {
 			case highlightevent.EventTypeMode:
+				c := capture{e.XUID, e.TimeMS}
+				if _, deja := vues[c]; deja {
+					continue
+				}
+				vues[c] = struct{}{}
 				streak++
 				if streak%3 == 0 {
 					total++

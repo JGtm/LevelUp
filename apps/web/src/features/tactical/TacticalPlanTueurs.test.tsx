@@ -219,9 +219,9 @@ describe('TacticalPlanCard — la couche des tueurs et des victimes', () => {
       cadre.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 102, clientY: 51 }))
     })
     expect(onSurvol).toHaveBeenLastCalledWith(0)
-    // La vue répond en posant l'index : l'infobulle s'affiche (30 m de (20, 20) à (50, 25)).
+    // La vue répond en posant l'index : l'infobulle s'affiche (30,4 unités du jeu, soit 93 m, de (20, 20) à (50, 25)).
     rerender(carte({ survol: 0 }, onSurvol))
-    expect(screen.getByTestId('tactical-tueurs-tip')).toHaveTextContent('Rival · à 30 m')
+    expect(screen.getByTestId('tactical-tueurs-tip')).toHaveTextContent('Rival · à 93 m')
     act(() => {
       cadre.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 10, clientY: 90 }))
     })

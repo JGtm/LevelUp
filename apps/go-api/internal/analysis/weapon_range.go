@@ -58,7 +58,9 @@ const (
 // ELLE EST DÉFINIE ICI ET NULLE PART AILLEURS (garde-rail : weapon_range_guard_test.go).
 const WeaponRangeMinMeasured = 8
 
-// WeaponRangeLevelBandM : demi-largeur, en mètres, de la classe « à niveau » du dénivelé (D4).
+// WeaponRangeLevelBandM : demi-largeur, en UNITÉS DU JEU (une unité = 3,048 m), de la classe « à niveau »
+// du dénivelé (D4). Le seuil a été réglé sur les dénivelés mesurés dans le film, donc en unités : le « m » de
+// son nom et des chiffres ci-dessous dit une unité du jeu.
 //
 // D'OÙ VIENT LA VALEUR : la sonde du 2026-09-06
 // mesure un |dz| médian de 0,4 à 0,9 m sur quatre cartes, et 16 à 40 % des engagements

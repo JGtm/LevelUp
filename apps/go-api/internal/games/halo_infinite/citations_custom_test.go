@@ -78,6 +78,7 @@ func TestComputeWinsCTF_Loss(t *testing.T) {
 func TestComputeAnnexionForcee_EventsWalk(t *testing.T) {
 	ctx := domain.CitationContext{
 		PlayerXUID: "xuid1",
+		Playlist:   "bases",
 		Events: []domain.CitationEventRow{
 			{EventType: "mode", XUID: "", TimeMS: 1},
 			{EventType: "mode", XUID: "", TimeMS: 2},
@@ -106,6 +107,48 @@ func TestComputeAnnexionForcee_FallbackAwards(t *testing.T) {
 	}
 	if got := computeAnnexionForcee(ctx); got != 3 {
 		t.Errorf("attendu 3 (9/3), got %d", got)
+	}
+}
+
+// Un temps fort « mode » écrit deux fois (même joueur, même instant : forme sans code puis forme
+// avec code, ou recopie d'un rejeu) n'est qu'une capture de zone.
+func TestComputeAnnexionForcee_UneCaptureParJoueurEtInstant(t *testing.T) {
+	var events []domain.CitationEventRow
+	for ms := int64(1); ms <= 6; ms++ {
+		// Chaque capture est lue deux fois, sauf la 3e et la 6e.
+		events = append(events, domain.CitationEventRow{EventType: "mode", XUID: "xuid1", TimeMS: ms})
+		if ms != 3 && ms != 6 {
+			events = append(events, domain.CitationEventRow{EventType: "mode", XUID: "xuid1", TimeMS: ms})
+		}
+	}
+	ctx := domain.CitationContext{
+		PlayerXUID: "xuid1", Playlist: "bases", Events: events,
+		Awards: map[string]int{}, Medals: map[int64]int{}, Stats: map[string]float64{},
+	}
+	// 6 captures distinctes : 2 séries de 3. Les 10 lignes lues en donneraient 3.
+	if got := computeAnnexionForcee(ctx); got != 2 {
+		t.Errorf("attendu 2 séries (6 captures distinctes), got %d", got)
+	}
+}
+
+// Les temps forts « mode » ne sont des captures de zone qu'en Bases : ailleurs ils désignent autre
+// chose, et la citation retombe sur les décomptes d'actions de score.
+func TestComputeAnnexionForcee_SeulementEnBases(t *testing.T) {
+	events := []domain.CitationEventRow{
+		{EventType: "mode", XUID: "xuid1", TimeMS: 1},
+		{EventType: "mode", XUID: "xuid1", TimeMS: 2},
+		{EventType: "mode", XUID: "xuid1", TimeMS: 3},
+	}
+	ctx := domain.CitationContext{
+		PlayerXUID: "xuid1", Playlist: "ctf ranked", Events: events,
+		Awards: map[string]int{}, Medals: map[int64]int{}, Stats: map[string]float64{},
+	}
+	if got := computeAnnexionForcee(ctx); got != 0 {
+		t.Errorf("hors Bases : attendu 0, got %d", got)
+	}
+	ctx.GameVariant, ctx.Playlist = "strongholds", ""
+	if got := computeAnnexionForcee(ctx); got != 1 {
+		t.Errorf("variante Bases : attendu 1, got %d", got)
 	}
 }
 

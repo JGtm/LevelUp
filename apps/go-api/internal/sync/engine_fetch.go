@@ -92,7 +92,7 @@ func (e *SyncEngine) extractRegistryAndKickoff(ctx context.Context, matchJSON ma
 		return nil, nil, fmt.Errorf("ExtractRegistry: %w", err)
 	}
 	participants := ExtractParticipants(matchJSON)
-	kickoff.Observe(ctx, e.titleSlug, matchID, kickoff.ApplyToRows(reg, participants))
+	kickoff.ObserveResolved(ctx, e.titleSlug, matchID, kickoff.ApplyToRows(reg, participants))
 	return reg, participants, nil
 }
 

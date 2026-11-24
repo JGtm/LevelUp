@@ -126,13 +126,13 @@ describe('WeaponRangeSection — rendu nominal', () => {
     expect(screen.queryByText(/mesurés sur|mesurées sur|frags mesurés/)).not.toBeInTheDocument()
     // LA VALEUR, PAS SEULEMENT SON LIBELLÉ : chaque tuile porte SA médiane. Sans ces deux
     // lignes, deux valeurs échangées (frags <-> morts) passeraient inaperçues.
-    expect(flatCardOf('Portée médiane des frags du joueur')).toContain('7,4 m')
-    expect(flatCardOf('Portée médiane des morts du joueur')).toContain('11,8 m')
+    expect(flatCardOf('Portée médiane des frags du joueur')).toContain('22,6 m') // 7,4 unités du jeu × 3,048
+    expect(flatCardOf('Portée médiane des morts du joueur')).toContain('36,0 m') // 11,8 unités × 3,048
     expect(screen.getByText("Distance d'entame médiane")).toBeInTheDocument()
     expect(screen.getByText('Entame → frag')).toBeInTheDocument()
     expect(textOf(/^Distance réduite avant le frag dans 61 % des frags$/).length).toBeGreaterThan(0)
     // Distance signée : le signe DIT le sens (la distance se ferme), il n'est pas décoratif.
-    expect(textOf(/^-1,7 m$/).length).toBeGreaterThan(0)
+    expect(textOf(/^-5,2 m$/).length).toBeGreaterThan(0)
   })
 
   it('la légende nomme ses séries, SANS mention de position', () => {
@@ -210,7 +210,7 @@ describe('WeaponRangeSection — rendu nominal', () => {
     expect(commando).not.toBeNull()
     const cells = Array.from(commando!.querySelectorAll('td')).map((c) => flat(c.textContent))
     expect(cells[0]).toBe('Commando VK78')
-    expect(cells.slice(1, 7)).toEqual(['64', '6,3 m', '11,9 m', '21,4 m', '30 %', '20 %'])
+    expect(cells.slice(1, 7)).toEqual(['64', '19,2 m', '36,3 m', '65,2 m', '30 %', '20 %'])
     // Les six colonnes du côté « morts » sont vides pour cette arme, pas à zéro.
     expect(cells.slice(7)).toEqual(['—', '—', '—', '—', '—', '—'])
   })
@@ -257,7 +257,8 @@ describe('WeaponRangeSection — dégradations', () => {
     )
     expect(screen.queryByText('Portée médiane des frags du joueur')).not.toBeInTheDocument()
     expect(screen.getByText('Portée médiane des morts du joueur')).toBeInTheDocument()
-    expect(flat(container.textContent)).not.toContain('0,0 m')
+    // (la valeur est cherchée seule : « 30,0 m » ou « 100,0 m » sont des distances légitimes)
+    expect(flat(container.textContent)).not.toMatch(/(^|[^\d,])0,0 m/)
   })
 
   it('l’autre côté vide : la tuile des morts disparaît, celle des frags reste', () => {
@@ -288,7 +289,7 @@ describe('WeaponRangeSection — dégradations', () => {
         }}
       />,
     )
-    expect(flatCardOf('Entame → frag')).toContain('+1,7 m')
+    expect(flatCardOf('Entame → frag')).toContain('+5,2 m')
   })
 
   it('sans bloc du tout, la section entière se retire', () => {
@@ -333,7 +334,7 @@ describe('WeaponRangeSection — dégradations', () => {
     expect(screen.getByText('BR75 Battle Rifle')).toBeInTheDocument()
     // LES DISTANCES AUSSI suivent la locale : « 7.4 m » et non « 7,4 m ». Sans cette ligne,
     // un formateur figé sur fr-FR passerait le test anglais.
-    expect(flatCardOf("Median range of the player's kills")).toContain('7.4 m')
-    expect(flatCardOf("Median range of the player's deaths")).toContain('11.8 m')
+    expect(flatCardOf("Median range of the player's kills")).toContain('22.6 m')
+    expect(flatCardOf("Median range of the player's deaths")).toContain('36.0 m')
   })
 })

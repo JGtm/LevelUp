@@ -32,6 +32,7 @@ import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { SectionCard } from '@/components/ui/section-card'
 import { resolveToken, tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import type { SynthesisWeaponRange } from '@/lib/api/types'
+import { gameUnitsToMeters } from '@/lib/formatters/distance'
 
 import { getEChartsThemeColors } from '@/lib/echarts/themeColors'
 import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
@@ -94,14 +95,14 @@ function RangeTiles({ range, t, f }: { range: SynthesisWeaponRange; t: Translate
       {range.measured_kills > 0 && (
         <AccentCard
           label={t('synthesis.weapon_range.tile_median_kills')}
-          value={f.distance(range.median_kills_m)}
+          value={f.distance(gameUnitsToMeters(range.median_kills_m))}
           accent={KILLS_TOKEN}
         />
       )}
       {range.measured_deaths > 0 && (
         <AccentCard
           label={t('synthesis.weapon_range.tile_median_deaths')}
-          value={f.distance(range.median_deaths_m)}
+          value={f.distance(gameUnitsToMeters(range.median_deaths_m))}
           accent={DEATHS_TOKEN}
         />
       )}
@@ -111,7 +112,7 @@ function RangeTiles({ range, t, f }: { range: SynthesisWeaponRange; t: Translate
       {opening && (
         <AccentCard
           label={t('synthesis.weapon_range.tile_opening')}
-          value={f.distance(opening.median_m)}
+          value={f.distance(gameUnitsToMeters(opening.median_m))}
           accent={MEDIAN_TOKEN}
         />
       )}
@@ -121,7 +122,7 @@ function RangeTiles({ range, t, f }: { range: SynthesisWeaponRange; t: Translate
       {opening?.delta && (
         <AccentCard
           label={t('synthesis.weapon_range.tile_delta')}
-          value={f.signedDistance(opening.delta.median_m)}
+          value={f.signedDistance(gameUnitsToMeters(opening.delta.median_m))}
           accent={DELTA_TOKEN}
           sub={t('synthesis.weapon_range.tile_delta_sub', {
             pct: f.percent(opening.delta.closing_share_pct),

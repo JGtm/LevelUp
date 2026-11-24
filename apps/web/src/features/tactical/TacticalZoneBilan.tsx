@@ -9,6 +9,7 @@
  */
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { TacticalBilanMorts } from '@/lib/api/types'
+import { gameUnitsToMeters } from '@/lib/formatters/distance'
 import type { Locale } from '@/lib/i18n/locale'
 
 import type { TacticalText } from './i18n'
@@ -67,7 +68,7 @@ function RangeeDuPlusProche({ t, locale, b }: { t: TacticalText; locale: Locale;
         <span className="text-[12.5px] font-semibold">{t.mortCardNearest}</span>
         {b.mediane_plus_proche_m != null && (
           <span className="text-[11.5px] text-muted-foreground">
-            {t.mortCardMedianLabel} <span className="font-mono tabular-nums text-foreground">{t.mortCardMedian(metresEntiers(b.mediane_plus_proche_m, locale))}</span>
+            {t.mortCardMedianLabel} <span className="font-mono tabular-nums text-foreground">{t.mortCardMedian(metresEntiers(gameUnitsToMeters(b.mediane_plus_proche_m), locale))}</span>
           </span>
         )}
       </div>
@@ -86,7 +87,7 @@ function RangeeDeLaRose({ t, locale, b }: { t: TacticalText; locale: Locale; b: 
         <span className="text-[12.5px] font-semibold">{t.mortRoseTitle}</span>
         <span className="text-[11.5px] text-muted-foreground">
           {phrase}
-          {b.mediane_tueur_m != null && <> · {t.mortRoseMedian(metresEntiers(b.mediane_tueur_m, locale))}</>}
+          {b.mediane_tueur_m != null && <> · {t.mortRoseMedian(metresEntiers(gameUnitsToMeters(b.mediane_tueur_m), locale))}</>}
         </span>
       </div>
     </div>

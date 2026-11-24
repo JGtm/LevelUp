@@ -121,7 +121,10 @@ type ReplayProgressFn func(done, total int, matchID, status string)
 //  2. Appelle `ProcessHighlightEvents` (parser bit-aligné + insert events +
 //     insert killer_victim_pairs honnête).
 //
-// Idempotent : peut être ré-exécuté sans dommage. Cancellable via `ctx`.
+// Idempotent : sur un match qui a déjà ses événements, la complétion
+// (persist.EventsCompletionPersister) n'ajoute aucune ligne à `highlight_events`
+// et ne réécrit que les paires killer→victim ; le match redevient « chargé ».
+// Cancellable via `ctx`.
 //
 // `progressFn` peut être nil.
 func ReplayHighlightEventsForMatches(

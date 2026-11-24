@@ -65,7 +65,10 @@ import (
 type IdentiteMainmise struct {
 	// PairName : le `pair_name` BRUT du match (mode et variante).
 	PairName string
-	// DurationSeconds : duree du match, countdown compris. Nil = inconnue.
+	// DurationSeconds : duree de la FENETRE du match, countdown compris, sur l'axe du match : celle du
+	// registre, sauf quand elle est manifestement fausse (plus courte que le plus long temps de jeu d'un
+	// joueur humain, marge comprise), auquel cas ce temps de jeu (timeline.MatchWindowSeconds, la regle de la
+	// resolution du coup d'envoi). Debut ET fin de la fenetre de la Mainmise la lisent. Nil = inconnue.
 	DurationSeconds *int64
 }
 
@@ -87,7 +90,8 @@ func ReglementDuTitre(pr *titlePkg.PathResolver, titleSlug string) (*mappings.Re
 	return mappings.LoadRegulationFromFile(filepath.Join(pr.TitleMappingsDir(titleSlug), "regulation.toml"))
 }
 
-// IdentitesMainmise lit `pair_name` et `duration_seconds` pour un lot de matchs. Un match absent du
+// IdentitesMainmise lit `pair_name` et la fenetre du match pour un lot de matchs (la duree du registre,
+// bornee par le plus long temps de jeu d'un joueur humain quand elle est fausse). Un match absent du
 // registre est absent du resultat. EXPORTEE pour le backfill ; requete par cle primaire.
 func IdentitesMainmise(ctx context.Context, db *sql.DB, ids []string) (map[string]IdentiteMainmise, error) {
 	out := make(map[string]IdentiteMainmise, len(ids))
@@ -116,7 +120,57 @@ func IdentitesMainmise(ctx context.Context, db *sql.DB, ids []string) (map[strin
 		}
 		out[id] = ident
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if err := borneesParLeTempsDeJeu(ctx, db, ids, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// borneesParLeTempsDeJeu remplace la duree d'un match par la duree de sa fenetre ([timeline.MatchWindowSeconds]),
+// d'apres le plus long temps de jeu range de ses joueurs humains.
+func borneesParLeTempsDeJeu(ctx context.Context, db *sql.DB, ids []string, out map[string]IdentiteMainmise) error {
+	args := make([]any, 0, len(ids))
+	for _, id := range ids {
+		args = append(args, id)
+	}
+	rows, err := db.QueryContext(ctx, `SELECT match_id, xuid, time_played_seconds FROM match_participants
+		WHERE time_played_seconds IS NOT NULL AND match_id IN (?`+strings.Repeat(",?", len(ids)-1)+`)`, args...)
+	if err != nil {
+		return fmt.Errorf("mainmise: lecture des temps de jeu: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	longest := make(map[string]int, len(ids))
+	for rows.Next() {
+		var id, xuid string
+		var played int
+		if err := rows.Scan(&id, &xuid, &played); err != nil {
+			return fmt.Errorf("mainmise: scan des temps de jeu: %w", err)
+		}
+		if timeline.HumanXUID(xuid) && played > longest[id] {
+			longest[id] = played
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for id, ident := range out {
+		if ident.DurationSeconds == nil {
+			continue
+		}
+		registry, played := int(*ident.DurationSeconds), longest[id]
+		if played == 0 {
+			continue
+		}
+		if w := timeline.MatchWindowSeconds(&registry, &played); w != nil {
+			v := int64(*w)
+			ident.DurationSeconds = &v
+			out[id] = ident
+		}
+	}
+	return nil
 }
 
 // ProjeterMainmise tire d'UN document range la passe a ecrire. Rend TOUJOURS une passe (MatchID non

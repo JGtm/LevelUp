@@ -11,6 +11,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { MatchKillDistanceWeapon } from '@/lib/api/types'
+import { gameUnitsToMeters } from '@/lib/formatters/distance'
 
 import {
   buildKillDistanceOption,
@@ -117,16 +118,13 @@ describe('killDistanceRows — les sections par arme', () => {
     ])
   })
 
-  it('la ligne de joueur porte le gamertag COMPLET (infobulle) et ses trois distances', () => {
+  it('la ligne de joueur porte le gamertag COMPLET (infobulle) et ses trois distances, converties en mètres', () => {
+    // Le contrat sert des UNITÉS DU JEU (3,1 / 12,4 / 21,6) ; le graphe est en mètres (× 3,048).
     const ligne = killDistanceRows(PLAYERS)[2]
-    expect(ligne).toMatchObject({
-      player: 'Alice',
-      weapon: 'BR75',
-      kills: 3,
-      min: 3.1,
-      avg: 12.4,
-      max: 21.6,
-    })
+    expect(ligne).toMatchObject({ player: 'Alice', weapon: 'BR75', kills: 3 })
+    expect(ligne.min).toBeCloseTo(9.4488, 4)
+    expect(ligne.avg).toBeCloseTo(37.7952, 4)
+    expect(ligne.max).toBeCloseTo(65.8368, 4)
   })
 
   it('la hauteur suit le nombre de lignes, avec un plancher', () => {
@@ -164,19 +162,21 @@ describe('buildKillDistanceOption — un seul graphe, sections par arme', () => 
     const [socle, plage, moyenne] = option().series
     expect(socle.itemStyle?.color).toBe('transparent')
     // Ordre inversé : repulsor (joueur), en-tête, Alice, long gamertag, en-tête.
-    expect(socle.data).toEqual([5, null, 3.1, 2, null])
+    // Le contrat sert des unités du jeu ; le graphe est en mètres.
+    const m = gameUnitsToMeters
+    expect(socle.data).toEqual([m(5), null, m(3.1), m(2), null])
     expect((plage.data as { value: number | null }[]).map((d) => d.value)).toEqual([
       0,
       null,
-      21.6 - 3.1,
-      8,
+      m(21.6) - m(3.1),
+      m(10) - m(2),
       null,
     ])
     expect(moyenne.type).toBe('scatter')
     expect(moyenne.data).toEqual([
-      [5, 0],
-      [12.4, 2],
-      [6, 3],
+      [m(5), 0],
+      [m(12.4), 2],
+      [m(6), 3],
     ])
   })
 
@@ -199,6 +199,6 @@ describe('buildKillDistanceOption — un seul graphe, sections par arme', () => 
   it('un seul frag mesuré : le bâton dégénère en point, le losange reste le témoin', () => {
     const [, plage, moyenne] = option().series
     expect((plage.data as { value: number | null }[])[0].value).toBe(0)
-    expect(moyenne.data[0]).toEqual([5, 0])
+    expect(moyenne.data[0]).toEqual([gameUnitsToMeters(5), 0])
   })
 })

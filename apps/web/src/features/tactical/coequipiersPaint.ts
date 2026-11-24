@@ -1,11 +1,12 @@
 /**
  * coequipiersPaint.ts — la couche des coéquipiers à la mort, peinte sur sa propre toile, par-dessus la
  * chaleur et la couche des tueurs : le cercle du rayon du radar, les traînes, puis les marques. Elle
- * partage la projection du plan (mêmes mètres, même
+ * partage la projection du plan (mêmes unités du jeu, même
  * cadrage, même zoom).
  *
- * TOUT SE MESURE EN MÈTRES MONDE, converti par l'échelle du plan : le cercle est un vrai rayon de
- * 18 m ; les rayons des marques et les épaisseurs viennent de `dimensionsDeLaCouche` (modèle de
+ * TOUT SE MESURE EN UNITÉS DU JEU (coordonnées monde), converties par l'échelle du plan ; le cercle fait
+ * exception à l'entrée seulement : son rayon est un vrai rayon de 18 m, ramené en unités du jeu
+ * (`metersToGameUnits`) avant d'être mis à l'échelle ; les rayons des marques et les épaisseurs viennent de `dimensionsDeLaCouche` (modèle de
  * taille du rejeu 2D, `screenLengthPx`) — jamais des pixels fixes.
  *
  * COULEURS : jetons d'ÉQUIPE de l'app (`team-ally` pour les coéquipiers, `team-enemy` pour le tueur),
@@ -14,6 +15,8 @@
  * carte comme de la chaleur. Les rôles se distinguent par la FORME (tueur : losange ; mort : rond à
  * cercle épais ; coéquipier : rond plein dans le rayon, rond creux au-delà), jamais par la couleur seule.
  */
+import { metersToGameUnits } from '@/lib/formatters/distance'
+
 import type { MarqueDeScene, SceneDuPlan } from './mort.logic'
 import type { DimensionsDeLaCouche } from './tueurs.logic'
 
@@ -121,7 +124,7 @@ export function peindreLaScene(
   ctx.lineJoin = 'round'
   if (scene.cercle) {
     const o = projeter(scene.cercle.centre)
-    disque(ctx, o.x, o.y, scene.cercle.rayonM * scalePxParM)
+    disque(ctx, o.x, o.y, metersToGameUnits(scene.cercle.rayonM) * scalePxParM)
     ctx.globalAlpha = OPACITE.remplissageCercle
     ctx.fillStyle = couleurs.allie
     ctx.fill()

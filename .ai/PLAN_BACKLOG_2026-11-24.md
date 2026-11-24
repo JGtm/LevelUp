@@ -81,6 +81,11 @@ Cible confirmée par le user le 2026-11-24 : la **8.3.0**.
   À coder par la source unique des langues (`config/locales.toml`, repli sur l'anglais), sans comparaison
   de langue en dur. La maquette publiée montre encore ce réglage : il ne se code pas.
 
+- **D-16 — Emprise, part « hors radar » des vies (user, 2026-11-24 : « Ok avec ta reco par rapport aux
+  calculs »).** Le calcul est corrigé maintenant (la portée du radar est transmise au décodeur en unités du
+  jeu) ; les vies déjà rangées se recalculent à la prochaine passe sur le parc, sans passe lancée exprès.
+  Un match sans film garde sa valeur. Item B.7.
+
 ## 2. Orchestration
 
 - Pilote : cette session. Elle ne code pas, relit chaque compte rendu sur pièces, intègre, lance la suite web
@@ -155,9 +160,12 @@ Gates communs. Go : `go build ./... && go vet ./...`, tests des paquets touchés
       sans appelant : supprimés avec leurs tests, `make generate-types`.
 - **Gate B :** gates Go et web, témoins 0.3 comparés (seuls les écarts voulus), contrat OpenAPI régénéré.
 
-- [ ] B.6 « Mètres » (D-11) : chaque distance affichée convertie par un seul helper (Go et web), avec son
+- [x] B.6 (`98dfbdace2`, `c1695f5ef0`, `01f81e8414`, `002ed9703a` : helper web et jumeau Go avec garde-rails, radar comparé dans une seule unité, 11 familles de distances converties, 22 champs documentés) « Mètres » (D-11) : chaque distance affichée convertie par un seul helper (Go et web), avec son
       garde-rail ; noms internes trompeurs (`metersPerPixel` et voisins) laissés si aucun affichage n'en
       dépend, renommage noté en découverte sinon.
+
+- [ ] B.7 Emprise (D-16) : portée du radar convertie avant d'être transmise au décodeur ; lecteurs de
+      `radar_m` et `beyond_ms` relus ; la prochaine passe sur le parc recalcule l'existant.
 
 ### Piste C — rejeu (web, un peu de Go)
 
@@ -257,6 +265,8 @@ dépendance est close.
 - (revue du pool) Le plafond du pool n'est pas tenu si un compte arrive pendant le remplissage (sans effet : la production ne pose pas de plafond) ; un retrait de consentement fait pendant une reconnexion peut être ignoré jusqu'au re-scan suivant (motif antérieur) ; deux tests du pool échouent quand on les répète sous détection de courses.
 - (pilote) `TestWeaponLabels_ArtefactReelDuPoste` (`internal/service`) échoue sur un poste qui a le rejeu : il lit le fichier compressé comme du texte. Antérieur au plan (test inchangé depuis la 8.2.0), invisible en CI et dans les worktrees, où il se saute.
 - (piste C) `MatchNemesisCards.logic.ts` dit encore qu'un bot n'est jamais un antagoniste (page du match) ; deux copies identiques d'un hook de largeur sur la liste datée du garde ; commentaire « 58 clés » périmé dans le schéma du document.
+- (piste B.6) Emprise : la part « hors radar » des vies (`beyond_ms`, table `match_life_placement`) est calculée à la synchronisation avec la portée du radar en mètres comparée à des unités ; 304 576 vies sur 1 454 matchs du poste portent la valeur sous-estimée. La portée est passée au décodeur par LevelUp (`sync/killcollector/capture.go`) : le correctif est dans LevelUp, le recalcul de l'existant demande les films. Décision du user attendue.
+- (piste B.6) Seuils réglés sur des unités mais nommés « M » : étiquettes corrigées, comportement inchangé ; une dizaine de constantes web gardent un nom trompeur.
 
 ## 10. Journal d'exécution
 
@@ -338,3 +348,16 @@ dépendance est close.
   `admin` : 10 899 tests, 0 échec. Un test de `service` échoue sur ce poste pour une cause antérieure
   (découverte). Changements de contrat retenus : champ `gestures`, `xuid` facultatif sur deux types, deux
   plafonds datés montés (80 champs de tête, surface 341). Quatre lignes à l'artefact des vérifications.
+- 2026-11-24 — B.6 (mètres) fusionnée. Gates du pilote sur la branche intégrée : build, vet, contrat frais,
+  `archlint`, `api`, `analysis`, `domain`, tests de contrat à 0 ; typecheck à 0 ; vitest de `src/lib`, de la
+  Tactique, de la fiche de match et des graphes : 4 430 tests, 0 échec. Rien n'est vu à l'écran : une ligne
+  à l'artefact des vérifications. Effet attendu à dire dans les notes de version : distances affichées
+  multipliées par 3,048 ; plus de morts « isolées » dans la Tactique (rayon ramené d'environ 55 m à 18 m).
+- 2026-11-24 — PISTE A rendue (A.1 à A.6), en revue adversariale avant fusion (deux relecteurs Sonnet, une
+  ronde). Migration de dédoublonnage vérifiée sur la base réelle : 38 573 lignes retirées, aucune ligne
+  légitime touchée. Constats recevables : 4 (écritures) et 7 (coup d'envoi) ; aucun P0 ; un P1 (la complétion
+  saute la seconde de deux lignes identiques légitimes). Sept corrections transmises à l'agent : surplus à la
+  complétion, forme « document », fonction sans appelant, durée « manifestement fausse » (humains seuls,
+  marge de 10 s), test discriminant, fenêtre de la Mainmise, commentaires du compteur. En découverte : 524
+  temps de jeu écrêtés sur la base du poste par la révision non publiée du 22/11.
+- 2026-11-24 — D-16 : le user retient la recommandation sur l'Emprise ; B.7 lancé dans le worktree de la piste B.

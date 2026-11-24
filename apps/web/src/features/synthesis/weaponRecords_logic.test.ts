@@ -11,6 +11,8 @@ import {
   labelBaselineY,
   resolveRecordLabel,
   rulerMaxMeters,
+  rulerTickStep,
+  weaponRecordRowInMeters,
   staggerLabels,
   weaponRecordsLayout,
 } from './weaponRecords_logic'
@@ -68,6 +70,24 @@ describe('staggerLabels', () => {
   it("respecte l'écart minimal : deux boîtes séparées de moins que l'écart s'étagent", () => {
     expect(staggerLabels([{ x0: 0, x1: 60 }, { x0: 70, x1: 120 }], 14)).toEqual([0, 1])
     expect(staggerLabels([{ x0: 0, x1: 60 }, { x0: 74, x1: 120 }], 14)).toEqual([0, 0])
+  })
+})
+
+describe('unités du jeu → mètres', () => {
+  it('une ligne du contrat (record_m et median_m en unités du jeu) est écrite en mètres', () => {
+    const r = weaponRecordRowInMeters(row('a', 52.7))
+    expect(r.record_m).toBeCloseTo(160.6296, 4)
+    expect(r.median_m).toBeCloseTo(80.3148, 4)
+    expect(r.weapon_key).toBe('a')
+  })
+
+  it('les graduations restent lisibles quand la règle s’allonge (jamais plus de 12 repères)', () => {
+    expect(rulerTickStep(100)).toBe(10)
+    expect(rulerTickStep(300)).toBe(25)
+    expect(rulerTickStep(1000)).toBe(100)
+    for (const max of [10, 100, 150, 300, 560, 1000]) {
+      expect(Math.floor(max / rulerTickStep(max)) + 1).toBeLessThanOrEqual(13)
+    }
   })
 })
 

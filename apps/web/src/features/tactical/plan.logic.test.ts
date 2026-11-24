@@ -45,14 +45,14 @@ const LECTURE: TacticalRaster = {
 describe('infoDuPlan — l’aide ⓘ du titre', () => {
   it('les matchs lus, la source, le pas de la grille et le plancher par zone', () => {
     expect(infoDuPlan(t, 'fr', 'morts', LECTURE, 2)).toBe(
-      '45 matchs · journal des morts · grille 10 m · 3 matchs distincts par zone',
+      '45 matchs · journal des morts · grille 30,5 m · 3 matchs distincts par zone',
     )
   })
 
   it('un pas fractionnaire dans la langue de la page ; en anglais, les mots anglais', () => {
-    expect(infoDuPlan(t, 'fr', 'morts', { ...LECTURE, pas_m: 0.5 }, 2)).toContain('grille 0,5 m')
+    expect(infoDuPlan(t, 'fr', 'morts', { ...LECTURE, pas_m: 0.5 }, 2)).toContain('grille 1,5 m')
     expect(infoDuPlan(tEn, 'en', 'morts', LECTURE, 2)).toBe(
-      '45 matches · death log · 10 m grid · 3 distinct matches per zone',
+      '45 matches · death log · 30.5 m grid · 3 distinct matches per zone',
     )
   })
 

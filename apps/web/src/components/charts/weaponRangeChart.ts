@@ -38,6 +38,7 @@ import {
   type EChartsThemeColors,
 } from '@/components/charts/_utils'
 import type { WeaponRangeRow, WeaponRangeSide } from '@/lib/api/types'
+import { gameUnitsToMeters } from '@/lib/formatters/distance'
 
 /** Une entrée du contrat qui porte un libellé (dans la langue de la requête) et une clé d arme. */
 interface LabelledWeapon {
@@ -120,9 +121,27 @@ export function weaponRangeLines(weapons: readonly WeaponRangeRow[] | null | und
     weaponKey: w.weapon_key,
     label: resolveWeaponLabel(w),
     // Synthèse : les frags EN HAUT, les morts en dessous (l'ordre de la légende).
-    top: w.kills ?? null,
-    bottom: w.deaths ?? null,
+    top: weaponRangeSideInMeters(w.kills),
+    bottom: weaponRangeSideInMeters(w.deaths),
   }))
+}
+
+/**
+ * weaponRangeSideInMeters — un côté de mesure dont les cinq distances (médiane, p10, p90, min, max)
+ * sont ÉCRITES EN MÈTRES. Le contrat les sert en unités du jeu ; les lignes, l'axe, les infobulles et
+ * le tableau lisent des mètres, la conversion n'a lieu qu'ici (`lib/formatters/distance`). `null`
+ * pour un côté non mesuré ; les parts (`*_pct`) et l'effectif ne bougent pas.
+ */
+export function weaponRangeSideInMeters(side: WeaponRangeSide | null | undefined): WeaponRangeSide | null {
+  if (!side) return null
+  return {
+    ...side,
+    p10: gameUnitsToMeters(side.p10),
+    median: gameUnitsToMeters(side.median),
+    p90: gameUnitsToMeters(side.p90),
+    min_m: gameUnitsToMeters(side.min_m),
+    max_m: gameUnitsToMeters(side.max_m),
+  }
 }
 
 /**

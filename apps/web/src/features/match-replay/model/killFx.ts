@@ -36,10 +36,10 @@ import { msToFrames } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 /**
- * Seuil MÊLÉE, en mètres monde : en deçà, la victime est à portée du geste et l'arc de
- * liaison se dessine. C'est un CHOIX adossé à une mesure (POC) : médiane 0,4-0,5 m pour
- * l'épée et la mêlée, 23 m pour le sniper — le seuil est posé dans l'intervalle qui sépare
- * ces deux populations.
+ * Seuil MÊLÉE, en UNITÉS DU JEU (coordonnées monde ; 8 unités = 24 m) : en deçà, la victime est à portée
+ * du geste et l'arc de liaison se dessine. C'est un CHOIX adossé à une mesure (POC) faite sur des
+ * distances du film, donc en unités : médiane 0,4-0,5 unité pour l'épée et la mêlée, 23 unités pour le
+ * sniper — le seuil est posé dans l'intervalle qui sépare ces deux populations.
  */
 export const MELEE_LINK_MAX_M = 8
 

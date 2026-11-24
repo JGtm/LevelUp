@@ -17,6 +17,14 @@ var kickoffParametersByRevision = map[string]string{
 	// Même empreinte : le coup d'envoi publié par le rejeu est lu sur l'horloge du jeu, ce qui change la valeur
 	// rangée, pas un nombre ni l'ordre des sources.
 	"kickoff-2026-11-22": "3d7470f4241fdd55c2322cb83027cd84f9688308b2bf4743dbdef30101246313",
+	// La fenêtre du match qui accepte un coup d'envoi du rejeu est bornée par la plus grande des deux
+	// valeurs « durée du registre » et « plus long temps de jeu » (la durée du registre est parfois
+	// fausse) ; un coup d'envoi du rejeu gardé est contrôlé contre cette fenêtre. Le texte haché
+	// de la règle change, donc l'empreinte aussi (les empreintes anciennes décrivent l'ancienne règle).
+	"kickoff-2026-11-24": "edde8db690b3d5a43be15df117db6ba0ecbb609f58a7251a5b64b77497c1159e",
+	// Revue : la durée n'est tenue pour fausse qu'au-delà d'une marge sur le temps de jeu des joueurs humains
+	// (DurationMismatchMarginSeconds) ; la marge entre dans le texte haché.
+	"kickoff-2026-11-24b": "d04ca51bc7ebafb017e476d0cadade2b63a947da6a404015616547315f76cd54",
 }
 
 // kickoffParameters hache les nombres et l'ordre des sources que la résolution applique.
@@ -25,7 +33,8 @@ func kickoffParameters() (string, string) {
 		"t0SpreadThresholdMs=" + strconv.FormatInt(t0SpreadThresholdMs, 10),
 		"t0MaxPlausibleMs=" + strconv.FormatInt(t0MaxPlausibleMs, 10),
 		"ordre=" + string(KickoffSourceFilm) + ">" + string(KickoffSourceAPI) + ">inconnue",
-		"rejeuDansLaFenetre=[0,duree]",
+		"rejeuDansLaFenetre=[0,max(duree,tempsDeJeuMaxDesJoueurs)]",
+		"dureeFausseMarge=" + strconv.Itoa(DurationMismatchMarginSeconds),
 		"tempsDeJeu=" + string(TimePlayedOK),
 	}
 	sort.Strings(lines)
@@ -180,5 +189,61 @@ func TestResolveKickoff_RejeuHorsDeLaFenetre(t *testing.T) {
 				t.Fatalf("source=%q horsBornes=%v, attendu %q/%v", k.Source, k.FilmOutOfBounds, c.source, c.refuse)
 			}
 		})
+	}
+}
+
+// Une durée du registre manifestement fausse (plus courte que le plus long temps de jeu d'un joueur)
+// ne fait plus refuser un coup d'envoi juste du rejeu. Les deux cas mesurés le 2026-11-24 : des
+// matchs de 7 et 11 minutes rangés à 21 s et 24 s, dont le plus long temps de jeu est 462 s et 677 s.
+func TestResolveKickoff_DureeDuRegistreFausse(t *testing.T) {
+	start := atMs(1_000_000)
+	arrivees := []ParticipationT0Input{{FirstJoinedTime: atMs(1_020_000), PresentAtBeginning: true}}
+	p := func(v int) *int { return &v }
+	cas := []struct {
+		nom      string
+		t0       int64
+		duree    *int
+		plusLong *int
+		source   KickoffSource
+		refuse   bool
+	}{
+		{"match de 7 min rangé à 21 s : rejeu juste accepté", 38_000, p(21), p(462), KickoffSourceFilm, false},
+		{"match de 11 min rangé à 24 s : rejeu juste accepté", 41_000, p(24), p(677), KickoffSourceFilm, false},
+		{"au-delà du temps de jeu : refusé", 700_000, p(24), p(677), KickoffSourceAPI, true},
+		{"durée juste, temps de jeu plus court : la durée garde la main", 590_000, p(600), p(400), KickoffSourceFilm, false},
+		{"durée juste : au-delà refusé", 601_000, p(600), p(400), KickoffSourceAPI, true},
+		{"durée fausse et temps de jeu inconnu : comme avant", 38_000, p(21), nil, KickoffSourceAPI, true},
+		{"durée inconnue : seule la borne zéro", 5_000_000, nil, p(300), KickoffSourceFilm, false},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			k := ResolveKickoff(KickoffInput{StartUTC: start, FilmT0Ms: i64(c.t0), DurationSeconds: c.duree,
+				LongestPlayedSeconds: c.plusLong, Participations: arrivees})
+			if k.Source != c.source || k.FilmOutOfBounds != c.refuse {
+				t.Fatalf("source=%q horsBornes=%v, attendu %q/%v", k.Source, k.FilmOutOfBounds, c.source, c.refuse)
+			}
+		})
+	}
+}
+
+func TestDurationUnreliable(t *testing.T) {
+	p := func(v int) *int { return &v }
+	for nom, c := range map[string]struct {
+		duree, plusLong *int
+		faux            bool
+	}{
+		"plus courte que le temps de jeu": {p(21), p(462), true},
+		"égale":                           {p(462), p(462), false},
+		"une seconde au-dessus":           {p(600), p(601), false},
+		"exactement la marge":             {p(900), p(910), false},
+		"au-delà de la marge":             {p(900), p(911), true},
+		"plus longue":                     {p(600), p(462), false},
+		"durée inconnue":                  {nil, p(462), false},
+		"durée nulle":                     {p(0), p(462), false},
+		"temps de jeu inconnu":            {p(21), nil, false},
+	} {
+		if got := DurationUnreliable(c.duree, c.plusLong); got != c.faux {
+			t.Errorf("%s : DurationUnreliable = %v, attendu %v", nom, got, c.faux)
+		}
 	}
 }

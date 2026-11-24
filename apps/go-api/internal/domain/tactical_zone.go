@@ -18,10 +18,10 @@ type TacticalPlacement struct {
 	// Seul : aucun coéquipier visible à portée (borne de portée INCLUSIVE : à la portée, c'est
 	// « près »).
 	Seul bool `json:"seul"`
-	// DistanceM : la distance au coéquipier VISIBLE le plus proche, en mètres. Absente (nil)
+	// DistanceM : la distance au coéquipier VISIBLE le plus proche, en unités du jeu. Absente (nil)
 	// quand aucun coéquipier n'était visible — une absence de mesure, jamais une distance
 	// infinie : la mort est alors « seule », sans distance.
-	DistanceM *float64 `json:"distance_m,omitempty"`
+	DistanceM *float64 `json:"distance_m,omitempty" doc:"Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit."`
 }
 
 // ContexteDeMort est une ligne de `match_death_context_latest` : le voisinage d'UNE mort, mesuré

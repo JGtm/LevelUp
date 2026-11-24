@@ -108,9 +108,9 @@ type TacticalRasterSidecar struct {
 	// decodage vient la mesure.
 	ArtifactSchemaVersion int `json:"artifact_schema_version"`
 
-	// PasM est le pas de la grille en metres (0,5). Deux sidecars de pas differents ne
+	// PasM est le pas de la grille en unités du jeu (0,5). Deux sidecars de pas differents ne
 	// se somment pas — la lecture les refuse plutot que de melanger deux resolutions.
-	PasM float64 `json:"pas_m"`
+	PasM float64 `json:"pas_m" doc:"Distance en unités du jeu (1 unité = 3,048 m), pas en mètres : l'écran la convertit."`
 
 	// FrameIntervalMs est l'echelle de l'axe de temps de l'artefact, en millisecondes.
 	// Publie pour que les frames des spawns et des premieres entrees restent
@@ -195,7 +195,7 @@ type TacticalRasterSpawn struct {
 	Instantane []TacticalRasterVivant `json:"instantane,omitempty"`
 }
 
-// TacticalRasterMort est l'endroit et l'instant ou la vie precedente s'est arretee (metres monde).
+// TacticalRasterMort est l'endroit et l'instant ou la vie precedente s'est arretee (unites du jeu).
 type TacticalRasterMort struct {
 	Frame int     `json:"frame"`
 	X     float64 `json:"x"`
@@ -317,7 +317,7 @@ const (
 	TacticalRasterPasEchantillonMs = 250
 )
 
-// ZoneNommee est un callout : un nom de lieu et son point de reference, en metres monde.
+// ZoneNommee est un callout : un nom de lieu et son point de reference, en unités du jeu.
 //
 // Il vit dans `domain` parce qu'il traverse la frontiere port -> service -> algo : le
 // lecteur de callouts (`port.TacticalCalloutsStore`) le rend, et `analysis/tactical` le
@@ -335,7 +335,7 @@ type ZoneNommee struct {
 	Z   float64
 	Big bool
 
-	// Polygone, Parties, Trous : la forme au sol, en metres monde (contour principal, parties
+	// Polygone, Parties, Trous : la forme au sol, en unités du jeu (contour principal, parties
 	// detachees, trous — regle pair-impair) ; ZBas / ZHaut : la tranche verticale habitee ;
 	// VolumeIndex : l'indice de la zone dans son catalogue. Ils nomment une CELLULE du plan
 	// (analysis/tactical.NommerZone) ; une zone sans forme n'en nomme aucune.
@@ -356,7 +356,7 @@ type TacticalGrappe struct {
 	// noms de LIEU du jeu : l'i18n du produit ne les connait pas, le catalogue de la carte les
 	// porte par langue.
 	Nom string `json:"nom"`
-	// X, Y : le barycentre, en metres monde.
+	// X, Y : le barycentre, en unités du jeu.
 	X float64 `json:"x"`
 	Y float64 `json:"y"`
 	// Matchs est le nombre de matchs DISTINCTS ayant alimente l'amas.
