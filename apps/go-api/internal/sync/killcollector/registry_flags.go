@@ -113,6 +113,12 @@ func (c *KillSourceCollector) marquerFilm(ctx context.Context, matchID string, o
 	// point que traversent les deux boucles (série et ouvriers) avec l'issue d'un film.
 	signalerPasseFilm(ctx, matchID, outcome)
 	bit, aMarquer := marquerFilmParOutcome(outcome, morts)
+	if aMarquer && bit == matchflags.MBitFilmAbsent && c.filmComplet != nil && c.filmComplet(matchID) {
+		// Un « absent » constate dans une lecture partielle ne dit rien d un film complet a l archive.
+		slog.WarnContext(ctx, "killsource: film dit absent mais complet a l archive — marqueur NON pose",
+			"match_id", matchID)
+		aMarquer = false
+	}
 	sansKill := luSansKill(outcome)
 	if (!aMarquer && !sansKill) || c.acquireShared == nil {
 		return

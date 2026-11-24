@@ -158,3 +158,27 @@ func TestResolve_RangeFilmRejeuAbsent_TempsDeJeuCorrige(t *testing.T) {
 		}
 	}
 }
+
+// La durée du registre est fausse (21 s pour un match dont un joueur a joué 462 s) : le coup d'envoi
+// juste du rejeu est retenu, et le temps de jeu rangé des joueurs reste tel que l'API l'a donné,
+// sans être recalculé sur une fenêtre de 21 s.
+func TestResolve_DureeDuRegistreFausse(t *testing.T) {
+	start := time.Date(2026, 11, 18, 12, 0, 0, 0, time.UTC)
+	d := 21
+	m := Match{
+		MatchID: "m1", StartUTC: start, DurationSeconds: &d,
+		RealStart: at(start, 10), Source: timeline.KickoffSourceAPI,
+		Participants: []Participant{
+			{XUID: "2603225103667623", FirstJoined: at(start, 10), PresentAtBeginning: true, TimePlayed: ip(462)},
+			{XUID: "2547408409520575", FirstJoined: at(start, 12), PresentAtBeginning: true, TimePlayed: ip(450)},
+		},
+	}
+	t0 := int64(38_000)
+	p := Resolve(m, FilmPublished(&t0))
+	if p.Kickoff.Source != timeline.KickoffSourceFilm || p.Kickoff.FilmOutOfBounds || p.Kickoff.OffsetMs != 38_000 {
+		t.Fatalf("coup d'envoi = %+v, attendu le rejeu retenu", p.Kickoff)
+	}
+	if len(p.TimePlayed) != 0 {
+		t.Fatalf("temps de jeu = %+v : la durée est fausse, les valeurs rangées restent", p.TimePlayed)
+	}
+}

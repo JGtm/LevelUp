@@ -128,11 +128,18 @@ func Resolve(m Match, f Film) Plan {
 		}
 		p.Kickoff = timeline.ResolveKickoff(timeline.KickoffInput{
 			StartUTC: m.StartUTC, FilmT0Ms: filmT0, DurationSeconds: m.DurationSeconds,
-			Participations: estimateInputs(m.Participants),
+			LongestPlayedSeconds: longestPlayed(m.Participants),
+			Participations:       estimateInputs(m.Participants),
 		})
 		p.RealStart = p.Kickoff.RealStart(m.StartUTC)
 	}
-	tl, hasWindow := timeline.GameplayTimeline(m.StartUTC, m.DurationSeconds, p.Kickoff)
+	// Une durée du registre manifestement fausse ne fait pas de fenêtre de jeu fiable : le temps de
+	// jeu rangé (celui de l'API) reste, plutôt que d'être recalculé sur une fenêtre trop courte.
+	duration := m.DurationSeconds
+	if timeline.DurationUnreliable(m.DurationSeconds, longestPlayed(m.Participants)) {
+		duration = nil
+	}
+	tl, hasWindow := timeline.GameplayTimeline(m.StartUTC, duration, p.Kickoff)
 	for _, part := range m.Participants {
 		if part.FirstJoined == nil {
 			continue // présence inconnue : la valeur rangée reste
@@ -146,6 +153,18 @@ func Resolve(m Match, f Film) Plan {
 		p.TimePlayed = append(p.TimePlayed, TimePlayedChange{XUID: part.XUID, Before: part.TimePlayed, After: secs})
 	}
 	return p
+}
+
+// longestPlayed rend le plus long temps de jeu rangé des joueurs du match (nil quand aucun n'est rangé).
+func longestPlayed(parts []Participant) *int {
+	var longest *int
+	for _, p := range parts {
+		if p.TimePlayed != nil && (longest == nil || *p.TimePlayed > *longest) {
+			v := *p.TimePlayed
+			longest = &v
+		}
+	}
+	return longest
 }
 
 // keptFilm : le coup d'envoi rangé d'un match de source `film`, repris tel quel (décalage = coup

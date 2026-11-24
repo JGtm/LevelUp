@@ -82,6 +82,12 @@ computed once, at sync, on the estimate, and never again when the replay brought
   stored value of a replayed match changes. `KickoffRev` moves to `kickoff-2026-11-22`, `PerformanceScoreRev` to
   `perf-2026-11-22` and `LUSRRev` to `lusr-2026-11-22` (same two-fingerprint rule, no parameter of their own changes):
   the first startup runs the kickoff catch-up, then replays every player's notes once.
+  Amendment (2026-11-24): the match window that accepts or refuses a kickoff published by the replay is bounded by the
+  longer of the registry duration and the longest time played of the match's players (`timeline.MatchWindowSeconds`,
+  `DurationUnreliable`): the registry duration is sometimes plainly wrong (21 s for a 7-minute match) and refused a correct
+  kickoff. On such a match the stored time played (the API's) is
+  kept, not recomputed on a window that short. `KickoffRev` moves to `kickoff-2026-11-24`, `PerformanceScoreRev` to
+  `perf-2026-11-24` and `LUSRRev` to `lusr-2026-11-24` (same rule: no parameter of the scores changes).
 
 - **D-7 — One reading, for every reader.** `timeline.ForMatch` (`internal/analysis/timeline/build.go`) is the only rule
   that reads a stored kickoff: a known kickoff = the chronology starts from it; an unknown one (`nil`: Halo 5, a refused

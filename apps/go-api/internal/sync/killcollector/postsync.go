@@ -55,6 +55,8 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync/filmbacklog"
 	"levelup/go-api/internal/sync/filmfetch"
+
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
 
 // PostSyncMatchTimeout : la limite PAR MATCH de cette etape.
@@ -180,13 +182,7 @@ func (h *PostSyncHook) capture(ctx context.Context, d PostSyncDeps) DepsCapture 
 // nil), puis le resultat est memorise TANT QUE LA RACINE VOULUE NE CHANGE PAS — une archive vide
 // qui change d'emplacement a chaud est reprise a la passe suivante.
 func (h *PostSyncHook) racineDuCache(ctx context.Context, duMoteur *filmfetch.LocalFilmCache) (string, *filmfetch.LocalFilmCache) {
-	voulue := duMoteur.RootDir()
-	if voulue == "" {
-		voulue = h.cacheRoot
-		if h.archiveRoot != nil {
-			voulue = h.archiveRoot()
-		}
-	}
+	voulue := h.racineVoulue(duMoteur)
 	if h.cacheOK && h.cacheVoulue == voulue {
 		return h.cacheRacine, h.cache
 	}
@@ -208,6 +204,18 @@ func (h *PostSyncHook) racineDuCache(ctx context.Context, duMoteur *filmfetch.Lo
 		h.cache = filmfetch.NewLocalFilmCache(h.cacheRacine)
 	}
 	return h.cacheRacine, h.cache
+}
+
+// racineVoulue rend la racine de l archive des films que la passe doit lire, SANS rien creer : celle du
+// cache du moteur quand il en porte une, sinon celle du reglage (relue a chaque passe).
+func (h *PostSyncHook) racineVoulue(duMoteur *filmfetch.LocalFilmCache) string {
+	if racine := duMoteur.RootDir(); racine != "" {
+		return racine
+	}
+	if h.archiveRoot != nil {
+		return h.archiveRoot()
+	}
+	return h.cacheRoot
 }
 
 // PostSyncDeps : ce dont l etape a besoin du moteur, et rien de plus.
@@ -268,13 +276,10 @@ func RunPostSync(ctx context.Context, h *PostSyncHook, d PostSyncDeps, insertedI
 	}
 	defer passe.Unlock()
 
-	var (
-		backlog []string
-		total   int
-	)
-	d.WithRead(ctx, "killsource_select", func(sharedDB *sql.DB) {
-		backlog, total = backlogAJour(ctx, sharedDB, h.horizon, 0)
-	})
+	// Le backlog se lit dans UN segment ; la meme lecture rend, UNE fois par (processus, titre), les
+	// marques « film absent » a reconcilier avec l archive (film_absent_reconcile.go).
+	backlog, total, marques := h.lireArriere(ctx, d)
+	reconcilierFilmsAbsents(ctx, d, h.racineVoulue(d.LocalCache), marques)
 	// Le backlog est PUBLIE meme a zero : une cle absente de /debug/vars ne se distingue pas
 	// d une etape qui ne tourne pas, et c est exactement l ambiguite qui a dure cinq mois.
 	if len(backlog) == 0 {
@@ -288,7 +293,10 @@ func RunPostSync(ctx context.Context, h *PostSyncHook, d PostSyncDeps, insertedI
 	capture := h.capture(ctx, d)
 	col := NewKillSourceCollector(
 		source, rosterParSegment{withRead: d.WithRead}, d.AcquireWriter, caps, PostSyncMatchTimeout,
-	).WithBudget(h.budget).AvecCapture(capture)
+	).WithBudget(h.budget).AvecCapture(capture).AvecFilmComplet(func(matchID string) bool {
+		ok, err := filmcache.FilmComplet(racine, titlePkg.FilmShortMatchID(matchID))
+		return err == nil && ok
+	})
 	// LA CARTE AVANT LA BORNE ET AVANT LE TELECHARGEMENT (2026-09-27, cf. postsync_travail.go) :
 	// un match sans carte ne prend ni une place du cycle ni un telechargement, et un match DEJA
 	// constate sans carte n est pas relu (cf. postsync_sans_carte.go).
