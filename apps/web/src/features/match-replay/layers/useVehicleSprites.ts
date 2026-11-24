@@ -176,6 +176,8 @@ function useVehicleManifest({ enabled, titleSlug, redraw }: Pick<VehicleSpritesI
         redraw()
       })
       .catch((err: unknown) => {
+        // Composant démonté avant la réponse : ni journal ni redessin d'une scène qui n'existe plus.
+        if (cancelled) return
         console.warn('[replay-vehicles] manifeste de taille indisponible, silence :', url, err)
         manifestRef.current = new Map()
         redraw()
