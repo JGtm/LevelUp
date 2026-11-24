@@ -61,7 +61,7 @@ LEFT JOIN match_participants me ON me.xuid = ?` + campaignExclusionToken + `
 LEFT JOIN match_participants hist
     ON hist.match_id = me.match_id AND hist.xuid = tm.xuid
 GROUP BY tm.xuid, tm.is_bot, tm.team_id
-ORDER BY count_together DESC`
+ORDER BY count_together DESC, tm.xuid`
 
 // Q23bMatchEncounterStats : stats riches par encounter (chunk MV4.C').
 // Permet d'attribuer les badges narratifs ally_plus + tough_enemy via
