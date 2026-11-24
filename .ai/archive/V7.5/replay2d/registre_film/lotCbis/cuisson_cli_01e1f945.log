@@ -1,5 +1,5 @@
 # cuisson par le CLI cmd/replay-build --facts (schema 16, HEAD a26948ff5), un processus, LEVELUP_REPO_ROOT = worktree, film = main tree data/cache/film_chunks/01e1f945
-2026/08/18 20:09:22 INFO faits du match charges path=C:\Users\Guillaume\Projects\LevelUp-wt-zones-ti13-p2b\.ai\V7.5\replay2d\registre_film\lotCbis\faits_01e1f945.json match=01e1f945 joueurs=8 variante=KOTH:Arena
+2026/08/18 20:09:22 INFO faits du match charges path=<poste>\Projects\LevelUp-wt-zones-ti13-p2b\.ai\V7.5\replay2d\registre_film\lotCbis\faits_01e1f945.json match=01e1f945 joueurs=8 variante=KOTH:Arena
 2026/08/18 20:09:23 INFO replaybuild: actions d'objectif identifiees match_id=01e1f945 famille=hill nommees=0 identifiees=0 slotsApparies=8
 2026/08/18 20:10:17 INFO capacites : lectures d i48 recordsDelta=173040 masqueAvecI48=34 lues=34 illisibles=0 sansIdentite=5
 2026/08/18 20:10:28 INFO camouflage : lectures d i28 queue[1] recordsDelta=173040 masqueAvecI28=1565 lues=1565 illisibles=0 sansVoie=712
@@ -18,5 +18,5 @@
 2026/08/18 20:12:49 INFO rejeu : episodes d'equipement actif viesPubliees=113 viesCamo=0 episodesCamo=0 viesSurbouclier=5 episodesSurbouclier=5
 2026/08/18 20:12:49 INFO rejeu : palette de capacites palette=famille_a lectures=29 rangsNommes=3
 2026/08/18 20:12:49 INFO rejeu : couverture par calque tirsRattaches=1921 tirsDisponibles=2154 tirsSansSlot=222 tirsAmbigus=11 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=130 grenadesDisponibles=132 verdictTirs=nominal verdictGrenades=nominal verdictPont=nominal
-2026/08/18 20:12:49 INFO artefact rejeu écrit path=C:\Users\Guillaume\Projects\LevelUp-wt-zones-ti13-p2b\data\cache\replays\halo_infinite\01e1f945.json tracks=113 module=catalyst bytes=1816953 match=01e1f945 title=halo_infinite
+2026/08/18 20:12:49 INFO artefact rejeu écrit path=<poste>\Projects\LevelUp-wt-zones-ti13-p2b\data\cache\replays\halo_infinite\01e1f945.json tracks=113 module=catalyst bytes=1816953 match=01e1f945 title=halo_infinite
 # watchdog : exit=0 peakRAM_MB=97 duree_s=208 kill=[] (plafond 3072 Mo / 600 s)

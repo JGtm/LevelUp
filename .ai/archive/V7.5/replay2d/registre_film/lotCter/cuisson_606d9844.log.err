@@ -1,4 +1,4 @@
-2026/08/19 22:18:27 INFO faits du match charges path=C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\.ai\V7.5\replay2d\registre_film\lotCter\faits_606d9844.json match=606d9844 joueurs=9 variante=KOTH:Arena
+2026/08/19 22:18:27 INFO faits du match charges path=<poste>\Projects\LevelUp-wt-cter-fusion\.ai\V7.5\replay2d\registre_film\lotCter\faits_606d9844.json match=606d9844 joueurs=9 variante=KOTH:Arena
 2026/08/19 22:18:28 INFO replaybuild: actions d'objectif identifiees match_id=606d9844 famille=hill nommees=0 identifiees=0 slotsApparies=8
 2026/08/19 22:18:35 INFO replaybuild: morts sans revendication typées match_id=606d9844 publiees=2 orphelines=2
 2026/08/19 22:18:58 INFO capacites : lectures d i48 recordsDelta=63903 masqueAvecI48=6 lues=6 illisibles=0 sansIdentite=3
@@ -19,4 +19,4 @@
 2026/08/19 22:20:29 INFO rejeu : episodes d'equipement actif viesPubliees=42 viesCamo=2 episodesCamo=2 viesSurbouclier=0 episodesSurbouclier=0
 2026/08/19 22:20:29 INFO rejeu : palette de capacites palette="non classee" lectures=3 rangsNommes=0
 2026/08/19 22:20:29 INFO rejeu : couverture par calque tirsRattaches=539 tirsDisponibles=642 tirsSansSlot=103 tirsAmbigus=0 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=47 grenadesDisponibles=48 verdictTirs=nominal verdictGrenades=nominal verdictPont=nominal
-2026/08/19 22:20:29 INFO artefact rejeu écrit path=C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\data\cache\replays\halo_infinite\606d9844.json tracks=42 module=chasm bytes=718133 match=606d9844 title=halo_infinite
+2026/08/19 22:20:29 INFO artefact rejeu écrit path=<poste>\Projects\LevelUp-wt-cter-fusion\data\cache\replays\halo_infinite\606d9844.json tracks=42 module=chasm bytes=718133 match=606d9844 title=halo_infinite

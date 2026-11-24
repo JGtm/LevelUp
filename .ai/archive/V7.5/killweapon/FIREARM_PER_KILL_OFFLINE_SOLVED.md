@@ -23,7 +23,7 @@
 > **TOURNANT (étape intermédiaire).** Le mur historique « arme à feu par kill impossible offline » (cf
 > `FIRE_MELEE_GRENADE_EVENTS.md` §8/§11, plafond ~13/93) est **franchi en pur offline**. La donnée
 > attaquant manquait pour une seule raison : un **champ lu dans le mauvais ordre** par le décodeur du
-> projet. Validé contre la vérité-terrain **live** de la session 2026-06-11 (IKE→LORD = Disruptor).
+> projet. Validé contre la vérité-terrain **live** de la session 2026-06-11 (JOUEUR_502→LORD = Disruptor).
 > Outil de référence : `apps/go-api/cmd/tmp_killweaponoffline`.
 
 ## 1. Le record de dégât (paquet type-0, `payload[0]==0xd2`)
@@ -84,8 +84,8 @@ décodeur de participant-index par dead-state (`tmp_killeridx`) était **réfut�
 ## 4. Couverture & validation (000d5950)
 
 - **50/93 kills** : arme à feu attribuée **avec attaquant vérifié** (R5==tueur sur `0xd2`). **Validation
-  forte** : 1er kill `IKE → LORD = Disruptor` = exactement la vérité-terrain live du 2026-06-11. Les bursts
-  par joueur s'alignent (IKE : Disruptor 14-15s → kill 35.3s ; M41 38s → 58.6s ; BR75 151-158s → 176.8s).
+  forte** : 1er kill `JOUEUR_502 → LORD = Disruptor` = exactement la vérité-terrain live du 2026-06-11. Les bursts
+  par joueur s'alignent (JOUEUR_502 : Disruptor 14-15s → kill 35.3s ; M41 38s → 58.6s ; BR75 151-158s → 176.8s).
 - **La donnée d'arme existe pour 92/93 kills** (record le plus proche au même offset −20.3 s). Donc les
   « 43 manquants » NE sont PAS des mêlée/grenade — c'est une fausse piste. Mais cette couverture dense n'est
   fiable qu'à **~78 %** (le record le plus proche attrape un tiers 1 fois sur 5).
@@ -157,8 +157,8 @@ vérité-terrain EXACTE par match. Deux hooks CE lecture-pure sur le replay, **m
 non-uniforme, RDTSC≠film linéairement) — d'où la nécessité de capturer kills ET dégâts sur la même horloge.
 
 **Résultat 000d5950** : 605 dégâts + 98 kills → **97/98 attribués exact** (1 « ? » = kill précoce sans
-dégât-tueur capté avant ; + 1 suicide LORD→LORD). Validé `IKE→LORD=Disruptor`. Breakdown par joueur
-ground-truth (whiteknight Stalker×9, aldusbroncus S7 Sniper×7, LORD/IKE M41×7…). Outil : `cmd/tmp_dualcap`.
+dégât-tueur capté avant ; + 1 suicide LORD→LORD). Validé `JOUEUR_502→LORD=Disruptor`. Breakdown par joueur
+ground-truth (joueur_026 Stalker×9, joueur_389 S7 Sniper×7, LORD/JOUEUR_502 M41×7…). Outil : `cmd/tmp_dualcap`.
 Captures : `tools/ce/{dmgcapture_run2.bin (605×32), killcapture.bin (118×16)}`.
 
 **Portée** : EXACT mais **non scalable** (1 replay manuel + CE par match). C'est la **référence de

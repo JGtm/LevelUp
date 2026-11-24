@@ -1,7 +1,7 @@
 #!/bin/bash
 # ks_comparer.sh : compare chaque variante killsource a la production, mort par mort.
 # Sorties : ks_resume.tsv (variante x film), ks_morts_changees.tsv (une ligne par mort changee).
-SP=/c/Users/GUILLA~1/AppData/Local/Temp/claude/c--Users-Guillaume-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad
+SP=/c/Users/utilisateur/AppData/Local/Temp/claude/c--Users-poste-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad
 cd $SP/rcomb2/ks
 morts() { jq -r '.morts[] | [.temps_ms, .victime, .lecture.voie_identifiant, .source_du_degat_fatal.tag, .source_du_degat_fatal.statut, .source_du_degat_fatal.nature, .credit_du_jeu.joueur, (.assistant.joueur // "-"), (.parts_de_degats.part_du_tueur_pct|tostring), (.divergence|tostring)] | @tsv' "$1" | awk -F'\t' 'BEGIN{OFS="\t"} {k=$1"|"$2; n[k]++; $1=k"#"n[k]; $2=""; print}'; }
 sante() { jq -r '[.sante.verdict, (.sante.alertes|length), .couverture.morts_couvertes] | @tsv' "$1"; }

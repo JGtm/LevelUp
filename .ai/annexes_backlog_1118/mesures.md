@@ -52,7 +52,7 @@ partants que la règle A.1 retient (corps supprimé), la durée pendant laquelle
 | Tolérance de `lifeEndProof` (de -66 ms à +200 ms, soit de -2 à +6 images) | 0 / 875 |
 
 Distance du compte à rebours le plus proche (début de compte moins fin de vie, en valeur absolue) pour ces 875 vies : jusqu'à 10 images, 0 ;
-de 11 à 30 images, 1 (match `c349da69`, `piesden`, 20 images : hors de la tolérance de `lifeEndProof` comme de la fenêtre de 10 images) ; de 31 à 300 images, 237 ; au-delà de 300 images, 438 ; aucun
+de 11 à 30 images, 1 (match `c349da69`, `joueur H`, 20 images : hors de la tolérance de `lifeEndProof` comme de la fenêtre de 10 images) ; de 31 à 300 images, 237 ; au-delà de 300 images, 438 ; aucun
 compte à rebours pour ce joueur dans tout le document, 199.
 Pour mémoire, côté `released` : 464 des 503 ont un compte à rebours dans les 10 images (les 39 autres n'ont aucun compte à rebours à 10 images : non examinées, hors règle A.1) ; côté « sans raison publiée » : 0 des 8.
 
@@ -65,10 +65,10 @@ au moins une autre piste `deleted` finit à 15 images ou moins (suppression grou
 | Classe | Pistes | Exemples (match, joueur, image) |
 |---|---|---|
 | Fin de manche (suppression groupée), le joueur revient à la manche suivante | 201 | `19ef6b04` (4 joueurs à 5 images près, image 22 687 à 22 692) |
-| Corps supprimé isolé, le joueur a une vie ensuite | 128 | `06dfe6d9` ZuKu18 image 7 634 (vie suivante 6 952 images plus tard) ; `084a804d` RapidTundra image 25 243 (+305) ; `111cb657` XxXKeNnETh12XxX image 6 082 (+247) |
+| Corps supprimé isolé, le joueur a une vie ensuite | 128 | `06dfe6d9` joueur I image 7 634 (vie suivante 6 952 images plus tard) ; `084a804d` joueur J image 25 243 (+305) ; `111cb657` joueur K image 6 082 (+247) |
 | Bot | 36 | `03e3f9ea` image 2 729 ; `04d05635` image 2 502 ; `0762ae7c` image 1 356 |
-| Dernières secondes du match (moins de 10 s avant la dernière image) | 35 | `008e1bba` Cptn Pirate Joe image 5 154 (0 s) ; `00ba2e1c` Madina97294 image 15 139 (0 s) ; `02205ed3` Cheesefaced image 15 782 (0 s) |
-| Dernière vie d'un joueur dont la présence dure jusqu'à la marge de fin de partie (dans les 10 s de la fin) | 9 | `06a883f7` ComboTX20 image 14 440 (33,4 s avant la fin, présence fermée image 15 230) ; `087474d9` Oatmello5674 image 9 306 (17,6 s) ; `5da6fd30` WaiseAbgrund449 image 769 (13,2 s) |
+| Dernières secondes du match (moins de 10 s avant la dernière image) | 35 | `008e1bba` joueur L image 5 154 (0 s) ; `00ba2e1c` joueur C image 15 139 (0 s) ; `02205ed3` joueur M image 15 782 (0 s) |
+| Dernière vie d'un joueur dont la présence dure jusqu'à la marge de fin de partie (dans les 10 s de la fin) | 9 | `06a883f7` joueur N image 14 440 (33,4 s avant la fin, présence fermée image 15 230) ; `087474d9` joueur O image 9 306 (17,6 s) ; `5da6fd30` joueur P image 769 (13,2 s) |
 | **Total** | **409** | |
 
 Pour les corps supprimés isolés : la vie suivante du joueur commence à une médiane de 305 images (10 s), centiles 5 et 95 à 92 et 1 966 images, minimum 23, maximum 6 952.
@@ -112,13 +112,13 @@ La différence est de deux natures, nettement séparées par la longueur des pla
 | Garde du document refusée (la fiche ne montre aucun score), 424 rejeux | 4 030 | 3 445 (1 681 joueurs) | 13 | 8 | 42 | 818 | 759 | 482 |
 
 - **Décalage d'une image** : 7 762 des 7 771 plages courtes de la population gardée durent 1 image (neuf durent 2). Le calque date le point une image après l'action
-  (exemple : `000d5950`, LORD PEINX13, image 5 836, calque 550, somme 650 : le point à 650 tombe à l'image 5 836 dans les actions et 5 837 dans le calque).
+  (exemple : `000d5950`, joueur Q, image 5 836, calque 550, somme 650 : le point à 650 tombe à l'image 5 836 dans les actions et 5 837 dans le calque).
   Sur les 182 471 valeurs du calque que la somme atteint aussi, 180 706 sont datées à une image près (écart de date de -1 à +1 image) ; 1 765 le sont davantage ; 5 234 valeurs du calque ne sont jamais atteintes par la somme du même joueur.
 - **Écart durable** (plus de 30 images, soit 1 s) : 900 plages, 781 joueurs, 2 401 618 images dans la population gardée (1,9 % des images de cette population) ; ampleur : 1 à 9 points, 2 ; 10 à 49, 98 ;
-  50 à 99, 59 ; 100 et plus, 741. Exemples : `0076ebdc` DownfieldBook42 (image 6 777, 242 images, calque 800, somme 900) ; `0076ebdc` DiedLikeHeLived (image 13 720, 1 106 images,
-  calque 1 050, somme 1 150) ; `0215fe6b` MarSshaL7848 (image 7 576, 3 846 images, calque 400, somme 500) ; `02205ed3` Ricolatra (image 1 492, 1 589 images, calque 100, somme 150).
+  50 à 99, 59 ; 100 et plus, 741. Exemples : `0076ebdc` joueur R (image 6 777, 242 images, calque 800, somme 900) ; `0076ebdc` joueur S (image 13 720, 1 106 images,
+  calque 1 050, somme 1 150) ; `0215fe6b` joueur T (image 7 576, 3 846 images, calque 400, somme 500) ; `02205ed3` joueur U (image 1 492, 1 589 images, calque 100, somme 150).
   Hors garde du document : 860 plages durables, 759 joueurs, 6 675 305 images (10,2 % des images de cette population) ; ampleur : 1 à 9 points, 1 ; 10 à 49, 124 ; 50 à 99, 163 ; 100 et plus, 572 (exemple : `00ba2e1c`,
-  LoveFrawg, image 1 955, 13 185 images, calque 50, somme 75). La couverture y est déclarée incomplète : c'est la raison d'être de la garde.
+  joueur V, image 1 955, 13 185 images, calque 50, somme 75). La couverture y est déclarée incomplète : c'est la raison d'être de la garde.
 
 Lecture : (b) est strictement supérieur à zéro, sans ambiguïté, même en écartant le décalage d'une image et en ne gardant que les documents que la fiche accepte.
 Non mesuré : combien de ces écarts la garde de feuille de la fiche (somme finale contre score de l'API) refuserait, faute de feuille (pas de serveur, pas de base).

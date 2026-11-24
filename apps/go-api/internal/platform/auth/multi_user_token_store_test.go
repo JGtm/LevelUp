@@ -427,8 +427,8 @@ func TestMultiUserTokenStore_UpdateOAuthRefreshToken_Idempotent(t *testing.T) {
 func TestMultiUserTokenStore_LoadByGamertag(t *testing.T) {
 	s := NewMultiUserTokenStore(tempTokenDir(t))
 
-	_ = s.Upsert(&UserTokens{XUID: "111", Gamertag: "Joueur90002", XSTSToken: "tok-madina"})
-	_ = s.Upsert(&UserTokens{XUID: "222", Gamertag: "Joueur90001", XSTSToken: "tok-choco"})
+	_ = s.Upsert(&UserTokens{XUID: "111", Gamertag: "Joueur90002", XSTSToken: "tok-a"})
+	_ = s.Upsert(&UserTokens{XUID: "222", Gamertag: "Joueur90001", XSTSToken: "tok-b"})
 
 	// Match exact
 	loaded, err := s.LoadByGamertag("Joueur90002")

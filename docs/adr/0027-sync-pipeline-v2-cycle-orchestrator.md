@@ -22,22 +22,22 @@ Le sync actuel orchestre au niveau **player** : N goroutines parallèles (une pa
 
 | Joueur | Insérés | Durée | dont attente shared lease |
 |---|---|---|---|
-| Chocoboflor | 21 | 148 s | 0 s |
+| joueur_165 | 21 | 148 s | 0 s |
 | JGtm | 66 | 435 s | 196 s |
-| XxDaemonGamerxX | 10 | 235 s | 106 s |
-| Madina97294 | 0 | 511 s | 393 s |
+| joueur_291 | 10 | 235 s | 106 s |
+| joueur_117 | 0 | 511 s | 393 s |
 
-**Wall time** : 8 min 30 s pour 97 inserts, soit ~5 s/match en moyenne. Madina97294 passe **77 % de son temps à attendre le shared writer lease** alors qu'il n'a 0 match à insérer.
+**Wall time** : 8 min 30 s pour 97 inserts, soit ~5 s/match en moyenne. joueur_117 passe **77 % de son temps à attendre le shared writer lease** alors qu'il n'a 0 match à insérer.
 
 ### Causes racines identifiées
 
-1. **Cross-player dedup cassée en parallèle**. Le BatchQueue (cf. ADR 0019) logue `match persisté` lors du WAL submit, **avant** que le worker async ait commit en DB. Quand un autre joueur appelle `loadKnownMatchIDs` 70 ms plus tard, sa lecture ne voit pas les writes du joueur précédent. JGtm refetche probablement les matchs déjà ingérés par Chocoboflor.
+1. **Cross-player dedup cassée en parallèle**. Le BatchQueue (cf. ADR 0019) logue `match persisté` lors du WAL submit, **avant** que le worker async ait commit en DB. Quand un autre joueur appelle `loadKnownMatchIDs` 70 ms plus tard, sa lecture ne voit pas les writes du joueur précédent. JGtm refetche probablement les matchs déjà ingérés par joueur_165.
 
 2. **Worker BatchQueue monothread**. Un seul `Worker.Run()` consomme `chMain`. Sur 97 batches en file, le drain prend ≥ 60 s (timeout fixe). Tous les drains du cycle expirent au même seuil.
 
-3. **Contention shared lease post-drain**. Les 4 syncs releasent le lease juste avant drain puis le re-acquièrent pour le post-sync. Le worker async qui consomme la queue veut aussi ce lease. Sérialisation totale → 6 min 30 d'attente pour Madina97294.
+3. **Contention shared lease post-drain**. Les 4 syncs releasent le lease juste avant drain puis le re-acquièrent pour le post-sync. Le worker async qui consomme la queue veut aussi ce lease. Sérialisation totale → 6 min 30 d'attente pour joueur_117.
 
-4. **API fetch sérialisé entre joueurs**. Les 4 syncs démarrent en même temps mais XxDaemonGamerxX attend 24 s et Madina97294 28 s avant leur premier appel `/matches` — la sérialisation API est imposée par le shared lease writer pendant `loadKnownMatchIDs` (lecture qui prend pourtant un lease global).
+4. **API fetch sérialisé entre joueurs**. Les 4 syncs démarrent en même temps mais joueur_291 attend 24 s et joueur_117 28 s avant leur premier appel `/matches` — la sérialisation API est imposée par le shared lease writer pendant `loadKnownMatchIDs` (lecture qui prend pourtant un lease global).
 
 ---
 

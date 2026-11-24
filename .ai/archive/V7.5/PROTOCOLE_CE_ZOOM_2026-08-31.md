@@ -29,8 +29,8 @@
 ## Matériel
 
 Film de référence : `00162144`. Chronologie relevée (horloge du feed) :
-**Nilton410** à la lunette sur `{41 → 46,3}`, `{49 → 52}`, `{61 → 61,8}`, `{68 → 68,8}`,
-`{71 → 73}`, `{85 → 86}` — et **Madina97294** sur `{45 → 46,3}`. Le frag Counter-snipe est à 0:46.
+**joueur_006** à la lunette sur `{41 → 46,3}`, `{49 → 52}`, `{61 → 61,8}`, `{68 → 68,8}`,
+`{71 → 73}`, `{85 → 86}` — et **joueur_117** sur `{45 → 46,3}`. Le frag Counter-snipe est à 0:46.
 
 Le serveur MCP Cheat Engine est déjà configuré (voir la référence d'installation du dépôt).
 Précédent d'usage dans ce chantier : la capture CE a servi à mesurer le coût en bits du composant
@@ -39,7 +39,7 @@ de position (« total i0 = 47 bits », cf. `filmdec/offline_aim.go`).
 ## Étape 1 — Trouver l'octet (5 min)
 
 1. Lancer le jeu, ouvrir le film `00162144` dans Theater, se mettre **en première personne sur
-   Nilton410**, placer la lecture **avant 0:41**.
+   joueur_006**, placer la lecture **avant 0:41**.
 2. Attacher Cheat Engine au processus.
 3. Scan de valeur, type `Byte` : chercher `255` (= `-1`, pas de lunette).
 4. Avancer la lecture dans un épisode zoomé (par exemple 0:42), puis **Next Scan** sur `0` ou `1`.
@@ -65,7 +65,7 @@ reste en découle.
 
 ## Étape 3 — Le contrôle qui vaut la peine (10 min de plus)
 
-Refaire l'étape 1 pour **un joueur distant** — idéalement Madina97294, dont on sait qu'elle zoome
+Refaire l'étape 1 pour **un joueur distant** — idéalement joueur_117, dont on sait qu'elle zoome
 sur `{45 → 46,3}` et pratiquement pas ailleurs.
 
 - Si l'octet d'un joueur **distant** suit sa propre chronologie : l'état existe par joueur pendant

@@ -1,7 +1,7 @@
 // Sonde (lecture seule) : distribution des DURÉES d'intervalle par genre d'état (s), un document à la fois.
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-const DIR = 'C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite'
+const DIR = 'C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite'
 const par = new Map()
 for (const f of readdirSync(DIR).filter((x) => /^[0-9a-f]{8}\.json$/.test(x))) {
   let d = JSON.parse(readFileSync(join(DIR, f), 'utf8'))

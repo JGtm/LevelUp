@@ -368,5 +368,5 @@ savez déjà nommer.
 
 NOTE D'EXPLOITATION : les entrées legacy .env.local sont VIDES depuis la migration ADR 0023.
 Sur les 9 jetons du store canonique, 4 rendent AADSTS70000 (vieille app) — dont ceux de JGtm,
-Madina97294 et Chocoboflor. Les 5 sains portent les xuid 2535405528935279, 2535409018618248,
-2535413181053876, 2535430985184703, 2535460062932944.
+joueur_117 et joueur_165. Les 5 sains portent les xuid 2534182457688434, 2738372503639927,
+2734274180837334, 2752304660818731, 2596456879540048.

@@ -1,5 +1,5 @@
 # cuisson par le CLI cmd/replay-build --facts (schema 16, HEAD a26948ff5), un processus, LEVELUP_REPO_ROOT = worktree, film = main tree data/cache/film_chunks/696a9d7c
-2026/08/18 20:05:27 INFO faits du match charges path=C:\Users\Guillaume\Projects\LevelUp-wt-zones-ti13-p2b\.ai\V7.5\replay2d\registre_film\lotCbis\faits_696a9d7c.json match=696a9d7c joueurs=8 variante=Strongholds:Arena
+2026/08/18 20:05:27 INFO faits du match charges path=<poste>\Projects\LevelUp-wt-zones-ti13-p2b\.ai\V7.5\replay2d\registre_film\lotCbis\faits_696a9d7c.json match=696a9d7c joueurs=8 variante=Strongholds:Arena
 2026/08/18 20:05:28 INFO replaybuild: actions d'objectif identifiees match_id=696a9d7c famille=zone nommees=224 identifiees=224 slotsApparies=8
 2026/08/18 20:05:46 INFO replaybuild: morts sans revendication typées match_id=696a9d7c publiees=1 orphelines=1
 2026/08/18 20:06:32 INFO capacites : lectures d i48 recordsDelta=183513 masqueAvecI48=42 lues=42 illisibles=0 sansIdentite=9
@@ -19,5 +19,5 @@
 2026/08/18 20:09:15 INFO rejeu : episodes d'equipement actif viesPubliees=110 viesCamo=4 episodesCamo=5 viesSurbouclier=0 episodesSurbouclier=0
 2026/08/18 20:09:15 INFO rejeu : palette de capacites palette=famille_a lectures=33 rangsNommes=4
 2026/08/18 20:09:15 INFO rejeu : couverture par calque tirsRattaches=2088 tirsDisponibles=2246 tirsSansSlot=117 tirsAmbigus=41 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=167 grenadesDisponibles=168 verdictTirs=nominal verdictGrenades=nominal verdictPont=nominal
-2026/08/18 20:09:15 INFO artefact rejeu écrit path=C:\Users\Guillaume\Projects\LevelUp-wt-zones-ti13-p2b\data\cache\replays\halo_infinite\696a9d7c.json tracks=110 module=fo08_wetland bytes=2071392 match=696a9d7c title=halo_infinite
+2026/08/18 20:09:15 INFO artefact rejeu écrit path=<poste>\Projects\LevelUp-wt-zones-ti13-p2b\data\cache\replays\halo_infinite\696a9d7c.json tracks=110 module=fo08_wetland bytes=2071392 match=696a9d7c title=halo_infinite
 # watchdog : exit=0 peakRAM_MB=145 duree_s=230 kill=[] (plafond 3072 Mo / 600 s)

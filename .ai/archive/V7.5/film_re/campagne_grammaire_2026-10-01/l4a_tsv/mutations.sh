@@ -1,7 +1,7 @@
 #!/bin/bash
 # mutations.sh : chaque regle neuve du lot L4a retiree ou faussee une a une (copie + go test -overlay) ;
 # attendu : ROUGE. Sortie : mutations.txt (une ligne par mutation).
-source /c/Users/GUILLA~1/AppData/Local/Temp/claude/c--Users-Guillaume-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad/L4a/env.sh
+source /c/Users/utilisateur/AppData/Local/Temp/claude/c--Users-poste-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad/L4a/env.sh
 G=$API/internal/games/halo_infinite/film/internal/grammar
 V=$G/composants_vehicule_ti40.go; K=$G/keyframe_fullstate_loop.go; W=$G/unit_weaponstate.go
 OUT=$L/mutations.txt; : > $OUT

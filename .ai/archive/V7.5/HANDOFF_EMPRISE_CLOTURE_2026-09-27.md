@@ -20,7 +20,7 @@ Plan : `.ai/PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26.md` (section L6). Maquet
 Commit local non poussé : `d7c40151e` sur `wt/emprise` (L6.3 statué au plan, journal) — et ce
 handoff. Les pousser avec L6.6 (le pre-push complet prend environ 12 minutes).
 
-Worktree : `C:\Users\Guillaume\Projects\LevelUp-wt-emprise`, branche `wt/emprise`, alignée sur
+Worktree : `<poste>\Projects\LevelUp-wt-emprise`, branche `wt/emprise`, alignée sur
 `feat/v75` plus les commits ci-dessus. Dossier principal : avancé à `0cae929af` ; les
 modifications non commitées d'autres sessions y sont intactes (`CLAUDE.md`, les deux
 `CONTRIBUTING`, entrées de journal réappliquées en fin de fichier). Sauvegarde de l'état

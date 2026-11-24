@@ -2,7 +2,7 @@
 
 **Status** — Proposed (2026-04-29). Triggered by code review axe 8 (BLOQUANT `internal/observability` mort) + contexte produit multi-user acté.
 
-**Deciders** — Guillaume (GS).
+**Deciders** — JGtm.
 
 ## Context
 

@@ -1,6 +1,6 @@
 # Critique de complétude, campagne de grammaire phase 1
 
-Abréviations : RAPPORT = `RAPPORT_CAMPAGNE_GRAMMAIRE_PHASE1_2026-10-01.md`, PLAN = `PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`, MESURES = `campagne_grammaire_2026-10-01/MESURES_CIBLEES.md`, CARTE = `CARTE_FERMETURE_V2_2026-10-01.md`, ANALYSE = `ANALYSE_MISE_EN_OEUVRE_REPRESENTATION_INTERMEDIAIRE_2026-10-01.md`. Les chemins sont sous `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-campagne-grammaire/.ai/`.
+Abréviations : RAPPORT = `RAPPORT_CAMPAGNE_GRAMMAIRE_PHASE1_2026-10-01.md`, PLAN = `PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`, MESURES = `campagne_grammaire_2026-10-01/MESURES_CIBLEES.md`, CARTE = `CARTE_FERMETURE_V2_2026-10-01.md`, ANALYSE = `ANALYSE_MISE_EN_OEUVRE_REPRESENTATION_INTERMEDIAIRE_2026-10-01.md`. Les chemins sont sous `<poste>/Downloads/Scripts/LevelUp-wt-campagne-grammaire/.ai/`.
 
 ## A. Dépendance à J12, et à ce qui bloque J12 (c'est la question de l'utilisateur)
 
@@ -78,7 +78,7 @@ Abréviations : RAPPORT = `RAPPORT_CAMPAGNE_GRAMMAIRE_PHASE1_2026-10-01.md`, PLA
 23. **L1a (bande OU bloc, plus filtre d'invariants de masque) n'a pas été mesuré**, alors que les deux ingrédients existent dans la sonde. PLAN l.320 exige que « le filtre d'invariants doit annuler ces pertes avant tout gate ». C'était faisable en phase 1.
 24. **Le double essai de la fourche `+0x74` a été déclaré impossible à tort.** MESURES §T5-3 le dit « non mesuré, exige un portage », mais L5 (PLAN l.395) prévoit justement un « double essai sous tag research ». C'était faisable en phase 1.
 25. **Les A/B de position (T4-C1, C4 à C6, L6) ont été déclarés non mesurables par choix, pas par contrainte.** La sonde a déjà recopié la marche (`campagne_marche_research_test.go`) ; elle aurait pu recopier le lecteur de position. T4-C3 est déclaré « non concluant, à remesurer sous le contexte de production » et aucun item n'en est chargé.
-26. **Le témoin utilisateur de T7 n'a pas été mesuré.** `81c02726` (G MONEY : NEW `ti=43` désynchronisé sur `i21`), proposé par T7 §6.3, est disponible dans `film_chunks/`. Il n'est ni dans le corpus de 20 films ni dans le gate de L2 (PLAN l.348 et suivantes : seul `bcb6d393` est prévu).
+26. **Le témoin utilisateur de T7 n'a pas été mesuré.** `81c02726` (JOUEUR_441 : NEW `ti=43` désynchronisé sur `i21`), proposé par T7 §6.3, est disponible dans `film_chunks/`. Il n'est ni dans le corpus de 20 films ni dans le gate de L2 (PLAN l.348 et suivantes : seul `bcb6d393` est prévu).
 
 ## F. Populations sans lot ni recherche (pistes non instruites)
 

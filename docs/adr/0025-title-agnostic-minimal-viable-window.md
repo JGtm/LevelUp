@@ -10,7 +10,7 @@
 
 Un 2e titre est confirmé au backlog produit. Le ROI du refactor title-agnostic passe donc de « marginal » à « décisif » (chaque titre ajouté coûte alors ~1-2 j au lieu de plusieurs semaines). Le master plan v2.5 décrit l'épopée complète (Phases 0→5, 62-82 j). Un audit du code réel (2026-06-02, agents Explore) montre que le code a **avancé** depuis la rédaction du master (2026-05-18) et a **convergé vers un mécanisme différent** de celui que le master prescrivait pour la Phase 2.
 
-Cet ADR acte les **décisions cadrantes** prises avec Guillaume pour démarrer, sans ré-écrire le master.
+Cet ADR acte les **décisions cadrantes** prises avec JGtm pour démarrer, sans ré-écrire le master.
 
 ## Décisions
 

@@ -3,7 +3,7 @@
 > Execute le 2026-09-03 dans le worktree `LevelUp-wt-vehicules` (branche `wt/vehicules-tourelles`).
 > Aucun commit, aucun `git add`. Mesures en AVANT-PLAN, `CGO_ENABLED=0`, GOCACHE isole
 > (`scratchpad/gocache_v11`), films du checkout principal
-> (`C:/Users/Guillaume/Projects/LevelUp/data/cache/film_chunks`, LECTURE SEULE).
+> (`<poste>/Projects/LevelUp/data/cache/film_chunks`, LECTURE SEULE).
 > `apps/web/`, `replay/vehicle_rides*.go`, `filmdec/event_list.go` : **NON TOUCHES**.
 >
 > **CONCURRENCE.** D'autres sessions travaillent dans le meme worktree (lots V8 / V9 / V10). Ce

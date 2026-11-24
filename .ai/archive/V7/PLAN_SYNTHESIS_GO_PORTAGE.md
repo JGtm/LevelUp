@@ -1,7 +1,7 @@
 # Plan de portage de la page Synthèse — Python v7/cockpit -> Go + React
 
 > Audit comparatif rigoureux et plan de portage par phases.
-> Branche source : `v7/cockpit` (Streamlit/Python), worktree `C:/Users/Guillaume/Downloads/Scripts/LevelUp/`.
+> Branche source : `v7/cockpit` (Streamlit/Python), worktree `<poste>/Downloads/Scripts/LevelUp/`.
 > Branche cible Git : `feat/synthesis-iso-v7` (à créer depuis `feat/multi-title-adapters-and-mappings`).
 > Date d'audit : 2026-04-26 (révisé 2026-04-27 : ajout Phase 0 migration canonical, alignement multi-titre).
 > Plans jumeaux : [PLAN_TIMESERIES_GO_PORTAGE.md](PLAN_TIMESERIES_GO_PORTAGE.md), [PLAN_MATCH_VIEW_GO_PORTAGE.md](PLAN_MATCH_VIEW_GO_PORTAGE.md), [PLAN_CAREER_GO_PORTAGE.md](PLAN_CAREER_GO_PORTAGE.md), [PLAN_CITATIONS_GO_PORTAGE.md](PLAN_CITATIONS_GO_PORTAGE.md).

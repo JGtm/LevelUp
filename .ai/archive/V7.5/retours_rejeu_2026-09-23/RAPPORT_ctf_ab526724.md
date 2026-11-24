@@ -47,7 +47,7 @@ Balises : **MESURÉ** (fichier:ligne, requête, sortie chiffrée) / **DÉDUIT** 
 | `coverage.bridge.livesNamed` / `indexReadings` | **0/144 / 0** | 39/45 / 17 |
 | `coverage.verdict.bridge` | « partiel : la table d'index n'est confirmée par aucun second chunk » | nominal |
 | `identity.filmTable` accord / silence | **0 / 8** | 8 / 0 |
-| `identity.statborgSlot` | déduit 3 (`triplet_feuille` : slots 10, 16, 20 = Taiko900BPM, JGtm, Chocoboflor), **non résolus 5** | déduit 8 (`instants_de_mort` ×6 + `triplet_feuille` ×2) |
+| `identity.statborgSlot` | déduit 3 (`triplet_feuille` : slots 10, 16, 20 = joueur_1010, JGtm, joueur_165), **non résolus 5** | déduit 8 (`instants_de_mort` ×6 + `triplet_feuille` ×2) |
 | `coverage.flagCarries` | flagFilm true, openings 31 = **noBridge 12 + outOfWindow 19**, carries 0 | (Strongholds) |
 | `coverage.objectives` | available 74, **attached 0, noSlot 74** | 35 / 35 / 0 |
 | `coverage.score.teamIdentity` | **unresolved** | a |
@@ -89,8 +89,8 @@ Balises : **MESURÉ** (fichier:ligne, requête, sortie chiffrée) / **DÉDUIT** 
 | 21:35:36.97 | détection par `match_poller`, soit **37 s** après la fin |
 | 21:35:43 → 21:35:50.38 | killsource « début » puis « sans kill-feed ». La durée de 7,2 s inclut le téléchargement ; c'est ce passage qui a archivé les 34 chunks via `RemoteFilms`. |
 | 21:35:45 → 21:35:52.79 | second passage killsource, même résultat |
-| 21:35:57.6 | verrou de décodage pris par le post-sync de Chocoboflor (pid 39176, décode « depuis 19:35:59Z ») |
-| 21:36:24.29 | « artefact rejeu construit » (Chocoboflor, 144 pistes) |
+| 21:35:57.6 | verrou de décodage pris par le post-sync de joueur_165 (pid 39176, décode « depuis 19:35:59Z ») |
+| 21:36:24.29 | « artefact rejeu construit » (joueur_165, 144 pistes) |
 | 21:36:01.239 | post-sync de JGtm : « artefact rejeu non construit … décodage déjà en cours ». Son `persistFilmToCache` (`films_persisted 5`) a écrit 34–36 à 21:36:01.236 (**DÉDUIT** : 3 ms d'écart ; le manifeste de l'API listait alors 37 chunks). |
 
 - `match_kill_events_latest` pour ab526724 : 145 lignes `decoder_rev sync-kill-feed-2026-08-02`,

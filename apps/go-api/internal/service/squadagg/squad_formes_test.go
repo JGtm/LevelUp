@@ -35,10 +35,10 @@ func TestFormesSquadPlayers_CoequipiersSansGamertagDeParticipant(t *testing.T) {
 	team := 0
 	participants := []sessionusage.ParticipantRow{
 		{MatchID: "m1", XUID: "moi", Gamertag: "JGtm", TeamID: &team},
-		{MatchID: "m1", XUID: "choco", Gamertag: "", TeamID: &team},
-		{MatchID: "m1", XUID: "madina", Gamertag: "", TeamID: &team},
+		{MatchID: "m1", XUID: "joueur_901", Gamertag: "", TeamID: &team},
+		{MatchID: "m1", XUID: "joueur_075", Gamertag: "", TeamID: &team},
 	}
-	selection := []domain.SessionUsageSquadPlayer{{XUID: "choco", Gamertag: "Joueur90001"}, {XUID: "madina", Gamertag: "Joueur90002"}}
+	selection := []domain.SessionUsageSquadPlayer{{XUID: "joueur_901", Gamertag: "Joueur90001"}, {XUID: "joueur_075", Gamertag: "Joueur90002"}}
 	got := SquadPlayers("moi", "JGtm", participants, selection)
 	if len(got) != 3 || got[1] != selection[0] || got[2] != selection[1] {
 		t.Fatalf("escouade = %+v, attendu [JGtm, Joueur90001, Joueur90002]", got)

@@ -3,7 +3,7 @@
 > Execute le 2026-09-03 dans le worktree `LevelUp-wt-vehicules` (branche `wt/vehicules-tourelles`).
 > Aucun commit, aucun `git add`. Mesures en AVANT-PLAN, `CGO_ENABLED=0`, GOCACHE isole
 > (`scratchpad/gocache_v8`), films du checkout principal
-> (`C:/Users/Guillaume/Projects/LevelUp/data/cache/film_chunks`, LECTURE SEULE). `apps/web/`,
+> (`<poste>/Projects/LevelUp/data/cache/film_chunks`, LECTURE SEULE). `apps/web/`,
 > `cmd/weapon-sounds/`, `cmd/vs-measure/` : NON touches.
 >
 > **AVERTISSEMENT DE CONCURRENCE, ecrit avant les chiffres.** Une AUTRE session travaillait dans le
@@ -250,9 +250,9 @@ choisir. 1 / 1.
 ## 6. LES DEUX ARTEFACTS DE DEMONSTRATION, RECUITS
 
 Cuisson par `cmd/replay-build`, `LEVELUP_REPO_ROOT` = CE worktree, films lus dans le tronc principal
-(`C:/Users/Guillaume/Projects/LevelUp/data/cache/film_chunks/<id>`), un processus par film, en
+(`<poste>/Projects/LevelUp/data/cache/film_chunks/<id>`), un processus par film, en
 avant-plan. Artefacts ecrits dans `data/cache/replays/halo_infinite/` du worktree, puis COPIES vers
-`C:/Users/Guillaume/Projects/LevelUp-wt-capture-rejeu/data/cache/replays/halo_infinite/`.
+`<poste>/Projects/LevelUp-wt-capture-rejeu/data/cache/replays/halo_infinite/`.
 
 ```
 LEVELUP_REPO_ROOT=<worktree> replay-build --map behemoth      0d76e8f1 <cache>/film_chunks/0d76e8f1

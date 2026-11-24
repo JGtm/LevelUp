@@ -308,7 +308,7 @@ diff E5 (lot persist/sync).
     |---|---|---|---|---|---|---|---|
     | `000d5950` | oui | 2026-03-08 20:43 | Quick Play | JGtm, 2026-03-08 21:55 | 8 | 8 | 230 |
     | `4f77afc1` | oui | 2026-07-24 20:20 | Big Team Battle | JGtm, 2026-07-24 20:41 | 36 | 28 | 844 |
-    | `94a28b8b` | oui | 2026-08-27 20:51 | Quick Play | Chocoboflor, 2026-08-27 21:02 | 10 | 9 | 193 |
+    | `94a28b8b` | oui | 2026-08-27 20:51 | Quick Play | joueur_165, 2026-08-27 21:02 | 10 | 9 | 193 |
     | `28c9b538` | oui | 2026-09-01 19:53 | Quick Play | JGtm, 2026-09-01 20:52 | 8 | 8 | 240 |
 
     « Q12 » = `Q12MatchScoreboard` (`platform/duckdb/queries_match.go:54-122`) : le filtre `NOT (kills,
@@ -749,7 +749,7 @@ diff E5 (lot persist/sync).
     - `participants_loaded` : nul (aucun lecteur). `player_count` : nul côté produit (aucun oracle) ; trompe seulement la colonne `joueurs_max` d'un outil hors ligne ; la promesse « oracle d'intégrité
       du roster » de `domain/match_rows.go:74-79` et de `halo_5/mapping_carnage.go:57` est une affirmation sans lecteur.
     - bit 512 : le bouton admin « backfill » sans scope explicite re-sélectionne à CHAQUE lancement les 157 matchs HI de la fenêtre (le bit n'est jamais posé après coup), donc jusqu'à 157 re-téléchargements
-      de film avec remise à zéro de `events_loaded` (UPDATE) et 157 `GetMatchStats` pour les scores personnels, répartis par joueur concerné (prod : JGtm 77, Chocoboflor 70, XxDaemonGamerxX 10).
+      de film avec remise à zéro de `events_loaded` (UPDATE) et 157 `GetMatchStats` pour les scores personnels, répartis par joueur concerné (prod : JGtm 77, joueur_165 70, joueur_291 10).
       Établi par lecture du code et par comptage ; aucun job lancé. Incertain : une part de ces 157 est peut-être déjà sélectionnée par une autre condition `OR` (médailles, assets...) qui dépend de la player DB.
   - **E5.1-f — recettes de réparation sans `UPDATE` sur `match_registry`**
     - `match_registry` n'est PAS append-only (absente de `tablesProtegees`, `no_art_patterns_test.go:20-24` ; pas de vue `_latest`) : la recette de l'ADR 0026 (`append_only_rebuild.go`) ne s'y applique pas

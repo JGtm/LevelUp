@@ -78,7 +78,7 @@ Arme par kill = arme équipée du tueur au keyframe le plus proche ≤ t_kill, c
 A. Décoder les 8 bipeds (WST i43) à CHAQUE keyframe (type-2 par chunk) — lire l'arme avant désync ; mapper record_i→pi_i.
 B. Kill feed chunk_27 (tueur slot→pi, temps) → arme du tueur au keyframe ≤ t.
 C. Cross-check 519 records (`tmp_dmgscan`) : famille présente près de t ? → confiance.
-D. Valider narration (BR75 JGtm→Akatsuki ; marteau IKE→JGtm). Granularité keyframe (~18s) = limite acceptée pour swaps.
+D. Valider narration (BR75 JGtm→joueur_700 ; marteau JOUEUR_502→JGtm). Granularité keyframe (~18s) = limite acceptée pour swaps.
 
 ---
 # NOUVELLE PISTE (2026-06-07, question user "dégâts à la victime") — LIER PAR POSITION
@@ -125,7 +125,7 @@ biped bit-exact (arme équipée du tueur, mais limite count2 RAM + mapping). Ang
 La conclusion "pas d'attaquant dans le film" était vraie pour les RECORDS DE DÉGÂT, **FAUSSE pour les events fire/melee/grenade** :
 ceux-ci portent le **PLAYER INDEX (tireur/lanceur)** + l'arme + (fire) un aim vector + hit/miss. Recettes bit-packées :
 - **GRENADE** : marqueur `0x4c0c00` (24b) → grenade id 32b (FRAG 0xB0171062, PLASMA 0xC0E34C44, SHOCK 0x3B2567D4, SPIKE 0x9212E428)
-  → +47b → **player index 5b**. ✅ DÉCODÉ : `cmd/tmp_meleegrenade` = **70 grenades, player index 0-7 tous valides** (IKE x20…).
+  → +47b → **player index 5b**. ✅ DÉCODÉ : `cmd/tmp_meleegrenade` = **70 grenades, player index 0-7 tous valides** (JOUEUR_502 x20…).
 - **MELEE** : marqueur `0b10100110010` (11b, 0x532) ; anchor +3b ; player idx @+20 (5b) ; type @+76 (0x42/0x47/0x60) ;
   weapon @+86 (0x47 Hammer)/+88(0x42)/+101/103(0x60). ⚠️ trouve 0 → marqueur/offsets à CALER vs notre film (debug).
 - **FIRE** : weapon id 32b (high32=famille) + shot counter 0-127 + bit burst (final shot) + bit hit/miss + player index + AIM VECTOR
@@ -141,7 +141,7 @@ Validation décode : grenade ids + weapon ids communautaires == nos valeurs (Dis
 - **TYPE 0x47 confirmé** à anchor+76 (= W-10 si weapon@W). ~40 occurrences hammer dans le match.
 - weapon@anchor+86 (=W) ; anchor=W-86 ; marker@W-89.
 - **PLAYER INDEX : anchor+20 (=W-66) = FAUX (lit toujours 0)** → offset à retrouver (scanner les offsets avant le weapon
-  pour un champ 5b cohérent = IKE/pi4 sur les events près des kills IKE).
+  pour un champ 5b cohérent = JOUEUR_502/pi4 sur les events près des kills JOUEUR_502).
 - Events hammer présents près du kill narré 355.7s (356.9/357.9/358.6s marker 0x535 type 0x47). Données mêlée OK, reste le player index.
 - TODO : (1) caler player-index mêlée ; (2) décoder FIRE events (high32 famille + player index + hit/miss + aim vector cubemap) ;
   (3) croiser fire/melee/grenade events (player index → slot tueur chunk_27) par kill → arme ; (4) valider narration.

@@ -123,16 +123,16 @@ Le siège 603 de `084a804d` porte trois vies, toutes nommées par LECTURE DIRECT
 création du bipède :
 
 ```
-vie [2314..2779]  2533274817603732   creation_bipede
-vie [3101..3118]  2533274817603732   creation_bipede_propagee
-vie [9721..9721]  2535419608696209   creation_bipede      <- deuxieme corps du siege
+vie [2314..2779]  2624504411370806   creation_bipede
+vie [3101..3118]  2624504411370806   creation_bipede_propagee
+vie [9721..9721]  2623045058294279   creation_bipede      <- deuxieme corps du siege
 ```
 
-Le pont aplati sert `2533274817603732` pour tout le film. Conséquences publiées :
+Le pont aplati sert `2624504411370806` pour tout le film. Conséquences publiées :
 
 - **Deux ramassages nommés au mauvais joueur, visibles sur la page de rejeu.** Frames 9802 et
-  9968 (une arme, puis un grappin), publiés avec `xuid = 2533274817603732` alors que le seul
-  corps que le FILM établit sur ce siège à cet instant est `2535419608696209`. Le registre à
+  9968 (une arme, puis un grappin), publiés avec `xuid = 2624504411370806` alors que le seul
+  corps que le FILM établit sur ce siège à cet instant est `2623045058294279`. Le registre à
   l'instant, lui, s'abstiendrait : aucune vie NOMMÉE ne couvre ces deux frames (elles tombent
   après la dernière frame de position du film), et sur un siège ambigu `XUIDAt` refuse de servir
   le premier occupant. **La migration retire un nom faux ; elle ne rend pas le vrai** — c'est la
@@ -162,7 +162,7 @@ n'appartiennent pas au premier occupant. Sur le parc mesuré :
 ```
 084a804d, siege 603 : fenetre d exposition = 1 frame (100 ms), la DERNIERE du film
                       (frameCount = 9722, donc derniere frame = 9721)
-                      pendant [9721..9721], 2533274817603732 n occupe AUCUN autre siege
+                      pendant [9721..9721], 2624504411370806 n occupe AUCUN autre siege
 tous les 73 autres films : 0 siege ambigu -> 0 frame d exposition
 ```
 
@@ -297,9 +297,9 @@ cinq autres par la seconde), plus 8 films supplémentaires.
 
 ```
 ramassages (2 lignes sur 540)
-  AVANT {"t":9802,"slot":603,"xuid":"2533274817603732","w":"e9e7ff79","kind":"weapon"}
+  AVANT {"t":9802,"slot":603,"xuid":"2624504411370806","w":"e9e7ff79","kind":"weapon"}
   APRES {"t":9802,"slot":603,                          "w":"e9e7ff79","kind":"weapon"}
-  AVANT {"t":9968,"slot":603,"xuid":"2533274817603732","w":"273fe0eb","family":"grapple"}
+  AVANT {"t":9968,"slot":603,"xuid":"2624504411370806","w":"273fe0eb","family":"grapple"}
   APRES {"t":9968,"slot":603,                          "w":"273fe0eb","family":"grapple"}
 inventaire (1 ligne sur 826)
   AVANT {"t":3180,"slot":603,"empty":"dead"}

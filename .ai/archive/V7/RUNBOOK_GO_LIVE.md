@@ -52,7 +52,7 @@ via stop/start). `.env.local` est préservé par `git clean --exclude=.env.local
 ## Phase 2 — Cutover (la branche Go devient `main`)
 
 > ⚠️ **Topologie** : le dossier de travail Go est un **worktree lié** au repo Python
-> `C:/Users/Guillaume/Downloads/Scripts/LevelUp` (`.git` = fichier → `LevelUp/.git`). Le
+> `<poste>/Downloads/Scripts/LevelUp` (`.git` = fichier → `LevelUp/.git`). Le
 > store d'objets vit dans le dossier Python. **Ne PAS déplacer/archiver `LevelUp/` avant la
 > Phase 6.** La branche est entièrement pushée sur origin. `.env.local`, `app_settings.json`
 > et les DBs/médias sont **locaux uniquement** → backup avant toute manip.
@@ -141,7 +141,7 @@ données, **aucune chirurgie git**) :
 ```bash
 # 1. Backup d'abord : data/ (DBs+médias), .env.local, app_settings.json, db_profiles.json.
 # 2. Clone standalone (main = contenu Go après Phase 2) :
-git clone https://github.com/JGtm/LevelUp.git C:/Users/Guillaume/Downloads/Scripts/LevelUp-standalone
+git clone https://github.com/JGtm/LevelUp.git <poste>/Downloads/Scripts/LevelUp-standalone
 # 3. DÉPLACER (rename, instantané sur le même disque — pas de copie des Go de médias) les
 #    données locales non trackées du worktree vers le clone :
 #      data/  .env.local  app_settings.json  db_profiles.json

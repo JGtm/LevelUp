@@ -274,7 +274,7 @@ Fait : après le lot pont (schéma 48), écart cumulé K/D/A 69 (avant 94), les 
       `coverage.bridge.deathOffsetMatched` et le nombre de morts du fil).
       **L'écart vaut 9, pas 69** (le 69 n'est plus reproductible : les films témoins ont été re-téléchargés le
       2026-09-08 — attribution faite par une cuisson à `ee4084c14`, identique à l'octet à celle du HEAD). **7 joueurs
-      sur 8 sont EXACTS** ; tout l'écart tombe sur `2535469889270266`, dont la **manche 0 n'est publiée nulle part**
+      sur 8 sont EXACTS** ; tout l'écart tombe sur `2808450491243056`, dont la **manche 0 n'est publiée nulle part**
       (K −8, A −1, D 0). Les trois hypothèses du plan sont ÉCARTÉES sur pièces : dernière émission de chaque joueur
       entre les frames 2706 et 4369 pour 4514 frames, `truncated=false`, `originResolved=true`,
       `deathOffsetMatched/RunnerUp` 71:10 (marge ×7,1). Détail : `.ai/V7.5/v2/RESTES_R4_R5_2026-09-08.md` §2.

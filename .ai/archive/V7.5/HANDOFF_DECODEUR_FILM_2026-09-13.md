@@ -10,7 +10,7 @@
 
 | Quoi | Où | État |
 |---|---|---|
-| Recherche (5 phases, 21 instruments, 6 notes, relevé Ghidra 8 à 8.6) | **branche `feat/recherche-decodeur-film`** (créée depuis `feat/v75` le 2026-09-13, fusion de `wt/section3-chunk00` au commit `34166d69e`), worktree `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-recherche-film` | committée et POUSSÉE (CI déclenchée) ; à fusionner dans `feat/v75` quand le worktree partagé est libre (une autre session y travaillait le 13/09 à midi : `go.mod`, `package.json`, journal non committés) |
+| Recherche (5 phases, 21 instruments, 6 notes, relevé Ghidra 8 à 8.6) | **branche `feat/recherche-decodeur-film`** (créée depuis `feat/v75` le 2026-09-13, fusion de `wt/section3-chunk00` au commit `34166d69e`), worktree `<poste>/Downloads/Scripts/LevelUp-wt-recherche-film` | committée et POUSSÉE (CI déclenchée) ; à fusionner dans `feat/v75` quand le worktree partagé est libre (une autre session y travaillait le 13/09 à midi : `go.mod`, `package.json`, journal non committés) |
 | Instruments après fusion | `apps/go-api/internal/games/halo_infinite/film/filmdec/*_research_test.go` (le lot E a déplacé `filmdec` ; la fusion avec `merge.directoryRenames=true` les a suivis) | gates verts au nouveau chemin |
 | Branches de recherche d'origine | `wt/section3-chunk00` (conservée, entièrement contenue dans `feat/recherche-decodeur-film`) ; `wt/film-residus` supprimée ; les deux worktrees `LevelUp-wt-section3-chunk00` et `LevelUp-wt-film-residus` supprimés | nettoyé |
 | Document d'architecture cible, amendé au fil des phases (sections 5 bis et 5 bis.1) | `feat/v75`, `.ai/ARCHITECTURE_CIBLE_DECODEUR_FILM_2026-09-12.md` (et sur `feat/recherche-decodeur-film`) | committé et poussé sur `origin/feat/v75` |

@@ -52,7 +52,7 @@ dans les fixtures de films si c'est faisable sans casser les tests. C'est fait, 
   (journaux et TSV de recherche) ; les mini-bobines d'objectifs (`corpus_objectifs`) non plus.
 - **Avant** : 67 fichiers portaient 5 573 occurrences de 151 gamertags tiers distincts (37 fichiers
   d'octets de film, 8 faits figés `inputs_*.bin.gz`, 8 documents web, 13 golden texte, 1 graine de
-  fuzz). **Après** : 0. Restent les joueurs maison (JGtm, Chocoboflor, Madina97294 dans ces films) et
+  fuzz). **Après** : 0. Restent les joueurs maison (JGtm, joueur_165, joueur_117 dans ces films) et
   les bots.
 - **Méthode** : pseudonymes de MÊME longueur (espaces conservés à leur place), cherchés en UTF-16
   petit- et gros-boutiste aux huit décalages de bit et en UTF-8 aligné ; chunks zlib décompressés,

@@ -49,7 +49,7 @@
     equipment_uses_research_test.go:132:     grenade_spike            2 poses · AUCUNE decroissance dans cette famille : non calculable
     equipment_uses_research_test.go:133: == D.0.4 RELATION i26 <-> DECROISSANCE DE CHARGE == 0/2 (0.0 %) des decroissances sont accompagnees d'une HAUSSE d'i26 sur la MEME vie dans la fenetre ± 500 ms · 11 hausses d'i26 au total · 173 vies portent i26 sans aucune decroissance de charge
     equipment_uses_research_test.go:134: == D.0.4 POSES PAR POSEUR == NON CALCULABLE : le poseur (`equipmentOwner`, seuil de proximite en METRES) exige les bornes de la carte. Renseigner EQ_BOUNDS (et EQ_MAP si la signature de largeurs est ambigue).
-    equipment_uses_research_test.go:135:   piece ecrite : C:\Users\Guillaume\Projects\LevelUp-wt-usages-film\.ai\V7.5\replay2d\registre_film\lotD\02784ce1_vies.tsv
-    equipment_uses_research_test.go:135:   piece ecrite : C:\Users\Guillaume\Projects\LevelUp-wt-usages-film\.ai\V7.5\replay2d\registre_film\lotD\02784ce1_decroissances.tsv
+    equipment_uses_research_test.go:135:   piece ecrite : <poste>\Projects\LevelUp-wt-usages-film\.ai\V7.5\replay2d\registre_film\lotD\02784ce1_vies.tsv
+    equipment_uses_research_test.go:135:   piece ecrite : <poste>\Projects\LevelUp-wt-usages-film\.ai\V7.5\replay2d\registre_film\lotD\02784ce1_decroissances.tsv
 --- PASS: TestEquipmentUsesPhase0 (55.91s)
 PASS

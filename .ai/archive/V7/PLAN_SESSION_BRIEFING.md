@@ -207,7 +207,7 @@ Mode solo uniquement (pas de prop `squad`). Conserve `SummaryTab.KpiCards` actue
 Cas couverts :
 - Solo (`squad` absent) : pas de bande verdict, pas de trends ▲/▼ visibles
 - Squad : bande verdict présente avec N+1 cards, trends visibles
-- Drill-down : click sur card "Chocoboflor" → grid affiche stats Chocoboflor + reset bar visible
+- Drill-down : click sur card "joueur_165" → grid affiche stats joueur_165 + reset bar visible
 - Reset : click sur ✕ → retour à activeXuid
 - Trend kills (higher_is_better) : `kills_per_game = 10` vs `team_avg.kills_per_game = 8` → trend = "above"
 - Trend deaths (lower_is_better) : `deaths_per_game = 12` vs `team_avg.deaths_per_game = 10` → trend = "below"

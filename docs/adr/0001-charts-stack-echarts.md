@@ -2,7 +2,7 @@
 
 **Status** — Accepted (2026-04-28). Implemented across Phase 0 → Phase 3 of `PLAN_META_FOUNDATIONS_GO.md`.
 
-**Deciders** — Guillaume (GS), with confirmation from review of 11 wrapper migrations.
+**Deciders** — JGtm, with confirmation from review of 11 wrapper migrations.
 
 ## Context
 

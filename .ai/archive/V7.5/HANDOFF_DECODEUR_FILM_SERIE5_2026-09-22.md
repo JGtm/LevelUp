@@ -19,11 +19,11 @@
 au niveau job ; si le job Coverage est « cancelled », `gh run rerun <id> --failed`) :
 
 ```bash
-cd /c/Users/Guillaume/Downloads/Scripts/LevelUp-wt-v75-merge
+cd <poste>/Downloads/Scripts/LevelUp-wt-v75-merge
 git fetch origin feat/v75 && git merge-base --is-ancestor origin/feat/v75 HEAD && \
   git push origin feat/v75-serie5:feat/v75            # fast-forward ; refuse si feat/v75 a encore bouge -> re-merger origin/feat/v75, gates, push, CI, recommencer
 git push origin --delete feat/v75-serie5              # hygiene des branches distantes
-cd /c/Users/Guillaume/Downloads/Scripts/LevelUp-wt-recherche-film && git worktree remove /c/Users/Guillaume/Downloads/Scripts/LevelUp-wt-v75-merge
+cd <poste>/Downloads/Scripts/LevelUp-wt-recherche-film && git worktree remove <poste>/Downloads/Scripts/LevelUp-wt-v75-merge
 ```
 
 ## 2. Ce qui est FAIT le 22/09 (tout fusionne dans l integration, CI verte)

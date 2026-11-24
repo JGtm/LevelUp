@@ -1,5 +1,5 @@
 const fs=require('fs'),zlib=require('zlib');
-const dir='c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
+const dir='<poste>/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
 const L=require('fs').readFileSync('slay.out','utf8').trim().split('\n').slice(0,-1).map(JSON.parse).filter(x=>x.bad===1&&x.under===1&&x.avgMiss===100);
 const owner={};let rows=[];
 for(const x of L){

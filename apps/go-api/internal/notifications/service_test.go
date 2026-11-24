@@ -530,7 +530,7 @@ func TestEmitCoalesced_DifferentActors_TwoNotifs(t *testing.T) {
 	svc := NewService(repo)
 	ctx := context.Background()
 	_ = svc.EmitCoalesced(ctx, mediaInput("JGtm"), time.Hour)
-	_ = svc.EmitCoalesced(ctx, mediaInput("Madina"), time.Hour)
+	_ = svc.EmitCoalesced(ctx, mediaInput("joueur_075"), time.Hour)
 	if items := latestFor(t, svc, CategoryMediaAdded); len(items) != 2 {
 		t.Errorf("acteurs différents → 2 notifs, got %d", len(items))
 	}

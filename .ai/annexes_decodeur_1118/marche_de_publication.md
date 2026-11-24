@@ -9,7 +9,7 @@ durée et son résultat) ou « non rejoué : raison ». Sorties brutes sous `C:/
 
 ## 0. Conventions de ce relevé (à lire d'abord)
 
-- `HOTE` = `c:/Users/Guillaume/Downloads/Scripts/LevelUp` (dossier principal : films, bases, liste des
+- `HOTE` = `<poste>/Downloads/Scripts/LevelUp` (dossier principal : films, bases, liste des
   originaux ; LECTURE SEULE). `LU` = `C:/t/dec-lu`. `DEC` = `C:/t/dec/main`.
 - Cache Go dédié : `export GOCACHE="$LOCALAPPDATA/go-build-dec-0"` (convention : un cache par lot).
 - Aucune jonction nulle part. La voie sans jonction, par commande :
@@ -85,7 +85,7 @@ durée et son résultat) ou « non rejoué : raison ». Sorties brutes sous `C:/
    `REPLAY_IDENTITES_TABLE`.
 6. **Tests du clone AVEC les données de l'hôte.** vérifié le 2026-11-18 (284 s, code 0, 33 paquets `ok`, aucun
    `FAIL`) :
-   `cd DEC && GOWORK=off DECODEUR_FILM_RACINE_DONNEES="c:/Users/Guillaume/Downloads/Scripts/LevelUp" go test ./... -count=1 -p 1 -timeout 3000s`.
+   `cd DEC && GOWORK=off DECODEUR_FILM_RACINE_DONNEES="<poste>/Downloads/Scripts/LevelUp" go test ./... -count=1 -p 1 -timeout 3000s`.
    `-p 1` : un seul paquet à la fois, donc jamais deux films en mémoire (le défaut lance 16 paquets).
    La racine désigne l'HOTE (films du parc, `apps/web`, catalogues) : tout est lu ; aucun test n'écrit
    (statut git de l'hôte et dates de `data/cache` inchangés). Pour la RÉGÉNÉRATION des fixtures la racine doit
@@ -99,7 +99,7 @@ durée et son résultat) ou « non rejoué : raison ». Sorties brutes sous `C:/
    avec la racine = le worktree, pas l'HOTE.
 8. **Équivalence.** vérifié le 2026-11-18 (343 s = 5 min 43, et NON 12 min ; code 0) :
    `cd LU/apps/go-api && GOWORK=<engendré> go run ./cmd/replay-equiv -repo-root C:/t/dec-lu -originaux
-   "c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/film_identites/xuids_originaux.txt" -out-dir C:/t/dec/sorties/equiv_tsv`
+   "<poste>/Downloads/Scripts/LevelUp/data/film_identites/xuids_originaux.txt" -out-dir C:/t/dec/sorties/equiv_tsv`
    (films copiés sous `LU/data/cache`, voir § 0) : `BILAN : 20 identique(s), 0 different(s), 0 ecarte(s),
    0 echec(s), 0 illisible(s)`. `-out-dir` garde un TSV de digests par film (une ligne par étape, première
    ligne `# digest-grammar: 2`). Le harnais ne lit que le clone des références `replay/testdata/equivalence/`.

@@ -102,7 +102,7 @@
 - (A) Champ « auteur » vide sur certains médias anciens (repli sur le joueur de la page), comportement existant.
 - (C) Le titre « Qui ramasse les armes spéciales » est annoncé deux fois aux outils d'accessibilité sur la session comparée.
 - (C) `ValueGrid` n'avait aucun mode dense (3 graduations quelle que soit la largeur) ; un mode resserré a été ajouté pour le comparateur, les autres pages étroites qui l'emploient n'ont pas été vérifiées.
-- (G) Palette joueur du match (`features/match-view/colors.ts`) : « autres alliés » et « adversaires » se croisent sur deux oranges quasi identiques (Chocoboflor / XRoachX4937) — visible partout où cette palette sert.
+- (G) Palette joueur du match (`features/match-view/colors.ts`) : « autres alliés » et « adversaires » se croisent sur deux oranges quasi identiques (joueur_165 / joueur_184) — visible partout où cette palette sert.
 - (G) Arme sans nom « 0xD7915565 » dans le contrôle des socles (catalogue du film muet, repli = identifiant brut).
 - (G) Chargement direct sur `?tab=chronology` : bandeau « match non chargé en totalité » et graphes vides vus une fois, non reproduit.
 - (B) `dimension: 2` du `visualMap` corrige AUSSI les heatmaps Escouade (joueur × carte) et profil d'intensité, grises jusqu'ici : à regarder à la passe finale.

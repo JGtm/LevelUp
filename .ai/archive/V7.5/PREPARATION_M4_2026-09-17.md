@@ -5,7 +5,7 @@
 > (items 4.1.1 a 4.4.2) comme `.ai/PREPARATION_M2_PAS_4_A_6_2026-09-17.md` a prepare les pas 4 a 6.
 >
 > Base : `24b67e339`, branche `feat/decfilm-m4prep`, worktree
-> `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-decfilm-m4prep`. Date : 2026-09-17.
+> `<poste>/Downloads/Scripts/LevelUp-wt-decfilm-m4prep`. Date : 2026-09-17.
 >
 > Sources lues en entier : le plan (section M4, §1.3 D6/D11/D12, §1.4 V1-V15), l'architecture
 > cible §11 et §12 (`.ai/ARCHITECTURE_CIBLE_DECODEUR_FILM_2026-09-12.md`), l'ADR
@@ -33,14 +33,14 @@ $ ls data/cache/replays/halo_infinite/ | wc -l
 141
 
 $ ls -la apps/go-api/internal/games/halo_infinite/film/replay/testdata/inputs_*.bin.gz
--rw-r--r-- 1 Guillaume 197121  982629 inputs_000d5950.bin.gz
--rw-r--r-- 1 Guillaume 197121 1732074 inputs_111fa685.bin.gz
--rw-r--r-- 1 Guillaume 197121 1601980 inputs_11de8353.bin.gz
--rw-r--r-- 1 Guillaume 197121 1632276 inputs_60ae07c4.bin.gz
--rw-r--r-- 1 Guillaume 197121 1081872 inputs_a521164d.bin.gz
--rw-r--r-- 1 Guillaume 197121  612528 inputs_bcb6d393.bin.gz
--rw-r--r-- 1 Guillaume 197121 1802250 inputs_e5adf7b2.bin.gz
--rw-r--r-- 1 Guillaume 197121 1603591 inputs_fb1a1a72.bin.gz
+-rw-r--r-- 1 utilisateur 197121  982629 inputs_000d5950.bin.gz
+-rw-r--r-- 1 utilisateur 197121 1732074 inputs_111fa685.bin.gz
+-rw-r--r-- 1 utilisateur 197121 1601980 inputs_11de8353.bin.gz
+-rw-r--r-- 1 utilisateur 197121 1632276 inputs_60ae07c4.bin.gz
+-rw-r--r-- 1 utilisateur 197121 1081872 inputs_a521164d.bin.gz
+-rw-r--r-- 1 utilisateur 197121  612528 inputs_bcb6d393.bin.gz
+-rw-r--r-- 1 utilisateur 197121 1802250 inputs_e5adf7b2.bin.gz
+-rw-r--r-- 1 utilisateur 197121 1603591 inputs_fb1a1a72.bin.gz
 ```
 
 | Grandeur | Mesure | Consequence pour M4 |

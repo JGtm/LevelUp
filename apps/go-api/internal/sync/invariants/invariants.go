@@ -136,7 +136,7 @@ func CheckShared(ctx context.Context, playerDB, sharedDB *sql.DB) (Report, error
 // delta-skip cross-player (knownset.Load : participants du xuid au registre + ensurePlayerEnrichmentRows) :
 // un match peut être inséré en shared par le sync d'un coéquipier, mais la
 // convergence DOIT créer la row enrichment du joueur courant.
-// Incidents : 2026-05-27 (Madina/Choco/XxDaemon), 2026-06-10 (session du 09/06).
+// Incidents : 2026-05-27 (joueur_075/joueur_901/joueur_639), 2026-06-10 (session du 09/06).
 func checkEnrichmentMissing(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) (*Violation, error) {
 	enriched, err := collectIDs(ctx, playerDB, `SELECT match_id FROM player_match_enrichment_latest`)
 	if err != nil {

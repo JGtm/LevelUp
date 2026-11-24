@@ -669,7 +669,7 @@ Lot 2 (2026-10-28) :
    qui le lit (`mapvar`, `hinavmesh`, `himap`), LevelUp le lit par `testfixtures.MapvarFixturesDir`,
    `NavmeshFixturesDir` et `CarteValideeFixturesDir` (items 2.9 à 2.11). Au lot 3, ces trois constantes sont les seules
    lignes à changer.
-6. TRAITÉE AU LOT 2c (décision utilisateur option 2 : un helper de remontée par paquet). Énoncé d'origine : `sonde_locs_gamefiles_test.go` contient des chemins absolus périmés (`C:\Users\Guillaume\Projects\LevelUp\.ai\re_dump`) :
+6. TRAITÉE AU LOT 2c (décision utilisateur option 2 : un helper de remontée par paquet). Énoncé d'origine : `sonde_locs_gamefiles_test.go` contient des chemins absolus périmés (`<poste>\Projects\LevelUp\.ai\re_dump`) :
    préexistant, non traité.
 7. Poste de gate : `.ai/re_dump/mapvar` est ABSENT (même du checkout principal) et `data/cache` ne porte que
    `career-rank-image` ; 7 tests du corpus gamefiles échouent donc par `t.Fatalf` « depot de variantes absent » AVANT
@@ -681,8 +681,8 @@ Lot 2 (2026-10-28) :
 Lot 2c (2026-10-28) :
 
 9. Le gate 5 du lot (`grep 'Projects\\\|Projects/LevelUp' internal/` vide) n'est pas atteignable sans sortir du périmètre : 20 fichiers
-   du décodeur de film (`film/internal/grammar`, `film/replay` : commentaires de commande `$env:ZONE_FILM="C:/Users/Guillaume/Projects/LevelUp/..."` et
-   chemins par défaut `C:\Users\Guillaume\Projects\LevelUp\data\...` de `vehicules_v2*`) portent encore ce chemin périmé. Les trois briques
+   du décodeur de film (`film/internal/grammar`, `film/replay` : commentaires de commande `$env:ZONE_FILM="<poste>/Projects/LevelUp/..."` et
+   chemins par défaut `<poste>\Projects\LevelUp\data\...` de `vehicules_v2*`) portent encore ce chemin périmé. Les trois briques
    (`himap`, `hinavmesh`, `mapvar`) sont propres (0 occurrence). Non traité : hors périmètre D1.
 10. Le relevé du pilote était inexact dans les deux sens (voir 2.13) : `filtres_reclaimer_drapeau`, `filtres_reclaimer_offsets` et cinq tests
     de fichiers scindés ne lisent aucune donnée du dépôt (restés sous `gamefiles`) ; `maillage_sain`, `sonde_canevas_orphelines`,

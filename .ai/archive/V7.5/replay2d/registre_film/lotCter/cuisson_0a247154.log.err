@@ -1,4 +1,4 @@
-2026/08/19 22:11:38 INFO faits du match charges path=C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\.ai\V7.5\replay2d\registre_film\lotCter\faits_0a247154.json match=0a247154 joueurs=8 variante="Ranked:King of the Hill"
+2026/08/19 22:11:38 INFO faits du match charges path=<poste>\Projects\LevelUp-wt-cter-fusion\.ai\V7.5\replay2d\registre_film\lotCter\faits_0a247154.json match=0a247154 joueurs=8 variante="Ranked:King of the Hill"
 2026/08/19 22:11:40 INFO replaybuild: actions d'objectif identifiees match_id=0a247154 famille=hill nommees=0 identifiees=0 slotsApparies=8
 2026/08/19 22:11:40 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=2988684478930051889 empreinte_connue=7053924395561516366 blocs=116 slots_non_vides=1031
 2026/08/19 22:13:02 INFO capacites : lectures d i48 recordsDelta=261299 masqueAvecI48=29 lues=29 illisibles=0 sansIdentite=5
@@ -18,4 +18,4 @@
 2026/08/19 22:18:12 INFO rejeu : episodes d'equipement actif viesPubliees=161 viesCamo=7 episodesCamo=10 viesSurbouclier=0 episodesSurbouclier=0
 2026/08/19 22:18:12 INFO rejeu : palette de capacites palette=famille_a lectures=24 rangsNommes=3
 2026/08/19 22:18:12 INFO rejeu : couverture par calque tirsRattaches=1950 tirsDisponibles=2085 tirsSansSlot=101 tirsAmbigus=34 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=0 grenadesDisponibles=0 verdictTirs=nominal verdictGrenades="aucune donnée" verdictPont=nominal
-2026/08/19 22:18:12 INFO artefact rejeu écrit path=C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\data\cache\replays\halo_infinite\0a247154.json tracks=161 module=fo11_blank bytes=2969064 match=0a247154 title=halo_infinite
+2026/08/19 22:18:12 INFO artefact rejeu écrit path=<poste>\Projects\LevelUp-wt-cter-fusion\data\cache\replays\halo_infinite\0a247154.json tracks=161 module=fo11_blank bytes=2969064 match=0a247154 title=halo_infinite

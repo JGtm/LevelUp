@@ -7,10 +7,10 @@
 -- La table de reglement est celle de config/titles/halo_infinite/mappings/regulation.toml
 -- (9 variantes) : une variante absente n'est JAMAIS flaguee, c'est le contrat du fichier.
 -- La base n'est jamais ecrite ; la liste des films est jointe depuis un CSV du cache.
-ATTACH 'C:/Users/Guillaume/Projects/LevelUp/data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb' AS s (READ_ONLY);
+ATTACH 'C:/Users/utilisateur/Projects/LevelUp/data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb' AS s (READ_ONLY);
 
 CREATE OR REPLACE TEMP VIEW cache_films AS
-  SELECT short8 FROM read_csv_auto('C:/Users/GUILLA~1/AppData/Local/Temp/claude/c--Users-Guillaume-Projects-LevelUp/e3c97844-8479-4bb5-915f-496872b71a0a/scratchpad/cache_films_bp.csv');
+  SELECT short8 FROM read_csv_auto('C:/Users/utilisateur/AppData/Local/Temp/claude/c--Users-poste-Projects-LevelUp/e3c97844-8479-4bb5-915f-496872b71a0a/scratchpad/cache_films_bp.csv');
 
 CREATE OR REPLACE TEMP VIEW regulation AS
   SELECT * FROM (VALUES
@@ -42,5 +42,5 @@ COPY (
   LEFT JOIN elapsed e ON e.match_id = r.match_id
   WHERE r.is_firefight = false
   ORDER BY is_overtime DESC, over_seconds DESC
-) TO 'C:/Users/Guillaume/Projects/LevelUp-wt-joueur-moteur/.ai/V7.5/replay2d/registre_film/oracle_lotB_overtime.tsv'
+) TO 'C:/Users/utilisateur/Projects/LevelUp-wt-joueur-moteur/.ai/V7.5/replay2d/registre_film/oracle_lotB_overtime.tsv'
   (HEADER, DELIMITER E'\t');

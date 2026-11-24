@@ -9,7 +9,7 @@
 >
 > Convention : **lu** = lu dans Ghidra ; **mesuré** = compté sur les films ; **estimé** = déduit
 > par un raisonnement écrit ; « sain » = paquet fermé au sens de L0 (reste nul, aucune règle de
-> l'écrivain contredite). `scratchpad/` = `C:/Users/GUILLA~1/AppData/Local/Temp/claude/c--Users-Guillaume-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad/v2-LP/`
+> l'écrivain contredite). `scratchpad/` = `<poste>/AppData/Local/Temp/claude/c--Users-poste-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad/v2-LP/`
 > (non versionné : TSV, binaires, surcouche, patch, décompilations).
 
 ## 0. Statut : [!] NON RETENU (gate 2)
@@ -204,7 +204,7 @@ ferme le paquet) ; sous le lot, la liste n'est plus localisée. Le filtre des ca
 
 ## 5. Gates
 
-Depuis `apps/go-api`, `GOCACHE=C:/Users/Guillaume/AppData/Local/go-build-cg2-lp`, une commande `go` à
+Depuis `apps/go-api`, `GOCACHE=<poste>/AppData/Local/go-build-cg2-lp`, une commande `go` à
 la fois. Arbre commité = base + sonde + ce document.
 
 | Gate | Sortie |

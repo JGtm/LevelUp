@@ -4,7 +4,7 @@
 > Aucun commit, aucun `git add`, aucune ecriture DuckDB, AUCUN fichier de production modifie
 > (huit `*_test.go` neufs). Mesures en AVANT-PLAN, `CGO_ENABLED=0`, GOCACHE isole
 > (`scratchpad/gocache_v7*`), donnees reelles du checkout principal
-> (`C:/Users/Guillaume/Projects/LevelUp/data/cache/film_chunks`, LECTURE SEULE). `apps/web/` et
+> (`<poste>/Projects/LevelUp/data/cache/film_chunks`, LECTURE SEULE). `apps/web/` et
 > `cmd/weapon-sounds/` : NON touches. Ghidra : MORT — tout ce rapport est de la MESURE.
 
 ---

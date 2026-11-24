@@ -1,6 +1,6 @@
 # PLAN — Clôture de la campagne d'audits 2026-07 (post-vérification finale)
 
-> Date de rédaction : 2026-07-06. Exécutant prévu : Opus. Superviseur : Guillaume.
+> Date de rédaction : 2026-07-06. Exécutant prévu : Opus. Superviseur : JGtm.
 > Source : [AUDIT_VERIF_FINALE_2026-07-06.md](AUDIT_VERIF_FINALE_2026-07-06.md) (findings
 > VF-1 … VF-15 — elle FAIT FOI pour le détail ; ce plan les ordonne en lots exécutables).
 > Plan parent : [PLAN_TRAITEMENT_AUDITS_2026-07.md](PLAN_TRAITEMENT_AUDITS_2026-07.md)
@@ -386,7 +386,7 @@ convenue avec l'utilisateur (règle projet : prévenir avant toute op prod).
   medals_earned H5 = 2149 orphelins (bruit ingestion, Découvertes). (4) colonnes DROP
   différé toutes présentes (PME known_teammates_count/friends_xuids ×8 DB ; media_files
   discord_notified ×2 shared_social). (5) watermark LUSR = dernière ligne (pas de désync de
-  tête) ; 23 gaps d'intérieur (Madina 7 / JGtm 10 / Choco 6) = résidu EP ~0,8% hors V9.
+  tête) ; 23 gaps d'intérieur (joueur_075 7 / JGtm 10 / joueur_901 6) = résidu EP ~0,8% hors V9.
   (6) counts = V10a (Inf 1780/26577, H5 3032/24208).
 - [x] V9b — Correctif TZ : l'outil `cmd/backfill_first_joined_tz` a DÉJÀ un mode `--commit`
   (pas seulement diag) → aucune implémentation requise. Validé sur copie : dry-run =
@@ -429,14 +429,14 @@ sync+service = 0 FAIL (V9c import re-vérifié). Aucune écriture sur la copie p
   timer systemd `levelup-restic-backup.timer` (04:00 UTC), scope `data/titles` (2 titres)
   + `data/auth` + config JSON. Méthode (a) : restic LOCAL 0.18.1 via `sftp:lvelup:` +
   password injecté depuis le VPS → restore de `latest` (9e96ed20, 2026-06-27) vers
-  `C:\Users\Guillaume\Downloads\Scripts\LevelUp-prod-copy\` (HORS repo git, survit à la
+  `<poste>\Downloads\Scripts\LevelUp-prod-copy\` (HORS repo git, survit à la
   session — consommée par V9a). 109 fichiers / 734.832 MiB. Toutes les DB ouvertes en RO
   (outil Go `cmd/tmpdbq`, pas de duckdb CLI local). Counts de référence pour V9a :
   Infinite shared 1780 matchs / 26577 participants (2021-11→2026-06-25) ; Infinite
   metadata 123 maps / 167 medals / 35 playlists / 9702 asset_tr ; Infinite pve 20 ;
-  joueurs Infinite Madina 1182 / JGtm 958 / Chocoboflor 490 / XxDaemon 22 (mv_player_matches) ;
+  joueurs Infinite joueur_075 1182 / JGtm 958 / joueur_165 490 / joueur_639 22 (mv_player_matches) ;
   H5 shared 3032 matchs / 24208 participants (2015-2023) ; H5 metadata 13 tables ;
-  H5 social 33 tables ; H5 Madina 1424 matchs ; 9 tokens auth. Runbook :
+  H5 social 33 tables ; H5 joueur_075 1424 matchs ; 9 tokens auth. Runbook :
   `docs/RUNBOOK_RESTORE_TEST.md`. ALARME reportée en Découvertes (backup auto jamais
   produit — voir V10-D1).
 - [x] V10b — Checklist de déploiement EXÉCUTABLE écrite : `docs/RUNBOOK_DEPLOY_CHECKLIST.md`
@@ -472,9 +472,9 @@ V10c = chiffres consignés au plan parent après merge (Gate J définitif).
 ## GATE HUMAIN — revue visuelle utilisateur (AVANT merge, rien oublier)
 
 Checklist consolidée de TOUTES les vérifications visuelles promises par la campagne
-(à dérouler par Guillaume sur le dev local, FR puis EN via le switch locale) :
+(à dérouler par JGtm sur le dev local, FR puis EN via le switch locale) :
 
-**PASSE 1 EFFECTUÉE PAR GUILLAUME LE 2026-07-07** — résultats ci-dessous ; anomalies
+**PASSE 1 EFFECTUÉE PAR JGtm LE 2026-07-07** — résultats ci-dessous ; anomalies
 regroupées dans le LOT GH (à corriger, puis RE-PASSE ciblée sur les items GH).
 
 - [x] A1 — CORRIGÉ (GH-1) : il n'existe PAS d'onglet « Forme ». La page Séries
@@ -515,7 +515,7 @@ regroupées dans le LOT GH (à corriger, puis RE-PASSE ciblée sur les items GH)
 - [ ] Smoke général : à RE-passer après le LOT GH (Home, Career, Squad, Explorer,
   Sessions — FR et EN, un joueur Infinite + un H5).
 
-## LOT GH — Corrections du GATE HUMAIN (2026-07-07, décidées par Guillaume)
+## LOT GH — Corrections du GATE HUMAIN (2026-07-07, décidées par JGtm)
 
 Objectif : purger les anomalies vues en re-passe 1 du gate humain. Exécutant : Opus
 piloté. Périmètre fermé GH-1..GH-8 ; découvertes → §Découvertes.
@@ -635,7 +635,7 @@ Gate GH : front purge cache + typecheck 0 + lint 0 err + vitest 0 fail ; si Go t
 (GH-5b/GH-7/GH-8) : build+vet+tests packages + `-tags=integration -p 1 ./internal/api/...`
 exit 0 ; CI de branche verte ; RE-PASSE visuelle utilisateur sur GH-1/4/5/6/7/8.
 
-## GATE HUMAIN — RE-PASSE 2 (Guillaume, 2026-07-08 soir, UI EN, serveur rebuildé)
+## GATE HUMAIN — RE-PASSE 2 (JGtm, 2026-07-08 soir, UI EN, serveur rebuildé)
 
 Validés : GH-1 (couleurs perf OK), GH-4 (sauf Saison), GH-5, GH-6, GH-7, GH-8 (Explorer),
 GH-9 (header). Anomalies restantes/nouvelles → LOTS GH2-A (bugs) et GH2-B (i18n) :
@@ -774,7 +774,7 @@ exit 0 si backend touché ; CI verte ; re-passe 3 utilisateur ciblée.
 7. Popup de réassociation média (galerie ou accueil) : tout EN sous UI EN (titre,
    Window, boutons, états vide/erreur).
 
-### RE-PASSE 3 — RÉSULTATS (Guillaume, 2026-07-09/10) → LOT GH3
+### RE-PASSE 3 — RÉSULTATS (JGtm, 2026-07-09/10) → LOT GH3
 
 Validés : 2 (Match View onglets/Antagonists/citations drawer), 3 (Rankings+LUSR),
 4 (Recent sessions), 5 (Highlights), 6 (tuiles, sauf a/b ci-dessous), 7 (popup, sauf

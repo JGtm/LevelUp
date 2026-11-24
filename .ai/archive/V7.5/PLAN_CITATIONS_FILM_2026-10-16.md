@@ -222,11 +222,11 @@ Totaux après recalcul complet (somme des valeurs, plafonnée au dernier palier)
 
 | Joueur | Tick Tick Boom | Premier coup | Jouets éducatifs | Presque, ça ne compte pas |
 |---|---|---|---|---|
-| Chocoboflor | 0 | 55 | 37 | 100 (plafond) |
+| joueur_165 | 0 | 55 | 37 | 100 (plafond) |
 | JGtm | 2 | 101 | 36 | 100 (plafond) |
-| Madina97294 | 0 | 126 | 60 | 100 (plafond) |
-| Nuzzles | 42 | 250 | 17 | 100 (plafond) |
-| XxDaemonGamerxX | 0 | 2 | 6 | 3 |
+| joueur_117 | 0 | 126 | 60 | 100 (plafond) |
+| joueur_074 | 42 | 250 | 17 | 100 (plafond) |
+| joueur_291 | 0 | 2 | 6 | 3 |
 
 Deux constats signalés à l'utilisateur :
 
@@ -242,5 +242,5 @@ Deux constats signalés à l'utilisateur :
 
 D4 révisé par l'utilisateur au vu de E5 : `50,100,150,250,500`. Second arrêt court du serveur local
 (accord des sessions), re-seed (110 mises à jour) et recalcul complet (9 joueurs, V1-V4 verts). Les
-valeurs ne sont plus plafonnées : Chocoboflor 124, JGtm 175, Madina97294 202, Nuzzles 233,
-XxDaemonGamerxX 3 (égales aux comptes bruts du résumé d'usage).
+valeurs ne sont plus plafonnées : joueur_165 124, JGtm 175, joueur_117 202, joueur_074 233,
+joueur_291 3 (égales aux comptes bruts du résumé d'usage).

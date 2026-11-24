@@ -55,7 +55,7 @@ champ R5 attaquant du déser donne l'attribution. (Sidestep du dispatcher vtable
 **Le plafond ~50% n'est PAS un manque de données ni un biais d'équipe** (testé : équipes équilibrées 22-28/43-50).
 **C'est une DÉRIVE D'HORLOGE** entre la liste des kills (highlight TimeMS) et la liste des dégâts (packet ts) :
 l'écart kill↔tick-tueur-le-plus-proche varie de **−109s à +14s** d'un kill à l'autre (diag tmp_offgen). La donnée
-est là (ex: whiteknight a 14 ticks Stalker dans 0xd2) mais on ne peut pas lier kill↔dégât sans synchro.
+est là (ex: joueur_026 a 14 ticks Stalker dans 0xd2) mais on ne peut pas lier kill↔dégât sans synchro.
 - **Aussi confirmé** : les marqueurs frères (0xe9...) = APPARENCE d'arme (variantName/styleName/property-name),
   PAS du dégât. Seul 0xd2 (variant_name underscore, FUN_14080c1f8) est du DamageReport. Piste frères = MORTE.
 

@@ -1,6 +1,6 @@
 const fs=require('fs'),z=require('zlib');
 const id=process.argv[2];
-const d=JSON.parse(z.gunzipSync(fs.readFileSync('C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
+const d=JSON.parse(z.gunzipSync(fs.readFileSync('<poste>/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
 const suf=process.argv[3];
 const r=d.roster.map((p,i)=>({i,xuid:p.xuid,name:p.name,team:p.team,seat:p.seat,src:p.seatSource,pres:JSON.stringify(p.presence)}));
 for(const p of r){ console.log(p.i,p.xuid,p.name,p.team,p.seat,p.src,p.pres.slice(0,80)); }

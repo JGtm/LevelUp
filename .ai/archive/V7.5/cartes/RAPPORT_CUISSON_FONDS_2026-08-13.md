@@ -1,6 +1,6 @@
 # Cuisson des fonds de carte — 2026-08-12
 
-Habillage `jeu` · 0.0920 m/px · sortie `C:\Users\Guillaume\Projects\LevelUp\data\titles\halo_infinite\reference\map_backgrounds`
+Habillage `jeu` · 0.0920 m/px · sortie `<poste>\Projects\LevelUp\data\titles\halo_infinite\reference\map_backgrounds`
 
 `ancres avec sol` est l'ORACLE FAIBLE : une ancre d'objectif sans sol dessine
 sous elle est un trou de reconstruction. `matiere` compte les instances de bsp

@@ -28,7 +28,7 @@
 # Relancer la meme commande apres une interruption reprend exactement ou on s'etait arrete.
 set -u
 SP="$1"
-RACINE=/c/Users/Guillaume/Projects/LevelUp
+RACINE=/c/Users/utilisateur/Projects/LevelUp
 FONDS="$RACINE/data/titles/halo_infinite/reference/map_backgrounds"
 JALON="$SP/jalon_campagne"
 VERROU="$SP/cuisson.verrou"

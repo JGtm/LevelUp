@@ -114,4 +114,4 @@ Si l'incident devient fréquent, considérer wrapper les CLI Go avec une vérifi
 | Date | Symptôme | Cause | Fix |
 |------|----------|-------|-----|
 | 2026-05-20 | metadata retry 6× au boot | Race CLI `populate-playlists-catalog` × `air` | Workflow doc + Phase 2 plan stabilisation (DumpCachedLeaks) |
-| 2026-05-21 | `Chocoboflor/stats.duckdb.wal` orphelin | Crash sync engine pendant un write | Restart serveur en RW (replay WAL automatique) |
+| 2026-05-21 | `joueur_165/stats.duckdb.wal` orphelin | Crash sync engine pendant un write | Restart serveur en RW (replay WAL automatique) |

@@ -11,7 +11,7 @@ import (
 
 // TestPSAAppendOnly_LegacySwap_NoIdNoCreatedAt verrouille les deux bugs trouvés
 // par le crash-test sur données RÉELLES (2026-06-21) : les vraies tables
-// personal_score_awards / match_citations des player DBs Madina/JGtm n'ont NI
+// personal_score_awards / match_citations des player DBs joueur_075/JGtm n'ont NI
 // colonne `id` NI colonne `created_at` (créées par un ancien schéma / pipeline
 // Python). Les fixtures :memory: les avaient → le bug ne sortait qu'en réel.
 //

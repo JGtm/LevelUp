@@ -3,7 +3,7 @@
 > **Créé** : 2026-06-19 (session multi-titre / Halo 5 Phase 1).
 > **Branche** : `feat/multititre-peripherie` (branch-only, PAS de PR).
 > **Dernier commit** : `930a3d8c3`.
-> **Worktree** : `c:/Users/Guillaume/Downloads/Scripts/levelup-multititre` (les données — db_profiles.json, data/, tokens — vivent dans le repo principal `LevelUp-go-migration` ; pour exécuter un CLI/serveur lisant les vraies données : `LEVELUP_REPO_ROOT=c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration`).
+> **Worktree** : `<poste>/Downloads/Scripts/levelup-multititre` (les données — db_profiles.json, data/, tokens — vivent dans le repo principal `LevelUp-go-migration` ; pour exécuter un CLI/serveur lisant les vraies données : `LEVELUP_REPO_ROOT=<poste>/Downloads/Scripts/LevelUp-go-migration`).
 > Handoffs liés : `.ai/HANDOFF_HALO5_EXPERIMENTAL.md` (adapter h5, sonde), `.ai/AUDIT_MULTITITRE_COVERAGE.md`.
 
 ## 0. TL;DR — état

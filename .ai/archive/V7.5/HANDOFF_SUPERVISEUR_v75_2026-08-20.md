@@ -70,7 +70,7 @@ FERMEE (l'activation des socles vit dans le jeu installe). Fix bloquant `deathPr
 ## 4. Pieges recents (en plus des regles du handoff du 18/08)
 
 - Un agent a cree son worktree DANS l'arbre (`apps/LevelUp-wt-...`) : imposer le chemin
-  `C:\Users\Guillaume\Projects\LevelUp-wt-<nom>` dans le brief et verifier au retour.
+  `<poste>\Projects\LevelUp-wt-<nom>` dans le brief et verifier au retour.
 - FAUX VERT de pipe : `npm run typecheck | tail` masque l'exit — toujours `tsc -b --force` nu.
 - Un `git add -A` d'agent (repris) ; messages de commit avec ligne parasite (filter-branch AVANT push).
 - Les artefacts du principal peuvent etre perimes pour les gates visuels : re-cuire les temoins

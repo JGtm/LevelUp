@@ -66,9 +66,9 @@ Les coûts restants ont tous la même forme : une lecture qui rejoue TOUT l'hist
 3. Pages à historique complet sans cache : `pages/home` 310 Ko en 1,6 s, weapon_records de la Synthèse 1,6 s.
 4. Lectures restantes de `v_gamertag_lookup` figées par le ratchet (Explorer, Médias, classement mondial, killcollector) : coût connu, à retirer avec leur lecture.
 
-Découvertes consignées au §11 du plan (à trier, PAS des lots par défaut) : `logDBError` journalise un `context canceled` en ERROR ; `friends_xp` ouvre en RW la DB d'amis non suivis à chaque bootstrap ; `LEVELUP_REPLAY_PUBLIC` lu à l'init du paquet (même défaut que C4) ; crons de boot (noms d'assets, expansion des playlists) pendant les premières requêtes ; `go test ./...` écrit `data/titles/halo_5/warehouse/metadata.duckdb` et des rasters sous `data/cache/replays` ; badge Touriste non déterministe ; ex aequo Q32 / Q10 ; `FirstSeen` des rencontres jamais posé ; bots dans Q10 ; clé LUSR dupliquée Chocoboflor (`repair_msr_index`).
+Découvertes consignées au §11 du plan (à trier, PAS des lots par défaut) : `logDBError` journalise un `context canceled` en ERROR ; `friends_xp` ouvre en RW la DB d'amis non suivis à chaque bootstrap ; `LEVELUP_REPLAY_PUBLIC` lu à l'init du paquet (même défaut que C4) ; crons de boot (noms d'assets, expansion des playlists) pendant les premières requêtes ; `go test ./...` écrit `data/titles/halo_5/warehouse/metadata.duckdb` et des rasters sous `data/cache/replays` ; badge Touriste non déterministe ; ex aequo Q32 / Q10 ; `FirstSeen` des rencontres jamais posé ; bots dans Q10 ; clé LUSR dupliquée joueur_165 (`repair_msr_index`).
 
-Hors campagne mais à faire par l'utilisateur : Chocoboflor est en `reauth_required` au boot (refresh token mort), d'où « joueur en échec » à chaque cycle de sync — reconnexion SSO, jamais de re-capture (ADR 0023).
+Hors campagne mais à faire par l'utilisateur : joueur_165 est en `reauth_required` au boot (refresh token mort), d'où « joueur en échec » à chaque cycle de sync — reconnexion SSO, jamais de re-capture (ADR 0023).
 
 ## 5. Les trois rouges post-fusion et ce qu'ils enseignent
 
@@ -100,7 +100,7 @@ Quatrième leçon, vue à la première CI de la branche : un test Go renommé ou
 > noms, parité exacte, revue adversariale passée) ; changelog et notes de version 7.5.0 complétés.
 > La branche `feat/perf-chargements` n'existait déjà plus (ménage du 2026-09-25). Restent à
 > l'utilisateur : push et fusion de `feat/perf-perimetre` dans `feat/v75` (« je dirais quand je
-> serais prêt »), mesure prod, SSO de Chocoboflor, triage du §11.
+> serais prêt »), mesure prod, SSO de joueur_165, triage du §11.
 > **Décision utilisateur du 2026-09-26, révisée le même jour** : après la mesure des passes
 > supersédées (environ 90 % des lignes des tables du film, 3,95 M lignes brutes pour 412 k servies
 > dans `match_kill_events`), lot C (compaction) À FAIRE, puis lot B restreint au bornage des
@@ -108,7 +108,7 @@ Quatrième leçon, vue à la première CI de la branche : un test Go renommé ou
 
 - Go pour l'ADR (rédaction immédiate) et pour le lot A avant ou après la mesure prod.
 - Périmètre du plan structurel (lots B et C), après la mesure prod.
-- Reconnexion SSO de Chocoboflor.
+- Reconnexion SSO de joueur_165.
 - Suppression de la branche locale `feat/perf-chargements` (et de la distante, non demandée).
 - Triage des découvertes du §11 (par défaut : pas des lots).
 

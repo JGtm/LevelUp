@@ -13,16 +13,16 @@ Abréviations : « vue » = vue du match, « rejeu » = rejeu 2D de ce match.
 
 | Repère | Match | Carte, mode, date | Liens |
 |---|---|---|---|
-| A | `7344d24f` | Vagabond, Bases, 05/02 | [vue](http://localhost:5173/t/halo_infinite/players/Chocoboflor/matches/7344d24f-0154-4949-80ad-e2b781c122f1) · [rejeu](http://localhost:5173/t/halo_infinite/players/Chocoboflor/matches/7344d24f-0154-4949-80ad-e2b781c122f1/replay) |
+| A | `7344d24f` | Vagabond, Bases, 05/02 | [vue](http://localhost:5173/t/halo_infinite/players/joueur_165/matches/7344d24f-0154-4949-80ad-e2b781c122f1) · [rejeu](http://localhost:5173/t/halo_infinite/players/joueur_165/matches/7344d24f-0154-4949-80ad-e2b781c122f1/replay) |
 | B | `bfecd02b` | Snowbound, Assassin, 01/09 | [vue](http://localhost:5173/t/halo_infinite/players/JGtm/matches/bfecd02b-9798-4407-aa55-05244f4c1fa0) · [rejeu](http://localhost:5173/t/halo_infinite/players/JGtm/matches/bfecd02b-9798-4407-aa55-05244f4c1fa0/replay) |
 | C | `51d3ab9f` | Launch Site, Super Fiesta, 21/01 | [rejeu](http://localhost:5173/t/halo_infinite/players/JGtm/matches/51d3ab9f-0c70-4c49-ae6d-06a1ed6c5765/replay) |
-| D | `92c950ee` | Catalyst classé, Drapeau, 08/09 | [rejeu](http://localhost:5173/t/halo_infinite/players/Nuzzles/matches/92c950ee-9aad-4471-a076-98882738f869/replay) |
+| D | `92c950ee` | Catalyst classé, Drapeau, 08/09 | [rejeu](http://localhost:5173/t/halo_infinite/players/joueur_074/matches/92c950ee-9aad-4471-a076-98882738f869/replay) |
 | E | `d6918972` | Origin, Drapeau, 22/09 (le plus récent sur Origin en Drapeau) | [vue](http://localhost:5173/t/halo_infinite/players/JGtm/matches/d6918972-471b-4523-88cd-7b6fe24e4662) · [rejeu](http://localhost:5173/t/halo_infinite/players/JGtm/matches/d6918972-471b-4523-88cd-7b6fe24e4662/replay) |
-| F | `f2966f08`, `7b0d89c4` | Behemoth, Assassin, 01/09, les deux défaites | [rejeu F1](http://localhost:5173/t/halo_infinite/players/Chocoboflor/matches/f2966f08-f15a-4d9c-aa14-938d733173b7/replay) · [rejeu F2](http://localhost:5173/t/halo_infinite/players/Chocoboflor/matches/7b0d89c4-a068-4ea2-82b8-8f13ba0311d6/replay) |
-| G | `b1ad85eb` | Domicile, Assassin, 07/09 | [vue](http://localhost:5173/t/halo_infinite/players/Madina97294/matches/b1ad85eb-8113-4639-a024-952c9d8214ee) · [rejeu](http://localhost:5173/t/halo_infinite/players/Madina97294/matches/b1ad85eb-8113-4639-a024-952c9d8214ee/replay) |
-| H | `696a9d7c` | Vagabond, Bases, 17/07 | [rejeu](http://localhost:5173/t/halo_infinite/players/Madina97294/matches/696a9d7c-009f-4750-8202-f1819947aa4e/replay) |
+| F | `f2966f08`, `7b0d89c4` | Behemoth, Assassin, 01/09, les deux défaites | [rejeu F1](http://localhost:5173/t/halo_infinite/players/joueur_165/matches/f2966f08-f15a-4d9c-aa14-938d733173b7/replay) · [rejeu F2](http://localhost:5173/t/halo_infinite/players/joueur_165/matches/7b0d89c4-a068-4ea2-82b8-8f13ba0311d6/replay) |
+| G | `b1ad85eb` | Domicile, Assassin, 07/09 | [vue](http://localhost:5173/t/halo_infinite/players/joueur_117/matches/b1ad85eb-8113-4639-a024-952c9d8214ee) · [rejeu](http://localhost:5173/t/halo_infinite/players/joueur_117/matches/b1ad85eb-8113-4639-a024-952c9d8214ee/replay) |
+| H | `696a9d7c` | Vagabond, Bases, 17/07 | [rejeu](http://localhost:5173/t/halo_infinite/players/joueur_117/matches/696a9d7c-009f-4750-8202-f1819947aa4e/replay) |
 | I | `af13e2b2` | Origin, Bases, 26/10/2025 | [rejeu](http://localhost:5173/t/halo_infinite/players/JGtm/matches/af13e2b2-6a78-4430-8eed-6f3156148086/replay) |
-| J | `396cfc92` | Illusion, Bases, 07/09 | [vue](http://localhost:5173/t/halo_infinite/players/XxDaemonGamerxX/matches/396cfc92-6f9e-403b-a46f-20bc73b38c11) · [rejeu](http://localhost:5173/t/halo_infinite/players/XxDaemonGamerxX/matches/396cfc92-6f9e-403b-a46f-20bc73b38c11/replay) |
+| J | `396cfc92` | Illusion, Bases, 07/09 | [vue](http://localhost:5173/t/halo_infinite/players/joueur_291/matches/396cfc92-6f9e-403b-a46f-20bc73b38c11) · [rejeu](http://localhost:5173/t/halo_infinite/players/joueur_291/matches/396cfc92-6f9e-403b-a46f-20bc73b38c11/replay) |
 | K | `000d5950` | Cliffhanger, Super Fiesta, 08/03 | [rejeu](http://localhost:5173/t/halo_infinite/players/JGtm/matches/000d5950-83d9-423f-ab55-d068a7237b9f/replay) |
 | L | `4898d586` | Behemoth, 4v4 à véhicules (rejeu de la démo) | [vue](http://localhost:5173/t/halo_infinite/players/JGtm/matches/4898d586-a097-4de7-9c8e-d85b01c5f884) · [rejeu](http://localhost:5173/t/halo_infinite/players/JGtm/matches/4898d586-a097-4de7-9c8e-d85b01c5f884/replay) |
 | M | `5676a9ba` | Insolence, BTB Contrôle total, 24/07 (soirée BTB) | [vue](http://localhost:5173/t/halo_infinite/players/JGtm/matches/5676a9ba-bafa-4fbb-bd3e-b957ae2ee8e0) · [rejeu](http://localhost:5173/t/halo_infinite/players/JGtm/matches/5676a9ba-bafa-4fbb-bd3e-b957ae2ee8e0/replay) |
@@ -42,7 +42,7 @@ Pages : [Explorer](http://localhost:5173/t/halo_infinite/players/JGtm/explorer) 
 | N° | Quoi regarder | Où | Réponse |
 |---|---|---|---|
 | 1 | Notification Discord des rejeux : déjà traitée le 26/08 | — | OK (rien à voir) |
-| 2 | Sons des bases ; 1re capture de Chocoboflor visible ; capture d'une base neutre remplie à la couleur de l'équipe qui capture | A | |
+| 2 | Sons des bases ; 1re capture de joueur_165 visible ; capture d'une base neutre remplie à la couleur de l'équipe qui capture | A | |
 | 3 | Power-up du milieu de carte affiché, avec son compteur | D | |
 | 4 | Kill au répulseur : son branché | un rejeu où un répulseur tue (à repérer) | |
 | 5 | Sons Oddball / crâne branchés | un rejeu d'Oddball | |
@@ -50,7 +50,7 @@ Pages : [Explorer](http://localhost:5173/t/halo_infinite/players/JGtm/explorer) 
 | 7 | Plusieurs manches : indicateur de manche, message et son « manche terminée » | E | |
 | 8 | Fiches ultra compactes en BTB | M | |
 | 9 | Véhicules visibles (Ghost) | B, L | |
-| 10 | Médias calés sur la frise (mort de Chocoboflor par brail à 2:15) | B | |
+| 10 | Médias calés sur la frise (mort de joueur_165 par brail à 2:15) | B | |
 | 11 | Les 7 destructions (7:19 et 7:35) | C | |
 | 12 | Effet du translocateur / faille posée sur fiche et canevas | un rejeu avec translocateur | |
 | 13 | Icônes d'arme dans le kill-feed | G, J | |

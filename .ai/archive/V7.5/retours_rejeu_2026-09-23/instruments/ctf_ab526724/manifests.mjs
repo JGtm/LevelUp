@@ -1,6 +1,6 @@
 // Inventaire du cache film : manifeste (entrees, type 3 present, blob_prefix) vs fichiers de chunks presents.
 import fs from 'fs';
-const ROOT = 'C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/';
+const ROOT = 'C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/';
 const mans = fs.readdirSync(ROOT + 'film_manifests').filter(f => f.endsWith('.json'));
 const docs = new Set(fs.readdirSync(ROOT + 'replays/halo_infinite').filter(f => f.endsWith('.json') && !f.includes('derived')).map(f => f.slice(0, 8)));
 let stats = { total: 0, goWriter: 0, legacy: 0, no3: 0, no3Go: 0, filesGtMan: 0, filesGtManGo: 0, suspects: [] };

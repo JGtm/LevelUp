@@ -17,20 +17,20 @@ Sequence des PRISES de la manche 1 (temps de LECTURE mm:ss -> secondes) et porte
 
 | # | prise (mm:ss / s) | joueur qui prend | porte jusqu'a | mecanique de fin |
 |---|---|---|---|---|
-| 1 | 0:48 / 48  | SHROOM GOD3261 | ~1:01 | lache |
-| 2 | 1:05 / 65  | scuderiasven   | 2:01  | MORT DANS LE VIDE -> respawn socle 2:04 |
-| 3 | 2:04 / 124 | LadyJezz       | 2:07  | mort NORMALE -> crane au sol |
-| 4 | 2:10 / 130 | L0UDEN13       | 2:32  | kill au crane a 2:28 ; mort -> lache |
-| 5 | 2:35 / 155 | scuderiasven   | 2:37  | mort -> crane au sol |
-| 6 | 2:40 / 160 | LadyJezz       | 2:48  | MORT DANS LE VIDE -> respawn socle 2:53 |
-| 7 | 3:00 / 180 | L0UDEN13       | 3:02  | lance puis meurt -> crane au sol |
-| 8 | 3:09 / 189 | DinoR00        | ~3:35 | lache |
-| 9 | 3:39 / 219 | SHROOM GOD3261 | fin M1| — |
+| 1 | 0:48 / 48  | JOUEUR_605 | ~1:01 | lache |
+| 2 | 1:05 / 65  | joueur_829   | 2:01  | MORT DANS LE VIDE -> respawn socle 2:04 |
+| 3 | 2:04 / 124 | joueur_766       | 2:07  | mort NORMALE -> crane au sol |
+| 4 | 2:10 / 130 | JOUEUR_838       | 2:32  | kill au crane a 2:28 ; mort -> lache |
+| 5 | 2:35 / 155 | joueur_829   | 2:37  | mort -> crane au sol |
+| 6 | 2:40 / 160 | joueur_766       | 2:48  | MORT DANS LE VIDE -> respawn socle 2:53 |
+| 7 | 3:00 / 180 | JOUEUR_838       | 3:02  | lance puis meurt -> crane au sol |
+| 8 | 3:09 / 189 | joueur_366        | ~3:35 | lache |
+| 9 | 3:39 / 219 | JOUEUR_605 | fin M1| — |
 
 9 intervalles de porteur (le gate parle de « >= 8/10 » ; on statue sur ces 9 transitions
 documentees et on reporte N/9, seuil = 8/9 pour tenir l'esprit du 80 %). Roster :
-Eq0 = LadyJezz, SHROOM GOD3261, scuderiasven, OFB4203689 ; Eq1 = DinoR00, EvilestSmile946,
-JGtm, L0UDEN13. Le mm:ss est un temps de LECTURE : l'offset vers l'horloge du film est
+Eq0 = joueur_766, JOUEUR_605, joueur_829, JOUEUR_198 ; Eq1 = joueur_366, joueur_323,
+JGtm, JOUEUR_838. Le mm:ss est un temps de LECTURE : l'offset vers l'horloge du film est
 INCONNU et se MESURE (section 4), il ne se suppose pas.
 
 ## 2. Ce qu'on decode (etabli, non re-etabli ici)

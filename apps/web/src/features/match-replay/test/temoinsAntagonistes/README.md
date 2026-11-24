@@ -8,7 +8,7 @@ toile, la frise, et les règles de Seul et Masquer d'un joueur.
 Depuis `apps/web`, avec Git Bash :
 
 ```bash
-TEMOINS_ANT_DIR="C:/Users/Guillaume/Downloads/Scripts/LevelUp-temoins-ant/avant" \
+TEMOINS_ANT_DIR="<poste>/Downloads/Scripts/LevelUp-temoins-ant/avant" \
   npx vitest run src/features/match-replay/test/temoinsAntagonistes --maxWorkers=2
 ```
 

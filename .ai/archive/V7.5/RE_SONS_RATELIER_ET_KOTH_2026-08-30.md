@@ -26,9 +26,9 @@ ramassage : le **socle** (`weaponpad`) plutot que la **capsule** de largage (`we
 
 ## 1. OUTILLAGE — il avait disparu, il est reecrit
 
-`C:\Users\Guillaume\Downloads\Halo Infinite - Sons v75\` **n'existait plus** sur ce poste
+`<poste>\Downloads\Halo Infinite - Sons v75\` **n'existait plus** sur ce poste
 (rendus, `_outils/{rendu_geste,planche_gestes}`, `gestes/noms_evenements.json`), et
-`C:\Users\Guillaume\Downloads\vgmstream\` non plus. Le dossier est RECREE avec la chaine
+`<poste>\Downloads\vgmstream\` non plus. Le dossier est RECREE avec la chaine
 reecrite ; `vgmstream-cli.exe` a ete repris de
 `Downloads\Halo Infinite - Sons armes\_outils\vgmstream\`, ou il vit toujours.
 

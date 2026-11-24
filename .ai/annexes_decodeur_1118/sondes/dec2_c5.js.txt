@@ -1,6 +1,6 @@
 const fs=require('fs'),z=require('zlib');
 const id=process.argv[2];
-const d=JSON.parse(z.gunzipSync(fs.readFileSync('C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
+const d=JSON.parse(z.gunzipSync(fs.readFileSync('<poste>/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
 d.flagCarries.forEach((fc,i)=>console.log(i,fc.team,fc.spans.filter(s=>s.state==='home').map(s=>s.t0+'-'+s.t1+'@'+s.x+','+s.y).join(' ')));
 const lt=d.tracks.filter(t=>t.xuid==='XUID_DU_JOUEUR_A_RENSEIGNER');
 for(const tr of lt){ const p=tr.points; console.log(tr.slot,tr.endFrame,tr.endReason,tr.releaseFrame,p[0].t,p[p.length-1].t); }

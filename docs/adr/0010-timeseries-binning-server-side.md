@@ -2,7 +2,7 @@
 
 **Status** — Accepted (2026-04-29, finalisé en P7.1 sub-PR D du `PLAN_ACTION.md`).
 
-**Deciders** — Guillaume (GS).
+**Deciders** — JGtm.
 
 ## Context
 

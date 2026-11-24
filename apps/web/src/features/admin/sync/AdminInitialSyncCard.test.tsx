@@ -40,7 +40,7 @@ vi.mock('../components/JobProgressInline', () => ({
 // mécanique de suggestion (couverte par GamertagCombobox.test.tsx).
 vi.mock('@/components/ui/GamertagCombobox', () => ({
   GamertagCombobox: ({ onChange }: { onChange: (v: string[]) => void }) => (
-    <button type="button" onClick={() => onChange(['choco'])}>
+    <button type="button" onClick={() => onChange(['joueur_901'])}>
       choisir-joueur
     </button>
   ),
@@ -67,7 +67,7 @@ describe('AdminInitialSyncCard — titre ciblé (multi-titre)', () => {
     fireEvent.click(screen.getByText(/Lancer la synchronisation initiale/i))
 
     await waitFor(() => expect(submitted).toHaveLength(1))
-    expect(submitted[0]).toMatchObject({ player_slug: 'choco', title_slug: 'halo_5' })
+    expect(submitted[0]).toMatchObject({ player_slug: 'joueur_901', title_slug: 'halo_5' })
   })
 
   it('suit la bascule de titre du shell (halo_infinite)', async () => {

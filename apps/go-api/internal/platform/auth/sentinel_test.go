@@ -27,7 +27,7 @@
 // ils interdisent une résurrection.
 //
 // Ces guards garantissent qu'aucun futur refactor ne réintroduit silencieusement
-// le bug Madina (env.local brûlé par le hot-reload Air) ni un credential store
+// le bug joueur_075 (env.local brûlé par le hot-reload Air) ni un credential store
 // parallèle. Chaque exception restante est listée avec justification DATÉE.
 //
 // Sans build tag — exécuté en CI normale (juste grep sur sources).

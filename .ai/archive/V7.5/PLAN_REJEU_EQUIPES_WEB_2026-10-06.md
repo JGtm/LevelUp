@@ -174,7 +174,7 @@ l'encre allié / adverse, hors périmètre). Les tuiles d'attente ont la boîte 
   plus aucun une fois la source corrigée). Libellé UI = décision produit : question portée au
   superviseur, contrat i18n documenté.
 - D8 — Les entrées `seatSource: index` AVEC équipe (`43e96765` 343 PardonMy, `859da825`
-  SplinterCell958, `bf2a9f05` AllGodsLove) gardent leur place, donc une 5e tuile dans la colonne
+  joueur_429, `bf2a9f05` joueur_1021) gardent leur place, donc une 5e tuile dans la colonne
   Eagle d'un 4v4 (« Place libre » hors de leur présence) : défaut de source `placesEnTrop = 1`,
   antérieur au lot, corrigé par le lot Go ; le web ne masque pas une place qui a une équipe.
 

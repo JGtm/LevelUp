@@ -113,7 +113,7 @@ La colonne « matchs » des tableaux M-3 APRÈS est recomptée le 2026-11-15 sur
 ### Commandes de la passe corrigée
 
 ```
-export LEVELUP_DATA_DIR=C:/Users/Guillaume/Downloads/Scripts/LevelUp/data
+export LEVELUP_DATA_DIR=<poste>/Downloads/Scripts/LevelUp/data
 levelup.exe spawn-model evaluate --sections m1,m2,m3,m4 --par-carte               # seuil de 8 matchs par carte
 levelup.exe spawn-model evaluate --sections m2,m3,m4 --matchs-min-carte 3         # familles clairsemees
 levelup.exe spawn-model fit --matchs-min-carte 3                                  # ecrit reference/spawn_model.json
@@ -347,7 +347,7 @@ Memes evenements (les deux instantanes ont au moins un adversaire), memes candid
 ### Commandes exactes
 
 ```
-export LEVELUP_DATA_DIR=C:/Users/Guillaume/Downloads/Scripts/LevelUp/data
+export LEVELUP_DATA_DIR=<poste>/Downloads/Scripts/LevelUp/data
 cd apps/go-api && go build -o levelup.exe ./cmd/levelup/        # puis, depuis la racine du worktree :
 levelup.exe spawn-model evaluate --sections m1,m2,m3,m4 --par-carte               # seuil de 8 matchs par carte
 levelup.exe spawn-model evaluate --sections m2,m3,m4 --matchs-min-carte 3         # familles clairsemees

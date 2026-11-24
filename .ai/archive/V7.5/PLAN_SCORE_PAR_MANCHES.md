@@ -497,7 +497,7 @@ P2 CONSIGNES, non traites (regle 7 du contrat d'execution) : cf. §9.
   l'ATTRIBUTION DE L'ASSISTANT qui ne se resout plus. Consequence : sur toute session
   recente, `measured == 0` -> `buildSquadAssistPairs` rend nil **sans aucun log** -> le bloc
   disparait silencieusement de la page. Les donnees existent pourtant pour l'escouade
-  (JGtm/Chocoboflor : 250 et 161 paires, mais sur les mois anciens).
+  (JGtm/joueur_165 : 250 et 161 paires, mais sur les mois anciens).
   Producteurs a instruire : `internal/persist/kill_events_{film_pass,merge,credit}.go`,
   `internal/sync/killcollector/`. **NON traite — hors perimetre de ce lot**, et merite son
   propre chantier (mesure du basculement, cause, backfill).

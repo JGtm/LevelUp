@@ -1,4 +1,4 @@
-2026/08/19 22:20:38 INFO faits du match charges path=C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\.ai\V7.5\replay2d\registre_film\lotCter\faits_8076f97f.json match=8076f97f joueurs=10 variante=KOTH:Arena
+2026/08/19 22:20:38 INFO faits du match charges path=<poste>\Projects\LevelUp-wt-cter-fusion\.ai\V7.5\replay2d\registre_film\lotCter\faits_8076f97f.json match=8076f97f joueurs=10 variante=KOTH:Arena
 2026/08/19 22:20:39 INFO replaybuild: actions d'objectif identifiees match_id=8076f97f famille=hill nommees=0 identifiees=0 slotsApparies=8
 2026/08/19 22:20:40 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=11979330793883025789 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1067
 2026/08/19 22:21:30 INFO capacites : lectures d i48 recordsDelta=102212 masqueAvecI48=21 lues=21 illisibles=0 sansIdentite=3
@@ -19,4 +19,4 @@
 2026/08/19 22:23:51 INFO rejeu : episodes d'equipement actif viesPubliees=77 viesCamo=0 episodesCamo=0 viesSurbouclier=3 episodesSurbouclier=3
 2026/08/19 22:23:51 INFO rejeu : palette de capacites palette=famille_a lectures=18 rangsNommes=3
 2026/08/19 22:23:51 INFO rejeu : couverture par calque tirsRattaches=1204 tirsDisponibles=1411 tirsSansSlot=192 tirsAmbigus=15 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=116 grenadesDisponibles=118 verdictTirs=nominal verdictGrenades=nominal verdictPont=nominal
-2026/08/19 22:23:51 INFO artefact rejeu écrit path=C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\data\cache\replays\halo_infinite\8076f97f.json tracks=77 module=fo11_blank bytes=1171495 match=8076f97f title=halo_infinite
+2026/08/19 22:23:51 INFO artefact rejeu écrit path=<poste>\Projects\LevelUp-wt-cter-fusion\data\cache\replays\halo_infinite\8076f97f.json tracks=77 module=fo11_blank bytes=1171495 match=8076f97f title=halo_infinite

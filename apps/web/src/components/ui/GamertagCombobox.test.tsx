@@ -163,7 +163,7 @@ describe('GamertagCombobox', () => {
             key: 'squads',
             label: 'Mes escouades',
             options: [
-              { id: 'sq1', name: 'Ranked', subtitle: 'surtout Classé', gamertags: ['Choco', 'JGtm'] },
+              { id: 'sq1', name: 'Ranked', subtitle: 'surtout Classé', gamertags: ['joueur_901', 'JGtm'] },
             ],
           },
         ]}
@@ -174,7 +174,7 @@ describe('GamertagCombobox', () => {
     expect(screen.getByText('surtout Classé')).toBeInTheDocument()
     // Clic = charge le roster entier (≠ ajout d'un joueur).
     fireEvent.click(screen.getByText('Ranked'))
-    expect(loaded).toEqual(['Choco', 'JGtm'])
+    expect(loaded).toEqual(['joueur_901', 'JGtm'])
   })
 
   it('affiche le footer de gestion fourni par le parent', () => {

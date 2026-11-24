@@ -56,7 +56,7 @@ Rows avant : 25216
 Rows après : 25216
 ✓ Rebuild shared terminé sans perte.
 
---- Player : Madina97294 ---
+--- Player : joueur_117 ---
 Rows pre-rebuild : 1115
 ✓ Rebuild player (player_match_enrichment) terminé sans perte.
 match_skill_rank rows : avant=1109 après=1109
@@ -99,7 +99,7 @@ Si FATAL observé → 1 table ART qui n'a pas été rebuild correctement → re-
 
 ## 3. Validation empirique (référence)
 
-Sur le dataset de test (4 joueurs : Chocoboflor 410 matchs, JGtm 832, Madina97294 1115, XxDaemonGamerxX 32) :
+Sur le dataset de test (4 joueurs : joueur_165 410 matchs, JGtm 832, joueur_117 1115, joueur_291 32) :
 
 | Cycle | Pré-rebuild ART | Post-rebuild ART (pme only) | Post-rebuild ART (pme + msr) |
 |---|---|---|---|
@@ -111,10 +111,10 @@ Sur le dataset de test (4 joueurs : Chocoboflor 410 matchs, JGtm 832, Madina9729
 Total : 9 cycles consécutifs × 4 joueurs = **36 syncs / 0 FATAL ART** après rebuild complet.
 
 Performance cycle 9 (sequentiel, post-revert acad4603 + flip defaults) :
-- Chocoboflor : 14.7s
+- joueur_165 : 14.7s
 - JGtm : 70.5s
-- Madina97294 : 87.9s
-- XxDaemonGamerxX : 2.6s
+- joueur_117 : 87.9s
+- joueur_291 : 2.6s
 
 ---
 

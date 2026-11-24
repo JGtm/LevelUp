@@ -77,17 +77,17 @@ Le socle neutre est ecarte par `flag_neutral.go` (naissances aux socles d'equipe
 ## 2. L'etiquette d'equipe est JUSTE — preuve independante par la livraison
 
 La feuille de match `facts/bcb6d393.facts.json` donne `teamScores = [3, 0]` et place les
-**quatre** porteurs dans l'equipe **0** (`2533274823110022`, `2533274858283686`,
-`2535429985869093`, `2535469190789936`).
+**quatre** porteurs dans l'equipe **0** (`2533274823110022`, `2623439693412443`,
+`2669605393856835`, `2547408409520575`).
 
 En CTF on livre le drapeau adverse **a sa propre base**. Les trois portages captures se terminent
 en :
 
 | capture | instant | porteur | equipe | position de fin | distance au socle `team_index` 0 (41,03 · 9,72) |
 |---|---|---|---|---|---|
-| 1 | 188 073 ms (frame 1751) | `2533274858283686` | 0 | (40,59 · 9,95) | **0,50 m** |
+| 1 | 188 073 ms (frame 1751) | `2623439693412443` | 0 | (40,59 · 9,95) | **0,50 m** |
 | 2 | 259 946 ms (frame 2470) | `2533274823110022` | 0 | (41,46 · 9,27) | **0,62 m** |
-| 3 | 351 838 ms (frame 3389) | `2535429985869093` | 0 | (40,37 · 9,85) | **0,67 m** |
+| 3 | 351 838 ms (frame 3389) | `2669605393856835` | 0 | (40,37 · 9,85) | **0,67 m** |
 
 Les trois livraisons de l'equipe 0 se font au socle que le catalogue etiquette `team_index = 0`.
 Le catalogue et la feuille de match **coincident donc**, et le `flag_delivery` du meme catalogue le
@@ -104,9 +104,9 @@ Le calque des ACTIONS (`objectives`, cuisson au schema 45) publie **trois** `fla
 a des joueurs de l'equipe 0 — le score `3-0` est donc entierement explique :
 
 ```
-frame 1751 (188 073 ms)  flag_captures  2533274858283686   + 2 flag_capture_assists
+frame 1751 (188 073 ms)  flag_captures  2623439693412443   + 2 flag_capture_assists
 frame 2470 (259 946 ms)  flag_captures  2533274823110022
-frame 3389 (351 838 ms)  flag_captures  2535429985869093
+frame 3389 (351 838 ms)  flag_captures  2669605393856835
 ```
 
 La sonde montre que **les trois portages correspondants portaient deja `captured = true`**
@@ -131,9 +131,9 @@ Sonde dans `assignFlags` (extrait, cuisson au HEAD 45 ; `drop0` = position du dr
 telle que la boucle la croyait, `viaDrop` = index rendu par la regle du drapeau au sol) :
 
 ```
-i=2  2533274858283686  t0=143777  t1=180531  steal=false capt=false  x0=(-0.05,-5.19) x1=(33.61,2.48)  viaDrop=0  fi=0  drop0=&[1.97 -7.35]
-i=3  2535429985869093  t0=171941  t1=325913  steal=false capt=false  x0=(29.86,-3.75) x1=(-6.53,-2.19) viaDrop=0  fi=0  drop0=&[33.61 2.48]
-i=4  2533274858283686  t0=180531  t1=188073  steal=false capt=TRUE   x0=(33.61,2.48)  x1=(40.59,9.95) viaDrop=-1 fi=1  drop0=&[-6.53 -2.19]
+i=2  2623439693412443  t0=143777  t1=180531  steal=false capt=false  x0=(-0.05,-5.19) x1=(33.61,2.48)  viaDrop=0  fi=0  drop0=&[1.97 -7.35]
+i=3  2669605393856835  t0=171941  t1=325913  steal=false capt=false  x0=(29.86,-3.75) x1=(-6.53,-2.19) viaDrop=0  fi=0  drop0=&[33.61 2.48]
+i=4  2623439693412443  t0=180531  t1=188073  steal=false capt=TRUE   x0=(33.61,2.48)  x1=(40.59,9.95) viaDrop=-1 fi=1  drop0=&[-6.53 -2.19]
 ```
 
 Trois faits se lisent sur ces trois lignes :
@@ -160,9 +160,9 @@ Trois faits se lisent sur ces trois lignes :
 
 - **retour de drapeau** : un `flag_returns` n'ouvre aucun portage (le calque ne lit que
   `flag_grabs` / `flag_steals`) ; les deux `flag_returns` du film sont a 1556 et 2174 ;
-- **joueur entre en cours de partie** : les trois `joinedInProgress` (`2533274811363842` a
-  282 262 ms, `2535418713587213`, `2535468064146356`) et les trois `leftInProgress`
-  (`2533274876732804`, `2535460750735339`, `2791963697577117`) sont **tous de l'equipe 1**, et
+- **joueur entre en cours de partie** : les trois `joinedInProgress` (`2653441341920331` a
+  282 262 ms, `2671702200150518`, `2544014377305993`) et les trois `leftInProgress`
+  (`2713751699127665`, `2701236422544437`, `2791963697577117`) sont **tous de l'equipe 1**, et
   **aucun** ne porte le drapeau — les 16 portages sont a quatre joueurs de l'equipe 0 ;
 - **slot re-attribue** : la couverture publie `noBridge = 0` et `noTrack = 0`, le film est
   MONO-MANCHE, et le portage se ferme sur la capture du MEME slot 8 s plus tard.
@@ -301,7 +301,7 @@ diff : 4 lignes au contrat, 2 aux types web. Paquet vert, contrat vert.
 
 La premiere version de ce lot mettait le 16e portage sur le BON drapeau et, ce faisant, le
 faisait tomber sous un defaut PREEXISTANT (decouverte n° 2 d'alors) : la duree PUBLIEE de
-`2533274858283686` passait de 358 a 282 frames. Le lot des durees venait de retablir ces 358
+`2623439693412443` passait de 358 a 282 frames. Le lot des durees venait de retablir ces 358
 contre le parc ; l'axe des durees d'un gate en mode base serait donc sorti EN ECHEC. Corrige ici.
 
 ### Le defaut, a la ligne
@@ -359,9 +359,9 @@ Durees par joueur sur `bcb6d393` (frames), base contre HEAD :
 | xuid | base | HEAD |
 |---|---|---|
 | `2533274823110022` | 441 | **666** |
-| `2533274858283686` | **358** | **358** (tenu) |
-| `2535429985869093` | 96 | **346** |
-| `2535469190789936` | 53 | 53 |
+| `2623439693412443` | **358** | **358** (tenu) |
+| `2669605393856835` | 96 | **346** |
+| `2547408409520575` | 53 | 53 |
 | **total** | **948** | **1 423** |
 
 Les trois temoins mandates gardent 0 portage sur son propre drapeau et leurs captures sur le
@@ -561,7 +561,7 @@ l'invariant dur les ferme toutes, y compris la capture qui etait deja fausse a l
 une observation, qui n'appartient pas a ce lot.
 
 1. **Un porteur nomme par le PONT n'est pas localisable dans le document** (observation O1 de la
-   revue DRAPEAUX-R1). Sur `bcb6d393`, les 9 portages de `2535429985869093` entre les frames 3129
+   revue DRAPEAUX-R1). Sur `bcb6d393`, les 9 portages de `2669605393856835` entre les frames 3129
    et 3388 sont servis `carried` par ce xuid, alors qu'AUCUNE piste publiee ne porte ce xuid apres
    la frame 2736 : la seconde vie du slot 536 est ANONYME dans `tracks`. Le serveur la nomme par
    le pont canonique (`attachFlagCarryPositions`, `noTrack = 0`) mais ne le dit pas au document ;

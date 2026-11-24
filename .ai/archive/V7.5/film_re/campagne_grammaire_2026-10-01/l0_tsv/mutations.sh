@@ -1,7 +1,7 @@
 #!/bin/bash
 # mutations.sh : retire chaque regle de l ecrivain, l une apres l autre, et joue les tests qui la
 # gardent. Attendu : ROUGE a chaque mutation. Le fichier mute est restaure apres chaque essai.
-source /c/Users/GUILLA~1/AppData/Local/Temp/claude/c--Users-Guillaume-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad/L0/env.sh
+source /c/Users/utilisateur/AppData/Local/Temp/claude/c--Users-poste-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad/L0/env.sh
 G=$API/internal/games/halo_infinite/film/internal/grammar
 RUN='TestOrdreDeLaVueB|TestMasque|TestVueCEcrite|TestPremiereRegleEtEnsemble|TestVerdictDeVueC|TestPaquetFermeAuBit|TestDebutParFermeture|TestFrameClosureDetaillee_SortieParRejetHorsDatum'
 muter() { # nom fichier perl

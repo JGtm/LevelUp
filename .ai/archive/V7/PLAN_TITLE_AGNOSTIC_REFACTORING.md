@@ -935,7 +935,7 @@ Chaque phase a son tableau Exit Gate au format suivant :
 - **Statut** : `DONE` ou `NOT DONE` (jamais "WIP", "PARTIAL", "TBD"). `DONE-N/A` autorisé uniquement avec justification thought_log.
 - **Date** : YYYY-MM-DD du jour où l'item est passé en DONE.
 - **Evidence** : lien commit hash + PR + CI run qui prouve.
-- **Validateur** : initiales du validateur humain (Guillaume = GS).
+- **Validateur** : initiales du validateur humain (JGtm).
 
 ### 8.2 Items communs à TOUTES les phases (Exit Gate transverse)
 
@@ -1242,7 +1242,7 @@ Si une de ces zones doit être modifiée pour faire passer la PR, c'est que le p
 
 - [ ] Pas d'autre big refactor en parallèle (notamment côté frontend canonical pipeline).
 - [ ] Cap définie sur les fields à inclure dans canonical (pas de scope creep en cours de Phase 1).
-- [ ] Validation par toi (Guillaume) du phasage et des 13 décisions Phase 0 — quels risques tu acceptes, lesquels tu repousses.
+- [ ] Validation par toi (JGtm) du phasage et des 13 décisions Phase 0 — quels risques tu acceptes, lesquels tu repousses.
 - [ ] Décision sur la fenêtre minimale viable (Phases 0-3a, 31-43 j) vs full sweep (0-5, 62-82 j).
 - [ ] Gel sur les features Halo-Infinite-only majeures pendant Phase 1.5 (pour éviter d'accumuler encore des `steps_player_*.go`).
 
@@ -1344,4 +1344,4 @@ git checkout -b refactor/title-agnostic-services
 **Auteur** : Claude (session 2026-05-06).
 **Revue v2** : après audit plan v1 (cf. session du 2026-05-06).
 **Revue v2.5** : après audit codebase 10 j plus tard (cf. session du 2026-05-18) — scope grossi, OpenSpartan/Xbox SSO/perf-chain/lusr-chain/career-live ajoutés, 113 handlers, 20+ steps_*.go accumulés.
-**À traiter par** : Guillaume, plus tard.
+**À traiter par** : JGtm, plus tard.

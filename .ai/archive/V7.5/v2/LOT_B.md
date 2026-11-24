@@ -1,7 +1,7 @@
 # Lot B — Document servi (Go) — journal d'exécution
 
 > Plan : `.ai/PLAN_V2_REJEU_FILM_2026-09-05.md`, lot B. Worktree
-> `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-v2-docservi`, branche `feat/v2-docservi`,
+> `<poste>\Downloads\Scripts\LevelUp-wt-v2-docservi`, branche `feat/v2-docservi`,
 > base `a21fd77f4`. Contrat d'exécution : skill `plan-execution`.
 > Décision utilisateur ferme n°2 : séparer MAINTENANT le document stocké du document servi,
 > forme de fil strictement inchangée dans ce lot.
@@ -44,8 +44,8 @@
 ## Gates
 
 Toutes les commandes jouées en avant-plan, en série, depuis
-`C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-v2-docservi\apps\go-api` sauf mention,
-avec `GOCACHE=/c/Users/Guillaume/AppData/Local/go-build-v2-docservi CGO_ENABLED=1`.
+`<poste>\Downloads\Scripts\LevelUp-wt-v2-docservi\apps\go-api` sauf mention,
+avec `GOCACHE=<poste>/AppData/Local/go-build-v2-docservi CGO_ENABLED=1`.
 
 | Gate | Commande | Dernière ligne |
 |---|---|---|

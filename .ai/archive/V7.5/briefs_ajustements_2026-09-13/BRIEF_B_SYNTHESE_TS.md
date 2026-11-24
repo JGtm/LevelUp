@@ -1,6 +1,6 @@
 # LOT B — Synthèse + Timeseries
 
-Worktree : `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ajust-synthese-ts` · branche `feat/ajust-synthese-ts` · port Vite **5182**.
+Worktree : `<poste>\Downloads\Scripts\LevelUp-wt-ajust-synthese-ts` · branche `feat/ajust-synthese-ts` · port Vite **5182**.
 Lis d'abord `BRIEF_COMMUN.md` (même dossier). Ce lot touche probablement le Go (contrat de la page Timeseries) : skills `arch-rules` + `go-features`, GOCACHE privé.
 
 ## Repérage déjà fait (vérifie sur pièces)

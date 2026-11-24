@@ -41,10 +41,10 @@ etre banale, ils prouvent qu'elle ne l'est pas.
 
 | temps film | observation | borne dans le flux |
 |---|---|---|
-| 0:48 | **flyguy8773 capture la base B** | record #105 523 |
+| 0:48 | **joueur_780 capture la base B** | record #105 523 |
 | 1:30 | une equipe controle **les trois bases**, score 21 pour l'autre | record #211 604 |
 | 3:10 | **score 69 - 30** | record #419 300 |
-| 5:34 | **controle des trois bases par l'equipe de flyguy8773** | record #825 733 |
+| 5:34 | **controle des trois bases par l'equipe de joueur_780** | record #825 733 |
 
 Les bornes sont des BORNES SUPERIEURES : le compteur est lu apres l'annonce, la latence de
 saisie n'est pas mesuree.

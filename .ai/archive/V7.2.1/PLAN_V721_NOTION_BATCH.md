@@ -308,7 +308,7 @@ live (qui apportent les opérations intra-saison). Aucun sourcing externe néces
 - [x] 06.2 — Respecter le plafond de concurrence (`seasonBreakdownConcurrency = 6`) — inchangé ; le fan-out SR passe de ≤6 à ~15 chemins, mais le pic CSR (le plus coûteux : 1 appel par playlist ranked engagée) n'est désormais demandé QUE pour une saison à `matches > 0` → budget CSR identique à avant
 - [x] 06.3 — Distinguer « saison non jouée » de « saison non remontée » dans la réponse — `domain.SeasonMatchCount.Unresolved` (bool optionnel, `omitempty`) + statut de section (`ok` / `local_partial` si résolution partielle / `failed` si aucune saison résolue). **Contrat à régénérer** : `make openapi-gen` puis `make generate-types`
 - [x] 06.4 — Tests : saison au catalogue absente du subquery live → doit être tentée — `TestComputeSeasonBreakdown_CatalogSeasonMissingFromLive` (+ dédup, 3 états, tout-en-échec, repli sans chemin CMS, garde-rail catalogue réel 14/14)
-- [!] 06.5 — Validation empirique sur un joueur à faible couverture live — NON FAIT par l'agent : exige un serveur lancé + tokens Halo valides (créneau Go exclusif détenu ailleurs, aucune commande `go`/`make` autorisée). À rejouer par le pilote après régénération du contrat : rechercher Nilton410 dans l'Explorer et vérifier `seasons_played` dans le log `explorer_season_breakdown` (attendu > 5)
+- [!] 06.5 — Validation empirique sur un joueur à faible couverture live — NON FAIT par l'agent : exige un serveur lancé + tokens Halo valides (créneau Go exclusif détenu ailleurs, aucune commande `go`/`make` autorisée). À rejouer par le pilote après régénération du contrat : rechercher joueur_006 dans l'Explorer et vérifier `seasons_played` dans le log `explorer_season_breakdown` (attendu > 5)
 
 ---
 

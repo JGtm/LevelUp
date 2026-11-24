@@ -2,7 +2,7 @@
 
 **Status** — Proposed (2026-04-29), amended 2026-11-01 (two roots: see the last section). Triggered by code review axe 2 (BLOQUANT « schéma DuckDB transverse sans `title_id` »).
 
-**Deciders** — Guillaume (GS).
+**Deciders** — JGtm.
 
 ## Context
 

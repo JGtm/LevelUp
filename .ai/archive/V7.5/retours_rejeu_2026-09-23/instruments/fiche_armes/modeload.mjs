@@ -1,7 +1,7 @@
 // Regularite du « loadout de depart du mode » : la 1re lecture d'une vie (sans prise/ramassage avant)
 // egale-t-elle le loadout modal des 1res lectures du match ? (mesure pour la question produit (c))
 import fs from 'fs';
-const DIR = 'C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
+const DIR = 'C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
 const modes = new Map(fs.readFileSync(process.argv[2], 'utf8').trim().split('\n').slice(1).map(l => l.split('\t')));
 const random = (p) => /\b(Castle Wars|Fiesta|Husky Raid)\b/.test(p || '');
 let R = { fixed: { lives:0, eq:0 }, random: { lives:0, eq:0 } }; const perMode = {};

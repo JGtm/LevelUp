@@ -176,14 +176,14 @@ verticalement dans son bloc ; titres factuels ; FR et EN ; jetons de couleur seu
 
 ## 3. Organisation
 
-- Worktree : `C:\Users\Guillaume\Projects\LevelUp-wt-emprise`, branche `wt/emprise` (chantier
+- Worktree : `<poste>\Projects\LevelUp-wt-emprise`, branche `wt/emprise` (chantier
   Emprise), rebasé en avance rapide sur `feat/v75` avant V0. Un exécuteur Opus par lot, lots
   SÉQUENTIELS. Le plan de référence est la copie du WORKTREE.
 - Superviseur : vérifie chaque clôture sur pièces (gates rejoués, diff relu, découvertes
   requalifiées), fusionne `wt/emprise` dans `feat/v75` à la fin (verdict = CI de `feat/v75`, les
   branches `wt/**` n'ont pas de CI). Pas de push par les agents ; commits `feat(emprise-vies/<lot>)`.
 - Environnement (tous lots) : une commande `go` à la fois ; CGO avec le gcc winlibs ; `GOCACHE`
-  isolé au worktree ; données réelles = `C:\Users\Guillaume\Projects\LevelUp\data` en LECTURE SEULE
+  isolé au worktree ; données réelles = `<poste>\Projects\LevelUp\data` en LECTURE SEULE
   (films du cache, copies de base dans le scratchpad si le serveur tient la base) ; aucun serveur,
   navigateur, backfill ni ouverture RW d'une base réelle par un agent ; vitest hors sandbox ; gates
   en avant-plan.
@@ -258,9 +258,9 @@ production modifié ; aucune écriture dans `data/`) :
 session ; lots de films découpés pour tenir sous 10 min par commande) :
 
 ```bash
-export CGO_ENABLED=1 GOCACHE=C:/Users/Guillaume/Projects/LevelUp-wt-emprise/.gocache
+export CGO_ENABLED=1 GOCACHE=<poste>/Projects/LevelUp-wt-emprise/.gocache
 export EMPRISE_V0_DIR=$SP/emprise_v0 EMPRISE_V0_DB=$SP/shared_copy.duckdb \
-       EMPRISE_V0_CACHE=C:/Users/Guillaume/Projects/LevelUp/data/cache
+       EMPRISE_V0_CACHE=<poste>/Projects/LevelUp/data/cache
 EMPRISE_V0_FILMS=<22 match_id> go test ./internal/sync/killcollector/ -run '^TestEmpriseV0Identites$' -v -count=1
 EMPRISE_V0_FILMS=<lot> go test ./internal/replaybuild/ -run '^TestEmpriseV0Reference$' -v -count=1 -timeout 9m30s
 EMPRISE_V0_FILMS=<lot> go test ./internal/sync/killcollector/ -run '^TestEmpriseV0Passe$' -v -count=1 -timeout 9m45s
@@ -499,12 +499,12 @@ de 2 s sous charge (2,02 s), vert seul puis vert au second passage entier (§7) 
 `go test ./internal/archlint/...` vert ; `gofmt -l` vide. Commandes des tests à données :
 
 ```bash
-export CGO_ENABLED=1 GOCACHE=C:/Users/Guillaume/Projects/LevelUp-wt-emprise/.gocache
+export CGO_ENABLED=1 GOCACHE=<poste>/Projects/LevelUp-wt-emprise/.gocache
 EMPRISE_V1_FILMS=8e376cb1-8885-4ed5-a942-fca601e86620,2b50122a-b4e0-43a4-a46b-16f28279bb40 \
-EMPRISE_V1_DB=$SP/shared_copy.duckdb EMPRISE_V1_CACHE=C:/Users/Guillaume/Projects/LevelUp/data/cache \
+EMPRISE_V1_DB=$SP/shared_copy.duckdb EMPRISE_V1_CACHE=<poste>/Projects/LevelUp/data/cache \
   go test ./internal/sync/killcollector/ -run '^TestEmpriseV1Temoin$' -v -count=1
 EMPRISE_V0_FILMS=<9 films a porteur, deux lots> EMPRISE_V0_DIR=$SP/emprise_v0 \
-EMPRISE_V0_CACHE=C:/Users/Guillaume/Projects/LevelUp/data/cache \
+EMPRISE_V0_CACHE=<poste>/Projects/LevelUp/data/cache \
   go test ./internal/games/halo_infinite/film/replay/ -run '^TestEmpriseV1Porteurs$' -v -count=1
 ```
 
@@ -668,9 +668,9 @@ INDÉPENDAMMENT : faits de match par `ReplayFactsRepo`, catalogues relus) :
 | `ab526724` | CTF:Arena | 150 / 150 | 5 | 124 100 | statborg, équipes, objets du monde : 31 | 150 lignes, champ à champ |
 
 ```bash
-export CGO_ENABLED=1 GOCACHE=C:/Users/Guillaume/Projects/LevelUp-wt-emprise/.gocache
+export CGO_ENABLED=1 GOCACHE=<poste>/Projects/LevelUp-wt-emprise/.gocache
 EMPRISE_V2_FILMS=8e376cb1-8885-4ed5-a942-fca601e86620,ab526724-3684-4335-b759-a18edcccc137 \
-EMPRISE_V2_DB=$SP/shared_copy.duckdb EMPRISE_V2_CACHE=C:/Users/Guillaume/Projects/LevelUp/data/cache \
+EMPRISE_V2_DB=$SP/shared_copy.duckdb EMPRISE_V2_CACHE=<poste>/Projects/LevelUp/data/cache \
   go test -tags=integration ./internal/sync/killcollector/ -run '^TestEmpriseV2Temoin$' -v -count=1   # PASS 99,2 s
 ```
 
@@ -1195,15 +1195,15 @@ aucun rejeu nécessaire ; `npm run lint` : 0 erreur (26 avertissements existants
     portée connue partout, aucun pont non publiable, 0 frag hors vie. Serveur laissé arrêté (il
     l'était avant la passe).
 - [x] V5.3 Vérification sur données réelles, soirée du 22/09 : ~146 vies pour JGtm, 80 pour
-  Madina97294, 73 pour Chocoboflor (relevé du 2026-09-28 sur `match_lives_latest`) ; part des vies
+  joueur_117, 73 pour joueur_165 (relevé du 2026-09-28 sur `match_lives_latest`) ; part des vies
   mesurées et répartition des causes d'exclusion relevées et collées ici.
   Fait 2026-09-30 (`match_life_placement_latest`, lecture seule, radar 18 m partout) :
 
   | Joueur | Matchs | Vies | Mesurées | Médiane X | Médiane frags | À portée rentable | À portée coûteux | Isolé rentable | Isolé coûteux | Hors radar | Mesuré | Porteur | Équipe à terre | Non situé | Coéquipier non situé |
   |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
   | JGtm | 12 | 146 | 145 | 0,44 | 0 | 67 | 71 | 4 | 3 | 9,1 % | 93,3 % | 1,4 % | 1,1 % | 2,3 % | 2,0 % |
-  | Madina97294 | 6 | 80 | 79 | 0,43 | 1 | 50 | 26 | 1 | 2 | 9,8 % | 92,2 % | 1,8 % | 1,0 % | 3,9 % | 1,4 % |
-  | Chocoboflor | 6 | 73 | 72 | 0,42 | 1 | 36 | 32 | 1 | 3 | 7,5 % | 93,4 % | 0,8 % | 0,9 % | 4,0 % | 1,0 % |
+  | joueur_117 | 6 | 80 | 79 | 0,43 | 1 | 50 | 26 | 1 | 2 | 9,8 % | 92,2 % | 1,8 % | 1,0 % | 3,9 % | 1,4 % |
+  | joueur_165 | 6 | 73 | 72 | 0,42 | 1 | 36 | 32 | 1 | 3 | 7,5 % | 93,4 % | 0,8 % | 0,9 % | 4,0 % | 1,0 % |
 
   Nombres de vies identiques au relevé du 2026-09-28. Lecture : en Arène, l'escouade reste groupée
   (médiane à 0,43 portée, 4 à 7 vies isolées par joueur sur la soirée) ; le nuage se tassera à

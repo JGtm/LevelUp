@@ -441,11 +441,11 @@ d objet explosif par son asset (`sb_008_exp_single_small_<energie>`).
 
 | energie | tag | film | date | carte | timing | tueur -> victime |
 |---|---|---|---|---|---|---|
-| plasma | `5e389b5d` | `fccc61cd` | 2026-07-24 21:40 | Launch Site | **08:38** | **JGtm** -> LORD83DAN |
-| kinetic UNSC | `0d203522` | `fccc61cd` | 2026-07-24 21:40 | Launch Site | **03:16** | **JGtm** -> Just1nBurn3y |
-| shock | `15cdba9d` | `4f77afc1` | 2026-07-24 22:20 | Flood Gulch | **06:28** | Shiloh0209 -> SKR DRAAK |
-| hardlight | `c14e9cea` | `e151b467` | 2026-03-19 13:08 | Chasm | **04:57** | Chocoboflor -> LoiTarse4647604 |
-| non qualifie | `bd6cae8b` | `a5975e9e` | 2026-04-06 23:11 | Curfew | **01:15** | Malignant673 -> **JGtm** |
+| plasma | `5e389b5d` | `fccc61cd` | 2026-07-24 21:40 | Launch Site | **08:38** | **JGtm** -> JOUEUR_1032 |
+| kinetic UNSC | `0d203522` | `fccc61cd` | 2026-07-24 21:40 | Launch Site | **03:16** | **JGtm** -> joueur_593 |
+| shock | `15cdba9d` | `4f77afc1` | 2026-07-24 22:20 | Flood Gulch | **06:28** | joueur_580 -> JOUEUR_409 |
+| hardlight | `c14e9cea` | `e151b467` | 2026-03-19 13:08 | Chasm | **04:57** | joueur_165 -> joueur_1030 |
+| non qualifie | `bd6cae8b` | `a5975e9e` | 2026-04-06 23:11 | Curfew | **01:15** | joueur_247 -> **JGtm** |
 
 **Reserve sur le hardlight** : il n apparait que sur **Chasm**, et seulement dans des films de
 MARS. Le film peut avoir quitte Theater. S il manque, il faut d abord rejouer un match sur
@@ -460,8 +460,8 @@ juillet, le plus recent du corpus : c est le temoin a tenter en premier.
 notamment `f712c64a` avec 37 occurrences a 08:29, et `674a7d69` avec 11 a 02:33.
 
 **Environnement** : un seul tag, `00403594`. Temoin : `1eedd3c8`, Nemesis, 2026-04-06 22:49,
-**02:04, JGtm -> EIcRriizz** ; deux autres dans le meme film a 04:53 et 05:04
-(El sir jorge -> TriksyFTW, puis -> JGtm). C est le candidat naturel pour l icone de CHUTE
+**02:04, JGtm -> joueur_1230** ; deux autres dans le meme film a 04:53 et 05:04
+(joueur_1193 -> joueur_1189, puis -> JGtm). C est le candidat naturel pour l icone de CHUTE
 (index 52, etiquetee « Fall » par l utilisateur).
 
 **Le tueur est donne parce qu il rend le temoin trouvable** : dans Theater on cherche un

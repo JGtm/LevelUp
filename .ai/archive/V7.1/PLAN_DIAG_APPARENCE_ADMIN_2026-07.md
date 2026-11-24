@@ -397,7 +397,7 @@ inattendu.
   live — Microsoft a PUBLIÉ la nameplate 3806589 depuis le 2026-07-08 (scénario
   anticipé par la NOTE ci-dessus : le verdict vit ; la fixture E4 reste la preuve
   du `upstream_missing`). Diagnostic complet en 2,0 s via l'UI (< 10 s).
-- **Chocoboflor (Infinite, refresh token mort — AADSTS70000 constaté au boot)** :
+- **joueur_165 (Infinite, refresh token mort — AADSTS70000 constaté au boot)** :
   les 4 composants = `auth_required`, `served_from=carry`, dernières valeurs
   connues toujours servies, CTA « réauthentifier » vers le SSO. Aucun 500.
 - **JGtm sous halo_5** : 4 composants = `not_supported` (capability

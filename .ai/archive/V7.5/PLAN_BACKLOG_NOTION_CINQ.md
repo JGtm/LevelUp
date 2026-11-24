@@ -1,7 +1,7 @@
 # PLAN — Backlog Notion : les 5 points (assistances, colonne rejeu, usages d'équipement, présence en jeu, 3 onglets match)
 
 > Écrit le 2026-08-24. Branche : `wt/notion-cinq` (worktree unique
-> `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-notion-cinq`, base `a995cf45d` =
+> `<poste>/Downloads/Scripts/LevelUp-wt-notion-cinq`, base `a995cf45d` =
 > feat/v75). Contrat d'exécution : skill `plan-execution` — ordre strict, un lot à la
 > fois, statuts `[x]` fait / `[~]` couvert ailleurs (référence) / `[!]` non traité
 > (justification), aucune case vide à la clôture d'un lot. Zéro fix hors périmètre :

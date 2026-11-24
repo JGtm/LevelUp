@@ -15,7 +15,7 @@ func TestRunnerForTitle_Dispatch(t *testing.T) {
 		t.Errorf("halo_5 doit avoir un runner live-sync dédié")
 	}
 	// halo_infinite passe par le SyncEngine → pas de runner ici.
-	if r := RunnerForTitle("halo_infinite", cfg, "Madina", "x"); r != nil {
+	if r := RunnerForTitle("halo_infinite", cfg, "joueur_075", "x"); r != nil {
 		t.Errorf("halo_infinite → RunnerForTitle doit être nil (SyncEngine)")
 	}
 	if r := RunnerForTitle("titre_inconnu", cfg, "X", "y"); r != nil {

@@ -3,12 +3,12 @@
 > **Note de renumérotation** : une collision de numéro 0021 a existé avec `template-synthesis`. Résolue : le template-synthesis a été renuméroté **0028** (`0028-template-synthesis.md`). Ce document conserve le numéro **0021**.
 
 **Statut** : Accepté — 2026-05-27
-**Stakeholders** : pool DuckDB (Guillaume), runtime API Go
+**Stakeholders** : pool DuckDB (JGtm), runtime API Go
 **Liens** : ADR 0016 (no-ATTACH cross-DB), ADR 0019 (Collect→Persist), ADR 0022 (SocialPersister)
 
 ## Contexte
 
-Le 27/05/2026 à 13:38, l'utilisateur signale que la page Media est vide pour tous les comptes (Chocoboflor, Madina97294, JGtm, XxDaemonGamerxX). Les logs montrent en boucle :
+Le 27/05/2026 à 13:38, l'utilisateur signale que la page Media est vide pour tous les comptes (joueur_165, joueur_117, JGtm, joueur_291). Les logs montrent en boucle :
 
 ```
 [WARN]  pool: ouverture SharedSocial échouée (dégradation: socialDB=nil)

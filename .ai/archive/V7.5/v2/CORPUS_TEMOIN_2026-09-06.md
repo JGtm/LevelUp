@@ -158,7 +158,7 @@ l'historique git des fichiers concernés.
 | Motif | Témoins touchés | Référence |
 |---|---|---|
 | Bornes de scène assainies (points aberrants supprimés) | d9781168, c75f33b8, 51ebbc0f, 084a804d (bounds + tracks.points, pertes de 1 à 9 points sur des dizaines de milliers) | BALAYAGE_PARC §6.3, gain documenté |
-| Compteurs d'un joueur en baisse dans un gain massif (ancien artefact ne portait qu'1 joueur au fil de score) | 51ebbc0f : `joueur/2535469889270266/{kills,assists,score}` 14→6 / 2→1 / 1845→970 — **valeurs identiques au chiffre** cité par le balayage final | BALAYAGE_PARC §6.3 et liste des 15 faits résiduels, ligne `51ebbc0f` |
+| Compteurs d'un joueur en baisse dans un gain massif (ancien artefact ne portait qu'1 joueur au fil de score) | 51ebbc0f : `joueur/2808450491243056/{kills,assists,score}` 14→6 / 2→1 / 1845→970 — **valeurs identiques au chiffre** cité par le balayage final | BALAYAGE_PARC §6.3 et liste des 15 faits résiduels, ligne `51ebbc0f` |
 | Réattribution dans un gain (2 actions `kills` perdues sur 2 xuids pendant que le match gagne partout ailleurs) | bcb6d393 : `objectives/par-joueur/.../kills` −2 et −1 — **valeurs identiques** | BALAYAGE_PARC §6.3, entrée `bcb6d393` exacte |
 | Reclassement de la famille `other` (poses d'équipement) | bcb6d393, 084a804d : `equipmentPlacements/par-family/other` disparu, compensé par les familles nommées | BALAYAGE_PARC §6.3, chronique schéma 10 |
 | `weaponLabels/n` −1 (catalogue dérivé, sans effet sur les tirs publiés) | bf15f7ab : 17→16 | BALAYAGE_PARC §6.3, entrée exacte |
@@ -196,7 +196,7 @@ seul) :
 2. **`084a804d` — `equipmentEpisodes` perd de la durée sans perdre d'épisodes** :
    `duree-totale` 3697 → 3629, tout sur le slot 620 (568 → 500) ; `equipmentEpisodes/n` NE
    BOUGE PAS — exactement le scénario que l'axe durée existe pour attraper. Le même match
-   perd aussi une vie nommée complète (`tracks/vies-par-xuid/2533274806581989` 6 → 5),
+   perd aussi une vie nommée complète (`tracks/vies-par-xuid/2784271098469446` 6 → 5),
    peut-être liée.
 
 **7 des 75 pertes brutes** relèvent de ces deux faits (5 sur bcb6d393/flagCarries en plus des 2
@@ -421,7 +421,7 @@ bf15f7ab     slayer               43     43        0        0     14.54s  ok
 c75f33b8     assaut_bombe         43     43        0        0     23.31s  ok
 ```
 
-`GATE_EXIT=0`. Log : `source=C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-v2-corpus` —
+`GATE_EXIT=0`. Log : `source=<poste>\Downloads\Scripts\LevelUp-wt-v2-corpus` —
 auto-détecté SANS `--source-root`, depuis un worktree qui ne porte PAS `db_profiles.json` (C6).
 Après l'exécution : dossier `%TEMP%\replay-corpus-gate-3933654814` absent, `git worktree list`
 sans entrée `replay-corpus-gate`.
@@ -442,9 +442,9 @@ DETAIL DES PERTES (1 temoin(s)) :
   [bcb6d393] ctf_mono_manche (schema 43 -> 43)
     perte     ports            flagCarries.spans/duree-totale                           6930 -> 6915
     perte     ports            flagCarries.spans/duree-totale/par-xuid/2533274823110022        441 -> 439
-    perte     ports            flagCarries.spans/duree-totale/par-xuid/2533274858283686        282 -> 281
-    perte     ports            flagCarries.spans/duree-totale/par-xuid/2535429985869093         86 -> 85
-    perte     ports            flagCarries.spans/duree-totale/par-xuid/2535469190789936         53 -> 52
+    perte     ports            flagCarries.spans/duree-totale/par-xuid/2623439693412443        282 -> 281
+    perte     ports            flagCarries.spans/duree-totale/par-xuid/2669605393856835         86 -> 85
+    perte     ports            flagCarries.spans/duree-totale/par-xuid/2547408409520575         53 -> 52
 GATE_EXIT=1
 ```
 

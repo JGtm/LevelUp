@@ -1,6 +1,6 @@
 // Vies SANS loadout : a partir de quand un canal a l'instant (tir, prise, ramassage) dit une arme ?
 import fs from 'fs';
-const DIR = 'C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
+const DIR = 'C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
 const files = fs.readdirSync(DIR).filter(f => /^[0-9a-f]{8}\.json$/.test(f)).sort();
 let S = { lives:0, sec:0, secCovShot:0, secCovChange:0, secCovAny:0, livesAny:0, firstEvidenceDelays:[] };
 for (const f of files) {

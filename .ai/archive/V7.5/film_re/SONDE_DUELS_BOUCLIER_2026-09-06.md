@@ -150,7 +150,7 @@ Reporté au `.ai/REGISTRE_REPORTS.md` avec cette condition.
 ```bash
 cd apps/go-api
 GOCACHE=<worktree>/.gocache-lot1 CGO_ENABLED=1 \
-  DUELS_DATA_ROOT=C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration \
+  DUELS_DATA_ROOT=<poste>/Downloads/Scripts/LevelUp-go-migration \
   DUELS_MATCH=000d5950 DUELS_MAP=Cliffhanger \
   go test ./internal/sync/killcollector -run TestSondeDuelsBouclier -v -timeout 900s -count=1
 ```

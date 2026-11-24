@@ -158,7 +158,7 @@ describe('SquadContributionsPage', () => {
   // « Impact des coéquipiers » : un seul tableau par session, sous son titre de section, avant les médailles.
   it('monte le tableau d’impact par session sous son titre, avant les médailles', () => {
     mockSquadContext({
-      confirmedGamertags: ['Madina97294', 'Chocoboflor'],
+      confirmedGamertags: ['joueur_117', 'joueur_165'],
       pageData: { main_player: 'JGtm', squad_impact_sessions: impactSessionsFixture } as unknown as TeammatesPageResponse,
     })
     const { container } = renderWithProviders(<SquadContributionsPage />)
@@ -175,7 +175,7 @@ describe('SquadContributionsPage', () => {
   it('ouvre d’office la session sélectionnée dans le filtre de la page', () => {
     useSquadFilterStore.getState().setSessions({ picked_sessions: ['07/11/2026 18:30–19:40 (9)'], gap_minutes: 30 })
     mockSquadContext({
-      confirmedGamertags: ['Madina97294', 'Chocoboflor'],
+      confirmedGamertags: ['joueur_117', 'joueur_165'],
       pageData: { main_player: 'JGtm', squad_impact_sessions: impactSessionsFixture } as unknown as TeammatesPageResponse,
     })
     renderWithProviders(<SquadContributionsPage />)
@@ -196,7 +196,7 @@ describe('SquadContributionsPage', () => {
   it('sans la capacité match.events.timeline, la section « Impact des coéquipiers » est absente', () => {
     capability.timeline = false
     mockSquadContext({
-      confirmedGamertags: ['Madina97294', 'Chocoboflor'],
+      confirmedGamertags: ['joueur_117', 'joueur_165'],
       pageData: { main_player: 'JGtm', squad_impact_sessions: impactSessionsFixture } as unknown as TeammatesPageResponse,
     })
     renderWithProviders(<SquadContributionsPage />)

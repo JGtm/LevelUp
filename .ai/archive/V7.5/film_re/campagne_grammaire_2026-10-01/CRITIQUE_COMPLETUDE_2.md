@@ -153,7 +153,7 @@ Par ailleurs, la phrase « les deux dernières colonnes sont égales build par b
 
 **N21 — Sous la grammaire T7, le « hors cadre » de HI_1_12_0 MONTE (3 249 → 4 029, BIS_2 §5.4) alors que ses paquets fermés triplent.** Ce point n'est commenté nulle part.
 
-Fichiers relus, sous `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-campagne-grammaire/` :
+Fichiers relus, sous `<poste>/Downloads/Scripts/LevelUp-wt-campagne-grammaire/` :
 - `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/CRITIQUE_COMPLETUDE_1.md`
 - `.ai/V7.5/film_re/RAPPORT_CAMPAGNE_GRAMMAIRE_PHASE1_2026-10-01.md`
 - `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` (§2, §4, §5, §6)

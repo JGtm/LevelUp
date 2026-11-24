@@ -4,7 +4,7 @@
 > Contrat d'exécution : skill `plan-execution` (ordre strict, une étape à la fois, statut de chaque
 > item `[x]` / `[~]` réf / `[!]` justifié, aucune case vide à la clôture, zéro fix hors périmètre).
 > Branche : `feat/cartes-variantes-stats`, créée depuis `release/v8.0.7` (06531b561) dans le worktree
-> dédié `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-cartes-variantes` (décision user 2026-10-26).
+> dédié `<poste>\Downloads\Scripts\LevelUp-wt-cartes-variantes` (décision user 2026-10-26).
 > Chantier voisin : `feat/briefing-seuils` (plan `.ai/PLAN_BRIEFING_EXPLORER_SEUILS_2026-10-26.md`,
 > copie principale) touche `match_history_service_briefing*.go` : y limiter l'intervention de E2 aux
 > lignes passées à `breakdown.ByMap`, rien d'autre.

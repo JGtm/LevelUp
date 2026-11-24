@@ -160,7 +160,7 @@ version (rédigées en « tu », décision antérieure).
 
 ## 5. Protocole d'exécution
 
-1. Worktree dédié `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-escouade`, branche
+1. Worktree dédié `<poste>\Downloads\Scripts\LevelUp-wt-escouade`, branche
    `feat/escouade-synergies-textes` depuis `origin/feat/v75` (jamais `wt/**` : pas de CI).
    `npm install` local dans `apps/web` du worktree plutôt qu'une jonction `node_modules`
    (les retraits de worktree suivent les jonctions — incident du 16/09).

@@ -13,14 +13,14 @@
 1. **Le ratio publie/oracle du drapeau passe de 1,130 a 1,066** sur les 11 films CTF a calque
    (2 396,9 s -> 2 262,2 s pour 2 121,2 s d'oracle). L'exces tombe de 275,7 s a **141,0 s**
    (-48,9 %). Le gate a 1,05 n'est PAS atteint, et le residu est decompose au §6.
-2. **Le cas nomme au gate de B1 est ferme** : `16ea3668` / 2535417044536883 passe de 55,1 s
+2. **Le cas nomme au gate de B1 est ferme** : `16ea3668` / 2659168014067630 passe de 55,1 s
    publiees a **1,3 s** pour 0,9 s d'oracle ; le film passe de 1,443 a **1,031**.
 3. **L'hypothese D1 de B1 est REFUTEE par la mesure** : le passage de main en main existe, mais
    il ne pese presque rien (15 portages, 15,0 s). Ce qui pesait, c'est le drapeau qui **RENTRE
    CHEZ LUI** pendant qu'on le croyait porte : 17 portages, 119,7 s.
 4. **`fb1a1a72` est corrige a la source** : ses 10 prises de drapeau fausses tombent a 0, et sur
    les **69 films du parc c'est la SEULE action qui change**.
-5. **`4ecdf3e7` / 2533274877168586 est statue `[!]`** : la cause est etablie sur piece — un
+5. **`4ecdf3e7` / 2595499236340293 est statue `[!]`** : la cause est etablie sur piece — un
    SIEGE du statborg occupe successivement par trois personnes dans la meme manche — et le
    correctif (identite par fenetre d'occupation) est hors du perimetre de ce lot.
 
@@ -33,7 +33,7 @@
 | 1 | la prise d'un AUTRE joueur du MEME drapeau ferme le portage | `[x]` | tenu, population chiffree (petite) |
 | 2 | reprise a soi-meme apres un lacher bref | `[x]` | mesure faite, borne prouvable trouvee et posee |
 | 3 | `fb1a1a72`, 10 prises pour 0 a l'oracle sur le slot 24 | `[x]` | tenu |
-| 4 | `4ecdf3e7`, 2533274877168586 a 0 publie pour 4,1 s | `[!]` | cause instruite, correctif hors perimetre (§5) |
+| 4 | `4ecdf3e7`, 2595499236340293 a 0 publie pour 4,1 s | `[!]` | cause instruite, correctif hors perimetre (§5) |
 | — | gate de lot (ratio <= 1,05) | `[!]` | **1,066** atteint ; residu decompose au §6 |
 
 Commits, dans l'ordre :
@@ -137,7 +137,7 @@ intercale), relevee sur `parcI1` :
 | exces total des 11 films | 260,7 s |
 
 La reprise **n'explique donc pas a elle seule** l'exces : 54,1 s de 260,7 s. Le releve nomme en
-revanche le pire cas — `16ea3668` / 2535417044536883, une suite de 55,1 s pour 0,9 s d'oracle,
+revanche le pire cas — `16ea3668` / 2659168014067630, une suite de 55,1 s pour 0,9 s d'oracle,
 exactement le cas laisse ouvert par B1.
 
 ### 3.2 La borne prouvable, et pourquoi elle l'est
@@ -266,21 +266,21 @@ regression est donc le predicat plus le gate sur film.
 
 ---
 
-## 5. Item 4 — `4ecdf3e7` / 2533274877168586 : `[!]`, et la cause est etablie
+## 5. Item 4 — `4ecdf3e7` / 2595499236340293 : `[!]`, et la cause est etablie
 
 **Ce qui est publie.** Zero action, zero periode, 0,0 s pour 4,1 s d'oracle (1 prise, 1
 securisation). Toutes les autres actions du film sont exactes a l'unite.
 
 **Ce que le film dit.** Le pont d'identite nomme HUIT slots statborg (10 a 24) et
-2533274877168586 **n'en a aucun** : le slot 12 est nomme 2535434009919524.
+2595499236340293 **n'en a aucun** : le slot 12 est nomme 2543375085726880.
 
 **Ce que la feuille de match dit — et c'est la preuve** :
 
 | joueur | arrivee | depart | temps joue |
 |---|---|---|---|
-| 2533274877168586 | debut | **19:39:43** (`left_in_progress`) | 157 s |
+| 2595499236340293 | debut | **19:39:43** (`left_in_progress`) | 157 s |
 | `bid(29.0)` (bot) | 19:39:43 | 19:39:44 | 1 s |
-| 2535434009919524 | **19:39:44** (`joined_in_progress`) | — | 85 s |
+| 2543375085726880 | **19:39:44** (`joined_in_progress`) | — | 85 s |
 
 **Un seul SIEGE, trois occupants successifs dans la meme manche.** Et le film le date : la serie
 `comp 22 A` du slot 12 ne porte qu'un point, `t = 155 197 : 0` — le compteur du siege REMIS A
@@ -295,7 +295,7 @@ Le correctif est une identite par **fenetre d'OCCUPATION** — les instants exis
 d'identite (`internal/analysis/objectiveevents/`), pas de `replay/` : hors perimetre, **statue
 `[!]`** comme le plan l'autorise.
 
-**Le second joueur de `4ecdf3e7`** (2535469190789936, 3,9 s publiees pour 14,3 s) releve d'une
+**Le second joueur de `4ecdf3e7`** (2547408409520575, 3,9 s publiees pour 14,3 s) releve d'une
 autre cause, deja comptee : `coverage.flagCarries.noTrack = 1` — une prise dont le porteur n'a
 aucune trajectoire publiee a l'instant de la prise, donc aucun drapeau a dessiner. Consigne, non
 traite.
@@ -337,15 +337,15 @@ Exces total : **141,0 s** (275,7 s avant le lot).
 
 | joueur | periodes | publie | oracle | ecart | cause |
 |---|---|---|---|---|---|
-| 2535442462807197 | 13 | 140,4 s | 59,0 s | **+81,4 s** | reprise au SOL par lui-meme, canal objet muet |
-| 2533274858911298 | 2 | 56,4 s | 28,4 s | +28,0 s | idem |
-| 2535455799302553 | 10 | 30,9 s | 14,9 s | +16,0 s | idem |
+| 2668071070819525 | 13 | 140,4 s | 59,0 s | **+81,4 s** | reprise au SOL par lui-meme, canal objet muet |
+| 2694569258016281 | 2 | 56,4 s | 28,4 s | +28,0 s | idem |
+| 2731689558887507 | 10 | 30,9 s | 14,9 s | +16,0 s | idem |
 | 2533274823110022 | 2 | 25,0 s | 17,2 s | +7,8 s | idem |
 
 Les **35 autres** se repartissent 7,8 s : trente d'entre eux depassent de moins de 1,5 s, c'est-a-
 dire de l'ordre de la demi-seconde par periode — le grain de la mesure.
 
-**La cause du residu, nommee.** Le pire span du parc est `b8a44fe8` / 2535442462807197,
+**La cause du residu, nommee.** Le pire span du parc est `b8a44fe8` / 2668071070819525,
 frames 6 590 a 7 169 : **58,0 s publiees** pour un joueur dont l'oracle vaut 59,0 s sur SEIZE
 prises. Il prend le drapeau a la frame 6 590 et le REPREND a la frame 7 171 ; entre les deux,
 (a) personne d'autre ne le prend — la regle de l'item 1 se tait, (b) le drapeau ne rentre JAMAIS

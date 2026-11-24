@@ -212,7 +212,7 @@ la fois, sauf la revue (deux relecteurs en parallèle, lecture seule). Un worktr
 
 ### Capture du lot 0 (2026-11-04, HEAD 421107998f)
 
-Dossier (hors dépôt, 39 Mo) : `C:\Users\GUILLA~1\AppData\Local\Temp\claude\c--Users-Guillaume-Downloads-Scripts-LevelUp\0fb89d41-4333-4829-a27d-6f5539698975\scratchpad\temoins_film\`.
+Dossier (hors dépôt, 39 Mo) : `<poste>\AppData\Local\Temp\claude\c--Users-poste-Downloads-Scripts-LevelUp\0fb89d41-4333-4829-a27d-6f5539698975\scratchpad\temoins_film\`.
 Durée cumulée des captures : ~92 min (T1 1 105 s, T3 1 036 s, T4 1 231 s, T4b 1 374 s, T6 69 s, T7 694 s).
 
 | Témoin | Valeur capturée | Fichiers (dans le dossier ci-dessus) |
@@ -665,7 +665,7 @@ les octets des chunks : LE = paquets d'identité, évènements, clé de jointure
 
 Union : **133 xuids pour 133 gamertags** (un gamertag par xuid) dans les octets de film. **130 gamertags sur 133 sont déjà
 des pseudonymes** de même longueur (`Joueur000…`, `J000…`, outil `apps/go-api/cmd/anonymise-gamertags`, v8.0.2) ; trois
-restent réels, les comptes consentants ou du propriétaire : `JGtm`, `Chocoboflor`, `Madina97294`. Aucune occurrence dans les
+restent réels, les comptes consentants ou du propriétaire : `JGtm`, `joueur_165`, `joueur_117`. Aucune occurrence dans les
 24 `entites_`/`equipement_`/`inputs_*.bin.gz` (décompressés), `vue_a_bcb6d393_1_204.bin` et les 15 graines de fuzz.
 
 **(b) Où et sous quelle forme la grammaire porte l'identité**
@@ -1061,7 +1061,7 @@ ensuite), le test vu ROUGE avec le message cité, puis VERT après retrait.
 | M11 | idem | fichier neuf de 521 lignes dans `libs/haloapi` | `libs/haloapi/zz_gros.go : 521 lignes, seuil 500 (CLAUDE.md regle 5)` | oui |
 | M12 | `TestLongueurDesFonctionsDuFilmNeCroitPas` | fonction neuve de 89 lignes dans `libs/gamefiles/mapvar` | `ZzLongue : 89 lignes physiques, seuil 80` | oui |
 | M13 | idem | une ligne de plus dans `CuitCarteForge` | `CuitCarteForge : 85 lignes physiques, plafond fige a 84` | oui |
-| M14 | `TestLaBriqueNeConnaitPasSonHote` | `os.Getenv("LEVELUP_FAUX")`, commentaire `apps/go-api/cmd`, chaîne `/home/guillaume` dans `libs/film/replay/zz_mut_hote.go` | `la production de la brique nomme son hote (3) : zz_mut_hote.go:5 : "LEVELUP_" ; :7 : "apps/go-api" ; :8 : "/home/"` + remède | oui |
+| M14 | `TestLaBriqueNeConnaitPasSonHote` | `os.Getenv("LEVELUP_FAUX")`, commentaire `apps/go-api/cmd`, chaîne `<poste>` dans `libs/film/replay/zz_mut_hote.go` | `la production de la brique nomme son hote (3) : zz_mut_hote.go:5 : "LEVELUP_" ; :7 : "apps/go-api" ; :8 : "/home/"` + remède | oui |
 | M15 | idem | `// LEVELUP_X` ajouté à `revision/cadre.go` (littéral admis ailleurs, pas ici) | `libs/film/revision/cadre.go:132 : "LEVELUP_"` | oui |
 | M16 | `TestHoteAdmisNEstPasPerime` | entrée fantôme `/opt/` pour `revision/couches.go` | `entree(s) de hoteAdmis sans objet, a retirer : libs/film/revision/couches.go : "/opt/"` | oui |
 
@@ -1082,8 +1082,8 @@ modifiés ou neufs dans `archlint`, `libs/film/revision/ordre_imports_test.go`, 
       l'outil `anonymise-gamertags` (go-api, celui de la v8.0.2) est étendu aux xuids : réécriture à longueur
       constante (64 bits LE à décalage de bit quelconque dans les paquets d'identité et les temps forts, MSB dans
       la table du registre), faux xuids tirés dans `[0x0009000000000000, 0x000A000000000000[` (D-L1-8), table de
-      correspondance déterministe (même entrée → même sortie) ; les 3 gamertags restants (`JGtm`, `Chocoboflor`,
-      `Madina97294`) remplacés aussi ; appliqué aux 10 dossiers de films de test de `libs/film` ; les 20
+      correspondance déterministe (même entrée → même sortie) ; les 3 gamertags restants (`JGtm`, `joueur_165`,
+      `joueur_117`) remplacés aussi ; appliqué aux 10 dossiers de films de test de `libs/film` ; les 20
       `facts.json` et 8 `assembly_*.golden` régénérés par leurs tests, la table inverse de `replay-equiv` mise à
       jour ; les 32 fichiers de test et 11 commentaires de production qui portent des xuids réels réécrits avec la
       même table. Preuve : T1 (mêmes tests, mêmes verdicts), T2 (révisions inchangées, les goldens de révision
@@ -1160,7 +1160,7 @@ annonçait 133 distincts, l'outil en trouve 135 (ce xuid et celui du pied de fil
 | T2 | cinq `Rev` : `source-2026-09-16.2`, `profile-2026-10-16`, `grammar-2026-10-28`, `killsource-2026-10-18`, `objectives-2026-10-17` ; 14 tests de `revision` verts ; SHA-256 des 10 `*_rev.golden` et `*_perimetre.golden` | identiques ; 14 tests verts avec les mêmes noms ; les 10 goldens de révision et de périmètre identiques à l'octet (17 sources de production modifiées par une seule chose : un xuid ou un nom dans un commentaire, empreinte insensible aux commentaires vérifiée) |
 | T3 `replay-equiv` (20 films du parc) | 20 identiques, MD5 de la liste `e35052a1baa65ea8519fa373d8e51271` | 20 identiques, 0 différent, MD5 de la liste IDENTIQUE, les 20 fichiers octet-identiques aux références ; 1 209 s ; `xuids_retraduits` figure à chaque cuisson |
 | Goldens régénérés par leurs tests | 8 `assembly_*.golden`, `minifilm.tsv`, 8 fixtures de contrat web | les 8 `assembly_*.golden` régénérés par `-update` sont identiques à l'octet à ceux que l'outil avait réécrits ; `minifilm.tsv` : `deaths` et `playerIndices` (les seules étapes qui citent un xuid) ; `highlight_event_golden.txt` : la ligne `sha256` ; 8 fixtures web et leur manifeste régénérés par `REPLAY_CONTRACT_UPDATE=1 go test -run ContractFixtures -update` |
-| Recherche des originaux | 420 xuids d'origine en texte (dont 1 en hexadécimal seul) ; 3 gamertags | l'outil en inventaire sur tout `libs/film` : 0 occurrence des 420 sous les cinq formes et des 3 noms sous `testdata` ; `git grep -F` : 0 xuid d'origine, 0 `Chocoboflor`, 0 `Madina97294` ; `JGtm` : 0 sous `testdata`, 66 lignes de prose, de noms de tests et de commentaires restent (c'est le nom du mainteneur, aussi dans le chemin de module de chaque fichier) |
+| Recherche des originaux | 420 xuids d'origine en texte (dont 1 en hexadécimal seul) ; 3 gamertags | l'outil en inventaire sur tout `libs/film` : 0 occurrence des 420 sous les cinq formes et des 3 noms sous `testdata` ; `git grep -F` : 0 xuid d'origine, 0 `joueur_165`, 0 `joueur_117` ; `JGtm` : 0 sous `testdata`, 66 lignes de prose, de noms de tests et de commentaires restent (c'est le nom du mainteneur, aussi dans le chemin de module de chaque fichier) |
 | `go test ./internal/archlint/ -timeout 40m -count=1` | vert | `ok`, 340 s |
 
 Aucune `Rev` ni aucun golden de révision n'a bougé : rien à régénérer, aucune chronique de couche à écrire. Les références
@@ -1169,7 +1169,7 @@ de `replay-equiv` n'ont pas été re-figées (D-L4-3) : pas de chronique de re-f
 
 Fichiers hors dépôt, à garder : `scratchpad/hors_depot4/xuids_originaux.txt` (liste des 420), `noms_trois.txt` (table des
 trois noms), `xuids_synthetiques.txt`. Ils se reconstruisent depuis `git show bb15d7d950` (grep des nombres à seize chiffres de
-la plage, plus `2535406167016809` cité en hexadécimal). Sans eux, `replay-equiv` refuse les faits figés et une régénération de
+la plage, plus `2751285905298803` cité en hexadécimal). Sans eux, `replay-equiv` refuse les faits figés et une régénération de
 fixture depuis le cache remet des identités réelles (à rejouer : l'outil, puis `REPLAY_IDENTITES_TABLE`).
 
 #### Complément de l'item 4.0 (2026-11-08) : liste locale, tests de la brique, fixtures web
@@ -1346,7 +1346,7 @@ ronde (aucun P0).
 | Constat | Gravité | Où | Correction | Test : rouge, puis vert |
 |---|---|---|---|---|
 | C1 | P1 | `libs/film/replay/testdata/fuzz/FuzzDecodeFilmFactsFile/seed_01` | La graine « mini-bobine » portait 8 xuids réels (entiers variables du codec, invisibles au balayage de texte). Les quatre graines sont régénérées depuis la fixture fictive par `TestFuzzFilmFactsSeedsRegenerate -update-graines-faits`. Nouveau garde-rail `TestGrainesDeFaitsPortentDesXuidsFictifs` (`replay/graines_faits_identites_test.go`) : chaque graine est décodée par le codec, chaque xuid doit être dans `[0x0009000000000000, 0x000A000000000000[` ET au registre ; une graine illisible doit être le début d'une graine lisible. Côté hôte, `TestLesBinairesDeLaBriqueSontCouverts` (`cmd/anonymise-gamertags/binaires_couverts_test.go`) : tout fichier de `libs/film` ni texte ni listé dans une liste fermée et datée (graines, `inputs_*.bin.gz`, `entites_*`/`equipement_*`, `*.bin`) rougit ; une ligne de la liste qui ne couvre plus rien rougit aussi | Rouge avant : la graine à schéma 5 est illisible (le binaire lit le schéma 18) et le test la nomme, donc les 8 xuids n'étaient pas lisibles par le codec ; leur présence est établie par un balayage binaire hors dépôt des 420 originaux (décodage des graines, LE/BE aux huit décalages, entiers variables) : 8 xuids dans `seed_01`, 0 ailleurs sous `libs`. `TestLeGardeRailDesGrainesVoitUnXuidReel` prouve la détection sur un fichier de faits à xuid réel. Rouge de la liste fermée : un `.dat` et un fichier sans extension déposés sous `testdata` rougissent en étant nommés, puis retirés. Vert après : les 4 graines régénérées, balayage binaire 0, `grep` des 8 décimaux dans `libs/film` 0, `go test -run FuzzDecodeFilmFactsFile -fuzz='^$'` vert sur les graines |
-| C2 | P2 | `apps/go-api/cmd/anonymise-gamertags/registre_test.go:37` et `:92` | Le ratchet lisait les seuls nombres à 16 chiffres décimaux. Il lit aussi les suites de 16 chiffres hexadécimaux (avec ou sans `0x`, casse indifférente) et la forme à octets inverses, valeur dans la plage et absente du registre (`xuidsHorsRegistreDuTexte`) ; `.mod` et `.sum` rejoignent les extensions de texte | `TestLeGardeRailVoitUnXuidHorsRegistre` étendu (hexa minuscules avec `0x`, majuscules, sans préfixe, octets inversés, plus les cas qui ne doivent pas lever : fictif au registre dans les deux formes, `deadbeefdeadbeef`, suite de 17 chiffres). Rouge avant : avec les deux appels hexadécimaux neutralisés, `attendu [0009000000000001 0009000000000002 0009000000000003 0400000000000900 2533274790395904], lu [2533274790395904]`. Vert après ; `TestLesXuidsDesFixturesSontFictifs` vert sur tout `libs/film` : aucun faux positif, aucune exclusion nécessaire |
+| C2 | P2 | `apps/go-api/cmd/anonymise-gamertags/registre_test.go:37` et `:92` | Le ratchet lisait les seuls nombres à 16 chiffres décimaux. Il lit aussi les suites de 16 chiffres hexadécimaux (avec ou sans `0x`, casse indifférente) et la forme à octets inverses, valeur dans la plage et absente du registre (`xuidsHorsRegistreDuTexte`) ; `.mod` et `.sum` rejoignent les extensions de texte | `TestLeGardeRailVoitUnXuidHorsRegistre` étendu (hexa minuscules avec `0x`, majuscules, sans préfixe, octets inversés, plus les cas qui ne doivent pas lever : fictif au registre dans les deux formes, `deadbeefdeadbeef`, suite de 17 chiffres). Rouge avant : avec les deux appels hexadécimaux neutralisés, `attendu [0009000000000001 0009000000000002 0009000000000003 0400000000000900 2550913680076637], lu [2550913680076637]`. Vert après ; `TestLesXuidsDesFixturesSontFictifs` vert sur tout `libs/film` : aucun faux positif, aucune exclusion nécessaire |
 | C3 | P2 | `replay/assaut_armement_gate_test.go:36`, `replay/assaut_bomb_arms_gate_test.go:48`, `replay/bombe_portage_gate_test.go:40`, `internal/grammar/objectif_ti11_bruit_test.go:125` | Les quatre commentaires promettaient le verrou de décodage sans le prendre : chaque test prend maintenant `decodelock.Prendre(t, cache, "<Test>", "parc")` après son saut (`internal/decodelock` est importable par `grammar`, aucun cycle), libération par le test. La phrase est donc vraie, aucune phrase retirée | `go vet ./...` vert. Preuve d'exécution : `TestBombePortageGate` avec `ASSAUT_CACHE` pointé sur un dossier vide : AVANT (ligne retirée) aucun `film_decode.lock` n'apparaît ; APRÈS le fichier `film_decode.lock` est créé sous la racine donnée (le test échoue ensuite, faute de films, ce qui est normal) |
 | C4 | P2 | `packaging/systemd/levelup-worker.service:95` | `internal/games/halo_infinite/film/filmproc` remplacé par `apps/go-api/internal/filmrun` (où vit le verrou : `solo.go`, `doc.go`). Autres restes du motif `halo_infinite/film/filmproc` ou `libs/film/filmproc` hors `.ai/` et annexes d'ADR : un seul, `internal/archlint/server_stdout_internal_test.go:18`, une raison datée d'allowlist qui dit d'où vient le lanceur (historique, laissée) ; les mentions nues de `filmproc` (`filmrun/doc.go`, commentaires de tests de `filmrun`, `rev_chronique_archive.go`, CHANGELOG) sont des chroniques ou des noms de drapeaux de test, hors motif, non touchées | `git grep -n "halo_infinite/film/filmproc\|libs/film/filmproc"` : 1 ligne de production avant, 0 après (hors la raison d'allowlist historique) |
 
@@ -1387,7 +1387,7 @@ jetable, CI du dépôt verte.
 | Dépôt | Module | Commit | Tests | Notes |
 |---|---|---|---|---|
 | `JGtm/halo-infinite-files-reader` | `github.com/JGtm/halo-infinite-files-reader` | `5434addbe4` | 73 ok, 0 fail, 12 skip (corpus, instruments, fixture `breaker_ctf_breaker.mvar` absente) | README et NOTICE passés d'AGPL à GPL-3.0-only (ooz, ADR 0043 D-1) ; auteur `2834830+JGtm.noreply.github.com` |
-| `JGtm/halo-api` | `github.com/JGtm/halo-api` | `7a9a3b692c` | 231 ok, 0 fail, 1 skip (placeholder d'origine) | le commit du split a été poussé seul avant le commit de publication (identité git absente) ; `main` en avance rapide, aucun tag sur l'état intermédiaire ; auteur `g.sit@hotmail.fr` (déjà sur 1 426 commits publics de `main`) |
+| `JGtm/halo-api` | `github.com/JGtm/halo-api` | `7a9a3b692c` | 231 ok, 0 fail, 1 skip (placeholder d'origine) | le commit du split a été poussé seul avant le commit de publication (identité git absente) ; `main` en avance rapide, aucun tag sur l'état intermédiaire ; auteur `<courriel>` (déjà sur 1 426 commits publics de `main`) |
 | `JGtm/halo-infinite-map-images` | `github.com/JGtm/halo-infinite-map-images` | `0c34dd563b` | 73 ok, 0 fail, 0 skip (34 fichiers `gamefiles` non exécutés) | `go.sum` du monorepo refait (hash de `files-reader` v0.1.0 différent) ; commit du split poussé avant le commit de publication, `main` en deux commits, aucun tag intermédiaire |
 | `JGtm/halo-infinite-film-decoder` | `github.com/JGtm/halo-infinite-film-decoder` | `0527cb3413` (sur `670b33c075`, split réextrait après le correctif des tests) | 2 701 ok, 0 fail, 462 skip (115 `depottest` hors hôte, le reste = mesures sans variable d'environnement) | 1 407 fichiers réécrits ; cinq révisions identiques avant/après (`grammar-2026-11-08` et non `-10-28` : montée par le chantier rejeu fusionné dans la v8.1.0) ; 35 goldens inchangés ; première tentative arrêtée sans push sur 75 FAIL (tests lisant le dépôt hôte par `..`), corrigés par `depottest.Racine` + garde-rail `film_sortie_par_depottest_test.go` |
 
@@ -1656,5 +1656,5 @@ Lot 5 (2026-11-09), notées, non traitées :
 - **D-L6-2** Les commits de publication de `halo-api` et `halo-infinite-map-images` sont précédés sur `main` du commit brut du split (ancien
   chemin de module, sans CI), poussé par erreur avant le commit de publication (identité git absente du clone). Aucun tag ne pointe dessus ;
   un `go get` à ce sha donnerait un module au chemin `LevelUp/libs/...` qui ne correspond pas au dépôt (refusé par Go). Sans effet, noté.
-- **D-L6-3** Auteurs des commits publiés : `2834830+JGtm@users.noreply.github.com` (files-reader, film), `g.sit@hotmail.fr` (halo-api,
-  adresse déjà portée par 1 426 commits publics de `main`), `guillaume@levelup.local` (map-images). Hétérogène, sans exposition neuve.
+- **D-L6-3** Auteurs des commits publiés : `2834830+JGtm@users.noreply.github.com` (files-reader, film), `<courriel>` (halo-api,
+  adresse déjà portée par 1 426 commits publics de `main`), `<courriel>` (map-images). Hétérogène, sans exposition neuve.

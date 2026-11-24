@@ -262,8 +262,8 @@ Rejouer un film :
 
 ```
 CGO_ENABLED=0 \
-EQ_FILM=C:/Users/Guillaume/Projects/LevelUp/data/cache/film_chunks/000d5950 \
-EQ_BOUNDS=C:/Users/Guillaume/Projects/LevelUp/data/titles/halo_infinite/reference/map_quant_bounds.json \
+EQ_FILM=<poste>/Projects/LevelUp/data/cache/film_chunks/000d5950 \
+EQ_BOUNDS=<poste>/Projects/LevelUp/data/titles/halo_infinite/reference/map_quant_bounds.json \
 EQ_OUT=<repo>/.ai/V7.5/replay2d/registre_film/lotD \
 go test ./internal/analysis/replay/ -run '^TestEquipmentUsesPhase0$' -timeout 60m -v
 ```

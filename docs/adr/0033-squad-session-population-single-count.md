@@ -18,7 +18,7 @@ the population of the tables and charts below it.
 
 ### What was measured (2026-09-09, session of 27 August 2026)
 
-Player `JGtm` (`2533274823110022`), composition `{Madina97294, Chocoboflor}`, direct SQL on
+Player `JGtm` (`2533274823110022`), composition `{joueur_117, joueur_165}`, direct SQL on
 `shared_matches_v2`:
 
 | Surface | Source | Value |
@@ -32,14 +32,14 @@ Player `JGtm` (`2533274823110022`), composition `{Madina97294, Chocoboflor}`, di
 by match context, session and cascade. It has no knowledge of the selected composition, and
 none of `filter_exact_composition`. The rail is therefore **structurally >=** the page body
 whenever the exclusive option is on. The three matches it counted and the page did not are
-`a0c36016` (Nilton410, 4th in the with-friends teammate ranking), `faff9935` and `94a28b8b`
-(passivemarquise, 35th) — each excluded because a *known* teammate outside the selection was
+`a0c36016` (joueur_006, 4th in the with-friends teammate ranking), `faff9935` and `94a28b8b`
+(joueur_1027, 35th) — each excluded because a *known* teammate outside the selection was
 on the main player's team.
 
 ### The second thing the measurement settled
 
 The report attributed the gap to a player who **crashed out of a match** (`2cf24f30`,
-19:39 UTC: `present_at_completion = FALSE` for Chocoboflor, a bot `bid(3.0)` joining in
+19:39 UTC: `present_at_completion = FALSE` for joueur_165, a bot `bid(3.0)` joining in
 progress in his place). That match is **kept** by the current engine, and it must be: neither
 `Q30SquadMatchesSharedQuery` nor `Q32bMainTeamParticipantsTemplate` filters on presence, and
 bots are outside the known-teammate pool (`NOT LIKE 'bid(%'`).
@@ -70,7 +70,7 @@ had 612 with-friends matches, and every rank from 18 to 50 was a tie at two matc
 broken by xuid. A stranger who filled the fourth slot in two matches of one evening (7 October
 2026, eight matches with the same three players from start to finish) ranked 40th — and the
 strict option removed precisely those two matches. The same self-reference produced the
-`passivemarquise` (35th) exclusions measured in *Context*. The pool is now defined by
+`joueur_1027` (35th) exclusions measured in *Context*. The pool is now defined by
 configuration only (`internal/service/teammates/coequipiers_connus.go`):
 
 - the main player's declared friends (per-player friend list), resolved to xuids through the

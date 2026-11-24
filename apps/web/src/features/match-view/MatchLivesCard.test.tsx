@@ -27,7 +27,7 @@ describe('MatchLivesCard', () => {
   })
 
   it('un joueur sans vie rangée n’a pas de ligne', () => {
-    afficher(buildMatchLives({ players: STARBOARD_LIVES.players!.filter((p) => p.xuid !== XUID.madina) }, STARBOARD.players!)!)
+    afficher(buildMatchLives({ players: STARBOARD_LIVES.players!.filter((p) => p.xuid !== XUID.joueur_075) }, STARBOARD.players!)!)
     expect(screen.queryByText('Joueur90002')).toBeNull()
   })
 

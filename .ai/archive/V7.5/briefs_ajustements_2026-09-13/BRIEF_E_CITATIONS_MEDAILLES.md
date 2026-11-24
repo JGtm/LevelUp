@@ -1,6 +1,6 @@
 # LOT E — Citations + Médailles : disposition des blocs
 
-Worktree : `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ajust-citations-medailles` · branche `feat/ajust-citations-medailles` · port Vite **5186**.
+Worktree : `<poste>\Downloads\Scripts\LevelUp-wt-ajust-citations-medailles` · branche `feat/ajust-citations-medailles` · port Vite **5186**.
 Lis d'abord `BRIEF_COMMUN.md`. Lot 100 % web, petit mais le rendu est le juge.
 
 ## Repérage déjà fait (vérifie sur pièces)

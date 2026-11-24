@@ -8,7 +8,7 @@ TSC=0
 > eslint .
 
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\components\ui\useGamertagSuggestions.ts
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\components\ui\useGamertagSuggestions.ts
   133:5   warning  Error: Calling setState synchronously within an effect can trigger cascading renders
 
 Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
@@ -17,7 +17,7 @@ Effects are intended to synchronize state between React and external systems suc
 
 Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\components\ui\useGamertagSuggestions.ts:133:5
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\components\ui\useGamertagSuggestions.ts:133:5
   131 |   const [liveArmedQuery, setLiveArmedQuery] = useState<string | null>(null)
   132 |   useEffect(() => {
 > 133 |     setLiveArmedQuery(null)
@@ -29,7 +29,7 @@ C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\component
 
 React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `setLiveArmedQuery`, but the source dependencies were [trimmed]. Inferred different dependency than source.
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\components\ui\useGamertagSuggestions.ts:155:41
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\components\ui\useGamertagSuggestions.ts:155:41
   153 |   // la query courante (référence stable : jamais de littéral recréé à chaque rendu).
   154 |   const liveData = liveEnabled ? liveQuery.data : undefined
 > 155 |   const triggerLiveSearch = useCallback(() => {
@@ -42,15 +42,15 @@ C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\component
   159 |   return useMemo<UseGamertagSuggestionsResult>(() => {
   160 |     const q = query.trim()  react-hooks/preserve-manual-memoization
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\admin\convergence\PostSyncMatrix.tsx
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\admin\convergence\PostSyncMatrix.tsx
   81:5  warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\admin\data-quality\IssueTable.tsx
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\admin\data-quality\IssueTable.tsx
   260:17  warning  Compilation Skipped: Use of incompatible library
 
 This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\admin\data-quality\IssueTable.tsx:260:17
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\admin\data-quality\IssueTable.tsx:260:17
   258 | function IssueTablePagination({ pagination, tA }: { pagination: IssuePagination; tA: TAdmin }) {
   259 |   const { pageIndex, pageSize, total, onPageChange } = pagination
 > 260 |   const table = useReactTable({
@@ -59,12 +59,12 @@ C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\
   262 |     columns: NO_COLS,
   263 |     getCoreRowModel: getCoreRowModel(),  react-hooks/incompatible-library
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\admin\monitoring\DetectionsPanel.tsx
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\admin\monitoring\DetectionsPanel.tsx
   203:17  warning  Compilation Skipped: Use of incompatible library
 
 This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\admin\monitoring\DetectionsPanel.tsx:203:17
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\admin\monitoring\DetectionsPanel.tsx:203:17
   201 |   )
   202 |
 > 203 |   const table = useReactTable({
@@ -73,19 +73,19 @@ C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\
   205 |     columns,
   206 |     state: { sorting },  react-hooks/incompatible-library
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\admin\titles\AdminTitlesPage.tsx
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\admin\titles\AdminTitlesPage.tsx
   70:9  warning  The 'titles' logical expression could make the dependencies of useMemo Hook (at line 75) change on every render. To fix this, wrap the initialization of 'titles' in its own useMemo() Hook  react-hooks/exhaustive-deps
   74:5  warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\career\CareerChartsSection.gauges.tsx
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\career\CareerChartsSection.gauges.tsx
   49:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\explorer\ExplorerMatchesTable.tsx
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\explorer\ExplorerMatchesTable.tsx
   950:17  warning  Compilation Skipped: Use of incompatible library
 
 This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\explorer\ExplorerMatchesTable.tsx:950:17
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\explorer\ExplorerMatchesTable.tsx:950:17
   948 |   )
   949 |
 > 950 |   const table = useReactTable<ExplorerMatchRow>({
@@ -94,21 +94,21 @@ C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\
   952 |     columns,
   953 |     // columnVisibility piloté par le parent (prop) : pas de toggle interne donc pas  react-hooks/incompatible-library
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\match-replay\ReplayExportDialog.tsx
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\match-replay\ReplayExportDialog.tsx
   52:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\match-replay\ReplayFeedName.tsx
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\match-replay\ReplayFeedName.tsx
   50:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\match-replay\useReplaySound.ts
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\match-replay\useReplaySound.ts
   498:5  warning  React Hook useCallback has a missing dependency: 'locale'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\match-view\MatchEncountersTable.tsx
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\match-view\MatchEncountersTable.tsx
   458:17  warning  Compilation Skipped: Use of incompatible library
 
 This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\match-view\MatchEncountersTable.tsx:458:17
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\match-view\MatchEncountersTable.tsx:458:17
   456 |   const [sorting, setSorting] = useState<SortingState>([])
   457 |
 > 458 |   const table = useReactTable<MatchEncounterRow>({
@@ -117,20 +117,20 @@ C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\
   460 |     columns,
   461 |     state: { sorting },  react-hooks/incompatible-library
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\match-view\MatchKDCumulChart.tsx
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\match-view\MatchKDCumulChart.tsx
   356:5  warning  React Hook useCallback has a missing dependency: 't'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\match-view\MatchPositionsHeatmap.tsx
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\match-view\MatchPositionsHeatmap.tsx
    68:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                                                          react-refresh/only-export-components
   127:9   warning  The 'all' logical expression could make the dependencies of useMemo Hook (at line 128) change on every render. To fix this, wrap the initialization of 'all' in its own useMemo() Hook  react-hooks/exhaustive-deps
   127:9   warning  The 'all' logical expression could make the dependencies of useMemo Hook (at line 133) change on every render. To fix this, wrap the initialization of 'all' in its own useMemo() Hook  react-hooks/exhaustive-deps
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\match-view\MatchScoreboard.tsx
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\match-view\MatchScoreboard.tsx
   503:17  warning  Compilation Skipped: Use of incompatible library
 
 This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\match-view\MatchScoreboard.tsx:503:17
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\match-view\MatchScoreboard.tsx:503:17
   501 |   const [sorting, setSorting] = useState<SortingState>([])
   502 |
 > 503 |   const table = useReactTable<ScoreboardRowVM>({
@@ -139,7 +139,7 @@ C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\
   505 |     columns,
   506 |     state: { sorting },  react-hooks/incompatible-library
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\media\MediaAudioConfigButton.tsx
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\media\MediaAudioConfigButton.tsx
   71:5  warning  Error: Calling setState synchronously within an effect can trigger cascading renders
 
 Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
@@ -148,7 +148,7 @@ Effects are intended to synchronize state between React and external systems suc
 
 Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\media\MediaAudioConfigButton.tsx:71:5
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\media\MediaAudioConfigButton.tsx:71:5
   69 |   useEffect(() => {
   70 |     if (!data) return
 > 71 |     setMode(data.mode ?? 'auto')
@@ -157,12 +157,12 @@ C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\
   73 |   }, [data])
   74 |  react-hooks/set-state-in-effect
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\palmares\RelationsTable.tsx
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\palmares\RelationsTable.tsx
   344:17  warning  Compilation Skipped: Use of incompatible library
 
 This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\palmares\RelationsTable.tsx:344:17
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\palmares\RelationsTable.tsx:344:17
   342 |     pageSize: RELATIONS_PAGE_SIZE,
   343 |   })
 > 344 |   const table = useReactTable<RelationInsight>({
@@ -171,12 +171,12 @@ C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\
   346 |     columns,
   347 |     state: { sorting, pagination },  react-hooks/incompatible-library
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\squad\SquadAssistPairsTable.tsx
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\squad\SquadAssistPairsTable.tsx
   146:17  warning  Compilation Skipped: Use of incompatible library
 
 This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\squad\SquadAssistPairsTable.tsx:146:17
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\squad\SquadAssistPairsTable.tsx:146:17
   144 |   // qu'aucun en-tête n'est cliqué — même règle que le tableau d'historique voisin.
   145 |   const [sorting, setSorting] = useState<SortingState>([])
 > 146 |   const table = useReactTable<SquadAssistPair>({
@@ -185,12 +185,12 @@ C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\
   148 |     columns,
   149 |     state: { sorting },  react-hooks/incompatible-library
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\squad\SquadImpactScoreboard.tsx
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\squad\SquadImpactScoreboard.tsx
   301:17  warning  Compilation Skipped: Use of incompatible library
 
 This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\squad\SquadImpactScoreboard.tsx:301:17
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\squad\SquadImpactScoreboard.tsx:301:17
   299 |   }, [matrixMatches, matrixBadgeOrd, extremes, scoreExt, i18n])
   300 |
 > 301 |   const table = useReactTable<ImpactRow>({
@@ -199,12 +199,12 @@ C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\
   303 |     columns,
   304 |     getCoreRowModel: getCoreRowModel(),  react-hooks/incompatible-library
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\squad\SquadSynergyHistoryTable.tsx
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\squad\SquadSynergyHistoryTable.tsx
   375:17  warning  Compilation Skipped: Use of incompatible library
 
 This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
 
-C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\squad\SquadSynergyHistoryTable.tsx:375:17
+<poste>\Downloads\Scripts\LevelUp-go-migration\apps\web\src\features\squad\SquadSynergyHistoryTable.tsx:375:17
   373 |   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: PAGE_SIZE })
   374 |
 > 375 |   const table = useReactTable<SquadMatchHistoryRow>({

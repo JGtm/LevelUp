@@ -266,10 +266,10 @@ complete ; les deux autres sont des perspectives. Aucun de ces noms d'evenements
 `vgmstream-cli.exe`, que la recette cite mais qui n'etait plus sur cette machine (le dossier
 `Desktop/Halo Infinite - Sons armes/_outils/` n'existe pas ici). **Reinstalle le 2026-08-26**
 depuis la release GitHub officielle du projet (`vgmstream/vgmstream`, `r2117`,
-`vgmstream-win64.zip`) vers `C:\Users\Guillaume\Downloads\vgmstream\`. La recette
+`vgmstream-win64.zip`) vers `<poste>\Downloads\vgmstream\`. La recette
 (`RECETTE_SONS_ARMES.md` §1) doit desormais pointer ce chemin.
 
-**LES 39 EVENEMENTS SONT RENDUS** (2026-08-26) : `C:\Users\Guillaume\Downloads\Halo Infinite -
+**LES 39 EVENEMENTS SONT RENDUS** (2026-08-26) : `<poste>\Downloads\Halo Infinite -
 Sons v75\` porte 74 `.wav` (une a trois variantes par evenement), les `.mp3` d'ecoute, les
 fiches et la planche de validation. Rendu = une variante par couche, gain de chemin applique,
 somme a t = 0, puis gain LINEAIRE strict jusqu'a -1 dBTP. Decodage vgmstream r2117, mixage et

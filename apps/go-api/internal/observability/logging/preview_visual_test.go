@@ -36,7 +36,7 @@ func TestVisualPreview_ConsoleFormat(t *testing.T) {
 	)
 	logger.Error("provider.swap: reopen RO failed",
 		"attempts", 3,
-		"path", "C:\\Users\\GuillaumeSITBON\\data\\shared.duckdb",
+		"path", "C:\\Users\\utilisateur\\data\\shared.duckdb",
 		"err", "file locked by other process",
 	)
 	logger.Debug("scheduler.tick: tour terminé",

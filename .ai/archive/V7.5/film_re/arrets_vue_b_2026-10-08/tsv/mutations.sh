@@ -1,9 +1,9 @@
 #!/bin/bash
 # Mutations du lot (overlay : un fichier de production remplace par une copie mutee). Attendu : ROUGE.
-export GOCACHE=C:/Users/Guillaume/AppData/Local/go-build-vueb CGO_ENABLED=1 CC=gcc
-API=/c/Users/Guillaume/Downloads/Scripts/LevelUp-wt-grammaire-arrets-vue-b-2/apps/go-api
+export GOCACHE=C:/Users/utilisateur/AppData/Local/go-build-vueb CGO_ENABLED=1 CC=gcc
+API=/c/Users/utilisateur/Downloads/Scripts/LevelUp-wt-grammaire-arrets-vue-b-2/apps/go-api
 G=$API/internal/games/halo_infinite/film/internal/grammar
-M=/c/Users/GUILLA~1/AppData/Local/Temp/claude/c--Users-Guillaume-Downloads-Scripts-LevelUp/bfd187a4-ee4b-4656-9ab4-0654cbc1dfb8/scratchpad/mut
+M=/c/Users/utilisateur/AppData/Local/Temp/claude/c--Users-poste-Downloads-Scripts-LevelUp/bfd187a4-ee4b-4656-9ab4-0654cbc1dfb8/scratchpad/mut
 mkdir -p $M
 TESTS='TestLesArretsDeLaVueBLisentCeQueLEcrivainEcrit|TestI59|TestChaqueSiteDePositionLitCeQueLeJeuEcrit|Neuf|MarchesDEssai|TestG[0-9]'
 muter() {

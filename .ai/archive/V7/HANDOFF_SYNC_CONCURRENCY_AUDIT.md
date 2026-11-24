@@ -12,18 +12,18 @@
 
 | # | Finding | Impact sur le plan |
 |---|---|---|
-| 1 | **`processWeaponKillsInline` est SÉQUENTIEL** dans le post-sync — boucle `for` sans goroutine. Madina passe **210-275s** dessus | **Nouvelle Phase 3.0 prioritaire** (pas dans le plan initial). Gain potentiel ~150-200s par cycle Madina. C'est le plus gros gain identifié. |
+| 1 | **`processWeaponKillsInline` est SÉQUENTIEL** dans le post-sync — boucle `for` sans goroutine. joueur_075 passe **210-275s** dessus | **Nouvelle Phase 3.0 prioritaire** (pas dans le plan initial). Gain potentiel ~150-200s par cycle joueur_075. C'est le plus gros gain identifié. |
 | 2 | **Network = 95% du temps**, compute = ~5% | Réfute le postulat du plan "compute + network sont le bottleneck". Le compute n'est PAS significatif. Phase 3.2 (move parse parallèle) à dépriorisera fortement (gain réel 100-500ms vs 10-30% annoncé) |
 | 3 | **Pool RPS prod = 15 RPS** (`PerTokenRPS=5 × 3 tokens`), pas 30 RPS | Phase 3.3 (intra-match parallel API) ne gagnera que **200-300ms par match**, pas un RTT complet. ROI questionnable, à déprioriser |
 | 4 | **DuckDB driver actuel = 1.5.2**, **v1.5.3 dispo depuis le 20 mai 2026** (corrige edge case index deletion). v1.4.1 changelog mentionne EXACTEMENT notre symptôme | Ajouter étape : tester bump driver vers v1.5.3 (faible coût, gain non garanti) avant d'investir lourd sur singleflight |
 | 5 | **Un rebuild migration EXISTE déjà** : [`migration/steps_shared_rebuild_match_participants.go`](apps/go-api/internal/migration/steps_shared_rebuild_match_participants.go) avec sentinel one-shot | Phase 4.1 doit se distinguer du rebuild migration : path runtime sans sentinel persistant |
 | 6 | **Singleflight = bon ciblage** pour `InsertParticipants` UPSERT. Recommande en plus `SetLimit(1)` sur les UPSERTs des heal loops | Le plan Phase 2.3 est validé. Ajustement : sérialiser les writes participants des heals, garder parallel uniquement sur downloads |
 | 7 | **ART rebuild swap-table = SEULE option viable** (REINDEX inexistant, VACUUM FULL non-implémenté, DROP/CREATE de PK peut crasher) | Phase 4.1 confirmée mais à risque MOYEN-HAUT (lock writer ~1s pendant rebuild) |
-| 8 | **Données déjà silencieusement perdues** : LUSR de Madina figé Argent IV au lieu de Platine | Le rebuild seul ne suffit pas — il faut re-tourner les batchs de recompute (LUSR, sessions, etc.) après rebuild |
+| 8 | **Données déjà silencieusement perdues** : LUSR de joueur_075 figé Argent IV au lieu de Platine | Le rebuild seul ne suffit pas — il faut re-tourner les batchs de recompute (LUSR, sessions, etc.) après rebuild |
 
 ### Nouvelle priorité recommandée par les agents
 
-1. **P0 — Paralléliser `processWeaponKillsInline`** (Agent 3, NEW) — gain ~150-200s/cycle Madina
+1. **P0 — Paralléliser `processWeaponKillsInline`** (Agent 3, NEW) — gain ~150-200s/cycle joueur_075
 2. **P0 — Singleflight `InsertParticipants`** (Agent 2 confirmé) — fixe le crash
 3. **P0 — Bump driver DuckDB v1.5.2 → v1.5.3** (Agent 2 NEW) — gain non garanti mais low cost
 4. **P1 — ART rebuild runtime** (Agent 2 confirmé, MOYEN-HAUT risque) — recovery
@@ -100,7 +100,7 @@
 3. SIGABRT peut tuer le process avant que le handler tourne
 4. Rebuild swap pose lock writer ~1s, ~10s sur 500k rows
 5. Sentinel `match_participants_rebuilt_v1` actuel bloque les re-runs ; runtime rebuild doit avoir mécanisme distinct
-6. **Données déjà silencieusement perdues** : LUSR figé en Argent IV au lieu de Platine pour Madina (cf. commentaire `steps_shared_rebuild_match_participants.go:17`). Recompute LUSR/sessions/etc. nécessaire après rebuild
+6. **Données déjà silencieusement perdues** : LUSR figé en Argent IV au lieu de Platine pour joueur_075 (cf. commentaire `steps_shared_rebuild_match_participants.go:17`). Recompute LUSR/sessions/etc. nécessaire après rebuild
 7. Si la corruption a AUGMENTÉ après l'upgrade driver récent → envisager REVERT vers v1.4.3 LTS
 
 ### Sources clés Agent 2
@@ -115,7 +115,7 @@
 
 ## 3. Agent 3 — Performance breakdown des cycles 22 mai
 
-### Timeline Madina (durée totale 7m59s, 21 matchs insérés, 35 healed)
+### Timeline joueur_075 (durée totale 7m59s, 21 matchs insérés, 35 healed)
 
 | Étape | Durée | Type dominant |
 |---|---|---|
@@ -131,26 +131,26 @@
 | Aggregates + Achievements Xbox | ~5.2s | Network |
 | **TOTAL** | **479.1s** | |
 
-**Le gap noir Madina** (`had_bot_teammate` à 18:29:56 → CSR à 18:34:31 = 274s) est presque entièrement consommé par `processWeaponKillsInline` sériel × 21 films × ~10-13s/film.
+**Le gap noir joueur_075** (`had_bot_teammate` à 18:29:56 → CSR à 18:34:31 = 274s) est presque entièrement consommé par `processWeaponKillsInline` sériel × 21 films × ~10-13s/film.
 
 ### Validation des 5 postulats Agent 3
 
 | Postulat | Verdict |
 |---|---|
-| Network = bottleneck dominant | **VALIDÉ** — 95% du temps Madina dans des paths network |
+| Network = bottleneck dominant | **VALIDÉ** — 95% du temps joueur_075 dans des paths network |
 | Compute prend une part significative | **RÉFUTÉ** — ~5s cumulés sur tous les batchs compute pur (perf, LUSR, engagement, aggregates) |
 | DB writes rapides (sub-second) | **VALIDÉ** — aucun "slow query" dans `duckdb.log`, writes noyés dans network |
-| Post-sync >> pagination | **VALIDÉ très fortement** — Madina : 2.7% pagination vs 97.3% post-sync |
-| heal* network-bound | **VALIDÉ + nuance** — weapon kills heal = path le plus lent (174s Madina) |
+| Post-sync >> pagination | **VALIDÉ très fortement** — joueur_075 : 2.7% pagination vs 97.3% post-sync |
+| heal* network-bound | **VALIDÉ + nuance** — weapon kills heal = path le plus lent (174s joueur_075) |
 
 ### Recommandation Agent 3 — où mettre l'effort
 
 #### Priorité 1 — Paralléliser `processWeaponKillsInline` (NEW, pas dans le plan)
 
 - [`backfill_weapons.go:232-255`](apps/go-api/internal/sync/backfill_weapons.go) — boucle `for matchID := range matchIDs` SANS goroutine
-- 21 films × ~10-13s/match = **210-275s SÉRIEL** dans le post-sync Madina
+- 21 films × ~10-13s/match = **210-275s SÉRIEL** dans le post-sync joueur_075
 - Pattern : reproduire `errgroup + SetLimit(healParallelism=8)` déjà en place dans `healWeaponKillsForRecentMatches`
-- Gain estimé : Madina 210s → 40s sur cette étape (~170s économisés)
+- Gain estimé : joueur_075 210s → 40s sur cette étape (~170s économisés)
 
 #### Priorité 2 — Bump `healParallelism` au-delà de 8 sur paths network-only
 
@@ -160,7 +160,7 @@
 #### Priorité 3 — Fusionner events_heal + weapon_heal dans un seul errgroup multi-endpoint
 
 - `healEventsForRecentMatches` (20 films) + `healWeaponKillsForRecentMatches` (10 films) téléchargent même type de ressource
-- Sur Madina, en série : 4s + 174s = 178s
+- Sur joueur_075, en série : 4s + 174s = 178s
 - Fusionnés : saturer le pool HTTP en continu → gain estimé 20-30%
 
 #### Anti-priorité Agent 3
@@ -255,7 +255,7 @@ Les findings agents nécessitent une **réorganisation des priorités du plan**.
 
 | Nouvelle phase | Source | Gain estimé | Priorité |
 |---|---|---|---|
-| **3.0 — Paralléliser `processWeaponKillsInline`** | Agent 3 | ~150-200s/cycle Madina | **P0** (le plus gros gain identifié) |
+| **3.0 — Paralléliser `processWeaponKillsInline`** | Agent 3 | ~150-200s/cycle joueur_075 | **P0** (le plus gros gain identifié) |
 | **3.6 — Bump `healParallelism` 8 → 16-32** sur paths network-only | Agent 3 | ~4s/cycle | P2 |
 | **3.7 — Fusionner events_heal + weapon_heal** dans un errgroup unique | Agent 3 | ~20-30% sur ces deux étapes | P2 |
 | **3.8 — Bump driver DuckDB v1.5.2 → v1.5.3** | Agent 2 | Non garanti, low cost | **P0** (à tester en premier — peut résoudre seul) |
@@ -282,7 +282,7 @@ Les findings agents nécessitent une **réorganisation des priorités du plan**.
    - `SetLimit(1)` sur UPSERTs heal stats + heal skill (mais 8 sur les downloads)
 3. **P0c — NEW Phase 3.0 Paralléliser `processWeaponKillsInline`** (2h)
    - Pattern `errgroup.SetLimit(healParallelism=8)` reproduit depuis `healWeaponKillsForRecentMatches`
-   - Gain le plus impactant : ~150-200s/cycle Madina
+   - Gain le plus impactant : ~150-200s/cycle joueur_075
 4. **P1a — Phase 4.1 ART rebuild runtime** (3h)
    - Trigger via `BootARTGuard` extension périodique (pas que au boot)
    - Path runtime sans sentinel persistant (sentinel migration existant intact)
@@ -300,7 +300,7 @@ Les findings agents nécessitent une **réorganisation des priorités du plan**.
 
 ## 7. Recompute post-rebuild critique (oublié dans le plan)
 
-Agent 2 a relevé que **les données ont été silencieusement perdues** : LUSR de Madina figé Argent IV au lieu de Platine. Le rebuild swap-table récupère les rows mais les batchs computed sur ces rows (LUSR cascade, sessions, perf scores, citations, dominance) ont produit des résultats faux pendant la période corrompue.
+Agent 2 a relevé que **les données ont été silencieusement perdues** : LUSR de joueur_075 figé Argent IV au lieu de Platine. Le rebuild swap-table récupère les rows mais les batchs computed sur ces rows (LUSR cascade, sessions, perf scores, citations, dominance) ont produit des résultats faux pendant la période corrompue.
 
 **Action à ajouter au plan** : après le rebuild ART de Phase 4.1, lancer un recompute force=true pour les joueurs affectés :
 - `batchComputeLUSR(playerDB, sharedDB, xuid, ..., force=true)`

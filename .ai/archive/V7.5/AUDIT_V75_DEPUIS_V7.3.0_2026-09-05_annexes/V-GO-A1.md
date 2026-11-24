@@ -1,6 +1,6 @@
 # Vérification adverse V-GO-A1
 
-Cadre : lecture seule, dépôt `C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration`,
+Cadre : lecture seule, dépôt `<poste>/Downloads/Scripts/LevelUp-go-migration`,
 branche `feat/v75`, HEAD code `736ccf3c3`. Biais assumé du mandat : en cas de doute, RÉFUTÉ.
 
 ## Constat 1 — `KillSourceDecoderRev` figé alors que le décodeur a changé : TIENT

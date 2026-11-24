@@ -418,7 +418,7 @@ ce qui suppose l'écrivain de HI_1_10_0 (§9) ; non fait.
 
 Gates rejoués après les corrections du contrôle : §11.
 
-Depuis `apps/go-api`, `GOCACHE=C:/Users/Guillaume/AppData/Local/go-build-cg2-ln`, une commande `go`
+Depuis `apps/go-api`, `GOCACHE=<poste>/AppData/Local/go-build-cg2-ln`, une commande `go`
 à la fois, sur le code final (tables en constantes) :
 
 - `gofmt -l` (film, archlint) : vide.
@@ -619,7 +619,7 @@ Détail :
 - **`replay-corpus-gate` non rejoué** : la carte et le témoin sont identiques au lot paquet par
   paquet ; ses pertes FILET (§8 bis) restent celles du lot, et le gate 6 reste non tenu (C1).
 
-Sorties des gates rejoués (code corrigé, `GOCACHE=C:/Users/Guillaume/AppData/Local/go-build-cg2-ln`,
+Sorties des gates rejoués (code corrigé, `GOCACHE=<poste>/AppData/Local/go-build-cg2-ln`,
 une commande `go` à la fois) :
 
 ```

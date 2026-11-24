@@ -167,7 +167,7 @@ class Component extends DCLogic {
       maps: [["Bazaar", 55, 78], ["Recharge", 49, 41], ["Streets", 60, 66], ["Live Fire", 53, 12], ["Prism", 46, 92]].map(([m, h, s]) => ({ m, h, s, tipH: `Historique : ${h} %`, tipS: `Soirée : ${s} %` })),
       evenings: EVENINGS.map(([d, , w, l], i) => ({ d, w, l, fg: i === EVENINGS.length - 1 ? "#fafafa" : "#a1a1a1", fw: i === EVENINGS.length - 1 ? 900 : 400 })),
       evenPath: "M" + pts.join("L"), evenMedianY: yOf(prevMed), evenLast: { x: xOf(EVENINGS.length - 1), y: yOf(EVENINGS[EVENINGS.length - 1][1]) },
-      compos: [["JGtm, Brume42, Vortex Kael, NoScope Lou", 64, 38], ["JGtm, Brume42, Vortex Kael", 57, 22], ["JGtm, NoScope Lou", 51, 41], ["JGtm, Vortex Kael", 46, 19], ["JGtm seul avec inconnus", 39, 54]].map(([n, v, m]) => ({ n, v, m, tip: `${v} % sur ${m} matchs` })),
+      compos: [["JGtm, joueur_343, Vortex Kael, NoScope Lou", 64, 38], ["JGtm, joueur_343, Vortex Kael", 57, 22], ["JGtm, NoScope Lou", 51, 41], ["JGtm, Vortex Kael", 46, 19], ["JGtm seul avec inconnus", 39, 54]].map(([n, v, m]) => ({ n, v, m, tip: `${v} % sur ${m} matchs` })),
       caption: CAPS[variant].map(([h, t]) => ({ h, t }))
     };
   }

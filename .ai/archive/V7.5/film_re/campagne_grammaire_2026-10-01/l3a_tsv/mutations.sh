@@ -1,7 +1,7 @@
 #!/bin/bash
 # mutations.sh : une mutation par regle neuve du lot, appliquee par -overlay sur une COPIE du
 # fichier (le worktree n est jamais modifie). Attendu : ROUGE a chaque mutation, base verte.
-source /c/Users/GUILLA~1/AppData/Local/Temp/claude/c--Users-Guillaume-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad/L3a/env.sh
+source /c/Users/utilisateur/AppData/Local/Temp/claude/c--Users-poste-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad/L3a/env.sh
 RUN='TestComposantsDuMoteurSuiventLEcrivain|TestCompteDeVolumesNonBorne|TestLecteurDeMinuteurRendLesQuanta|TestLecteurDeMinuteurUnique|TestG1TableSuitLeCode|TestG4LargeursEntieresSuiventLeCode|TestHooks|TestCapture|TestKeyframeClosureRatchet|TestFrameClosureRatchet'
 jouer() { # nom overlay
   out=$(cd $API && go test -count=1 ${2:+-overlay=$2} -run "$RUN" ./internal/games/halo_infinite/film/internal/grammar/ 2>&1)

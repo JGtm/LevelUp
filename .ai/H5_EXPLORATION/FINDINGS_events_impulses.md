@@ -37,8 +37,8 @@ ISO8601 (`PT33.2154416S`).
 {
   "EventName": "Death",
   "TimeSinceStart": "PT33.2154416S",
-  "Killer":  { "Gamertag": "Madman684844", "Xuid": null },
-  "Victim":  { "Gamertag": "Madina97294",  "Xuid": null },
+  "Killer":  { "Gamertag": "joueur_711", "Xuid": null },
+  "Victim":  { "Gamertag": "joueur_117",  "Xuid": null },
   "Assistants": [],                         // <-- gamertags qui ont ASSISTÉ ce kill
   "KillerWeaponStockId": 2650887244,        // arme du kill (déjà ingérée)
   "KillerWeaponAttachmentIds": [2758383128],// variante/skin de l'arme (DROPPÉ)
@@ -58,7 +58,7 @@ ISO8601 (`PT33.2154416S`).
 ```json
 {
   "EventName": "WeaponDrop",
-  "Player": { "Gamertag": "Madina97294" },
+  "Player": { "Gamertag": "joueur_117" },
   "WeaponStockId": 2650887244,
   "WeaponAttachmentIds": [2758383128],
   "ShotsFired": 0,                          // <-- tirs/touchés PAR INSTANCE d'arme

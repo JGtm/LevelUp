@@ -1,5 +1,5 @@
 const fs=require('fs'),zlib=require('zlib');
-const dir='c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
+const dir='<poste>/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
 const files=fs.readdirSync(dir).filter(f=>f.endsWith('.json.gz'));
 const rows=[];
 for(const f of files){

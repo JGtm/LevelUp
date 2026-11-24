@@ -37,7 +37,7 @@ func (l *lecteurDAmis) lire(_ context.Context, gts []string) (map[string]string,
 }
 
 func registreDesSuivis(context.Context) map[string]string {
-	return map[string]string{"Joueur90002": "x_madina", "Joueur90001": "x_choco", "JGtm": "x_jgtm"}
+	return map[string]string{"Joueur90002": "x_joueur_075", "Joueur90001": "x_joueur_901", "JGtm": "x_jgtm"}
 }
 
 func careerAvecAmis(amis []string, l *lecteurDAmis) (*CareerService, *mockCareerRepo) {
@@ -61,7 +61,7 @@ func TestCareerService_ResolveFriendXUIDs_RegistreDAbordPuisUneLecture(t *testin
 		t.Fatalf("GetTopEncounters : %v", err)
 	}
 	exclus := slices.Sorted(slices.Values(repo.topEncountersExcludeArg))
-	if want := []string{"x_choco", "x_hors", "x_madina"}; !slices.Equal(exclus, want) {
+	if want := []string{"x_hors", "x_joueur_075", "x_joueur_901"}; !slices.Equal(exclus, want) {
 		t.Errorf("xuids exclus = %v, want %v", exclus, want)
 	}
 	if len(l.lectures) != 1 || !slices.Equal(l.lectures[0], []string{"Inconnu", "Hors registre"}) {

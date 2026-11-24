@@ -29,7 +29,7 @@ Cuisson de `51ebbc0f` au HEAD de `feat/v75` (`cmd/replay-build --map "Banished N
 --facts <faits> 51ebbc0f-...`, un film par processus, verrou `filmproc.AcquireSolo`, racine de
 travail dediee — technique du balayage, §2 de `BALAYAGE_PARC_2026-09-06.md`).
 
-Serie d'assistances publiee pour `2535439712156981` (feuille : **5**) :
+Serie d'assistances publiee pour `2572790178344426` (feuille : **5**) :
 
 ```
 rounds[0] = [{t:1412, v:1}, {t:3167, v:60}]
@@ -238,10 +238,10 @@ Le film reconstruit desormais, par slot, des totaux qui rejoignent la feuille :
 
 | slot | frags / morts / assists (film) | joueur de la feuille | feuille |
 |---|---|---|---|
-| 10 | 11 / 6 / 4 | `2535458847428879` | 11 / 6 / 4 **exact** |
-| 12 | **2 / 10 / 5** | `2535439712156981` | **2 / 10 / 5 exact** |
-| 14 | 11 / 12 / 7 | `2535469190789936` | 11 / 12 / 7 **exact** |
-| 20 | 15 / 4 / 2 | `2535469889270266` | 15 / 4 / 2 **exact** |
+| 10 | 11 / 6 / 4 | `2564735375582160` | 11 / 6 / 4 **exact** |
+| 12 | **2 / 10 / 5** | `2572790178344426` | **2 / 10 / 5 exact** |
+| 14 | 11 / 12 / 7 | `2547408409520575` | 11 / 12 / 7 **exact** |
+| 20 | 15 / 4 / 2 | `2808450491243056` | 15 / 4 / 2 **exact** |
 | 16 · 18 · 22 · 24 | 10/11/6 · 7/9/3 · 7/8/5 · 7/11/7 | — | a +/- 1 pres |
 
 Le joueur en cause a donc bien **5 assistances et 2 frags** dans ce que le film reconstruit,
@@ -358,7 +358,7 @@ mieux, et sur une manche que la decoupe ne borne de toute facon pas.
 | `fb1a1a72` (CTF, 3 manches declarees) | manche 2 : **66 671 -> 66 805 ms** | 3 -> 3 | 0 -> 0 | 0 -> 0 | 0 -> 0 | **IDENTIQUE A L'OCTET** |
 
 `objectives` par (xuid, statistique), les deux films, avant et apres :
-`2533274795950878/kills=1  2535408981717353/assists=1  2535473461033821/kills=1` — identique.
+`2758522581629202/kills=1  2808996413735222/assists=1  2705335195804900/kills=1` — identique.
 
 **Aucune variation, donc aucune variation qui s'eloigne de la feuille.** L'ecart a la feuille de
 match est inchange et se lit ainsi :

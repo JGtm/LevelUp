@@ -1,7 +1,7 @@
 # PLAN — Chantier véhicules et tourelles (rejeu 2D)
 
 > Ouvert le 2026-08-31 sur demande utilisateur. Worktree dédié
-> `C:\Users\Guillaume\Projects\LevelUp-wt-vehicules`, branche `wt/vehicules-tourelles`
+> `<poste>\Projects\LevelUp-wt-vehicules`, branche `wt/vehicules-tourelles`
 > (base `feat/v75` = `14a115bb1`). Mode : superviseur-orchestrateur + agents exécuteurs
 > (Opus/Sonnet/Haiku), un lot = un commit sur cette branche, fusion `feat/v75` en clôture.
 
@@ -76,7 +76,7 @@ lot V1 s'appuie d'abord sur la TRAME ECS (présente dans ce dépôt). L'« occup
 - Agents : JAMAIS de commit, pas d'écriture `.ai/` hors livrables désignés, découvertes
   dans le rapport ; DuckDB en LECTURE SEULE (`ATTACH ... (READ_ONLY)`) — le serveur dev
   peut tenir les DB ; gates en avant-plan uniquement (jamais de run d'arrière-plan).
-- Données réelles = `C:\Users\Guillaume\Projects\LevelUp\data` (le worktree n'a pas de
+- Données réelles = `<poste>\Projects\LevelUp\data` (le worktree n'a pas de
   data utile) : binaires PathResolver lancés avec `LEVELUP_REPO_ROOT` pointé sur le
   checkout principal. Cache films : `data/cache/film_chunks` + `film_manifests` (~1 367
   films), artefacts cuits : `data/cache/replays`.

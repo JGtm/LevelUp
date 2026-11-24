@@ -11,8 +11,8 @@
 
 | Source | Localisation | Taille | Volume | Complétude |
 |---|---|---|---|---|
-| Film chunks externes | `C:/Users/Guillaume/Downloads/film_chunks/{8-hex}/chunk_NN.bin` | 20 GB | 942 matchs | **Partielle** — manquent souvent chunk_00 (header) et chunk_01 (1er replication) |
-| Film manifests externes | `C:/Users/Guillaume/Downloads/film_manifests/{8-hex}.json` | 4.6 MB | 942 fichiers | OK |
+| Film chunks externes | `<poste>/Downloads/film_chunks/{8-hex}/chunk_NN.bin` | 20 GB | 942 matchs | **Partielle** — manquent souvent chunk_00 (header) et chunk_01 (1er replication) |
+| Film manifests externes | `<poste>/Downloads/film_manifests/{8-hex}.json` | 4.6 MB | 942 fichiers | OK |
 | Batches WAL | `data/wal/{16-hex}.json` | 7.1 MB | 69 batches | OK (5 JGtm + autres joueurs) |
 | **JGtm full match E2E** | `apps/go-api/internal/sync/testdata/jgtm_full_match/` | 6.1 MB | 1 match | **100%** — manifest + 30 chunks (0 header + 28 replication + 1 highlight events) + match_stats + skill + match_history |
 | Sync cache | `data/sync_cache/sync.RunDelta_*/match_*_highlight_chunk.bin` | 298 MB | ~86 runs | Partial — 1 highlight chunk/match cached, ~25 matchs uniques |
@@ -87,7 +87,7 @@ Les datasets sont hors-repo (20 GB, intransportables). Stratégie :
 
 1. Créer `apps/go-api/internal/sync/testdata/sync_fixtures/`
 2. Y placer un fichier `manifest.json` listant le sous-ensemble *embarqué* (matchs sélectionnés couvrant les edge cases, ~10 matchs représentatifs)
-3. **Bridge external** : env var `LEVELUP_TEST_FILM_DATA_DIR` pointe vers `C:/Users/Guillaume/Downloads/film_chunks` quand le test veut le full dataset 942 matchs (skip si var absente)
+3. **Bridge external** : env var `LEVELUP_TEST_FILM_DATA_DIR` pointe vers `<poste>/Downloads/film_chunks` quand le test veut le full dataset 942 matchs (skip si var absente)
 4. Embarquer 10 matchs sélectionnés dans `testdata/` (≤ 50 MB acceptable pour git)
 
 **Sélection des 10 matchs embarqués** (à curate manuellement) :
@@ -128,13 +128,13 @@ func LoadAllFixtureBatches(t *testing.T) []*persist.MatchBatch { ... }
 
 ```go
 // gen_test_fixtures complète les chunks manquants (00/01 typiquement) des matchs
-// externes dans C:/Users/Guillaume/Downloads/film_chunks/, en utilisant le
+// externes dans <poste>/Downloads/film_chunks/, en utilisant le
 // manifest correspondant pour reconstruire l'URL blob CDN public.
 //
 // Usage :
 //   go run ./cmd/gen_test_fixtures complete-chunks \
-//     --src "C:/Users/Guillaume/Downloads/film_chunks" \
-//     --manifests "C:/Users/Guillaume/Downloads/film_manifests"
+//     --src "<poste>/Downloads/film_chunks" \
+//     --manifests "<poste>/Downloads/film_manifests"
 //
 //   go run ./cmd/gen_test_fixtures download-full-match \
 //     --match-id <uuid> \
@@ -1107,7 +1107,7 @@ test-regression:
 	go test -race -run Regression ./apps/go-api/internal/...
 
 test-fulldataset:
-	LEVELUP_TEST_FILM_DATA_DIR="C:/Users/Guillaume/Downloads/film_chunks" \
+	LEVELUP_TEST_FILM_DATA_DIR="<poste>/Downloads/film_chunks" \
 		go test -race -timeout 30m ./apps/go-api/internal/sync/...
 
 test-replay-wal:

@@ -1,5 +1,5 @@
 const fs=require('fs'),z=require('zlib');
 const id=process.argv[2];
-const d=JSON.parse(z.gunzipSync(fs.readFileSync('C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
+const d=JSON.parse(z.gunzipSync(fs.readFileSync('<poste>/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
 const nm=x=>{const p=d.roster.find(q=>q.xuid===x);return p?p.name+'(t'+p.team+')':x};
 for(const m of d.medals){ if(/flag|carrier|capture|rescue|defend|assault|stop|hot potato|sneak|Obj/i.test(m.name)) console.log(m.t,nm(m.xuid),m.name); }

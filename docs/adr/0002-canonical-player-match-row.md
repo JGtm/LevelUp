@@ -2,7 +2,7 @@
 
 **Status** — Accepted (2026-04-28). Implemented in Phase A→F of `PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md`.
 
-**Deciders** — Guillaume (GS), based on the audit `docs/AUDIT_TEAMMATES_V7_COCKPIT.md` and the multi-title strategy locked at sprint 44.
+**Deciders** — JGtm, based on the audit `docs/AUDIT_TEAMMATES_V7_COCKPIT.md` and the multi-title strategy locked at sprint 44.
 
 ## Context
 

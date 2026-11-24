@@ -1,7 +1,7 @@
 # LOT D1 — Escouade : retraits, assistances, échange (artefact 4c520da6), heatmap, blocs
 
-Worktree : `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ajust-escouade` · branche `feat/ajust-escouade` · port Vite **5184**.
-Lis d'abord `BRIEF_COMMUN.md`. Artefact de référence pour l'échange : `artefacts/4c520da6_echange_escouade.html` (lis le fichier HTML EN ENTIER : CSS + script ; la version texte `artefacts/art_4c520da6.txt` aide à lire le script). Playwright : `E2E_VISUAL_SQUAD_TEAMMATES=Madina97294,Chocoboflor`.
+Worktree : `<poste>\Downloads\Scripts\LevelUp-wt-ajust-escouade` · branche `feat/ajust-escouade` · port Vite **5184**.
+Lis d'abord `BRIEF_COMMUN.md`. Artefact de référence pour l'échange : `artefacts/4c520da6_echange_escouade.html` (lis le fichier HTML EN ENTIER : CSS + script ; la version texte `artefacts/art_4c520da6.txt` aide à lire le script). Playwright : `E2E_VISUAL_SQUAD_TEAMMATES=joueur_117,joueur_165`.
 Un lot voisin (D2) ajoute une NOUVELLE section « Les formes retenues » sur la même page ; pour limiter les conflits, tu modifies `SquadSynergiesPage.tsx` avec parcimonie et tu ne réordonnes que ce que le brief demande. Le lot B modifie `features/_shared/usage/EquipmentUsageSection.tsx` (découpage en blocs, « Équipe adverse ») : TU NE TOUCHES PAS ce fichier ni `usageI18n.ts` — tes items D1.5 se limitent à ce qui est propre à la page Escouade (voir D1.5).
 
 ## Repérage déjà fait (vérifie sur pièces)

@@ -1,7 +1,7 @@
 # PLAN — Amis par joueur + invitations « sans groupe » sur instance verrouillée
 
 > Créé le 2026-09-15. Branche : `wt/amis-invitations`. Worktree dédié :
-> `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-amis-invitations` (règle mémoire
+> `<poste>/Downloads/Scripts/LevelUp-wt-amis-invitations` (règle mémoire
 > « worktree dédié obligatoire » — ne jamais exécuter dans `LevelUp-go-migration`).
 > Base : `feat/v75` @ `2ddef392c`. **Push sur `main` = déploiement prod : interdit sans
 > l'utilisateur.**
@@ -428,26 +428,26 @@ Reprise de session : lire cette section puis `git log --oneline -10` dans le wor
   déclenchement un cran plus haut (test handler). Un test d orchestrateur exigerait une
   fixture DuckDB player+shared.
 
-## Annexe A — Procédure « Nuzzles » (à la main de l'utilisateur, hors plan de code)
+## Annexe A — Procédure « joueur_074 » (à la main de l'utilisateur, hors plan de code)
 
 Ordre recommandé, indépendant des étapes 1-7 sauf mention :
 
-1. **Profil** : ajouter `Nuzzles` dans `db_profiles.json` (bloc `halo_infinite`, avec `db_path`
-   `data/titles/halo_infinite/players/Nuzzles/stats.duckdb`, son `xuid`, `waypoint_player`).
+1. **Profil** : ajouter `joueur_074` dans `db_profiles.json` (bloc `halo_infinite`, avec `db_path`
+   `data/titles/halo_infinite/players/joueur_074/stats.duckdb`, son `xuid`, `waypoint_player`).
    Aucun code n'écrit ce fichier pour un tiers (`/setup/players` ne crée que le profil de
    l'identité liée en session).
 2. **Sync des bases** : passer par le **serveur** (bouton de sync / auto-sync), pas par la CLI
-   `sync-full --gamertag Nuzzles` : la CLI exige le refresh token DE Nuzzles
+   `sync-full --gamertag joueur_074` : la CLI exige le refresh token DE joueur_074
    (`cmd_sync.go:414-436`), alors que le serveur emprunte au pool de tokens
    (`sync_handler.go:526,603`, profils `auth_only`). Confirmé par l utilisateur le 2026-09-15 :
-   le token de Nuzzles n est jamais nécessaire tant que ceux du pool fonctionnent — la lecture
+   le token de joueur_074 n est jamais nécessaire tant que ceux du pool fonctionnent — la lecture
    de l historique et des films d un tiers passe par n importe quel token valide. Idem pour la
    cuisson : `backfill-replay` ne touche pas à l API, il ne lit que le cache de films local.
 3. **Films et rejeux** : les étapes post-sync téléchargent les films et cuisent les artefacts
    selon `replay_build_location` (`sync/convergence.go:614`). Pour forcer les 200 derniers :
    `levelup backfill-replay --dry-run` puis `--limit 200` (sélection « les moins chers
    d'abord » sur TOUT le cache non cuit, pas par joueur : vérifier au `--dry-run` que seuls
-   des films de Nuzzles sont candidats). Serveur arrêté, en tâche de fond avec journal (mémoire
+   des films de joueur_074 sont candidats). Serveur arrêté, en tâche de fond avec journal (mémoire
    « recuisson »).
 4. **Groupe** : aucun. Ne pas l'ajouter à « Mon foyer ».
 5. **Connexion** : après l'étape 5 du plan, lien d'invitation admin sur instance verrouillée ;

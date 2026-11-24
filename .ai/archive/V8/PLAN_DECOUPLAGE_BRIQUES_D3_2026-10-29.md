@@ -278,7 +278,7 @@ relevé qui gagne (D3-L0-m : `asset_name_fetcher`, `catalog_fetcher`, `challenge
 
 Relevé fait sur `b92916328` (HEAD de `refactor/decouplage-d3-api-halo` = `release/v8.1.0` après la fusion
 de D2, #113), worktree `../LevelUp-wt-decouplage-d3`, `GOCACHE=%LOCALAPPDATA%\go-build-d3`. Témoins :
-`%TEMP%\claude\c--Users-Guillaume-Downloads-Scripts-LevelUp\77a8b90a-21a6-40a0-ac64-eb152f616862\scratchpad\temoins_d3_lot0_avant\`
+`%TEMP%\claude\c--Users-poste-Downloads-Scripts-LevelUp\77a8b90a-21a6-40a0-ac64-eb152f616862\scratchpad\temoins_d3_lot0_avant\`
 (`md5s.txt` ; `commandes_T3.md` pour les commandes exactes). Aucun fichier de code touché ; aucun jeton dans un
 témoin, un journal ou ce plan.
 
@@ -489,7 +489,7 @@ Légende : P = protocole, E = exploitation, M = mixte (à couper). Destinations 
 ## Exécution du lot 1 (2026-10-29)
 
 Code : branche `refactor/decouplage-d3-api-halo` depuis `b92916328`, deux commits (garde-fou 1.1-1.4 ; outil et
-témoin 1.5). Témoins : `%TEMP%\claude\c--Users-Guillaume-Downloads-Scripts-LevelUp\77a8b90a-21a6-40a0-ac64-eb152f616862\scratchpad\temoins_d3_lot1_avant\`
+témoin 1.5). Témoins : `%TEMP%\claude\c--Users-poste-Downloads-Scripts-LevelUp\77a8b90a-21a6-40a0-ac64-eb152f616862\scratchpad\temoins_d3_lot1_avant\`
 (`commandes.md`, `md5s.txt`).
 
 **Fichiers.** `internal/archlint/briques_internes_test.go` (table `briquesInternes`, parcours, confrontation des
@@ -609,7 +609,7 @@ renommage des clés de ratchet dans le commit qui déplace le fichier.
 
 Branche `refactor/decouplage-d3-api-halo`, depuis `c1024ef01`. Commits : `7de69eaf3` (2.1), `61795015b` (2.2 à 2.4),
 puis le commit de clôture (ce plan, journal). Caches `go-build-d3` / `golangci-d3`. Témoins :
-`%TEMP%\claude\c--Users-Guillaume-Downloads-Scripts-LevelUp\77a8b90a-21a6-40a0-ac64-eb152f616862\scratchpad\temoins_d3_lot2\`
+`%TEMP%\claude\c--Users-poste-Downloads-Scripts-LevelUp\77a8b90a-21a6-40a0-ac64-eb152f616862\scratchpad\temoins_d3_lot2\`
 (`md5s.txt`). Aucun jeton ni secret dans un fichier, un témoin, un journal ou ce plan.
 
 **Fichiers déplacés (`git mv`) vers `internal/haloapi/xblauth`.** `xsts.go` -> `xsts_rta.go` (moitié protocole :
@@ -896,7 +896,7 @@ fonctions de la brique) et découvertes D3-L3-a à n.
 
 Branche `refactor/decouplage-d3-api-halo`, depuis `04f8ba91c`. Commits : `a1f744e97` (4.1), `7f3830ef5` (4.2),
 `394c34f70` (4.3), `79db7bf3e` (4.4), puis la clôture (ce plan, journal). Caches `go-build-d3` / `golangci-d3`. Témoins :
-`%TEMP%\claude\c--Users-Guillaume-Downloads-Scripts-LevelUp\77a8b90a-21a6-40a0-ac64-eb152f616862\scratchpad\temoins_d3_lot4\`
+`%TEMP%\claude\c--Users-poste-Downloads-Scripts-LevelUp\77a8b90a-21a6-40a0-ac64-eb152f616862\scratchpad\temoins_d3_lot4\`
 (`tests_T1.tsv`, `comparaison_T1.txt`, `t3\` avec `md5s.txt` et `commandes.md`). Aucun jeton dans un fichier, un témoin,
 un journal ou ce plan.
 
@@ -1080,7 +1080,7 @@ intégration : `go test -tags=integration -count=1 -timeout=1200s -p 1 -json ./.
 
 Branche `refactor/decouplage-d3-api-halo`, depuis `425028c32`. Commits : `2c0d56abe` (P1), `ff3541b46` (P2), `398301dbb`
 (commentaires, règle 17), puis la clôture (ce plan, journal). Caches `go-build-d3` / `golangci-d3`. Témoins :
-`%TEMP%\claude\c--Users-Guillaume-Downloads-Scripts-LevelUp\77a8b90a-21a6-40a0-ac64-eb152f616862\scratchpad\temoins_d3_lot5\`
+`%TEMP%\claude\c--Users-poste-Downloads-Scripts-LevelUp\77a8b90a-21a6-40a0-ac64-eb152f616862\scratchpad\temoins_d3_lot5\`
 (`tests_T1.tsv`, `neufs.txt`, `lint.txt`, `t3\` avec `md5s.txt` et `commandes.md`). Aucun jeton dans un fichier, un témoin,
 un journal ou ce plan ; tous les tests neufs sont `httptest` (aucune sortie réseau).
 
@@ -1153,7 +1153,7 @@ re-capture) : skill `3abcd07b...` et stats `697ff1f0...`, MD5 IDENTIQUES au tém
 ## Exécution du lot 6 (2026-10-29)
 
 Branche `refactor/decouplage-d3-api-halo`, depuis `0d2d9adf4`. Commits : `5ed3aff79` (6.1 : corrections de la seconde ronde de revue, histoire sortie du code), puis le commit de docs (6.2 : ADR 0042, ADR 0023 et 0031, `CLAUDE.md`, `ARCHITECTURE_V6` EN et FR, registre des reports, addendum de l'audit, ce plan, journal). Caches `go-build-d3` / `golangci-d3`. Témoins :
-`%TEMP%\claude\c--Users-Guillaume-Downloads-Scripts-LevelUp\77a8b90a-21a6-40a0-ac64-eb152f616862\scratchpad\temoins_d3_lot6_apres\`
+`%TEMP%\claude\c--Users-poste-Downloads-Scripts-LevelUp\77a8b90a-21a6-40a0-ac64-eb152f616862\scratchpad\temoins_d3_lot6_apres\`
 (`commandes.md`, `md5s.txt`, `t1\`, `integration\`, `t4\`, `gate\`). Aucun jeton dans un fichier, un témoin, un journal ou ce plan.
 
 **Seconde ronde de revue (corrections seules, contexte frais) : 0 P0, 0 P1, 3 P2.**
@@ -1203,7 +1203,7 @@ Lot 0 (2026-10-29). Notées, NON traitées ; le lot indiqué décide.
 
 - **D3-L0-a (T3 lancé depuis le worktree, pas depuis le dépôt principal).** Le brief demandait les commandes LIVE depuis le
   dépôt principal. Elles ont été lancées depuis `apps/go-api` du worktree avec
-  `LEVELUP_REPO_ROOT='C:\Users\Guillaume\Downloads\Scripts\LevelUp'` (`config.Load` lit alors `db_profiles.json`, `.env.local` et
+  `LEVELUP_REPO_ROOT='<poste>\Downloads\Scripts\LevelUp'` (`config.Load` lit alors `db_profiles.json`, `.env.local` et
   `data/` du dépôt principal ; même commit `b92916328`). Raison : au lot 6 le code testé vivra dans le worktree ; l'AVANT
   doit se lancer de la même façon. Lot 6 : même mode de lancement.
 - **D3-L0-b (surfaces sans commande de témoin existante).** Aucune commande existante en lecture seule ne couvre : le

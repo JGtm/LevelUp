@@ -86,7 +86,7 @@ testutil/fixture.go:167 (NewInMemoryPlayer, CENTRAL) ; sync_pipeline_fixture_tes
 **pool_migration_test.go:160/209 :** seed LEGACY VOLONTAIRE (teste l'upgrade) — vérifier que la chaîne migration exécutée convertit en append-only + adapter assertions post-migration.
 
 ### PME-I — Go/no-go
-`go build ./...` + `go test ./...` (CGO, -tags integration) vert + `engagement-coefs --all --with-scores --force` ×3 sans crash sur COPIES Madina/JGtm + EXPLAIN de la vue sur copie.
+`go build ./...` + `go test ./...` (CGO, -tags integration) vert + `engagement-coefs --all --with-scores --force` ×3 sans crash sur COPIES joueur_075/JGtm + EXPLAIN de la vue sur copie.
 
 ## Risques de correctness à surveiller (census verify)
 - player_persister.go:186 multi-stage → résolu par stage='live' baseline (décision #1).

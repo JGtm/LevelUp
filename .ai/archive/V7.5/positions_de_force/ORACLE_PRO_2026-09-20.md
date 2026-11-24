@@ -39,7 +39,7 @@ Lattice) ; Illusion reperee mais laissee de cote (vocabulaire inrattachable, voi
 ### 1.2 Vocabulaire : d'ou viennent les noms de zones
 
 Les noms EN officiels viennent du depot principal (lecture seule) :
-`C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/titles/halo_infinite/reference/`
+`<poste>/Downloads/Scripts/LevelUp-go-migration/data/titles/halo_infinite/reference/`
 
 - `callouts_i18n.csv` — 816 lignes, colonne `en` (+ `fr`), clef de carte en colonne 1.
 - `map_callouts.json` — deux espaces de clefs : `maps` (module installe, 22 cartes natives)

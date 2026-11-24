@@ -24,7 +24,7 @@ Restaurer la fiabilité de l'auto-sync sur la branche `refactor/collect-persist`
 Avant merge vers `main` :
 
 1. 3 cycles auto-sync consécutifs propres (4 joueurs, 0 erreur Persist, 0 NaN, 0 metadata conflict)
-2. Sync d'un joueur inactif (`Madina97294` après son delta vide) < 5s end-to-end
+2. Sync d'un joueur inactif (`joueur_117` après son delta vide) < 5s end-to-end
 3. `player_match_enrichment` à jour pour tous les matchs ingérés du cycle
 4. `match_citations` non vide après post-sync (citations_computed > 0)
 5. ART probe shared+metadata clean au boot ET en fin de cycle
@@ -82,9 +82,9 @@ git checkout -b fix/sync-reliability-2026-05-24
 ```
 
 **Capture baseline** :
-- Snapshot `data/titles/halo_infinite/players/{Chocoboflor,XxDaemonGamerxX}/stats.duckdb` (taille + mtime) → on confirmera après fix 1 que `player_match_enrichment` croît à nouveau
+- Snapshot `data/titles/halo_infinite/players/{joueur_165,joueur_291}/stats.duckdb` (taille + mtime) → on confirmera après fix 1 que `player_match_enrichment` croît à nouveau
 - Snapshot `logs/sync.log` `logs/persist.log` `logs/duckdb.log` au boot actuel (référence avant fix)
-- Compter `SELECT COUNT(*) FROM player_match_enrichment` côté Chocoboflor + XxDaemonGamerxX (référence T0)
+- Compter `SELECT COUNT(*) FROM player_match_enrichment` côté joueur_165 + joueur_291 (référence T0)
 
 **Critère sortie phase 0** : branche créée, baseline enregistrée dans le commit message du WIP initial.
 
@@ -138,7 +138,7 @@ Aucun nouveau log requis — le log existant `CombinedPersister: player persist 
 ### Critère sortie
 
 - Boucle 4 joueurs en local : zéro entrée `Connection Error: Can't open a connection to same database file` dans `logs/persist.log`
-- `player_match_enrichment` du compteur Chocoboflor croît du nombre exact de matchs insérés du cycle
+- `player_match_enrichment` du compteur joueur_165 croît du nombre exact de matchs insérés du cycle
 
 ### Thought_log entry
 
@@ -282,8 +282,8 @@ Nouveau WARNING + DEBUG (cf. diff ci-dessus). Le DEBUG sert à monitorer le rati
 ### Critère sortie
 
 Après ce fix + restart serveur :
-- Sync XxDaemonGamerxX (inactif) : `known_count >= 30` (au lieu de 22), `pending_fetch=0`, `inserted=0`, durée < 5s
-- Sync Madina97294 (inactif) : idem
+- Sync joueur_291 (inactif) : `known_count >= 30` (au lieu de 22), `pending_fetch=0`, `inserted=0`, durée < 5s
+- Sync joueur_117 (inactif) : idem
 - Log DEBUG `added_from_shared > 0` pour les joueurs avec des matchs partagés (squad)
 
 ### Thought_log entry
@@ -291,7 +291,7 @@ Après ce fix + restart serveur :
 ```
 [2026-05-24] Phase 3 — loadKnownMatchIDs cast défensif + visibilité
 - Décision : ajouter xuid || '' + log WARN sur erreur query
-- Raison : known_count=22 vs total=30 observé pour XxDaemonGamerxX → source 2 silently broken
+- Raison : known_count=22 vs total=30 observé pour joueur_291 → source 2 silently broken
 - Résultat : pending_fetch=0 pour les joueurs inactifs, sync ~2s au lieu de 285s
 - Note : pas de migration de schéma, le cast est pure défense
 ```
@@ -350,7 +350,7 @@ Garder le log ERROR existant `submitMatchAsBatch: queue.Submit échoué` au site
 ### Critère sortie
 
 - 0 entrée `json: unsupported value: NaN` dans `logs/sync.log` sur 3 cycles consécutifs
-- Les 2 matchs précédemment droppés (`508bd2fb`, `ed8adf67` côté Chocoboflor + `cf23bfed` côté XxDaemonGamerxX) doivent être re-tentés et réussir au prochain cycle après backfill (phase 8)
+- Les 2 matchs précédemment droppés (`508bd2fb`, `ed8adf67` côté joueur_165 + `cf23bfed` côté joueur_291) doivent être re-tentés et réussir au prochain cycle après backfill (phase 8)
 
 ### Thought_log entry
 
@@ -435,7 +435,7 @@ Optionnel : renommer le log INFO en `submitMatchAsBatch: batch soumis` pour clar
 [2026-05-24] Phase 5 — Post-sync gating sur réels inserts
 - Décision : pre-check match_registry dans submitMatchAsBatch, ne compter inserted que sur miss
 - Raison : SharedPersister idempotent ne remontait pas l'info "skipped" → engine bluff sur inserted → post-sync inutile
-- Résultat : sync XxDaemonGamerxX (inactif) passe de 285s à <5s
+- Résultat : sync joueur_291 (inactif) passe de 285s à <5s
 - Suite : Phase 5.b refactor PersistOutcome propre dans un PR séparé
 ```
 
@@ -553,7 +553,7 @@ Différer 7.A en PR dédié post-merge. Les phases 1-5 suffisent pour atteindre 
 
 ### Matchs concernés
 
-Tous les matchs ingérés depuis le dernier état clean de `player_match_enrichment` pour Chocoboflor et XxDaemonGamerxX. Identifiable via :
+Tous les matchs ingérés depuis le dernier état clean de `player_match_enrichment` pour joueur_165 et joueur_291. Identifiable via :
 
 ```sql
 SELECT mp.match_id FROM shared.match_participants mp
@@ -564,7 +564,7 @@ ORDER BY mp.start_time DESC;
 
 ### Script
 
-Réutiliser `cmd/repair_data_consistency/` qui existe déjà pour ce genre de cas. Ajouter une option `--rebuild-pme-from-shared --player Chocoboflor` qui :
+Réutiliser `cmd/repair_data_consistency/` qui existe déjà pour ce genre de cas. Ajouter une option `--rebuild-pme-from-shared --player joueur_165` qui :
 
 1. Liste les match_ids manquants (cf. SQL ci-dessus)
 2. Pour chacun, recompute les champs PME basiques (perf_score, session_id via Phase 4 du post-sync, is_with_friends via shared)
@@ -574,15 +574,15 @@ Si `repair_data_consistency` ne couvre pas ce cas, créer `cmd/backfill_pme_from
 
 ### Critère sortie
 
-- `SELECT COUNT(*) FROM player_match_enrichment` côté Chocoboflor = `SELECT COUNT(DISTINCT match_id) FROM shared.match_participants WHERE xuid='...'`
-- Idem XxDaemonGamerxX
+- `SELECT COUNT(*) FROM player_match_enrichment` côté joueur_165 = `SELECT COUNT(DISTINCT match_id) FROM shared.match_participants WHERE xuid='...'`
+- Idem joueur_291
 
 ### Thought_log entry
 
 ```
 [2026-05-24] Phase 8 — Backfill PME post-fix
 - Décision : script one-shot rebuild_pme_from_shared
-- Raison : 24 matchs Chocoboflor + 9 matchs XxDaemonGamerxX ingérés en shared mais pas en player_match_enrichment pendant la fenêtre buggée
+- Raison : 24 matchs joueur_165 + 9 matchs joueur_291 ingérés en shared mais pas en player_match_enrichment pendant la fenêtre buggée
 - Résultat : compteurs PME alignés avec shared.match_participants
 ```
 

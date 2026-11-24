@@ -5,13 +5,13 @@
 //
 // CONTEXTE — incident 2026-05-27 :
 //
-//	Madina/Choco/XxDaemon ont joué leurs matchs ensemble avec JGtm. Le
+//	joueur_075/joueur_901/joueur_639 ont joué leurs matchs ensemble avec JGtm. Le
 //	watcher JGtm a sync les 8 matchs → INSERT dans shared.match_registry
 //	+ shared.match_participants (rows pour les 4 joueurs). Mais pour
-//	Madina/Choco/XxDaemon eux-mêmes, leur sync delta voit ces 8 match_ids
+//	joueur_075/joueur_901/joueur_639 eux-mêmes, leur sync delta voit ces 8 match_ids
 //	comme "déjà connus" (règle knownset.Load : shared.match_participants au registre
 //	WHERE xuid=?) → arrête le delta → PlayerPersister.Persist jamais appelé
-//	→ aucune row dans player_match_enrichment côté Madina/Choco/XxDaemon.
+//	→ aucune row dans player_match_enrichment côté joueur_075/joueur_901/joueur_639.
 //
 //	Le post-sync existant (batchComputePerformanceScores, le LUSR v2,
 //	writeSessionAssignmentsBatch, citations, dominance, etc.) est composé
@@ -32,7 +32,7 @@
 //	    AND mp.match_id NOT IN (SELECT match_id FROM player_match_enrichment)
 //
 //	Idempotent : 0 row insérée si tous les enrichment existent déjà (cas
-//	stationnaire JGtm). Crée les rows orphelines (cas Madina/Choco/XxDaemon).
+//	stationnaire JGtm). Crée les rows orphelines (cas joueur_075/joueur_901/joueur_639).
 //	Le post-sync UPDATE remplit ensuite naturellement les scores.
 package sync
 

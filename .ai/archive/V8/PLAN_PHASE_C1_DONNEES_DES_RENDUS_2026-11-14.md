@@ -491,8 +491,8 @@ Demande de levelup-d5 (15/11) : `respawnCountdowns[].xuid` (même voie que le ro
 jointures filmIndex -> xuid de d0 côté web et de d5 côté Tactique). Refusée dans le gel par levelup-58 ->
 version suivante.
 Correctif hôte de levelup-58 (bots non épinglés nommés passés à `Options.Bots`) : 21 films, « 343
-Byrontron » gagne ses 2 vies, aucun nom humain ne change ; sièges de `4f77afc1` qui bougent (Narotlcs
-1 -> 26, bots 24 -> 1) vérifiés par l'agent de présence : lecture juste (Narotlcs listé au 26, la place 1
+Byrontron » gagne ses 2 vies, aucun nom humain ne change ; sièges de `4f77afc1` qui bougent (joueur_1379
+1 -> 26, bots 24 -> 1) vérifiés par l'agent de présence : lecture juste (joueur_1379 listé au 26, la place 1
 prend l'équipe du bot ; `replay/sieges_places.go`). Ancre périmée de `registre_objectifs.go:302`
 (depuis #21) corrigée dans c2-manches.
 Lot de d0 `feat/fin-de-vie-par-commande` (b4f5237, 459bbc6, base 5a71271) : `Track.EndReason` released |

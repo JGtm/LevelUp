@@ -7,7 +7,7 @@
  */
 import type { SquadImpactSessions } from '@/lib/api/types'
 
-export const FIXTURE_PLAYERS = ['JGtm', 'Madina97294', 'Chocoboflor'] as const
+export const FIXTURE_PLAYERS = ['JGtm', 'joueur_117', 'joueur_165'] as const
 
 /** L'ordre des colonnes de rôles (`squadimpact.RoleOrder`). */
 export const FIXTURE_ROLE_ORDER = [
@@ -62,10 +62,10 @@ const SESSION_SPECS: SessionSpec[] = [
     label: '14/11/2026 20:05–23:10 (5)',
     start: '2026-11-14T19:05:00Z',
     matches: [
-      { id: 'm-14-1', outcome: 2, roles: { JGtm: ['first_blood', 'top_killer'], Madina97294: ['last_casualty'], Chocoboflor: ['first_group_death'] } },
-      { id: 'm-14-2', outcome: 2, roles: { JGtm: ['clutch_finisher'], Chocoboflor: ['silent_hero', 'glass_jaw'] } },
-      { id: 'm-14-3', outcome: 3, roles: { Madina97294: ['first_blood'], JGtm: ['last_casualty', 'kamikaze'] }, absent: ['Chocoboflor'] },
-      { id: 'm-14-4', outcome: 2, roles: { Chocoboflor: ['top_killer', 'clutch_finisher'], Madina97294: ['first_group_death'] } },
+      { id: 'm-14-1', outcome: 2, roles: { JGtm: ['first_blood', 'top_killer'], joueur_117: ['last_casualty'], joueur_165: ['first_group_death'] } },
+      { id: 'm-14-2', outcome: 2, roles: { JGtm: ['clutch_finisher'], joueur_165: ['silent_hero', 'glass_jaw'] } },
+      { id: 'm-14-3', outcome: 3, roles: { joueur_117: ['first_blood'], JGtm: ['last_casualty', 'kamikaze'] }, absent: ['joueur_165'] },
+      { id: 'm-14-4', outcome: 2, roles: { joueur_165: ['top_killer', 'clutch_finisher'], joueur_117: ['first_group_death'] } },
       { id: 'm-14-5', outcome: 1 },
     ],
   },
@@ -73,25 +73,25 @@ const SESSION_SPECS: SessionSpec[] = [
     label: '10/11/2026 21:00–22:30 (3)',
     start: '2026-11-10T20:00:00Z',
     matches: [
-      { id: 'm-10-1', outcome: 3, roles: { JGtm: ['top_killer'], Madina97294: ['false_brother'], Chocoboflor: ['last_casualty', 'thief'] } },
-      { id: 'm-10-2', outcome: 3, roles: { Madina97294: ['first_blood'], Chocoboflor: ['kamikaze'] } },
-      { id: 'm-10-3', outcome: 2, roles: { JGtm: ['clutch_finisher', 'silent_hero'], Madina97294: ['last_group_kill'] } },
+      { id: 'm-10-1', outcome: 3, roles: { JGtm: ['top_killer'], joueur_117: ['false_brother'], joueur_165: ['last_casualty', 'thief'] } },
+      { id: 'm-10-2', outcome: 3, roles: { joueur_117: ['first_blood'], joueur_165: ['kamikaze'] } },
+      { id: 'm-10-3', outcome: 2, roles: { JGtm: ['clutch_finisher', 'silent_hero'], joueur_117: ['last_group_kill'] } },
     ],
   },
   {
     label: '07/11/2026 18:30–19:40 (2)',
     start: '2026-11-07T17:30:00Z',
     matches: [
-      { id: 'm-07-1', outcome: 2, roles: { JGtm: ['first_blood'], Madina97294: ['top_killer'] }, absent: ['Chocoboflor'] },
-      { id: 'm-07-2', outcome: 3, roles: { JGtm: ['glass_jaw'], Madina97294: ['clutch_finisher'] }, absent: ['Chocoboflor'] },
+      { id: 'm-07-1', outcome: 2, roles: { JGtm: ['first_blood'], joueur_117: ['top_killer'] }, absent: ['joueur_165'] },
+      { id: 'm-07-2', outcome: 3, roles: { JGtm: ['glass_jaw'], joueur_117: ['clutch_finisher'] }, absent: ['joueur_165'] },
     ],
   },
   {
     label: '31/10/2026 22:00–22:45 (2)',
     start: '2026-10-31T21:00:00Z',
     matches: [
-      { id: 'm-31-1', outcome: 2, roles: { Chocoboflor: ['first_blood', 'clutch_finisher'] }, absent: ['JGtm', 'Madina97294'] },
-      { id: 'm-31-2', outcome: 2, roles: { Chocoboflor: ['top_killer'] }, absent: ['JGtm', 'Madina97294'] },
+      { id: 'm-31-1', outcome: 2, roles: { joueur_165: ['first_blood', 'clutch_finisher'] }, absent: ['JGtm', 'joueur_117'] },
+      { id: 'm-31-2', outcome: 2, roles: { joueur_165: ['top_killer'] }, absent: ['JGtm', 'joueur_117'] },
     ],
   },
 ]

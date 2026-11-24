@@ -1,6 +1,6 @@
 const fs=require('fs'),zlib=require('zlib');
 const [id,suffix,stat]=process.argv.slice(2);
-const d=JSON.parse(zlib.gunzipSync(fs.readFileSync('c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
+const d=JSON.parse(zlib.gunzipSync(fs.readFileSync('<poste>/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
 for(const p of d.scoreTimeline.players){ if(!p.xuid.endsWith(suffix)) continue;
  const r=d.roster.find(x=>x.xuid===p.xuid);
  console.log('roster',JSON.stringify({idx:r.filmIndex,seat:r.seat,team:r.team,presence:r.presence,name:r.gamertag?'(name)':''}));

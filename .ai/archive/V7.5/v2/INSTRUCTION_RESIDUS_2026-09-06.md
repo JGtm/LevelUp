@@ -55,7 +55,7 @@ sont des jonctions en LECTURE et `data/cache/replays` un vrai dossier.
 |---|---|---|
 | `skullCarries/n` | **36** | **30** |
 | `coverage.skullCarries` | `trains=37 carries=36 noBridge=1` | `trains=37 carries=30 noBridge=1` **`carrierAbsent=6`** |
-| par xuid | — | `2535435655459376` 8 -> 4, `2535446563676950` 4 -> 3, `2535463284150067` 2 -> 1 |
+| par xuid | — | `2808972188417258` 8 -> 4, `2667774381241558` 4 -> 3, `2663208125445776` 2 -> 1 |
 
 `trains`, `grabs` et `noBridge` sont IDENTIQUES : la lecture du film n'a rien perdu. Le compteur
 `carrierAbsent=6` dit que c'est un GATE qui jette. Quatre portages de plus sont ROGNES sans que
@@ -350,7 +350,7 @@ anciens artefacts sur chacun d'eux.
 
 ## Decouvertes, notees et NON traitees
 
-1. **`51ebbc0f` publie `assists = 63` pour `2535439712156981`**, quand la feuille en donne **5**.
+1. **`51ebbc0f` publie `assists = 63` pour `2572790178344426`**, quand la feuille en donne **5**.
    Valeur APPARUE (le joueur n'avait aucune courbe au parc), donc invisible au balayage, qui ne
    compare que ce qui existait des deux cotes. Le film a deux manches et ce meme match ne rend
    AUCUNE courbe exacte sur huit joueurs : la reconstruction par manche y est douteuse de bout en

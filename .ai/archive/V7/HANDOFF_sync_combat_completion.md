@@ -1,7 +1,7 @@
 # HANDOFF — Fiabilisation sync : données de combat + citations vides (onglet Détails)
 
 > Fichier de continuité anti-perte-de-contexte. **Mettre à jour à chaque étape.**
-> Plan complet approuvé : `C:\Users\Guillaume\.claude\plans\les-matchs-d-hier-a-whimsical-lark.md`
+> Plan complet approuvé : `<poste>\.claude\plans\les-matchs-d-hier-a-whimsical-lark.md`
 > Audit cause racine : `.ai/AUDIT_SYNC_COMBAT_RO_2026-05-31.md`
 
 ## ✅ PHASE 1b SLICE 1 LIVRÉE (2026-06-01, non commité) — lire en premier
@@ -330,7 +330,7 @@ exactement la divergence orchestrateur vs legacy. Le fix Phase 1 (tout via persi
   `/health` renvoie `uptime:"33s"` FIXE (champ non fiable, ne pas s'y fier).
 - **Action faite** : kill de TOUS air.exe + server.exe (confirmé 0/0), `rm tmp/server.exe`, puis **j'ai
   relancé Air moi-même** depuis `apps/go-api` :
-  `CGO_ENABLED=1 PATH=/c/msys64/ucrt64/bin:$PATH /c/Users/Guillaume/go/bin/air > /c/Users/Guillaume/air2.log`
+  `CGO_ENABLED=1 PATH=/c/msys64/ucrt64/bin:$PATH <poste>/go/bin/air > <poste>/air2.log`
   (tâche bg bm4rslqu5). Health-poll bg bdrf45oef → notifiera "SERVER-READY".
 - **Triggers /run testés** : `POST /api/v1/_diag/auto-sync/run` avec `Origin: http://localhost:5173`
   (origins autorisés par défaut : localhost/127.0.0.1 :5173 et :5174, cf. config.go parseCORSOrigins).
@@ -355,8 +355,8 @@ exactement la divergence orchestrateur vs legacy. Le fix Phase 1 (tout via persi
 
 ## ⚡ DERNIER POINT (session 2026-05-31, suite)
 - **Serveur redémarré** avec instrumentation (Air relancé manuellement :
-  `cd apps/go-api && CGO_ENABLED=1 PATH=/c/msys64/ucrt64/bin:$PATH /c/Users/Guillaume/go/bin/air`,
-  log de boot dans `C:\Users\Guillaume\air_run.log`). 1 seule instance server.exe confirmée (pas de
+  `cd apps/go-api && CGO_ENABLED=1 PATH=/c/msys64/ucrt64/bin:$PATH <poste>/go/bin/air`,
+  log de boot dans `<poste>\air_run.log`). 1 seule instance server.exe confirmée (pas de
   multi-instance). Health OK :8000.
 - **Au boot, 2 signaux notables** : `art_guard: corruption ART détectée db=shared table=match_participants`
   (divergences_count=1) ET `spartan_cron: player DB verrouillée par un autre process`. À investiguer mais

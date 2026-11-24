@@ -144,7 +144,7 @@ skills `arch-rules`, `db-schema`, `color-tokens`, `frontend-patterns`.
 
 ### [P1] Le seul test du score de mode sur film réel est éteint par un chemin absolu mort
 - Où : `apps/go-api/internal/analysis/objectivescore/cache_backed_test.go:20` (const
-  `c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache`), skip `:88`.
+  `<poste>/Downloads/Scripts/LevelUp-go-migration/data/cache`), skip `:88`.
 - Règle : A8 doctrine 5 (garde-rail qui ne tourne pas = décoratif) + 1.
 - Conséquence : répertoire inexistant (les trois niveaux), const sans repli env
   (contrairement à `FILM_CACHE_ROOT`/`KILLSOURCE_FIXTURES`/`REPLAY_FILM_DIR` ailleurs) ;

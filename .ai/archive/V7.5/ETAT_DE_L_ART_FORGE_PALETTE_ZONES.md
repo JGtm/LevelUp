@@ -868,7 +868,7 @@ les memes formes translatees de 12 m en x et en y. Test 3D : la hauteur compte.
 
 | instant du releve | ce que le releve dit | reels DEMI | temoin DEMI | reels PLEIN | temoin PLEIN |
 |---|---|---:|---:|---:|---:|
-| 48 s | flyguy8773 capture la base B | 2 | **0** | 2 | **0** |
+| 48 s | joueur_780 capture la base B | 2 | **0** | 2 | **0** |
 | 90 s | une equipe controle les trois bases | 2 | **3** | 1 | 1 |
 | 190 s | score 69-30 | 3 | **4** | 1 | **0** |
 | 334 s | controle des trois bases | 3 | **0** | 2 | **0** |

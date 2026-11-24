@@ -1,6 +1,6 @@
 import fs from 'fs';
 const id = process.argv[2];
-const doc = JSON.parse(fs.readFileSync(`C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/${id}.json`, 'utf8'));
+const doc = JSON.parse(fs.readFileSync(`C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/${id}.json`, 'utf8'));
 const byT = (arr) => { const m = {}; for (const e of arr) (m[e.t] ||= []).push(e); return m; };
 const L = byT(doc.loadouts), I = byT(doc.inventory);
 console.log('loadouts by t:', Object.entries(L).map(([t,a])=>`${t}:${a.length}`).join(' '));

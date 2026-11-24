@@ -7,8 +7,8 @@ Plan qui s'appuie sur ces annexes : `../PLAN_RETOURS_REJEU_2026-09-23.md`.
 | Fichier | Point utilisateur |
 |---|---|
 | `RAPPORT_tirs_vehicules.md` | Ghost sans tir, sans son, sans éclair ; table de vérité de toutes les armes de véhicule |
-| `RAPPORT_positions_limbe.md` | Mongoose qui part seul et sort de la carte ; Madina qui « vole » à sa réapparition |
-| `RAPPORT_fiche_armes.md` | Fiche de XxDaemonGamerxX sans armes à 2:08 |
+| `RAPPORT_positions_limbe.md` | Mongoose qui part seul et sort de la carte ; joueur_075 qui « vole » à sa réapparition |
+| `RAPPORT_fiche_armes.md` | Fiche de joueur_291 sans armes à 2:08 |
 | `RAPPORT_equipes_b1ad85eb.md` | Eagle à 3, puis 5 ; les deux équipes à 5 |
 | `RAPPORT_ctf_ab526724.md` | Drapeau, score et frise absents ; véhicules de décor sur Starboard |
 | `RAPPORT_web_tactique_assets_sprint.md` | Page Tactique qui recharge tout ; doublons « Solution » ; « Sprint » sur les fiches |

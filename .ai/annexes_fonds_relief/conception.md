@@ -13,7 +13,7 @@ du moteur). Un étage fait 1,8 à 2,2 u. Le pixel du fond vaut 0,029 u (Recharge
 l'autre. Les poids sont en Ko de 1 024 octets.
 
 Mesures : scripts jetables, hors dépôt, dans
-`C:\Users\GUILLA~1\AppData\Local\Temp\claude\17871fa88c29004d\63a04594-e948-4485-9732-90ff5a088fa7\scratchpad\conception`
+`<poste>\AppData\Local\Temp\claude\17871fa88c29004d\63a04594-e948-4485-9732-90ff5a088fa7\scratchpad\conception`
 (`m1` à `m9`, sorties `m1.txt` à `m9.txt`). Ce dossier est temporaire : les chiffres utiles sont recopiés ici.
 
 ---
@@ -413,7 +413,7 @@ Avec (b), « Tout » montre les passerelles et les étages hauts (comme le fait 
 du dessus), les traits perdent 11 à 41 % de bruit, et la coupe de la maquette devient juste sans retouche.
 Avec (a), « Tout » reste exactement ce que le user a validé, mais 59 % des plates-formes hautes de Lattice
 n'y figurent pas. Aperçus teintés des deux, à moitié de la taille, vue « Tout », pour les 4 cartes :
-`C:\Users\GUILLA~1\AppData\Local\Temp\claude\17871fa88c29004d\63a04594-e948-4485-9732-90ff5a088fa7\scratchpad\conception\sortie`
+`<poste>\AppData\Local\Temp\claude\17871fa88c29004d\63a04594-e948-4485-9732-90ff5a088fa7\scratchpad\conception\sortie`
 (`<clé>.a.apercu.png`, `<clé>.b.apercu.png`, avec les `relief.webp` et `relief.json` au format retenu). Sur
 Lattice la bande sombre en diagonale de (a) est la tranchée que le rendu montre sous les passerelles ; sur
 Streets les rectangles sombres de (a) sont des surfaces sous le niveau de la rue. **C'est la question 1 du

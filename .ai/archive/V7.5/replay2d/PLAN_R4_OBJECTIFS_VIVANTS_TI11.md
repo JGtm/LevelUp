@@ -528,7 +528,7 @@ Phases 1, 2 et 4 sont livrables independamment ; 3 et 5 portent leur dependance.
   Lecture des films locaux seulement (`data/cache/film_chunks/`, worktree principal, LECTURE
   SEULE).
 - Ordre de fusion prevu : **R3 puis R4**. Je me realigne sur R3 si les fichiers partages bougent.
-- Cache Go isole : `GOCACHE=C:\Users\Guillaume\Projects\LevelUp-wt-ti11\.gocache` sur TOUTE
+- Cache Go isole : `GOCACHE=<poste>\Projects\LevelUp-wt-ti11\.gocache` sur TOUTE
   commande `go`, une seule a la fois (le cache partage se corrompt sous deux `go` concurrents).
 
 ---
@@ -568,7 +568,7 @@ Phases 1, 2 et 4 sont livrables independamment ; 3 et 5 portent leur dependance.
    decisions de la section 5 : elles sont fermes.
 4. Verifier sur pieces avant de coder ET avant de cocher (le code bouge — le lot jumeau R3
    travaille en parallele sur des fichiers partages).
-5. Etat git : `git -C C:\Users\Guillaume\Projects\LevelUp-wt-ti11 log --oneline -10`.
+5. Etat git : `git -C <poste>\Projects\LevelUp-wt-ti11 log --oneline -10`.
 
 ---
 

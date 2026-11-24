@@ -20,7 +20,7 @@ schéma de rejeu : recuisson locale + rsync (séquence de la release), à préve
 ### L1 — Sessions d'escouade éclatées (T2, priorité très haute de l'utilisateur)
 
 **Cause établie le 21/10 sur copie des bases** (serveur local arrêté 2 min, accord de
-l'utilisateur) : les 9 matchs du 17/10 (JGtm + Madina97294 + Chocoboflor + un 4e joueur qui
+l'utilisateur) : les 9 matchs du 17/10 (JGtm + joueur_117 + joueur_165 + un 4e joueur qui
 change) étaient UNE session (n° 207, 9 matchs) tant que seule la synchro écrivait. Le recalcul
 complet du 19/10 18:38 (2.10b) a réécrit 1 122 à 1 129 : une session par match, sauf les deux
 matchs où le 4e joueur était le même. Les deux chemins n'utilisent pas la même règle :
@@ -67,12 +67,12 @@ réglage.
 
 ### L6 — Rejeu : lectures à instruire avant toute correction
 
-- n° 3 : Satoru JZ ramasse le surbouclier (son, fiche, compte à rebours du socle) avant d'être
+- n° 3 : joueur_459 ramasse le surbouclier (son, fiche, compte à rebours du socle) avant d'être
   passé sur le socle : décalage de temps ou de position à mesurer.
-- n° 12 : 0d094c9b, AfterHoney65177 commence le match avec le surbouclier selon sa fiche.
+- n° 12 : 0d094c9b, joueur_646 commence le match avec le surbouclier selon sa fiche.
 - n° 10 : calage des médias sur la frise : 72b0a25e (la 1re capture finit par le triple frag mais
   la vidéo démarre à l'instant de la médaille) ; bfecd02b (le média de JGtm finit 1-2 s après la
-  mort de Chocoboflor à 2:15).
+  mort de joueur_165 à 2:15).
 - n° 3 (interface) : power-up sur socle et emplacement vide n'ont pas le code couleur des armes
   spéciales (blanc bordé de jaune sur socle, jaune quand vide) — à aligner.
 

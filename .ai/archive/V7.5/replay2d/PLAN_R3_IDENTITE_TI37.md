@@ -3,7 +3,7 @@
 > Ecrit le 2026-08-17. Lot R3 du `PLAN_RETOURS_PLANCHE_2026-08-16.md` (§R3, priorite
 > utilisateur explicite au bilan F1 : « j'aimerais les murs de protection et capteurs de
 > menaces [...] sujet a pousser davantage niveau investigation »).
-> Worktree `C:/Users/Guillaume/Projects/LevelUp-wt-ti37`, branche `wt/ti37-identite`,
+> Worktree `<poste>/Projects/LevelUp-wt-ti37`, branche `wt/ti37-identite`,
 > base `feat/v75` = `3058afbba`. Lot jumeau R4 (`ti=11`, objectifs vivants) tourne EN
 > PARALLELE sur `LevelUp-wt-ti11` : voir « Contrat d'interface avec R4 » ci-dessous.
 > Execution sous le contrat du skill `plan-execution` (ordre strict, un item = un statut,
@@ -113,7 +113,7 @@ partition, il sert a la NOMMER sans circularite.
 ## 4. Corpus — ferme, et pourquoi ces films
 
 3 films PRINCIPAUX (famille B, riches en rangs 19 et 22, chiffres du registre) + 2 TEMOINS.
-Racine (lecture seule) : `C:/Users/Guillaume/Projects/LevelUp/data/cache/film_chunks/`.
+Racine (lecture seule) : `<poste>/Projects/LevelUp/data/cache/film_chunks/`.
 
 | film | role | justification |
 |---|---|---|
@@ -188,11 +188,11 @@ phase 4 est la seule qui touche l'artefact, et elle DEPEND du verdict de la phas
 **Gate 1** (a executer, sorties collees au journal de phase) :
 
 ```
-export GOCACHE=C:/Users/Guillaume/Projects/LevelUp-wt-ti37/.gocache
+export GOCACHE=<poste>/Projects/LevelUp-wt-ti37/.gocache
 cd apps/go-api && CGO_ENABLED=0 go build ./internal/analysis/...
 cd apps/go-api && CGO_ENABLED=0 go vet ./internal/analysis/filmdec/
 cd apps/go-api && CGO_ENABLED=0 go test ./internal/analysis/filmdec/ ./internal/analysis/replay/
-cd apps/go-api && CGO_ENABLED=0 EQUIP_ID_FILM=C:/Users/Guillaume/Projects/LevelUp/data/cache/film_chunks/000d5950 \
+cd apps/go-api && CGO_ENABLED=0 EQUIP_ID_FILM=<poste>/Projects/LevelUp/data/cache/film_chunks/000d5950 \
   go test ./internal/analysis/filmdec/ -run '^TestEquipmentIdentity$' -timeout 30m -v
 ```
 
@@ -451,7 +451,7 @@ Ouverte SEULEMENT si la phase 3 nomme au moins une classe. Sinon `[~]` + registr
 **Gate 4** :
 
 ```
-export GOCACHE=C:/Users/Guillaume/Projects/LevelUp-wt-ti37/.gocache
+export GOCACHE=<poste>/Projects/LevelUp-wt-ti37/.gocache
 cd apps/go-api && CGO_ENABLED=0 go build ./... && CGO_ENABLED=0 go vet ./internal/analysis/...
 cd apps/go-api && CGO_ENABLED=0 go test ./internal/analysis/... ./internal/games/...
 make check-types && make test-web    (si 4.5 touche le web)
@@ -489,7 +489,7 @@ R3 et R4 tournent EN PARALLELE sur deux worktrees. Ordre de fusion prevu : **R3 
    aucune ecriture sur une base DuckDB, aucune ecriture hors du worktree R3. Les films sont
    lus en LECTURE SEULE depuis le depot principal.
 5. **Cache Go isole** : toutes les commandes portent
-   `GOCACHE=C:/Users/Guillaume/Projects/LevelUp-wt-ti37/.gocache` (exclu via
+   `GOCACHE=<poste>/Projects/LevelUp-wt-ti37/.gocache` (exclu via
    `.git/worktrees/.../info/exclude`, jamais le `.gitignore` versionne). **Une seule
    commande `go` a la fois** — le cache partage se corrompt sous deux `go` concurrents.
 
@@ -578,7 +578,7 @@ propre ecrite et argumentee (regle 9 du contrat).
 
 1. Relire le skill `plan-execution`, puis ce fichier de haut en bas : les cases cochees
    disent ou en est le lot ; le journal §10 dit ce qui a ete mesure.
-2. Verifier la branche : `git -C C:/Users/Guillaume/Projects/LevelUp-wt-ti37 branch
+2. Verifier la branche : `git -C <poste>/Projects/LevelUp-wt-ti37 branch
    --show-current` doit rendre `wt/ti37-identite`.
 3. Relire §6 (contrat R4) AVANT de toucher un fichier partage du decodeur.
 4. **Verifier sur pieces** avant de coder : rouvrir le fichier et la ligne cible, le code a

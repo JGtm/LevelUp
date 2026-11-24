@@ -2,7 +2,7 @@
 
 Ouvert le 2026-11-22. Contrat d'exécution : skill `plan-execution` + complément `levelup-plan`.
 Branche : `feat/impact-sessions` (depuis `feat/medailles-bouclier`, avant sa fusion dans `release/v8.3.0` ; se fusionne après elle),
-worktree `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-impact-sessions`. Intégration : `release/v8.3.0`.
+worktree `<poste>/Downloads/Scripts/LevelUp-wt-impact-sessions`. Intégration : `release/v8.3.0`.
 
 ## Objectif
 

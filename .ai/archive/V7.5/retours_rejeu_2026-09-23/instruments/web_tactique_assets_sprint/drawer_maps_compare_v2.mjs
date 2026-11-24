@@ -11,8 +11,8 @@ import { execFileSync } from 'node:child_process'
 import { readdirSync } from 'node:fs'
 import { extname, basename, join } from 'node:path'
 
-const SP = 'C:/Users/GUILLA~1/AppData/Local/Temp/claude/c--Users-Guillaume-Downloads-Scripts-LevelUp-go-migration/5e1d6f3f-b6be-4233-b361-e8a896dd728d/scratchpad'
-const REPO = 'C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration'
+const SP = 'C:/Users/utilisateur/AppData/Local/Temp/claude/c--Users-poste-Downloads-Scripts-LevelUp-go-migration/5e1d6f3f-b6be-4233-b361-e8a896dd728d/scratchpad'
+const REPO = 'C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration'
 const DB = join(SP, 'db', 'metadata.duckdb')
 const q = (process.argv[2] ?? '').toLowerCase()
 

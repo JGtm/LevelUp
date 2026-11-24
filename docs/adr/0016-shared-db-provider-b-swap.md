@@ -20,7 +20,7 @@ The DuckDB-Go v2 driver refuses #3 while #1 + #2 are alive, raising the error :
 Can't open a connection to same database file with a different configuration than existing connections
 ```
 
-This made `auto_sync RunDelta` flaky in production (observed on gamertag `Madina97294`, log 2026-05). A trade-off comment in `main.go:197-208` documented the situation : *the sync may fail rather than blocking HTTP handlers*.
+This made `auto_sync RunDelta` flaky in production (observed on gamertag `joueur_117`, log 2026-05). A trade-off comment in `main.go:197-208` documented the situation : *the sync may fail rather than blocking HTTP handlers*.
 
 ## Decision
 

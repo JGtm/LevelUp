@@ -1,6 +1,6 @@
 // Distribution du nombre d'echantillons de position par vie de vehicule (familles pilotables), parc entier.
 import fs from 'fs';
-const dir = 'C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
+const dir = 'C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
 const files = fs.readdirSync(dir).filter(f => f.endsWith('.json') && !f.includes('derived'));
 const skip = new Set(['falcon','pelican','phantom','skiff','tourelle_auto_bannie']);
 const hist = {}; const low = [];

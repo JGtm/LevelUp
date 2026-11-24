@@ -378,7 +378,7 @@ func TestBuildProjections_RegressiveHistory(t *testing.T) {
 }
 
 // TestBuildProjections_MadinaScenarioPostFix : avec un historique monotone
-// type Madina (3M XP à J-30 → 5M aujourd'hui), les projections sont calculées
+// type joueur_075 (3M XP à J-30 → 5M aujourd'hui), les projections sont calculées
 // et la courbe Hero est datée.
 func TestBuildProjections_MadinaScenarioPostFix(t *testing.T) {
 	now := time.Now()

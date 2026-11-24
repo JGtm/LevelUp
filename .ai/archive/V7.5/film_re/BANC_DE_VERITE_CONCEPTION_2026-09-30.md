@@ -3,7 +3,7 @@
 > Contexte : `.ai/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md` (ADR 0034). Branche
 > `feat/suite-audit-decodeur-verite`, base `8cd560673`. Phase 1 = inventaire et conception, AUCUN code de
 > production. Chiffres d'essai calculés en lecture seule sur des artefacts déjà cuits (aucun décodage,
-> aucune base ouverte) : `C:/Users/GUILLA~1/AppData/Local/Temp/j11/art/<révision>/<short8>.json` et
+> aucune base ouverte) : `<poste>/AppData/Local/Temp/j11/art/<révision>/<short8>.json` et
 > `.../j11/facts/<short8>.facts.json`, par un script jetable hors dépôt (non versionné ; la phase 2
 > réimplémente en Go).
 
@@ -414,8 +414,8 @@ verdict du banc ne les juge pas : il ne juge que leur évolution.
    `4f77afc1`, 89 sur `50247b26`, 114 sur `a349fea8`, 17 sur `a521164d`, 14 sur `c75f33b8` et
    `d9781168`, de 1 à 11 ailleurs. Ce sont des vies coupées sans mort, ou des départs et fins de manche :
    la cause n'est pas instruite.
-8. **V-4, deux corps** : `084a804d`, 3 recouvrements (xuid `2533274851740446` 1 image, `2535442829120831`
-   9 images, `2535464635796745` 208 images), apparus à la fusion J5+J6+J9.
+8. **V-4, deux corps** : `084a804d`, 3 recouvrements (xuid `2712846978320124` 1 image, `2770778513120612`
+   9 images, `2786629734999953` 208 images), apparus à la fusion J5+J6+J9.
 9. **V-3, actions hors vie** : 255 sur 19 témoins, dont 114 sur `4f77afc1` et 93 sur `084a804d`.
    **CORRECTION de la phase 1** : les « grenades hors vie des vieux builds » (285) étaient presque toutes
    au slot 0, qui veut dire « pont muet », le lanceur est inconnu (`film/replay/grenades.go`). Ce ne sont
@@ -428,7 +428,7 @@ verdict du banc ne les juge pas : il ne juge que leur évolution.
     `e5adf7b2` (surtout des échantillons de véhicule sur BTB et les builds anciens), 10 sur `084a804d` et
     `4f77afc1`. Sur les cartes Arena, ce sont des armes `spawned` jamais ramassées, à plus de 100 m.
     Est-ce un rangement hors carte réel ou un faux ? Non instruit.
-13. **V-5** : 1 action d'objectif `kills` hors présence (`bcb6d393`, xuid `2535468064146356`, image 578).
+13. **V-5** : 1 action d'objectif `kills` hors présence (`bcb6d393`, xuid `2544014377305993`, image 578).
 14. **O-S2** : sur `084a804d` (BTB CTF), aucune capture publiée contre un score de 3 à 2 (FN 5) : le
     calque `objectives` n'est pas publié sur ce témoin. Sur `c75f33b8`, 0 détonation contre 3 (FN 3,
     découverte 1).

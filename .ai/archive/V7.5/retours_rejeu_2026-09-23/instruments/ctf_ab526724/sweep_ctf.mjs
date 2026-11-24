@@ -1,6 +1,6 @@
 // Balayage SEQUENTIEL (un document a la fois) des documents de rejeu CTF + etat du cache film.
 import fs from 'fs';
-const ROOT = 'C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/';
+const ROOT = 'C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/';
 const ids = process.argv.slice(2);
 const rows = [];
 for (const id of ids) {

@@ -13,7 +13,7 @@ import type { MatchEmpriseBlock, MatchLivesNearTeammate, MatchScoreboardRow, Squ
 
 const c = (us: number, them: number) => ({ us, them })
 
-export const XUID = { jgtm: 'x-jgtm', jacob: 'x-jacob', madina: 'x-madina', choco: 'x-choco' } as const
+export const XUID = { jgtm: 'x-jgtm', jacob: 'x-jacob', joueur_075: 'x-joueur_075', joueur_901: 'x-joueur_901' } as const
 
 function obj(
   resource: string,
@@ -29,8 +29,8 @@ function obj(
 const STARBOARD_OBJECTS: SquadEmpriseObject[] = [
   obj('powerup', 'overshield', 'Surbouclier', c(5, 2), [
     { xuid: XUID.jgtm, taken: 2 },
-    { xuid: XUID.madina, taken: 1 },
-    { xuid: XUID.choco, taken: 2 },
+    { xuid: XUID.joueur_075, taken: 1 },
+    { xuid: XUID.joueur_901, taken: 2 },
   ], { pads_emptied: 10 }),
   obj('power_weapon', 'energy_sword', 'Épée à énergie', c(0, 2), []),
   obj('rack', 'shock_rifle', 'Fusil électrique', c(2, 2), [{ xuid: XUID.jacob, taken: 2 }]),
@@ -56,8 +56,8 @@ export const STARBOARD: MatchEmpriseBlock = {
   players: [
     { xuid: XUID.jgtm, gamertag: 'JGtm' },
     { xuid: XUID.jacob, gamertag: 'Joueur9c' },
-    { xuid: XUID.madina, gamertag: 'Joueur90002' },
-    { xuid: XUID.choco, gamertag: 'Joueur90001' },
+    { xuid: XUID.joueur_075, gamertag: 'Joueur90002' },
+    { xuid: XUID.joueur_901, gamertag: 'Joueur90001' },
   ],
   objects: STARBOARD_OBJECTS,
   resources: [
@@ -141,9 +141,9 @@ const life = (xuid: string, near: [number, number], alone: [number, number]) => 
 /** Les vies du 22/09 au seuil de 18 m (MESURES §3, I) — l'ordre du repo, pas celui des fiches. */
 export const STARBOARD_LIVES: MatchLivesNearTeammate = {
   players: [
-    life(XUID.choco, [13, 10], [2, 1]),
+    life(XUID.joueur_901, [13, 10], [2, 1]),
     life(XUID.jgtm, [11, 8], [2, 0]),
-    life(XUID.madina, [14, 16], [3, 6]),
+    life(XUID.joueur_075, [14, 16], [3, 6]),
     life(XUID.jacob, [9, 30], [1, 1]),
   ],
 }
@@ -152,8 +152,8 @@ export const STARBOARD_LIVES: MatchLivesNearTeammate = {
 export const STARBOARD_SCOREBOARD = [
   { xuid: XUID.jgtm, gamertag: 'JGtm', team_side: 't0', is_me: true },
   { xuid: XUID.jacob, gamertag: 'Joueur9c', team_side: 't0' },
-  { xuid: XUID.madina, gamertag: 'Joueur90002', team_side: 't0' },
-  { xuid: XUID.choco, gamertag: 'Joueur90001', team_side: 't0' },
+  { xuid: XUID.joueur_075, gamertag: 'Joueur90002', team_side: 't0' },
+  { xuid: XUID.joueur_901, gamertag: 'Joueur90001', team_side: 't0' },
   { xuid: 'x-o1', gamertag: 'Joueur9000006', team_side: 't1' },
   { xuid: 'x-o2', gamertag: 'Joueur900000007', team_side: 't1' },
   { xuid: 'x-o3', gamertag: 'Joueur90010', team_side: 't1' },

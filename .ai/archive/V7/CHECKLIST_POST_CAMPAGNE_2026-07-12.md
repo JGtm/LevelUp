@@ -48,7 +48,7 @@ La prod est à jour : tout est constatable sur https://lvelup.info (ou en local 
       réelle », ligne « Lobby » dans le tooltip, sous-titre « forme — attendu : ta
       réponse habituelle... »
 - [ ] Timeseries et Squad : sections engagement rendent correctement
-- [ ] Cohérence des valeurs : Chocoboflor coefs ~0.8, Madina ~1.3-1.4 (unranked) —
+- [ ] Cohérence des valeurs : joueur_165 coefs ~0.8, joueur_075 ~1.3-1.4 (unranked) —
       conforme à leurs profils ?
 
 ### A4. GATE HUMAIN E6b — scores engagement Halo 5 (plan 6) — DÉCISION
@@ -144,8 +144,8 @@ désynchronisé qui masque un retard (piège connu).
    investiguer (config d'ouverture divergente).
 8. **H5 achievements** : `RunAchievementsOnly` échoue ×4 joueurs (auto_sync « erreurs
    partielles ») — gap connu du registre parité H5, à prioriser ou accepter.
-9. **spartan_cron** : WARN répétés sur les joueurs démo sans player DB (Trimbutton,
-   GeleJugefi, …) — bruit à éteindre (skip des profils démo ou provisioning).
+9. **spartan_cron** : WARN répétés sur les joueurs démo sans player DB (joueur_1018,
+   joueur_1017, …) — bruit à éteindre (skip des profils démo ou provisioning).
 10. **Cron leaderboard** : `découverte saison active échouée` (404 saison/playlist)
     toujours présent — « comportement connu » du chantier leaderboard au 2026-07-10,
     à requalifier (attendu ou à corriger).

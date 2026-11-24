@@ -15,7 +15,7 @@ import { gestureOwner, readEquipmentGestures } from '../features/match-replay/mo
 import { playerInstantEstimatesAt, readInstantEstimatesSeries } from '../features/match-replay/model/playerInstantEstimates'
 import { identityKeys } from '../features/match-replay/model/playerInstantStats'
 
-const DIR = 'c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite'
+const DIR = '<dossier du projet>/data/cache/replays/halo_infinite'
 const OUT = path.join(os.tmpdir(), 'bl1118_mesure_b_c.json')
 
 const bucket = (a: number): string => (a < 10 ? '1-9' : a < 50 ? '10-49' : a < 100 ? '50-99' : '100+')

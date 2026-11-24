@@ -125,7 +125,7 @@
     game_state_measure_test.go:73:     slot  5280 · en-tetes   1083 · dans la grammaire   1003 · annoncent i5    928
     game_state_measure_test.go:73:     slot  1184 · en-tetes    949 · dans la grammaire    912 · annoncent i5    794
     game_state_measure_test.go:73: CHASSE HORLOGE non demandee (CLOCK_HUNT absent) : la passe qui marche tous les slots coute ~50 s par film et n'a rien rendu sur les films deja mesures
-    game_state_measure_test.go:74: TSV deposes dans C:\Users\Guillaume\Projects\LevelUp-wt-joueur-moteur\.ai\V7.5\replay2d\registre_film\lotBP
+    game_state_measure_test.go:74: TSV deposes dans <poste>\Projects\LevelUp-wt-joueur-moteur\.ai\V7.5\replay2d\registre_film\lotBP
 --- PASS: TestGameEntitiesPhase0 (29.42s)
 PASS
 ok  	levelup/go-api/internal/analysis/filmdec	30.462s

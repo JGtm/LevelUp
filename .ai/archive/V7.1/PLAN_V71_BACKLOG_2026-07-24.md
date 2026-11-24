@@ -36,7 +36,7 @@
 | I16 | Vérifier que TOUS les tableaux sont triables par colonnes | Audit |
 | I17 | [POSTPONED par l'user] premier frag/première mort normalisé — HORS PÉRIMÈTRE | — |
 | I18 | Titres d'onglet navigateur absents/instables (« LevelUp » seul) | Bug |
-| I19 | Option colonne « ouvrir sur HaloWaypoint » (2e colonne, logo thème clair/sombre — asset : C:\Users\Guillaume\Pictures\Screenpresso\2026-07-24_13h49_49.png à détourer) | Feature |
+| I19 | Option colonne « ouvrir sur HaloWaypoint » (2e colonne, logo thème clair/sombre — asset : <poste>\Pictures\Screenpresso\2026-07-24_13h49_49.png à détourer) | Feature |
 | I20 | Explorer « Sur XX matchs ensemble » : + écart de frags cumulé, donuts TdV, sparkline, FDA avec/contre (scope = décision user) | Feature |
 | I21 | Élucider `perf="1"` dans l'URL Explorer (+ fix si reliquat) | Diag |
 | I22 | [FINAL] What's new README FR/EN + changelogs FR/EN + notes de version in-app (depuis v7.0.0) | Docs |
@@ -159,15 +159,15 @@ CI branche VERTE sur cb4443ef4 (fix openMemDB : collision avec fichier
 integration-taggé, leçon en mémoire).
 
 ## Vérification BTB post-lot (demande user 2026-07-24 soir)
-Madina97294 = 590 matchs BTB MAIS quasi tous antérieurs à mars 2026 (avant le début
+joueur_117 = 590 matchs BTB MAIS quasi tous antérieurs à mars 2026 (avant le début
 du tracking career_progression). Un seul BTB dans la fenêtre calibrable, contaminé
 (left_in_progress, score partiel) → multiplicateur BTB NON vérifiable chez nous
 (confirme le hors-périmètre du plan XP). Contrôle béton : 28/28 fenêtres 1-match
 non-BTB à ratio exactement 2,0000 → ×2 uniforme solide, le score reste la bonne
-source (conclusion user validée). DÉCOUVERTE annexe : la série xp_total de Madina
+source (conclusion user validée). DÉCOUVERTE annexe : la série xp_total de joueur_075
 tombe à 0 depuis le 2026-05-25 (conséquence du RT mort AADSTS70000 connu) — se
 réparera au re-onboarding de son token. Requêtes rejouables : scratchpad
-q_windows4.sql (extensible à JGtm/Chocoboflor).
+q_windows4.sql (extensible à JGtm/joueur_165).
 
 ## Découvertes hors périmètre (règle 7 — noter, ne pas traiter)
 - winRateVsHistoryChart.ts (non-bullet) = builder MORT (aucun caller) → suppression incluse

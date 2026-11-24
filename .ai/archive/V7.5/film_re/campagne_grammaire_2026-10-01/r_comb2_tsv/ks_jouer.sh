@@ -1,10 +1,10 @@
 #!/bin/bash
 # ks_jouer.sh <variante> : killsource json (surcouche unique) sur les 19 temoins de carte connue,
 # sous les bascules de la variante. Sortie : ks/<variante>/<film>.json (+ .err).
-SP=/c/Users/GUILLA~1/AppData/Local/Temp/claude/c--Users-Guillaume-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad
+SP=/c/Users/utilisateur/AppData/Local/Temp/claude/c--Users-poste-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad
 V=$1
-CAT=C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/titles/halo_infinite/reference/map_quant_bounds.json
-CACHE=C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache
+CAT=C:/Users/utilisateur/Downloads/Scripts/LevelUp/data/titles/halo_infinite/reference/map_quant_bounds.json
+CACHE=C:/Users/utilisateur/Downloads/Scripts/LevelUp/data/cache
 BORNES="0:0.266705,51.033180,-9.330649,55.209633,106.171257,78.573174;2:27.834414,23.467054,-9.330649,101.837700,106.171265,78.573174;3:-3500.449951,-3412.616455,-9.330649,4389.524902,4362.876953,880.165344"
 mkdir -p $SP/rcomb2/ks/$V
 BIN=$SP/rcomb2/ks_su.exe

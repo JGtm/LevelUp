@@ -299,7 +299,7 @@ des agrégats après 1.6 n'apporterait rien. Item 1.4 : `[~]` couvert par cet in
   identiques, 11 différents (9 avec plus de frags côté fusionné, 2 avec moins ; 295 659 frags crédit contre
   295 704 fusionnés, +0,015 %), tous avec des partants. Sur les 43 partants de ces 11 matchs, le contexte du
   départ (en retard / pas en retard) change pour UN seul : match `760fb768-55c9-48c9-9b2d-353a6846c696`
-  (CTF Empyrean, joueurs suivis : Madina97294, JGtm, Chocoboflor, tous côté 0, victoire), partant = un bot
+  (CTF Empyrean, joueurs suivis : joueur_117, JGtm, joueur_165, tous côté 0, victoire), partant = un bot
   (`bid(56...`), égalité 28-28 (crédit) contre 28-29 (fusionné) à 372 541 ms : delta « sans lien » contre « lié ».
   Les bots sont dans les rosters du LUSR v2 (`buildTwoTeamRosters` ne filtre que xuid vide). Soit 1 match sur
   2 394 (0,04 %) où la pénalité de départ d'un partant, donc le LUSR, peut différer selon que la passe lue est

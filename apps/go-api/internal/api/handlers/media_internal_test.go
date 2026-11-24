@@ -16,7 +16,7 @@ func TestFilePathToURL_SinglePlayerCapturesBase(t *testing.T) {
 	}
 	h := &MediaHandler{}
 	slug := "JGtm"
-	capturesBase := `C:\Users\Guillaume\Videos\Captures`
+	capturesBase := `C:\Users\utilisateur\Videos\Captures`
 	cases := []struct {
 		name string
 		in   string
@@ -24,17 +24,17 @@ func TestFilePathToURL_SinglePlayerCapturesBase(t *testing.T) {
 	}{
 		{
 			"screenshot",
-			`C:\Users\Guillaume\Videos\Captures\Halo Infinite 2025-12-18.png`,
+			`C:\Users\utilisateur\Videos\Captures\Halo Infinite 2025-12-18.png`,
 			`/api/v1/players/JGtm/media/files/Halo Infinite 2025-12-18.png`,
 		},
 		{
 			"clip thumb",
-			`C:\Users\Guillaume\Videos\Captures\thumbs\foo_hash.webp`,
+			`C:\Users\utilisateur\Videos\Captures\thumbs\foo_hash.webp`,
 			`/api/v1/players/JGtm/media/files/thumbs/foo_hash.webp`,
 		},
 		{
 			"clip",
-			`C:\Users\Guillaume\Videos\Captures\Halo Infinite 2025-12-18.mp4`,
+			`C:\Users\utilisateur\Videos\Captures\Halo Infinite 2025-12-18.mp4`,
 			`/api/v1/players/JGtm/media/files/Halo Infinite 2025-12-18.mp4`,
 		},
 	}
@@ -197,7 +197,7 @@ func TestOwnerSlugFromFilePath_LegacyAbsolute(t *testing.T) {
 	cases := []struct {
 		in, want string
 	}{
-		{`C:\Users\Guillaume\Videos\Captures\Joueur90002\clip.mp4`, "Joueur90002"},
+		{`C:\Users\utilisateur\Videos\Captures\Joueur90002\clip.mp4`, "Joueur90002"},
 		{`C:\data\titles\halo_infinite\players\JGtm\captures\clip.mp4`, "JGtm"},
 	}
 	for _, tc := range cases {

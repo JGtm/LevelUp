@@ -1,6 +1,6 @@
 // Balayage du parc : images-cles trouees et duree de vie sans arme publiee.
 import fs from 'fs';
-const DIR = 'C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
+const DIR = 'C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
 const files = fs.readdirSync(DIR).filter(f => /^[0-9a-f]{8}\.json$/.test(f)).sort();
 const q = (arr, p) => { if (!arr.length) return NaN; const s = [...arr].sort((a,b)=>a-b); return s[Math.min(s.length-1, Math.floor(p*(s.length)))]; };
 let T = { docs:0, kf:0, kfHoled:0, kfEmptyish:0, missSlots:0, aliveSlots:0, gaps:0, lives:0, livesNoLoad:0, livesNoLoadWithKf:0, livesNoLoadShort:0, livesWithLoad:0 };

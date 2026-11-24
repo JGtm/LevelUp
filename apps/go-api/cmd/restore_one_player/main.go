@@ -3,7 +3,7 @@
 // restore_one_player — one-shot : reconstruit le stats.duckdb d'UN seul joueur
 // depuis un staging Parquet déjà extrait (pas de pull restic, juste l'import).
 //
-// Usage : go run -tags cgo ./cmd/restore_one_player --staging /tmp/staging_choco --player Joueur90001
+// Usage : go run -tags cgo ./cmd/restore_one_player --staging /tmp/staging_joueur_901 --player Joueur90001
 //
 // Le staging doit avoir la structure : <staging>/halo_infinite/player/<gt>/*.parquet
 // La DB cible est résolue via PathResolver. Aucune autre DB n'est touchée.

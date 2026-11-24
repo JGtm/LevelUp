@@ -88,7 +88,7 @@
     ti47_annonces_test.go:71:   W=20   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 0 · (0 pas : 100.0 %)
     ti47_annonces_test.go:71:   W=45   moyenne 0.38 · >=2 pas : 5.6 % · >=4 : 0.0 % · >=8 : 0.0 % · max 2 · (0 pas : 67.1 %)
     ti47_annonces_test.go:71:   W=73   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 0 · (0 pas : 100.0 %)
-    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\7344d24f_ti47_chainage.tsv
+    ti47_annonces_test.go:72:   TSV : <poste>\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\7344d24f_ti47_chainage.tsv
     ti47_annonces_test.go:74: PHASE 1 SAUTEE : TI47_WIDTH non pose. Le gate 0 doit d'abord trancher la largeur.
 --- PASS: TestTI47Annonces (9.43s)
 PASS
@@ -194,7 +194,7 @@ EXIT_7344d24f=0
     ti47_annonces_test.go:71:   W=20   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 1 · (0 pas : 100.0 %)
     ti47_annonces_test.go:71:   W=45   moyenne 0.32 · >=2 pas : 2.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 2 · (0 pas : 69.7 %)
     ti47_annonces_test.go:71:   W=73   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 0 · (0 pas : 100.0 %)
-    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\696a9d7c_ti47_chainage.tsv
+    ti47_annonces_test.go:72:   TSV : <poste>\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\696a9d7c_ti47_chainage.tsv
     ti47_annonces_test.go:74: PHASE 1 SAUTEE : TI47_WIDTH non pose. Le gate 0 doit d'abord trancher la largeur.
 --- PASS: TestTI47Annonces (7.54s)
 PASS
@@ -306,7 +306,7 @@ EXIT_696a9d7c=0
     ti47_annonces_test.go:71:   W=20   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 0 · (0 pas : 100.0 %)
     ti47_annonces_test.go:71:   W=45   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 1 · (0 pas : 100.0 %)
     ti47_annonces_test.go:71:   W=73   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 0 · (0 pas : 100.0 %)
-    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\01e1f945_ti47_chainage.tsv
+    ti47_annonces_test.go:72:   TSV : <poste>\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\01e1f945_ti47_chainage.tsv
     ti47_annonces_test.go:74: PHASE 1 SAUTEE : TI47_WIDTH non pose. Le gate 0 doit d'abord trancher la largeur.
 --- PASS: TestTI47Annonces (6.85s)
 PASS
@@ -417,7 +417,7 @@ EXIT_01e1f945=0
     ti47_annonces_test.go:71:   W=20   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 0 · (0 pas : 100.0 %)
     ti47_annonces_test.go:71:   W=45   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 1 · (0 pas : 100.0 %)
     ti47_annonces_test.go:71:   W=73   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 0 · (0 pas : 100.0 %)
-    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\0a247154_ti47_chainage.tsv
+    ti47_annonces_test.go:72:   TSV : <poste>\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\0a247154_ti47_chainage.tsv
     ti47_annonces_test.go:74: PHASE 1 SAUTEE : TI47_WIDTH non pose. Le gate 0 doit d'abord trancher la largeur.
 --- PASS: TestTI47Annonces (10.28s)
 PASS
@@ -483,7 +483,7 @@ EXIT_0a247154=0
     ti47_annonces_test.go:71:   W=20   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 0 · (0 pas : 100.0 %)
     ti47_annonces_test.go:71:   W=45   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 0 · (0 pas : 100.0 %)
     ti47_annonces_test.go:71:   W=73   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 0 · (0 pas : 100.0 %)
-    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\606d9844_ti47_chainage.tsv
+    ti47_annonces_test.go:72:   TSV : <poste>\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\606d9844_ti47_chainage.tsv
     ti47_annonces_test.go:74: PHASE 1 SAUTEE : TI47_WIDTH non pose. Le gate 0 doit d'abord trancher la largeur.
 --- PASS: TestTI47Annonces (2.36s)
 PASS
@@ -572,7 +572,7 @@ EXIT_606d9844=0
     ti47_annonces_test.go:71:   W=20   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 0 · (0 pas : 100.0 %)
     ti47_annonces_test.go:71:   W=45   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 1 · (0 pas : 99.9 %)
     ti47_annonces_test.go:71:   W=73   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 0 · (0 pas : 100.0 %)
-    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\8076f97f_ti47_chainage.tsv
+    ti47_annonces_test.go:72:   TSV : <poste>\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\8076f97f_ti47_chainage.tsv
     ti47_annonces_test.go:74: PHASE 1 SAUTEE : TI47_WIDTH non pose. Le gate 0 doit d'abord trancher la largeur.
 --- PASS: TestTI47Annonces (4.17s)
 PASS
@@ -621,7 +621,7 @@ EXIT_8076f97f=0
     ti47_annonces_test.go:71:   W=20   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 0 · (0 pas : 100.0 %)
     ti47_annonces_test.go:71:   W=45   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 0 · (0 pas : 100.0 %)
     ti47_annonces_test.go:71:   W=73   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 0 · (0 pas : 100.0 %)
-    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\24dbb67d_ti47_chainage.tsv
+    ti47_annonces_test.go:72:   TSV : <poste>\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\24dbb67d_ti47_chainage.tsv
     ti47_annonces_test.go:74: PHASE 1 SAUTEE : TI47_WIDTH non pose. Le gate 0 doit d'abord trancher la largeur.
 --- PASS: TestTI47Annonces (4.58s)
 PASS
@@ -697,7 +697,7 @@ EXIT_24dbb67d=0
     ti47_annonces_test.go:71:   W=20   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 0 · (0 pas : 100.0 %)
     ti47_annonces_test.go:71:   W=45   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 0 · (0 pas : 100.0 %)
     ti47_annonces_test.go:71:   W=73   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 0 · (0 pas : 100.0 %)
-    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\530820e5_ti47_chainage.tsv
+    ti47_annonces_test.go:72:   TSV : <poste>\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\530820e5_ti47_chainage.tsv
     ti47_annonces_test.go:74: PHASE 1 SAUTEE : TI47_WIDTH non pose. Le gate 0 doit d'abord trancher la largeur.
 --- PASS: TestTI47Annonces (5.36s)
 PASS
@@ -769,7 +769,7 @@ EXIT_530820e5=0
     ti47_annonces_test.go:71:   W=20   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 0 · (0 pas : 100.0 %)
     ti47_annonces_test.go:71:   W=45   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 0 · (0 pas : 100.0 %)
     ti47_annonces_test.go:71:   W=73   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 0 · (0 pas : 100.0 %)
-    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\53ce4390_ti47_chainage.tsv
+    ti47_annonces_test.go:72:   TSV : <poste>\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\53ce4390_ti47_chainage.tsv
     ti47_annonces_test.go:74: PHASE 1 SAUTEE : TI47_WIDTH non pose. Le gate 0 doit d'abord trancher la largeur.
 --- PASS: TestTI47Annonces (12.23s)
 PASS
@@ -853,7 +853,7 @@ EXIT_53ce4390=0
     ti47_annonces_test.go:71:   W=20   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 0 · (0 pas : 100.0 %)
     ti47_annonces_test.go:71:   W=45   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 0 · (0 pas : 100.0 %)
     ti47_annonces_test.go:71:   W=73   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 0 · (0 pas : 100.0 %)
-    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\64e8adfa_ti47_chainage.tsv
+    ti47_annonces_test.go:72:   TSV : <poste>\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\64e8adfa_ti47_chainage.tsv
     ti47_annonces_test.go:74: PHASE 1 SAUTEE : TI47_WIDTH non pose. Le gate 0 doit d'abord trancher la largeur.
 --- PASS: TestTI47Annonces (10.87s)
 PASS
@@ -915,7 +915,7 @@ EXIT_64e8adfa=0
     ti47_annonces_test.go:71:   W=20   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 0 · (0 pas : 100.0 %)
     ti47_annonces_test.go:71:   W=45   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 0 · (0 pas : 100.0 %)
     ti47_annonces_test.go:71:   W=73   moyenne 0.00 · >=2 pas : 0.0 % · >=4 : 0.0 % · >=8 : 0.0 % · max 0 · (0 pas : 100.0 %)
-    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\000d5950_ti47_chainage.tsv
+    ti47_annonces_test.go:72:   TSV : <poste>\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\000d5950_ti47_chainage.tsv
     ti47_annonces_test.go:74: PHASE 1 SAUTEE : TI47_WIDTH non pose. Le gate 0 doit d'abord trancher la largeur.
 --- PASS: TestTI47Annonces (4.38s)
 PASS

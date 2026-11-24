@@ -13,13 +13,13 @@
 
 ## 1. Contexte
 
-Madina97294 est perçu par le squad comme le meilleur joueur (niveau estimé Diamant).
+joueur_117 est perçu par le squad comme le meilleur joueur (niveau estimé Diamant).
 Pourtant, son LUSR stagnait en **Argent III-IV** (1286 MU arena_slayer) tandis que
-JGtm et Chocoboflor atteignaient **Or II** (~1444-1451).
+JGtm et joueur_165 atteignaient **Or II** (~1444-1451).
 
 Cibles de référence (voir `memory/reference_lusr_target_levels.md`) :
-- Madina97294 → fin Platine / début Diamant (~1750-1900)
-- Chocoboflor + JGtm → milieu/bas Or (~1400-1500)
+- joueur_117 → fin Platine / début Diamant (~1750-1900)
+- joueur_165 + JGtm → milieu/bas Or (~1400-1500)
 
 ---
 
@@ -78,7 +78,7 @@ newMU = max(MinRating, mu + deltaMU)
 L'API Halo fournit `StatPerformances.Kills.Expected` basé sur le **MMR du joueur**,
 pas sur le lobby. Un joueur avec un MMR élevé reçoit des KE de 13-21.
 
-Conséquence : même quand Madina **domine un lobby** à 17-19 kills (top de la partie),
+Conséquence : même quand joueur_075 **domine un lobby** à 17-19 kills (top de la partie),
 `kills/KE ≈ 1.0` → `sigmoidRatio(kills, KE) → 0.5` → composite ≈ 0.5 → mu stagne.
 
 JGtm avec KE 7-12 sur les mêmes matchs sur-performe plus facilement → mu monte.
@@ -99,11 +99,11 @@ Ce n'est donc **pas** la cause principale, mais ça s'accumule sur des centaines
 ### Cause 3 : fenêtre temporelle (confirmée empiriquement)
 
 Test fenêtré arena_slayer (toujours depuis InitialMU=1500) :
-- 20 derniers matchs : Madina **1483** > JGtm 1474 — Madina est devant
-- 100 derniers matchs : Madina 1432 ≈ JGtm 1449 — quasi-égaux
-- Full history : Madina 1286, JGtm 1444 — **gap 158 pts**
+- 20 derniers matchs : joueur_075 **1483** > JGtm 1474 — joueur_075 est devant
+- 100 derniers matchs : joueur_075 1432 ≈ JGtm 1449 — quasi-égaux
+- Full history : joueur_075 1286, JGtm 1444 — **gap 158 pts**
 
-L'écart full-history reflète des performances plus faibles de Madina en **début de carrière**
+L'écart full-history reflète des performances plus faibles de joueur_075 en **début de carrière**
 (plusieurs centaines de matchs anciens). La formule en elle-même n'est pas fautive sur la fenêtre récente.
 
 ---
@@ -112,12 +112,12 @@ L'écart full-history reflète des performances plus faibles de Madina en **déb
 
 Simulation via `cmd/diag_lusr_player/` + flag `--compare-formulas`, full history, arena_slayer :
 
-| Variante | Madina | JGtm | Chocoboflor | Verdict |
+| Variante | joueur_075 | JGtm | joueur_165 | Verdict |
 |---|---|---|---|---|
 | **Baseline actuel** | 1286 (Arg III) | 1444 (Or II) | 1451 (Or II) | — |
-| **Piste-C** : DvE 0.24 → 0.12 | +58 = **1344** | +23 | **−58** | Réduit l'écart mais dévisse Choco |
-| **Piste-A** : DE × kills/KE | +23 = 1309 | +48 | −39 | Empire le gap Madina/JGtm |
-| **Piste-A+C** combiné | +69 = **1355** | +48 | **−78 !** | Meilleure option formule, Choco dévisse |
+| **Piste-C** : DvE 0.24 → 0.12 | +58 = **1344** | +23 | **−58** | Réduit l'écart mais dévisse joueur_901 |
+| **Piste-A** : DE × kills/KE | +23 = 1309 | +48 | −39 | Empire le gap joueur_075/JGtm |
+| **Piste-A+C** combiné | +69 = **1355** | +48 | **−78 !** | Meilleure option formule, joueur_901 dévisse |
 | **Piste-B** : KDA fusionné | — | **1656 !** | **1691 !** | Inflation massive, éliminé |
 
 Aucune variante de formule ne corrige le problème sans créer d'effet de bord sur les autres joueurs.
@@ -125,7 +125,7 @@ Aucune variante de formule ne corrige le problème sans créer d'effet de bord s
 ### Pourquoi carry adjustment (piste originale) ne fonctionnait pas
 
 Version initiale utilisait `teammateAvgKE` → pénalisait le joueur pour la faiblesse de ses alliés.
-Empiriquement : la condition `teammateAvgKE > 0` n'était presque jamais remplie pour Madina
+Empiriquement : la condition `teammateAvgKE > 0` n'était presque jamais remplie pour joueur_075
 (équipe adverse de ses amis → `teammates_kills_expected = 0` dans les matchs communs).
 
 Corrigé vers `enemyAvgKE` (2026-05-22) — amélioration marginale, ne résout pas le fond.
@@ -138,7 +138,7 @@ Corrigé vers `enemyAvgKE` (2026-05-22) — amélioration marginale, ne résout 
 
 2. **`muOpp` branché** dans `trueskillUpdate` — était présent en signature mais ignoré avant 2026-05-22. Maintenant : `expectedScore = 1/(1+exp(-(mu-muOpp)/(2*Beta)))`. Battre des adversaires plus forts donne plus de gain.
 
-Ces deux fixes améliorent la dynamique générale mais ne résolvent pas la stagnation Madina.
+Ces deux fixes améliorent la dynamique générale mais ne résolvent pas la stagnation joueur_075.
 
 ---
 
@@ -148,7 +148,7 @@ Ces deux fixes améliorent la dynamique générale mais ne résolvent pas la sta
 Variante fenêtrée sur les **50 derniers matchs par chaîne**, calculée en dry-run / lecture seule,
 affichée en priorité dans l'UI à côté du LUSR full-history.
 
-- Sur 100 matchs récents, Madina est quasi-égal à JGtm → la piste est valide empiriquement.
+- Sur 100 matchs récents, joueur_075 est quasi-égal à JGtm → la piste est valide empiriquement.
 - Implémentation : réutiliser `batchComputeLUSRPreview` avec un slice `matches[max(0, len-50):]`.
 - Pas de modification du schéma — valeur non persistée ou stockée dans une colonne dédiée.
 
@@ -164,7 +164,7 @@ où `lobby_avg_kills` = moyenne des kills de tous les participants du match.
 `kills_vs_expected` 0.27 → 0.10, `deaths_vs_expected` 0.24 → 0.10,
 redistribuer sur `offensive_conversion` et `damage_efficiency`.
 
-- Piste-C avait réduit seulement DvE → Madina +58, Choco -58.
+- Piste-C avait réduit seulement DvE → joueur_075 +58, joueur_901 -58.
 - Réduire les deux ensemble en renormalisant pourrait être plus équilibré.
 - À simuler via `--compare-formulas` avant tout commit.
 
@@ -179,7 +179,7 @@ Nécessiterait un recalcul séquentiel complet à chaque changement — coûteux
 
 ---
 
-## 7. État actuel du LUSR Madina97294 (post-backfill 2026-05-24)
+## 7. État actuel du LUSR joueur_117 (post-backfill 2026-05-24)
 
 Après restauration backup + syncs frais (post-bug ART, 2026-05-24) :
 - arena_slayer : ~1286 (Argent III) — estimation, à vérifier via dry-run

@@ -740,7 +740,7 @@ BANC DE VERITE — 11de8353 : ok
   [FILET] vehicules vehicles.rides.aim/n : 4101 -> 4034 (aucune mesure du banc ne couvre ce bloc)
   [FILET] vehicules vehicles.rides.aim/total : 4101 -> 4034 (aucune mesure du banc ne couvre ce bloc)
   [FILET] vehicules vehicles.rides/duree-totale : 4955 -> 4887 (aucune mesure du banc ne couvre ce bloc)
-  [FILET] vehicules vehicles.rides/duree-totale/par-xuid/2535415759610104 : 266 -> 198 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] vehicules vehicles.rides/duree-totale/par-xuid/2746409228518711 : 266 -> 198 (aucune mesure du banc ne couvre ce bloc)
 
 DETAIL DES PERTES (4 temoin(s)) :
 
@@ -794,7 +794,7 @@ DETAIL DES PERTES (4 temoin(s)) :
     perte     vehicules        vehicles.rides.aim/n                                     4101 -> 4034      
     perte     vehicules        vehicles.rides.aim/total                                 4101 -> 4034      
     perte     vehicules        vehicles.rides/duree-totale                              4955 -> 4887      
-    perte     vehicules        vehicles.rides/duree-totale/par-xuid/2535415759610104        266 -> 198       
+    perte     vehicules        vehicles.rides/duree-totale/par-xuid/2746409228518711        266 -> 198       
 
 DETAIL DES CHANGEMENTS (3 temoin(s)) :
 

@@ -19,7 +19,7 @@
      été décodée — le témoin du canal l'a comptée (`coverage.equipmentChanges.counterJumps=1,
      missedEstimate=1`) ; son `spent` (t=1851) porte donc `from=4` (grappin). UNE émission
      manquée aveugle le filtre `from` ET le garde-porteur d'un coup.
-   - SpiffyDart86537 slot 560 : saut 7,8 m à t=3420, mort à 3432 — aucune émission
+   - joueur_160 slot 560 : saut 7,8 m à t=3420, mort à 3432 — aucune émission
      d'épuisement (mort pendant l'effet).
 2. Parc (67 films, auto-mesure du canal i48) : 3 158 émissions décodées, 165 manquées entre
    deux vues (5,0 %), 114 vies sur 2 503 (4,6 %) amputées de leur début. En famille A (rangs

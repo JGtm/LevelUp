@@ -42,7 +42,7 @@
    intermédiaire → **campagne de grammaire** (si l'utilisateur rouvre le résidu dense) en alternance
    avec les lots sans différence → changements de comportement en dernier.
 5. **Véhicules et tourelles** : ce qui touche la lecture du film (12 composants `ti=40` non portés,
-   l'octet `+0x818`, les blocs `ti=43` qui cachent la 3e montée de G MONEY) appartient à la campagne
+   l'octet `+0x818`, les blocs `ti=43` qui cachent la 3e montée de JOUEUR_441) appartient à la campagne
    de grammaire. Le reste (règle du Falcon de Behemoth, code mort `turretRidesNotRideable`) est
    indépendant et peut se faire n'importe quand après J12.
 
@@ -233,7 +233,7 @@ Classement par couche (registre `facts/fallback/registre_*.go`, sites relevés �
 |---|---|---|
 | 12 composants `ti=40` non portés (`i30-i33`, `i35`, `i36`, `i38-i42`, `i45-i47` : tourelle auto, état de type, jeu d'armes, air-drop, warp…) | oui (fermeture : ~1 600 paquets) | campagne de grammaire |
 | Octet `+0x818` de `vehicle-type-physics` supposé (`repli_physique_de_type_de_vehicule_supposee`, 33 193 lectures sur 7 témoins) | oui — c'est une porte, la règle du 25/09 exige Ghidra (l'écrivain de l'octet à la construction du véhicule) | campagne de grammaire |
-| 3e montée de G MONEY dans un Ghost (`81c02726`) : blocs `ti=43 i20-i22` non lus, la lecture déraille et perd l'embarquement | oui | campagne de grammaire (décision utilisateur en attente depuis le 25/09) |
+| 3e montée de JOUEUR_441 dans un Ghost (`81c02726`) : blocs `ti=43 i20-i22` non lus, la lecture déraille et perd l'embarquement | oui | campagne de grammaire (décision utilisateur en attente depuis le 25/09) |
 | Falcon de Behemoth affiché à tort | non (règle d'affichage du rejeu) | indépendant, après J12 |
 | `turretRidesNotRideable` toujours nul | non (code mort, à la prochaine montée de schéma) | indépendant |
 | Destruction publiée (`object-dead-state` de `ti=40`) | déjà fait (`replay/vehicle_end.go`) | — |
@@ -311,7 +311,7 @@ véhicules dans la campagne.
 4. **Corrections de la spec C1-C8** à reporter dans l'ADR ?
 5. **Coopération avec le port Rust** : partager notre oracle de fermeture et notre contexte de
    production, ou non ?
-6. **Véhicules** : ouvrir les blocs `ti=43 i20-i22` (G MONEY) et l'octet `+0x818` dans la campagne ?
+6. **Véhicules** : ouvrir les blocs `ti=43 i20-i22` (JOUEUR_441) et l'octet `+0x818` dans la campagne ?
 
 ---
 

@@ -1,7 +1,7 @@
 // Episodes d'occupation poses sur une vie ENFANT (tourelle, 0 echantillon) : ecart entre la position
 // DESSINEE (naissance de la tourelle) et le chassis porteur (slot+1/+2, meme fenetre), a mi-episode.
 import fs from 'fs';
-const dir = 'C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
+const dir = 'C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
 const files = fs.readdirSync(dir).filter(f => f.endsWith('.json') && !f.includes('derived'));
 const posAt = (samples, t) => { let i = samples.findIndex(s => s.t >= t); if (i === -1) i = samples.length - 1; if (i === 0) return samples[0]; const a = samples[i-1], b = samples[i]; if (b.t === a.t) return b; const f = Math.min(1, Math.max(0, (t - a.t)/(b.t - a.t))); return { x: a.x + (b.x-a.x)*f, y: a.y + (b.y-a.y)*f }; };
 const agg = {};

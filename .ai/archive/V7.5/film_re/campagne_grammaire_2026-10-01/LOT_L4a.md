@@ -325,7 +325,7 @@ fait PERTE, famille par famille :
 
 ## 9. Sorties exactes des gates
 
-Depuis `apps/go-api`, `GOCACHE=C:/Users/Guillaume/AppData/Local/go-build-cg-l4a`, une commande `go`
+Depuis `apps/go-api`, `GOCACHE=<poste>/AppData/Local/go-build-cg-l4a`, une commande `go`
 à la fois :
 
 | Gate | Sortie |

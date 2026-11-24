@@ -98,7 +98,7 @@ Mesures faites avec libfilmshell compilé hors dépôt sur 151 films de l'archiv
 
 - Branche `feat/film-marche-complete`, créée depuis `origin/release/v8.1.2` (`76635f08be`, qui porte
   déjà l'étape film de la 8.1.2). Worktree dédié
-  `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-marche`. Caches Go dédiés `go-build-marche` et
+  `<poste>\Downloads\Scripts\LevelUp-wt-marche`. Caches Go dédiés `go-build-marche` et
   `golangci-marche` (skill `plan-execution` §5).
 - **Dépendance — chantier 30 images/s** (`feat/rejeu-30ips`, en cours, 65 fichiers de `libs/film`
   touchés, surtout `replay/`) : A0 à A2 travaillent dans `internal/grammar`, `internal/profile` et

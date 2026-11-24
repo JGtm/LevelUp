@@ -61,9 +61,9 @@ describe('buildImpactSessionsView', () => {
   })
 
   it('divise par les matchs joués, pas par les matchs de la session (joueur absent d’un match)', () => {
-    const chocoboflor14 = view.rows[1].players[2]
-    expect(chocoboflor14.matchesPlayed).toBe(4)
-    expect(chocoboflor14.netPerMatch).toBeCloseTo(chocoboflor14.points / 4)
+    const joueur165_14 = view.rows[1].players[2]
+    expect(joueur165_14.matchesPlayed).toBe(4)
+    expect(joueur165_14.netPerMatch).toBeCloseTo(joueur165_14.points / 4)
   })
 
   it('rend un net nul absent pour un joueur qui n’a joué aucun match de la ligne', () => {

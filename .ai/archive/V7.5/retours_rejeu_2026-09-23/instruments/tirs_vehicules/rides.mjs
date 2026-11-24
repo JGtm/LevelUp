@@ -1,7 +1,7 @@
 // Episodes d'un document : vehicule, occupant (filmIndex), bornes, tirs publies pendant l'episode.
 import fs from 'fs';
 const id = process.argv[2];
-const doc = JSON.parse(fs.readFileSync(`C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/${id}.json`, 'utf8'));
+const doc = JSON.parse(fs.readFileSync(`C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/${id}.json`, 'utf8'));
 const idx = {}; for (const r of doc.roster) idx[r.xuid] = r.filmIndex + ':' + r.name;
 console.log(id, 'roster', doc.roster.length, 'origin', doc.originMs, 'frames', doc.frameCount, 'cov.shots', JSON.stringify(doc.coverage.shots));
 const cv = doc.coverage.vehicles; console.log('cov.veh shots', cv.shots, 'noRide', cv.shotsNoRide, 'amb', cv.shotsAmbiguous, 'unplaced', cv.shotsUnplaced, 'vw', cv.shotsVehicleWeapon, 'rides', cv.rides, 'read', cv.ridesRead, 'prox', cv.ridesProximity);

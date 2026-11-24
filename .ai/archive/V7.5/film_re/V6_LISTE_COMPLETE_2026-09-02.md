@@ -3,7 +3,7 @@
 > Execute le 2026-09-03 dans le worktree `LevelUp-wt-vehicules` (branche `wt/vehicules-tourelles`).
 > Aucun commit, aucun `git add`, aucune ecriture DuckDB. Mesures en AVANT-PLAN, `CGO_ENABLED=0`,
 > GOCACHE isole (`scratchpad/gocache_v6*`), donnees reelles du checkout principal
-> (`C:/Users/Guillaume/Projects/LevelUp/data/cache`, LECTURE SEULE). Ghidra : MORT — tout ce
+> (`<poste>/Projects/LevelUp/data/cache`, LECTURE SEULE). Ghidra : MORT — tout ce
 > rapport est de la MESURE.
 
 ---
@@ -377,7 +377,7 @@ est donc intact par construction.
 ## 5. LES DEUX ARTEFACTS DE DEMONSTRATION — AVANT / APRES
 
 Reconstruits par `cmd/replay-build` (`LEVELUP_REPO_ROOT` = CE worktree, films du main tree), puis
-COPIES dans `C:/Users/Guillaume/Projects/LevelUp-wt-capture-rejeu/data/cache/replays/halo_infinite/`.
+COPIES dans `<poste>/Projects/LevelUp-wt-capture-rejeu/data/cache/replays/halo_infinite/`.
 
 | grandeur | `0d76e8f1` AVANT | `0d76e8f1` APRES | `fccc61cd` AVANT | `fccc61cd` APRES |
 |---|---|---|---|---|

@@ -1,7 +1,7 @@
 // Parc : vies de vehicule jamais deplacees (<= 1 echantillon ou deplacement nul) et jamais occupees,
 // et leur distance a l'emprise publiee (doc.bounds) — pour mesurer une regle « decor hors emprise ».
 import fs from 'fs';
-const dir = 'C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
+const dir = 'C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
 const files = fs.readdirSync(dir).filter(f => f.endsWith('.json') && !f.includes('derived'));
 const out = [];
 let tot = 0, staticN = 0;

@@ -518,10 +518,10 @@ Le detail des octets en litige :
 Releve brut (extrait de `TestResidusPiedDrapeaux`, `008e1bba` et `58d09c44`) :
 
 ```
-t=  51677 xuid 2535405671792166 equipe prouvee 0 | b36 0 | b37..b43 00 00 00 00 00 00 00 | b55 0
+t=  51677 xuid 2717047465784157 equipe prouvee 0 | b36 0 | b37..b43 00 00 00 00 00 00 00 | b55 0
 t=  66008 xuid 2577506572472715 equipe prouvee 1 | b36 1 | b37..b43 01 01 00 00 00 00 00 | b55 0
-t= 100302 xuid 2535415455425240 equipe prouvee 1 | b36 3 | b37..b43 01 01 00 01 00 00 00 | b55 0
-t= 124522 xuid 2533274872234198 equipe prouvee 0 | b36 2 | b37..b43 00 00 00 02 00 00 00 | b55 0
+t= 100302 xuid 2696625038509089 equipe prouvee 1 | b36 3 | b37..b43 01 01 00 01 00 00 00 | b55 0
+t= 124522 xuid 2576557274908960 equipe prouvee 0 | b36 2 | b37..b43 00 00 00 02 00 00 00 | b55 0
 ```
 
 `b40` prend 0, 1 ou 2 et ne suit pas l'equipe ; `b39`, `b41`, `b42`, `b43` sont nuls sur le releve.
@@ -613,7 +613,7 @@ reste verte. Les chemins sont **en style Windows** (`C:/...`) : un chemin de sty
 
 ```bash
 cd apps/go-api
-C="C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks"
+C="<poste>/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks"
 
 # 2 : la transposition par build et le lecteur calibre (un film par build)
 F="000d5950 0014603f 00ba2e1c 084a804d 11de8353 0a247154 a521164d 03af54c3"
@@ -632,7 +632,7 @@ CHUNK00_FILMS="$C/b1bcbe24;$C/1c5c10cc" go test ./internal/analysis/filmdec/ \
 # 1 : la fermeture de la grammaire sur les films a gros roster (96 films, ~5 s)
 #     la liste se construit par intersection, elle n'est pas ecrite a la main :
 go build -o /tmp/diagq ./cmd/diag_q
-B="C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/backups/pre-chaine-2026-09-09/shared_matches_v2.duckdb"
+B="<poste>/Downloads/Scripts/LevelUp-go-migration/data/backups/pre-chaine-2026-09-09/shared_matches_v2.duckdb"
 L=""; for f in $(/tmp/diagq "$B" \
   "SELECT substr(match_id,1,8) FROM match_participants GROUP BY 1 HAVING count(*) >= 17" \
   | tail -n +2 | tr -d '\r'); do [ -d "$C/$f" ] && L="$L;$C/$f"; done

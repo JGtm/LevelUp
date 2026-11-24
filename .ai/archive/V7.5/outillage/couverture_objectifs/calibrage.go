@@ -78,9 +78,9 @@ func (c *ctxAudit) calibrage() []string {
 	l = append(l, "# calibrage 3 : les trois porteurs cites au rapport 6.2 §3.3",
 		strings.Join([]string{"match", "xuid", "oracle_s", "attendu_rapport"}, "\t"))
 	temoins := [][3]string{
-		{"d9781168", "2533274977810162", "51,1"},
-		{"43716616", "2533274978052136", "62,3"},
-		{"c88ec007", "2535448682342105", "40,8"},
+		{"d9781168", "2586124022981975", "51,1"},
+		{"43716616", "2733226566552357", "62,3"},
+		{"c88ec007", "2588953248547176", "40,8"},
 	}
 	for _, t := range temoins {
 		for m, par := range c.oracle {

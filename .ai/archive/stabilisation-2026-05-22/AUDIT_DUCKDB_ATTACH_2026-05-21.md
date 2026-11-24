@@ -41,7 +41,7 @@ Les trois sont visibles dans les logs ci-dessous, **dans le même boot**, ce qui
         (attach err: Binder Error: Unique file handle conflict: …)"}
 ```
 
-Le pattern se reproduit pour chaque joueur (gamertag=`JGtm`, `Chocoboflor`, `Madina97294`, `XxDaemonGamerxX` au minimum), à la fois sur la **player conn** ([pool.go:268](apps/go-api/internal/platform/duckdb/pool.go#L268)) et la **social conn** ([pool.go:280](apps/go-api/internal/platform/duckdb/pool.go#L280)).
+Le pattern se reproduit pour chaque joueur (gamertag=`JGtm`, `joueur_165`, `joueur_117`, `joueur_291` au minimum), à la fois sur la **player conn** ([pool.go:268](apps/go-api/internal/platform/duckdb/pool.go#L268)) et la **social conn** ([pool.go:280](apps/go-api/internal/platform/duckdb/pool.go#L280)).
 
 ### 1.2 Cause racine
 
@@ -60,7 +60,7 @@ T0  RunPlayerMigrations(JGtm)          → ouvre xbox_aliases (init schema)
 T1  openPlayerDB(JGtm)                  → player conn fait ATTACH → succès
                                         → social conn (shared_social, cacheKey "rw:"+path)
                                           fait ATTACH → ??? (déjà attaché depuis player conn)
-T2  openPlayerDB(Chocoboflor)           → player conn (différente) fait ATTACH
+T2  openPlayerDB(joueur_165)           → player conn (différente) fait ATTACH
                                         → ÉCHEC "Unique file handle conflict"
                                           (xbox_aliases.duckdb est déjà attaché ailleurs
                                            dans la même instance partagée DuckDB)
@@ -248,9 +248,9 @@ T+0.00s  Init xbox_aliases.duckdb (OpenReadWrite + Close)
 T+0.46s  openPlayerDB(JGtm)
          ├─ Bug 1.A : ATTACH global échoue (already attached)
          └─ Bug 1.B : fallback ping échoue (autre conn physique)
-T+0.46s  openPlayerDB(Chocoboflor) — même bug 1
-T+0.46s  openPlayerDB(Madina97294) — même bug 1
-T+0.46s  openPlayerDB(XxDaemonGamerxX) — même bug 1
+T+0.46s  openPlayerDB(joueur_165) — même bug 1
+T+0.46s  openPlayerDB(joueur_117) — même bug 1
+T+0.46s  openPlayerDB(joueur_291) — même bug 1
 T+11s    Premier appel handler home pour JGtm
          ├─ Bug 2 : SELECT media_files → table inconnue
          └─ Bug 3 : Q26h SELECT shared.medals_earned → schema inconnu

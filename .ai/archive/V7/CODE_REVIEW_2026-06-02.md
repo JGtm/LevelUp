@@ -69,7 +69,7 @@ Avec `authMode=="none"`, `authz.Enforced()` -> false, `RequirePlayerOwnership` d
 `docker-compose.yml` (service `levelup`) ne definit ni `LEVELUP_AUTH_MODE`, ni `LEVELUP_CORS_ORIGINS`, ni `LEVELUP_SESSION_SECRET` ; `.env.local.example` ne les liste pas. En `AuthMode=none`, `/debug/vars` (expvar) est servi sans auth. Un operateur qui suit les exemples deploie ouvert.
 
 **H-A4 - Refresh token OAuth Microsoft en clair a la racine** — `apps/go-api/token_Madina97294.txt:1`
-Refresh token v2 Microsoft reel (`M.C544_SN1.0.U.-...`) d'un profil de prod (Madina97294), en clair dans le working tree. **Correctement gitignore et jamais committe** (verifie), mais expose a une copie accidentelle (backup, .zip support).
+Refresh token v2 Microsoft reel (`M.C544_SN1.0.U.-...`) d'un profil de prod (joueur_117), en clair dans le working tree. **Correctement gitignore et jamais committe** (verifie), mais expose a une copie accidentelle (backup, .zip support).
 
 > **Remede unifie A1-A4** : un mode `LEVELUP_ENV=production` qui, au boot et hors `DemoMode`, **refuse de demarrer** (`slog.Error` + `os.Exit(1)`) si `SessionSecret==CHANGE_ME` (ou < 32 octets) OU `AuthMode==none` OU `CORSOrigins` contient `localhost`. Generer un `SessionSecret` aleatoire persistant si absent. Decoreler le flag `Secure` d'une variable explicite. Supprimer `token_Madina97294.txt` du disque (reimport via `cmd/token-import`) et rotater le RT cote Azure par precaution. Documenter ces 3 variables comme **requises** dans `.env.local.example` + `docker-compose.yml`.
 

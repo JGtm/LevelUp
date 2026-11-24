@@ -73,7 +73,7 @@ touchées, à l'octet hors champs volatils, pour un joueur témoin).
       Halo 5 ? Lister fichier:ligne. (Liste en Mesures : aucun filtre SQL de mode sur la voie
       canonique ; la famille « ligne brute » filtre en Go par `ResolveModeUIWithVariant`.)
 - [!] Noms : sur une copie de `data/titles/halo_5/warehouse/metadata.duckdb` (+ shared), part des
-      `game_variant_id` des matchs de Chocoboflor ayant un nom EN et FR dans `asset_translations`.
+      `game_variant_id` des matchs de joueur_165 ayant un nom EN et FR dans `asset_translations`.
       Si moins de 95 % des matchs ont un nom : ARRÊT, relevé au user.
       NON MESURÉ : la métadonnée H5 est tenue en exclusivité par le serveur local (PID 17420), aucune
       sauvegarde ni copie n'existe (détail et requête de mesure en Mesures). Seuil de 95 % non évalué, donc
@@ -159,9 +159,9 @@ touchées, à l'octet hors champs volatils, pour un joueur témoin).
 - Gate : relevé écrit, tests verts. (Relevé en Mesures.)
 
 ### E4 — Vérification visuelle (avec le user) et clôture
-- [x] Halo 5 (Chocoboflor, puis JGtm) : Synthèse « Par mode », filtre Modes de l'Explorateur,
+- [x] Halo 5 (joueur_165, puis JGtm) : Synthèse « Par mode », filtre Modes de l'Explorateur,
       Accueil ; Halo Infinite (JGtm) : mêmes pages inchangées (2026-10-27, serveur relancé depuis la copie
-      principale passée sur `release/v8.1.0` : Synthèse H5 Chocoboflor 12 modes à l'écran avec courbe, JGtm 13 ;
+      principale passée sur `release/v8.1.0` : Synthèse H5 joueur_165 12 modes à l'écran avec courbe, JGtm 13 ;
       filtre Modes 12 options ; Accueil H5 nomme les modes des sessions ; Synthèse Infinite JGtm 21 modes, inchangée.
       Premier essai faux négatif : le serveur lisait `config/` d'une copie restée en v8.0.7, d'où le log
       `mode_source` au boot, 47f3e6c4a)
@@ -233,7 +233,7 @@ différent, ~12 requêtes SQL) : voir Découvertes.
 **Noms (item « moins de 95 % ») : NON MESURABLE, bloqué.**
 - Base partagée H5 copiée (3 032 matchs ; `game_variant_id` renseigné sur 3 032, `game_variant_name` NULL sur 3 032,
   `pair_*` vide sur 3 032).
-- Chocoboflor : 1 855 matchs, dont 149 Campagne (masqués à la lecture) ; 1 706 matchs sur 12 types de jeu ; le premier
+- joueur_165 : 1 855 matchs, dont 149 Campagne (masqués à la lecture) ; 1 706 matchs sur 12 types de jeu ; le premier
   (`257a305e...`) porte 1 500 matchs (88 %), les 11 autres 206.
 - Traductions : `data/titles/halo_5/warehouse/metadata.duckdb` est tenue en exclusivité par le serveur local (PID 17420,
   démarré 19:42) : copie refusée par le système (Copy-Item, flux en partage lecture/écriture, robocopy /B, 6 essais sur
@@ -286,7 +286,7 @@ chaîne réelle « lecture canonique -> pages » et sérialise tout en JSON ; la
   résultats du filtre Escouade Infinite (matchs au libellé de repli non résolu, par ex. « Arena:Legacy Slayer BR on
   Narrows ») ; la normalisation a été déplacée à l'enrichissement du seul mode « type de jeu » (item E2).
 
-**Halo 5 sur la forme réelle (arbre d'après seul, base partagée H5 copiée, Chocoboflor, 1 706 matchs hors Campagne)** :
+**Halo 5 sur la forme réelle (arbre d'après seul, base partagée H5 copiée, joueur_165, 1 706 matchs hors Campagne)** :
 1 706 lignes avec un mode, toutes de type de jeu, 0 partie. Les noms ne sont pas mesurables (métadonnée H5 inaccessible) :
 avec la métadonnée préconstruite (dictionnaire vide) aucun libellé ne sort, aucun identifiant n'est affiché ; avec 12 noms
 SYNTHÉTIQUES posés sur les 12 identifiants réels (copie jetable), la Synthèse produit 12 lignes « Par mode » totalisant

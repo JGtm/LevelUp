@@ -1,6 +1,6 @@
 // Tirs PUBLIES dont l'identifiant d'arme est lu DECALE (record 105/36 hors cadrage canonique).
 import fs from 'fs';
-const dir = 'C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
+const dir = 'C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
 const files = fs.readdirSync(dir).filter(f => f.endsWith('.json') && !f.includes('derived'));
 const PERSO = 0x42C9679Fn, M32 = 0xFFFFFFFFn;
 let tot = 0, dec = 0, docs = new Set(), parD = {}, btbJoueurs = 0, btbSansTir = 0, btbDocs = 0;

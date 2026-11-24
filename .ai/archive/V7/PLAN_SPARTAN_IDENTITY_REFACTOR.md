@@ -8,7 +8,7 @@
 
 ## 1. Le problème en une phrase
 
-Sur la home, certains joueurs (Madina, Chocoboflor) n'ont pas leur bannière
+Sur la home, certains joueurs (joueur_075, joueur_165) n'ont pas leur bannière
 Spartan affichée alors qu'ils en ont déjà eu une — et on n'a aucun moyen
 fiable de garantir que tous les joueurs aient toujours la leur.
 
@@ -22,17 +22,17 @@ toutes les bases joueurs. Résultat ce matin :
 | Joueur | total rows | banner stocké | emblem stocké | dernière bannière |
 |--------|-----------:|--------------:|--------------:|-------------------|
 | JGtm | 86 | **1 / 86** | 13 / 86 | aujourd'hui |
-| Madina97294 | 65 | **0 / 65** | 9 / 65 | **jamais** |
-| XxDaemonGamerxX | 0 | 0 | 0 | jamais |
-| Chocoboflor | ? (DB lockée par serveur) | ? | ? | ? |
+| joueur_117 | 65 | **0 / 65** | 9 / 65 | **jamais** |
+| joueur_291 | 0 | 0 | 0 | jamais |
+| joueur_165 | ? (DB lockée par serveur) | ? | ? | ? |
 
 Constats :
 - Même pour JGtm qui a une sync récente, seulement 1 row sur 86 contient une
   bannière. Les 13 rows avec emblème sont les rares moments où l'API
   customisation a renvoyé quelque chose.
-- Madina n'a JAMAIS eu de bannière en DB (dernière sync customisation :
+- joueur_075 n'a JAMAIS eu de bannière en DB (dernière sync customisation :
   2026-05-08, soit 17 jours).
-- XxDaemonGamerxX : aucune sync n'a jamais réussi pour lui (tokens absents
+- joueur_291 : aucune sync n'a jamais réussi pour lui (tokens absents
   ou autre).
 
 ---
@@ -316,7 +316,7 @@ Halo, pas comme source de vérité.
 ### Risques résiduels identifiés par la revue
 
 1. **Joueur visite sa home pour la première fois sans aucune row `spartan_identity`** → fallback `career_progression` ARG_MAX en Phase 3 couvre. Phase 4 (backfill au boot) garantit qu'au démarrage serveur, tous les joueurs avec historique ont déjà une row.
-2. **Cas Madina97294 et XxDaemonGamerxX (tokens absents)** → `last_attempt_status` = `'auth_missing'`. La home affiche le placeholder ou la dernière valeur DB connue. À documenter dans le log Phase 6.
+2. **Cas joueur_117 et joueur_291 (tokens absents)** → `last_attempt_status` = `'auth_missing'`. La home affiche le placeholder ou la dernière valeur DB connue. À documenter dans le log Phase 6.
 3. **Race condition UPSERT concurrent** : 2 requêtes home simultanées du même joueur → 2 UPSERT en parallèle. DuckDB gère le `INSERT OR REPLACE` atomiquement. À vérifier en test (`TestSpartanIdentityRepo_ConcurrentUpsert`).
 
 ---
@@ -341,8 +341,8 @@ Cette hypothèse est cohérente avec :
 - Le commit `03322560` du 24/05 01:00 : "fix(auth): E.v1 legacy store ne
   s'attribue qu'à UN seul joueur" — qui explicitement note "mismatch
   xuid/token, erreurs API potentielles ou PIRE (écrasement de données)".
-- Le fait que seuls **Chocoboflor et JGtm** ont des tokens valides
-  aujourd'hui (Madina expirés, XxDaemon jamais eu). Si JGtm tombe sur le
+- Le fait que seuls **joueur_165 et JGtm** ont des tokens valides
+  aujourd'hui (joueur_075 expirés, joueur_639 jamais eu). Si JGtm tombe sur le
   RT legacy au lieu de son env token, on a un mismatch silencieux.
 
 ### Action A (avant tout refactor) — diagnostic

@@ -1,8 +1,8 @@
 #!/bin/bash
 # usage: etape.sh <rev ancienne> <rev nouvelle> <carte precedente> <carte> : rang, gofmt, tests film, carte v2, gate 2
-S=/c/Users/GUILLA~1/AppData/Local/Temp/claude/c--Users-Guillaume-Downloads-Scripts-LevelUp/bfd187a4-ee4b-4656-9ab4-0654cbc1dfb8/scratchpad
-W=/c/Users/Guillaume/Downloads/Scripts/LevelUp-wt-grammaire-arrets-vue-b-2
-export GOCACHE=C:/Users/Guillaume/AppData/Local/go-build-vueb CGO_ENABLED=1 CC=gcc
+S=/c/Users/utilisateur/AppData/Local/Temp/claude/c--Users-poste-Downloads-Scripts-LevelUp/bfd187a4-ee4b-4656-9ab4-0654cbc1dfb8/scratchpad
+W=/c/Users/utilisateur/Downloads/Scripts/LevelUp-wt-grammaire-arrets-vue-b-2
+export GOCACHE=C:/Users/utilisateur/AppData/Local/go-build-vueb CGO_ENABLED=1 CC=gcc
 $S/rang.sh $1 $2 | grep -v "^identique\|^ok"
 cd $W/apps/go-api
 gofmt -l internal/games/halo_infinite/film/

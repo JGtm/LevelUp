@@ -9,7 +9,7 @@
 >
 > ## ✅ Validation BDD (2026-04-26)
 >
-> Probe Go ad-hoc exécutée sur `C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/` (production Python active). **Tous les inputs nécessaires aux 3 chantiers prioritaires (scoreboard + expander, citations, impact) sont présents et peuplés** :
+> Probe Go ad-hoc exécutée sur `<poste>/Downloads/Scripts/LevelUp/data/` (production Python active). **Tous les inputs nécessaires aux 3 chantiers prioritaires (scoreboard + expander, citations, impact) sont présents et peuplés** :
 >
 > | Élément | État | Volumétrie |
 > |---|---|---|

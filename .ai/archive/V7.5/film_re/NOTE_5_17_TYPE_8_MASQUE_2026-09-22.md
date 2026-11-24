@@ -159,8 +159,8 @@ ses bits a ZERO (le bourrage d octet est ecrit a zero).
 
 Les huit entrees d un paquet de `bfecd02b` chainent au bit : 32 -> 27 970 -> 55 828 -> 83 790 ->
 100 322 -> 127 782 -> 155 752 -> 183 635 -> 200 247, sur 200 248 bits de payload. Les huit
-gamertags : Tataaannn, JGtm, Chocoboflor, Draconewt, MEK1906, Madina97294, SHN Lups99,
-indahoopty8751 — et les huit XUID sont tous en `0x0009...`.
+gamertags : joueur_737, JGtm, joueur_165, joueur_023, JOUEUR_419, joueur_117, joueur_670,
+joueur_834 — et les huit XUID sont tous en `0x0009...`.
 
 Le recensement de types, re-mesure HORS LIGNE, reproduit a l octet le tableau du §2.2 de la note
 5.16 (qui l avait releve chez l ecrivain) :

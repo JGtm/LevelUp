@@ -16,7 +16,7 @@ func TestNewLiveRunnerBuilder(t *testing.T) {
 	if _, ok := r.(*livesync.Runner); !ok {
 		t.Errorf("halo_5 → *livesync.Runner attendu, got %T", r)
 	}
-	if r2 := build("halo_infinite", "Madina", "x"); r2 != nil {
+	if r2 := build("halo_infinite", "joueur_075", "x"); r2 != nil {
 		t.Errorf("halo_infinite → nil attendu, got %T", r2)
 	}
 }

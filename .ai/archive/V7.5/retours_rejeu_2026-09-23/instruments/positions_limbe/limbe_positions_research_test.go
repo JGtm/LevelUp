@@ -22,7 +22,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
-const limbeRepo = `C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration`
+const limbeRepo = `C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration`
 
 func TestLimbePositions(t *testing.T) {
 	cat, err := profile.LoadMapQuantCatalog(filepath.Join(limbeRepo,

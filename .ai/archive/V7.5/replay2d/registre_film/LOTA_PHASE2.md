@@ -155,7 +155,7 @@ Valeurs calculees sur les artefacts reels — **c'est ce qui doit s'afficher**.
 - **En-tete** : les deux nombres tiquent en continu ; aucun rappel de manche (mode a manche unique).
 - **Fiches** : **6 joueurs sur 8** montrent un score personnel + frags/morts/assistances vivants ;
   les **2 autres gardent les totaux de la base** (aucun zero invente — c'est le cas a regarder).
-  Exemple a la fin : `2533274815845110` -> score 1520, 12 frags, 10 morts, 6 assistances.
+  Exemple a la fin : `2742063072864889` -> score 1520, 12 frags, 10 morts, 6 assistances.
 - **Frise** : **aucune marque** — le camp gagnant mene de bout en bout (deux egalites, a 1 et a 2).
 - **Dominance** : deux escaliers qui ne se croisent jamais, celui de l'equipe 1 toujours au-dessus.
 

@@ -1,7 +1,7 @@
 // Jointure TSV de l instrument C2 x document publie : par vie ti=40, champs de l etat par defaut
 // (bloc MPP d524, r19, famille) contre le comportement publie (echantillons, occupants, fin).
 import fs from 'fs';
-const DOCS = 'C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
+const DOCS = 'C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/';
 const films = process.argv.slice(2);
 const tally = {}; const lignes = [];
 for (const id of films) {

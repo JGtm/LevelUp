@@ -1,6 +1,6 @@
 # Enquête : part de `scan` du killsource en septembre 2026 (2026-10-02)
 
-Worktree `C:/Users/Guillaume/Projects/LevelUp-wt-suite-audit` (branche `feat/suite-audit-decodeur`,
+Worktree `<poste>/Projects/LevelUp-wt-suite-audit` (branche `feat/suite-audit-decodeur`,
 tête `8b894a677`). Enquête seule : aucun code de production modifié, aucune écriture sous `data/`.
 
 **Lecture de la base.** `shared_matches_v2.duckdb` du checkout principal (tenue par le serveur dev) a
@@ -142,8 +142,8 @@ cause**.
 
 | matchs | part de scan |
 |---|---|
-| 31 matchs avec au moins un joueur suivi (JGtm, Chocoboflor, Madina97294, XxDaemonGamerxX) | 4,7 à 11,9 % |
-| 90 matchs sans participant suivi (`first_sync_by = Nuzzles`, Ranked Arena), qui contiennent les 19 matchs à objectif porté | 21,8 % |
+| 31 matchs avec au moins un joueur suivi (JGtm, joueur_165, joueur_117, joueur_291) | 4,7 à 11,9 % |
+| 90 matchs sans participant suivi (`first_sync_by = joueur_074`, Ranked Arena), qui contiennent les 19 matchs à objectif porté | 21,8 % |
 
 La concentration « par joueur » est un **effet de sélection** : les Ranked Arena de ce compte
 contiennent l'Oddball.

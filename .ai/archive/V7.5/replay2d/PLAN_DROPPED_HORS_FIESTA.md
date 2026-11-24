@@ -1,7 +1,7 @@
 # PLAN — Les objets de PUISSANCE lâchés à la mort, hors Fiesta (rejeu 2D, lot web R2)
 
 > Branche `wt/dropped-hors-fiesta`, base `feat/v75` = `e4a15e7c6`. Worktree frère
-> `C:\Users\Guillaume\Projects\LevelUp-wt-dropped`. Contrat d'exécution : skill
+> `<poste>\Projects\LevelUp-wt-dropped`. Contrat d'exécution : skill
 > `plan-execution` (ordre strict, aucun report d'une action faisable maintenant).
 
 ## 1. La décision produit

@@ -30,8 +30,8 @@ Décomposition des 57 (mesurée dans `shared_social.duckdb` prod, xuid 253327482
 | `media_added` sans coalescence | 5 | 5 clips du même acteur en 5 min = 5 notifs |
 | Records/near-miss coach multipliés par période | ~6 | même record émis 3× (30d/90d/all_time), near-miss en double |
 
-Constat transverse : personne ne marque lu (JGtm 57/59 non-lues, Madina 32/32 depuis
-avril, Chocoboflor 10/10). Le badge est un cumul, pas un signal.
+Constat transverse : personne ne marque lu (JGtm 57/59 non-lues, joueur_075 32/32 depuis
+avril, joueur_165 10/10). Le badge est un cumul, pas un signal.
 
 Points d'appui code (vérifiés le 2026-07-07) :
 

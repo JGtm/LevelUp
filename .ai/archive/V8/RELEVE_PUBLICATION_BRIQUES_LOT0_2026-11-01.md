@@ -1,6 +1,6 @@
 # Releve lot 0 - quatre clients HTTP Halo/Xbox restes hors brique
 
-Depot : `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-publication`, branche `refactor/publication-briques`, HEAD 8f0b512c58 (2026-11-01).
+Depot : `<poste>\Downloads\Scripts\LevelUp-wt-publication`, branche `refactor/publication-briques`, HEAD 8f0b512c58 (2026-11-01).
 Lecture seule. Aucun build/test lance. Les numeros de ligne sont ceux des fichiers au HEAD ci-dessus.
 Chemins abreges : `go-api` = `apps/go-api`.
 

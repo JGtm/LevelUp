@@ -1,6 +1,6 @@
 # AUDIT COMPLÉMENTAIRE — Vérification finale du traitement des audits 2026-07
 
-> Date : 2026-07-06 (soir). Vérificateur : Fable (session dédiée), à la demande de Guillaume.
+> Date : 2026-07-06 (soir). Vérificateur : Fable (session dédiée), à la demande de JGtm.
 > Objet : contrôle qualité/robustesse/complétude du travail d'Opus sur
 > [PLAN_TRAITEMENT_AUDITS_2026-07.md](PLAN_TRAITEMENT_AUDITS_2026-07.md) (lots S → N, J en cours).
 > Méthode : gates mécaniques complets (build/vet/tests unitaires Go, suite intégration `-p 1`,

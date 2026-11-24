@@ -1,7 +1,7 @@
 // Pendant un episode, quels canaux du document parlent encore de l'occupant (slot) ?
 import fs from 'fs';
 const [id, slotS, t0S, t1S] = process.argv.slice(2);
-const doc = JSON.parse(fs.readFileSync(`C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/${id}.json`, 'utf8'));
+const doc = JSON.parse(fs.readFileSync(`C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/${id}.json`, 'utf8'));
 const slot = +slotS, t0 = +t0S, t1 = +t1S;
 for (const [k, v] of Object.entries(doc)) {
   if (!Array.isArray(v) || !v.length || typeof v[0] !== 'object') continue;

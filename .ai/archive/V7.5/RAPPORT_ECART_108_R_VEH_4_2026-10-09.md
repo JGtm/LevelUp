@@ -7,7 +7,7 @@ rien n'est commité (CLAUDE.md : demander avant tout commit).
 - `apps/go-api/internal/games/halo_infinite/film/internal/grammar/ecart108_research_test.go` (`TestEcart108`)
 - `.../grammar/ecart108_residus_research_test.go` (`TestEcart108Residus`)
 
-Sorties sous `$O = C:/Users/GUILLA~1/AppData/Local/Temp/claude/c--Users-Guillaume-Downloads-Scripts-LevelUp/2efb0786-9fba-4f95-8fd0-464ee47b91d7/scratchpad/ri/ecart108/`.
+Sorties sous `$O = <poste>/AppData/Local/Temp/claude/c--Users-poste-Downloads-Scripts-LevelUp/2efb0786-9fba-4f95-8fd0-464ee47b91d7/scratchpad/ri/ecart108/`.
 Commande de référence (28 films, FILMS et CARTES de `d1/run.sh`, GOCACHE `go-build-ecart108`) :
 
 ```

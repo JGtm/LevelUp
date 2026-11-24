@@ -220,7 +220,7 @@ scratchpad (`scratchpad/L2/carte_avant`, `carte_apres`).
 
 ## 6. Sorties des autres gates
 
-### 6.1 Gate 1 (depuis `apps/go-api`, `GOCACHE=C:/Users/Guillaume/AppData/Local/go-build-cg-l2`)
+### 6.1 Gate 1 (depuis `apps/go-api`, `GOCACHE=<poste>/AppData/Local/go-build-cg-l2`)
 
 | Gate | Sortie |
 |---|---|

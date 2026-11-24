@@ -110,7 +110,7 @@ mutuellement distincts, sans qu'aucune information de la table n'ait été injec
 Appuis complémentaires : second canal indépendant — le record d'objet d'équipement porte le
 même index, multiensembles identiques sur 24 images-clés sur 26. Persistance : 32 vies à index
 constant sur au moins deux images-clés, contre 5 changeantes (ramassages au sol, normaux en
-Fiesta) ; IKE ILYA garde l'index 4 sur six images-clés consécutives, soit 100 s d'une même vie.
+Fiesta) ; JOUEUR_417 garde l'index 4 sur six images-clés consécutives, soit 100 s d'une même vie.
 
 ### CETTE TABLE EST PARTIELLE — ne pas la généraliser
 

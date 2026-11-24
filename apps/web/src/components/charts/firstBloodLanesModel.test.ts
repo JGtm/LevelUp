@@ -106,7 +106,7 @@ describe('buildFirstBloodLanes', () => {
   it('propage carte/mode/date de FirstBloodMatch vers chaque FirstBloodEventPoint (DEC-4)', () => {
     const lanes = buildFirstBloodLanes([
       {
-        player: 'Madina',
+        player: 'joueur_075',
         matches: [
           {
             matchId: 'a',

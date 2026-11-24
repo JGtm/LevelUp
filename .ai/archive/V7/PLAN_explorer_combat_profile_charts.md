@@ -271,5 +271,5 @@ classe Tailwind couleur).
 1. `go test -tags integration ./internal/platform/duckdb/...` + `go test ./internal/service/... ./internal/api/...`.
 2. `npx vitest run` (builders + conteneur) + `npm run typecheck && npm run lint`.
 3. App : lancer le front, page Explorer -> mode Joueur -> rechercher un joueur connu
-   (ex. Madina97294) -> vérifier les 5 graphes (FDA+barres, dégâts empilés, score+placement
+   (ex. joueur_117) -> vérifier les 5 graphes (FDA+barres, dégâts empilés, score+placement
    axe inversé, folie+parfaits, donut modes), l'exclusion PvE, l'état vide si aucun match.

@@ -7,7 +7,7 @@
 > **Créé** : 2026-06-02 · **Méthode** : audit par phase dans le code réel (6 agents Explore).
 > **Légende statut** : ✅ done · 🟡 partial · ⬜ todo.
 
-## Décisions cadrantes (validées avec Guillaume, 2026-06-02)
+## Décisions cadrantes (validées avec JGtm, 2026-06-02)
 
 - **Voie A** : un 2e titre est au backlog → finir le chemin canonique est l'investissement ROI-positif.
 - **Fenêtre = minimale viable (Phases 0→3a)** : « services title-agnostic + DTO propres + feature-matrix », **Huma (3b) différé**.

@@ -1,6 +1,6 @@
 # Vérification adverse V-GO-D2
 
-Cadre : lecture seule, dépôt `C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration`,
+Cadre : lecture seule, dépôt `<poste>/Downloads/Scripts/LevelUp-go-migration`,
 branche `feat/v75`, HEAD `736ccf3c3`. Aucune compilation, aucun test lancé, aucun fichier du
 jeu ouvert.
 

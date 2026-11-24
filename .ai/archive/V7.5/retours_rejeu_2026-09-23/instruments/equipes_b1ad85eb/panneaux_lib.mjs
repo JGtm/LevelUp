@@ -15,8 +15,8 @@
 //                        « tout a zero » compris) + match_view_builders_team.go:116-119 (t{team_id})
 import fs from 'fs';
 
-export const REPO = 'C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration';
-export const SPD = 'C:/Users/GUILLA~1/AppData/Local/Temp/claude/c--Users-Guillaume-Downloads-Scripts-LevelUp-go-migration/5e1d6f3f-b6be-4233-b361-e8a896dd728d/scratchpad/sondes/equipes_b1ad85eb';
+export const REPO = 'C:/Users/utilisateur/Downloads/Scripts/LevelUp-go-migration';
+export const SPD = 'C:/Users/utilisateur/AppData/Local/Temp/claude/c--Users-poste-Downloads-Scripts-LevelUp-go-migration/5e1d6f3f-b6be-4233-b361-e8a896dd728d/scratchpad/sondes/equipes_b1ad85eb';
 
 export function loadDoc(id8) {
   return JSON.parse(fs.readFileSync(`${REPO}/data/cache/replays/halo_infinite/${id8}.json`, 'utf8'));

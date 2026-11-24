@@ -3,15 +3,15 @@
   "mapId": "33075df7-01c8-40e1-8b3e-1baee0054c76",
   "teamScores": [78, 105],
   "players": [
-    {"xuid":"2533274857387572","kills":6,"deaths":7,"assists":4,"teamId":0},
-    {"xuid":"2533275004520376","kills":10,"deaths":11,"assists":7,"teamId":0},
-    {"xuid":"2535407066740278","kills":9,"deaths":10,"assists":2,"teamId":0},
-    {"xuid":"2535408183412820","kills":0,"deaths":0,"assists":0,"teamId":0},
-    {"xuid":"2535435974688461","kills":6,"deaths":10,"assists":6,"teamId":0},
+    {"xuid":"2709341845069387","kills":6,"deaths":7,"assists":4,"teamId":0},
+    {"xuid":"2779576370057794","kills":10,"deaths":11,"assists":7,"teamId":0},
+    {"xuid":"2622964463507713","kills":9,"deaths":10,"assists":2,"teamId":0},
+    {"xuid":"2635156153746317","kills":0,"deaths":0,"assists":0,"teamId":0},
+    {"xuid":"2641407264103267","kills":6,"deaths":10,"assists":6,"teamId":0},
     {"xuid":"bid(48.0)","kills":0,"deaths":0,"assists":0,"teamId":0},
     {"xuid":"2533274823110022","kills":7,"deaths":7,"assists":4,"teamId":1},
-    {"xuid":"2533274858283686","kills":12,"deaths":8,"assists":7,"teamId":1},
-    {"xuid":"2535456259091650","kills":13,"deaths":7,"assists":5,"teamId":1},
+    {"xuid":"2623439693412443","kills":12,"deaths":8,"assists":7,"teamId":1},
+    {"xuid":"2559025798969566","kills":13,"deaths":7,"assists":5,"teamId":1},
     {"xuid":"2541316932603141","kills":6,"deaths":9,"assists":6,"teamId":1}
   ]
 }

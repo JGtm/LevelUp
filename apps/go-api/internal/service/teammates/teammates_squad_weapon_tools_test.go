@@ -15,7 +15,7 @@ import (
 
 const (
 	toolJ, toolC, toolM    = "JGtm", "Joueur90001", "Joueur90002"
-	toolXJ, toolXC, toolXM = "x_jgtm", "x_choco", "x_madina"
+	toolXJ, toolXC, toolXM = "x_jgtm", "x_joueur_901", "x_joueur_075"
 	keyToolCoilPlasma      = "hinf_" + "coil_plasma"
 	keyToolCoilKinetic     = "hinf_" + "coil_kinetic"
 	keyToolEnvironment     = "hinf_" + "environment"

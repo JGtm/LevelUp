@@ -26,17 +26,17 @@ Le code applicatif lisait ces sources avec des priorités incohérentes selon le
 
 ## Incident déclencheur (2026-05-26)
 
-**Madina97294** obtenait `invalid_grant AADSTS70000` immédiatement après avoir injecté un RT frais via `cmd/token-capture` :
+**joueur_117** obtenait `invalid_grant AADSTS70000` immédiatement après avoir injecté un RT frais via `cmd/token-capture` :
 
 1. Air hot-reload déclenchait un boot complet à chaque modif du serveur.
-2. Le Pool lisait l'env var de Madina (DuckDB vide), appelait Microsoft, recevait `(access_token, rotated_RT)`, sauvait `rotated_RT` en DuckDB via `onRotated`. **Token original brûlé chez Microsoft.**
+2. Le Pool lisait l'env var de joueur_075 (DuckDB vide), appelait Microsoft, recevait `(access_token, rotated_RT)`, sauvait `rotated_RT` en DuckDB via `onRotated`. **Token original brûlé chez Microsoft.**
 3. Millisecondes plus tard, une requête HTTP arrivait → `refreshTokensFromDB` → lisait **l'env var en premier** (l'original déjà consommé) → `invalid_grant`.
 
-JGtm et Chocoboflor n'étaient pas affectés car leurs DuckDB avaient des RT valides maintenus depuis des mois — le Pool lisait DuckDB, pas l'env var.
+JGtm et joueur_165 n'étaient pas affectés car leurs DuckDB avaient des RT valides maintenus depuis des mois — le Pool lisait DuckDB, pas l'env var.
 
 ## Diagnostic architectural
 
-Au-delà du bug Madina, plusieurs défauts structurels :
+Au-delà du bug joueur_075, plusieurs défauts structurels :
 
 - **DuckDB OLAP utilisé comme credential store** : anti-pattern. DuckDB est une base analytique, pas un secret manager.
 - **4 CLI dupliquaient le pipeline auth** et ne persistaient PAS la rotation → un seul usage par RT, le suivant échoue.
@@ -104,7 +104,7 @@ Le `xuid` est global cross-titres. Un seul fichier `{xuid}.json` couvre tous les
 
 ### Positives
 
-- **Bug Madina résolu** : Phase 3a inverse la priorité dans `refreshTokensFromDB` (store first), Phase 4 fait que `token-capture` écrit direct au store.
+- **Bug joueur_075 résolu** : Phase 3a inverse la priorité dans `refreshTokensFromDB` (store first), Phase 4 fait que `token-capture` écrit direct au store.
 - **CLI tools cessent de brûler des tokens** : Phase 4bis ajoute la persistance de rotation au store dans le helper partagé `RefreshHaloTokensViaStoreFirst`.
 - **SSO Xbox auto-reload** : Phase 4ter persiste le RT au store, plus besoin de re-prompter le user à chaque expiration.
 - **Élimination de DuckDB comme credential store** : nettoyage architectural.
@@ -270,7 +270,7 @@ Atomic rename, perms strictes, structure JSON par xuid, code déjà testé. Éte
 ### Mode "advanced" — CLI `token-capture`
 
 ```bash
-go run ./cmd/token-capture/ Madina97294
+go run ./cmd/token-capture/ joueur_117
 # → ouvre browser, user s'authentifie, RT écrit direct dans data/auth/watcher_tokens/{xuid}.json
 # → redémarrer le serveur, c'est tout
 ```
@@ -278,7 +278,7 @@ go run ./cmd/token-capture/ Madina97294
 ### Mode "advanced" — RT obtenu d'un autre outil
 
 ```bash
-cat token-madina.txt | go run ./cmd/token-import/ Madina97294
+cat token-joueur_075.txt | go run ./cmd/token-import/ joueur_117
 # → lit le RT sur stdin (pas argv pour éviter exposition shell history)
 # → écrit direct dans le store
 ```

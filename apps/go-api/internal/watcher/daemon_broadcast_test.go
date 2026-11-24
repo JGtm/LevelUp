@@ -46,7 +46,7 @@ func addTestPlayer(d *Daemon, gamertag, xuid string) *PlayerWatcher {
 }
 
 // TestBroadcast_PropagatesToAllOthers : scénario nominal — JGtm passe
-// in-game, Madina + Choco + XxDaemon doivent aussi passer Watching.
+// in-game, joueur_075 + joueur_901 + joueur_639 doivent aussi passer Watching.
 func TestBroadcast_PropagatesToAllOthers(t *testing.T) {
 	reg := title.NewRegistry()
 	d := NewDaemon(DaemonConfig{
@@ -54,9 +54,9 @@ func TestBroadcast_PropagatesToAllOthers(t *testing.T) {
 	}, reg, &mockDaemonSyncRunner{})
 
 	jgtm := addTestPlayer(d, "JGtm", "111")
-	madina := addTestPlayer(d, "Joueur90002", "222")
-	choco := addTestPlayer(d, "Joueur90001", "333")
-	xxdaemon := addTestPlayer(d, "Joueur90000000f", "444")
+	joueur075 := addTestPlayer(d, "Joueur90002", "222")
+	joueur901 := addTestPlayer(d, "Joueur90001", "333")
+	joueur639 := addTestPlayer(d, "Joueur90000000f", "444")
 
 	handler := d.makePresenceHandler(context.Background(), jgtm)
 	handler(haloPresenceEvent("111"))
@@ -66,9 +66,9 @@ func TestBroadcast_PropagatesToAllOthers(t *testing.T) {
 
 	for name, pw := range map[string]*PlayerWatcher{
 		"JGtm":            jgtm,
-		"Joueur90002":     madina,
-		"Joueur90001":     choco,
-		"Joueur90000000f": xxdaemon,
+		"Joueur90002":     joueur075,
+		"Joueur90001":     joueur901,
+		"Joueur90000000f": joueur639,
 	} {
 		if got := pw.FSM().State(); got != StateWatching {
 			t.Errorf("après broadcast, %s FSM = %v, want Watching", name, got)
@@ -86,23 +86,23 @@ func TestBroadcast_IdempotentOnRepeatedEvents(t *testing.T) {
 	}, reg, &mockDaemonSyncRunner{})
 
 	jgtm := addTestPlayer(d, "JGtm", "111")
-	madina := addTestPlayer(d, "Joueur90002", "222")
+	joueur075 := addTestPlayer(d, "Joueur90002", "222")
 
 	handler := d.makePresenceHandler(context.Background(), jgtm)
 
 	// 1er event Active
 	handler(haloPresenceEvent("111"))
 	time.Sleep(20 * time.Millisecond)
-	if madina.FSM().State() != StateWatching {
-		t.Fatalf("après 1er event, Madina FSM = %v, want Watching", madina.FSM().State())
+	if joueur075.FSM().State() != StateWatching {
+		t.Fatalf("après 1er event, joueur_075 FSM = %v, want Watching", joueur075.FSM().State())
 	}
 
 	// 2ème event Active sur le même joueur → no-op côté FSM (déjà Watching),
 	// pas de panic, pas de cascade.
 	handler(haloPresenceEvent("111"))
 	time.Sleep(20 * time.Millisecond)
-	if madina.FSM().State() != StateWatching {
-		t.Errorf("après 2ème event, Madina FSM = %v, want toujours Watching", madina.FSM().State())
+	if joueur075.FSM().State() != StateWatching {
+		t.Errorf("après 2ème event, joueur_075 FSM = %v, want toujours Watching", joueur075.FSM().State())
 	}
 	if jgtm.FSM().State() != StateWatching {
 		t.Errorf("après 2ème event, JGtm FSM = %v, want toujours Watching", jgtm.FSM().State())
@@ -139,7 +139,7 @@ func TestBroadcast_DoesNotFireOnUntrackedTitle(t *testing.T) {
 	}, reg, &mockDaemonSyncRunner{})
 
 	jgtm := addTestPlayer(d, "JGtm", "111")
-	madina := addTestPlayer(d, "Joueur90002", "222")
+	joueur075 := addTestPlayer(d, "Joueur90002", "222")
 
 	handler := d.makePresenceHandler(context.Background(), jgtm)
 
@@ -154,7 +154,7 @@ func TestBroadcast_DoesNotFireOnUntrackedTitle(t *testing.T) {
 	})
 	time.Sleep(20 * time.Millisecond)
 
-	if madina.FSM().State() != StateIdle {
-		t.Errorf("Madina FSM = %v, want Idle (titre non tracké → pas de broadcast)", madina.FSM().State())
+	if joueur075.FSM().State() != StateIdle {
+		t.Errorf("joueur_075 FSM = %v, want Idle (titre non tracké → pas de broadcast)", joueur075.FSM().State())
 	}
 }

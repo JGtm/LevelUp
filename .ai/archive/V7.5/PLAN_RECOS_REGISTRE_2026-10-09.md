@@ -120,7 +120,7 @@ un par lot, chacun dans son worktree et sa branche `feat/recos-<lot>`.
 
 ## Journal
 
-- 2026-10-09 : plan écrit ; jetons de Chocoboflor, Madina97294 et XxDaemonGamerxX importés de la
+- 2026-10-09 : plan écrit ; jetons de joueur_165, joueur_117 et joueur_291 importés de la
   prod en local (sauvegarde des anciens sous `data/backups/watcher_tokens_avant_import_prod_2026-10-09/`).
 
 - 2026-10-09 : lot A rendu (`feat/recos-a`, 4 commits, CI verte). Les trois cartes sont des cartes Forge sur canevas connus (preuve level_id) : entrées de bornes et d'objectifs ajoutées. Cuisson des 24 films concernés reportée après fusion. Jetons des trois amis vérifiés en local : succès Xbox synchronisés à 17:38.
@@ -135,7 +135,7 @@ un par lot, chacun dans son worktree et sa branche `feat/recos-<lot>`.
 
 - 2026-10-09 : décisions du user sur la démo : masquage des noms côté serveur validé ; dix rejeux suffisent (Extraction, Escalation Slayer et Castle Wars non ajoutés).
 
-- 2026-10-09 : relectures du lot C (anti-ART, couverture) sans défaut ; 4 trous de tests comblés (9 mutations rouges, `6ab6a40e0`). Fusion de `feat/recos-c` (accord du user), sauvegarde `data/backups/avant_recos_c_2026-10-09/` (12 bases, 1,2 Go), redémarrage : migrations jouées sans erreur (4 lignes composites retirées, ids réparés chez Chocoboflor, Madina97294, XxDaemonGamerxX, 4 clés héritées retirées).
+- 2026-10-09 : relectures du lot C (anti-ART, couverture) sans défaut ; 4 trous de tests comblés (9 mutations rouges, `6ab6a40e0`). Fusion de `feat/recos-c` (accord du user), sauvegarde `data/backups/avant_recos_c_2026-10-09/` (12 bases, 1,2 Go), redémarrage : migrations jouées sans erreur (4 lignes composites retirées, ids réparés chez joueur_165, joueur_117, joueur_291, 4 clés héritées retirées).
 
 - 2026-10-09 : faille de lecture de fichiers arbitraires sous `/static/commendations/` (pré-existante depuis le 2026-04-23) découverte par la relecture D, confirmée en prod ; correctif `fix/static-traversal` (PR #89) fusionné dans main et déployé, vérifié 404 sur le site et la démo. Incident de déploiement : `scripts/deploy.sh` (`git clean -fd`) a effacé l'essentiel du staging `/opt/levelup/data.incoming/` du 23/09 ; restes déplacés vers `/opt/levelup-data.incoming-restes-2026-09-23`, déploiement relancé avec succès.
 - 2026-10-09 soir : quota hebdomadaire atteint, agents D, E, F interrompus après leurs commits (CI verte sur les trois branches).
@@ -163,7 +163,7 @@ un par lot, chacun dans son worktree et sa branche `feat/recos-<lot>`.
 - (lot D) Déploiement : provisionner une fois `data/demo/replays/` (~310 Mo) sur le VPS ; recuisson démo sur le VPS à chaque montée de schéma (plafond 3 Gio).
 - (lot C) `cmd/lusr_v2_replay` et `cmd/lusr_v2_canonical_backfill` font un DELETE sur `player_skill_state_v2` (append-only partagée) ; `cmd/` hors du ratchet `TestNoRawDeleteOnAppendOnlyTables` ; chemins construits à la main dans `lusr_v2_canonical_backfill`.
 - (lot C) `cmd/backfill-csr-history` et `cmd/h5-enrich` ouvrent les bases joueur par `sql.Open` (risque de séquence).
-- (lot C) Base Halo Infinite de Chocoboflor : sept tables prestige sans PK ; `written_at` en TIMESTAMPTZ sur `match_skill_rank` et `player_csr_snapshots`.
+- (lot C) Base Halo Infinite de joueur_165 : sept tables prestige sans PK ; `written_at` en TIMESTAMPTZ sur `match_skill_rank` et `player_csr_snapshots`.
 - (lot C) `sync/invariants/invariants.go:376` compare `mode_category` à `firefight` en minuscules : le filtre n'exclut rien.
 - (lot C) `idx_match_vehicle_takes_match` : index secondaire sur une table append-only partagée, même question que C2.
 - (lot C) `internal/ops/seed_demo_sync_meta.go` : commentaire sur les valeurs résiduelles de `sync_meta` faux après C7.

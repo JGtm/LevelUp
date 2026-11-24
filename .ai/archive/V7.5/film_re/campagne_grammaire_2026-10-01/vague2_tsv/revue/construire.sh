@@ -1,6 +1,6 @@
 #!/bin/bash
 # construire.sh <nom> [overlay.json] : binaires de mesure. nom=base : git archive 6fa631df0 ; sinon l arbre du worktree (+ surcouche).
-source /c/Users/GUILLA~1/AppData/Local/Temp/claude/c--Users-Guillaume-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad/v2-integ/rev/env.sh
+source /c/Users/utilisateur/AppData/Local/Temp/claude/c--Users-poste-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad/v2-integ/rev/env.sh
 mkdir -p $R/bin/$1
 OV=""; [ -n "$2" ] && OV="-overlay=$(cygpath -m $2)"
 if [ $1 = base ]; then

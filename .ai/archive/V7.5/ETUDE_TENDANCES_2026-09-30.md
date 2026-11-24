@@ -237,16 +237,16 @@ le 27/09/2026), requêtes par `cmd/diag_q` en lecture seule.
 Constats mesurés (ils conditionnent le plan) :
 - **7 j contre les 7 j d'avant est fragile.** Mesuré jour par jour du 01/11/2025 au
   27/09/2026 : les deux fenêtres ont au moins 10 matchs 66 % des jours pour JGtm, 41 % pour
-  Chocoboflor, 35 % pour Madina97294 (au moins 5 : 79 / 58 / 59 %). Le 27/09, aucun des quatre
+  joueur_165, 35 % pour joueur_117 (au moins 5 : 79 / 58 / 59 %). Le 27/09, aucun des quatre
   joueurs suivis n'a de semaine précédente jouée. À 30 j : 94 à 96 % des jours.
-- **365 j contre l'année d'avant n'existe pas encore** pour JGtm et Chocoboflor (historique
-  réel depuis octobre 2025) ; Madina97294 : 110 matchs l'année d'avant.
+- **365 j contre l'année d'avant n'existe pas encore** pour JGtm et joueur_165 (historique
+  réel depuis octobre 2025) ; joueur_117 : 110 matchs l'année d'avant.
 - **Classé quasi absent** : 8 matchs classés sur 1 142 dans l'année pour JGtm (1 117 en Partie
   rapide). La page ne se centre pas sur le CSR ; bloc Classement gaté `ranked`, masqué vide.
 - **Une escouade = environ une soirée par semaine** (Big bosses : 426 matchs, 53 soirées sur
   l'année). Sur 7 j, l'escouade, c'est une soirée.
 - **Composition stricte** : « Les deux BGs » = 450 matchs sur l'année au moins à deux, 24 sans
-  Madina97294 ni XxDaemonGamerxX dans l'équipe (ADR 0033).
+  joueur_117 ni joueur_291 dans l'équipe (ADR 0033).
 - **Difficulté égale, le récit que la page d'exemple ne voit pas** (JGtm, 8 premières contre
   8 dernières semaines, pondéré par les matchs) : KDA −2,54 → +0,46, MMR adverse ~1 140 →
   ~1 240, écart aux frags attendus +2,06 → −0,40 par match.
@@ -279,7 +279,7 @@ suivis dans son équipe, LUSR par chaîne, équipement du film). Blocs et consta
 - style (3 premiers contre 3 derniers mois) : part des frags à la tête 43 → 26 %, à l'arme
   lourde 12 → 21 %, grappins par match 0,4 → 1,0, grenades lancées 8,1 → 12,8 ;
 - médailles qui bougent (par match, 90 j contre 90 j) et mélange des types de partie par mois ;
-- escouade (Big bosses) : 53 soirées (24 gagnées, 23 perdues, 6 à l'équilibre), Madina97294
+- escouade (Big bosses) : 53 soirées (24 gagnées, 23 perdues, 6 à l'équilibre), joueur_117
   fait 47 % des frags de l'escouade, JGtm gagne 50 % avec elle contre 47 % sans coéquipier suivi
   mais avec un score de perf plus bas (49,0 contre 51,8), équipe à +12 de MMR sur ses
   adversaires ; composition stricte fonctionnelle (426 → 388 matchs sur l'année).
