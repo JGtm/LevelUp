@@ -283,11 +283,13 @@ func (s *AutoSyncScheduler) syncPlayerWithHistory(ctx context.Context, p domain.
 	// finale appelle recordOutcome qui écrasera la valeur ; on garde la
 	// précédente pour pouvoir l'incrémenter ou la conserver selon l'outcome.
 	prevZeroInserts := s.previousZeroInsertCount(p.Gamertag)
+	prevLastMatch := s.previousLastMatchAt(p.Gamertag)
 	detail := PlayerOutcomeDetail{
 		Gamertag:               p.Gamertag,
 		XUID:                   p.XUID,
 		AttemptedAt:            startedAt,
 		ConsecutiveZeroInserts: prevZeroInserts, // défaut : préserver (cas skipped/failed)
+		LastMatchAt:            prevLastMatch,   // idem : la position survit aux cycles sautés
 	}
 	defer func() {
 		detail.Outcome = outcomeName(outcome)
@@ -392,22 +394,9 @@ func (s *AutoSyncScheduler) syncPlayerWithHistory(ctx context.Context, p domain.
 		detail.PostSync = &ps
 	}
 
-	// Counter zero-insert : reset si on insère ≥1 match, sinon incrément.
-	// Sentinelle d'API stale / format URL incorrect / gamertag changé.
-	if syncResult.MatchesInserted > 0 {
-		detail.ConsecutiveZeroInserts = 0
-	} else {
-		detail.ConsecutiveZeroInserts = prevZeroInserts + 1
-		if detail.ConsecutiveZeroInserts >= ConsecutiveZeroInsertWarnThreshold {
-			slog.WarnContext(ctx, "auto_sync: zero-insert prolongé — sync delta réussie mais 0 nouveau match sur N cycles consécutifs",
-				"gamertag", p.Gamertag,
-				"xuid", p.XUID,
-				"consecutive_zero_inserts", detail.ConsecutiveZeroInserts,
-				"threshold", ConsecutiveZeroInsertWarnThreshold,
-				"hint", "vérifier endpoint Halo + format URL + token resolved (probe /api/v1/_diag/auto-sync/probe)",
-			)
-		}
-	}
+	// Counter zero-insert : reset si un match est arrivé (inséré par ce cycle, ou rangé par une autre
+	// voie), sinon incrément. Sentinelle d'API stale / format URL incorrect / gamertag changé.
+	s.countZeroInsert(ctx, p, &detail, prevZeroInserts, prevLastMatch, syncResult.MatchesInserted)
 
 	if len(syncResult.Errors) > 0 {
 		detail.FirstError = syncResult.Errors[0]

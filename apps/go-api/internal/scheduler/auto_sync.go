@@ -332,6 +332,14 @@ func (s *AutoSyncScheduler) previousZeroInsertCount(gamertag string) int {
 	return s.playerOutcomes[gamertag].ConsecutiveZeroInserts
 }
 
+// previousLastMatchAt retourne le dernier match connu du joueur à la fin de son cycle précédent
+// (zéro : aucun cycle enregistré, ou position inconnue). Thread-safe.
+func (s *AutoSyncScheduler) previousLastMatchAt(gamertag string) time.Time {
+	s.snapshotMu.RLock()
+	defer s.snapshotMu.RUnlock()
+	return s.playerOutcomes[gamertag].LastMatchAt
+}
+
 // poolSizeSafe retourne s.pool.Size() ou 0 si pool nil — pour les logs.
 func (s *AutoSyncScheduler) poolSizeSafe() int {
 	if s.pool != nil {

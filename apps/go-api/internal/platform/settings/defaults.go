@@ -23,6 +23,9 @@ type absentDefaults struct {
 	system config.SystemLocale
 	// autoSync : la synchronisation automatique est active tant que rien n'est écrit (WithAutoSyncDefault).
 	autoSync bool
+	// archiveFilmsOff : l'archive des films est COUPÉE tant que rien n'est écrit (WithArchiveFilmsDefault(false)).
+	// Le zéro garde le défaut historique, archiver.
+	archiveFilmsOff bool
 }
 
 // WithEnforcedDefaults déclare que l'instance applique la propriété des joueurs
@@ -64,6 +67,16 @@ func (s *Store) WithAutoSyncDefault(on bool) *Store {
 	return s
 }
 
+// WithArchiveFilmsDefault déclare si la clé `archive_films` ABSENTE d'app_settings.json vaut oui ou non
+// (capacité ArchiveFilmsByDefault du profil de déploiement). Sans cet appel, le défaut reste oui : un film
+// expire côté serveur Halo, on ne le jette pas sans l'avoir demandé. Une valeur explicite du fichier,
+// true ou false, gagne toujours ; aucune réécriture du fichier. Défaut coupé : la rétention des rejeux
+// reste illimitée (enforceFilmArchiveInvariant), la purge supposant une archive pour recuire.
+func (s *Store) WithArchiveFilmsDefault(on bool) *Store {
+	s.absent.archiveFilmsOff = !on
+	return s
+}
+
 // applyAbsentDefaults réapplique les défauts « clé absente → true » sur un
 // AppSettings dérivé de la map raw donnée (rétrocompatibilité fichiers existants).
 // Partagé entre Load et ResolveForTitle pour garder une seule source de vérité.
@@ -100,7 +113,8 @@ func applyAbsentDefaults(cfg *AppSettings, raw map[string]json.RawMessage, d abs
 		cfg.CoachProactiveMode = true // DEC-2 : défaut ON (bascule 2026-07-22)
 	}
 	if _, ok := raw["archive_films"]; !ok {
-		cfg.ArchiveFilms = true // D-5 : archiver par défaut (un film expire côté serveur Halo)
+		// D-5 : archiver par défaut (un film expire côté serveur Halo), sauf profil qui ne le veut pas.
+		cfg.ArchiveFilms = !d.archiveFilmsOff
 	}
 	if _, ok := raw["game_process_watch"]; !ok {
 		cfg.GameProcessWatch = true // L21 : la détection seule est sans effet visible, défaut ON

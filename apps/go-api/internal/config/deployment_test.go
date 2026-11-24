@@ -106,9 +106,10 @@ func TestDeployment_CapacitesParProfil(t *testing.T) {
 		{DeploymentDev, "", "", LaunchModeDefault, DeploymentCapabilities{
 			UseGroups: true, PoolTokens: true, UseAdmin: true, UseResticBackup: true, UseDiscord: true,
 			UseOutboundNetwork: true, OfferWindowsDownload: true, EditSettings: true, UploadMedia: true, CompareAccounts: true,
-			ExportForDesktop: true, GenerateReplays: true, DecoderThreads: 4}},
+			ExportForDesktop: true, GenerateReplays: true, DecoderThreads: 4, ArchiveFilmsByDefault: true}},
 		{DeploymentDemo, "", "true", LaunchModeDefault, DeploymentCapabilities{
-			UseAdmin: true, OfferWindowsDownload: true, CompareAccounts: true, ResourcePackFatal: true, DecoderThreads: 1}},
+			UseAdmin: true, OfferWindowsDownload: true, CompareAccounts: true, ResourcePackFatal: true, DecoderThreads: 1,
+			ArchiveFilmsByDefault: true}},
 		{DeploymentDesktop, "", "", LaunchModeDesktop, DeploymentCapabilities{
 			UseOutboundNetwork: true, UpdateApp: true, EditSettings: true, UploadMedia: true,
 			ShellEntryGate: true, PoolGrantedToLocalUser: true, WakeSequence: true, TokenVault: true,
@@ -116,7 +117,8 @@ func TestDeployment_CapacitesParProfil(t *testing.T) {
 			GameProcessWatch: true, ShellIntegration: true, ScheduledRefresh: true, AutoSyncByDefault: true,
 			ParquetBackup: true, ImportFromSite: true, DiagnosticReport: true, MemoryLimit: true, ReplayRegen: true,
 			KeepMediaSources: true, RevealFilesInExplorer: true, TrashMediaSources: true, PickFolder: true,
-			CompactPassesAtStartup: true, GenerateReplays: true, DecoderThreads: 4, FilmCatchUp: true}},
+			CompactPassesAtStartup: true, GenerateReplays: true, DecoderThreads: 4, FilmCatchUp: true,
+			ArchiveFilmsByDefault: true}},
 	}
 	for _, c := range cas {
 		t.Run(string(c.profil), func(t *testing.T) {

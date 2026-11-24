@@ -55,6 +55,9 @@ type cycleState struct {
 	// filmBacklog dit l'arriéré de films d'un titre (WithFilmBacklogReader) : la cadence de rattrapage
 	// tient tant qu'il n'est pas vide. Nil : aucun arriéré connu, la cadence ne suit que l'historique.
 	filmBacklog port.FilmBacklogReader
+	// lastMatch lit le dernier match connu d'un joueur (WithLastMatchReader) : le compteur zero-insert y voit
+	// les matchs rangés par une autre voie que le cycle. Nil : seuls les matchs du cycle comptent.
+	lastMatch port.LastMatchReader
 	// markerReader dit la position de l'historique d'un joueur (WithHistoryMarkerReader) : la garde de progrès
 	// en compare deux lectures autour d'un cycle. Nil : le progrès ne se lit que sur les films et les matchs rangés.
 	markerReader port.HistoryMarkerReader

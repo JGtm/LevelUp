@@ -561,6 +561,13 @@ go run ./cmd/levelup film archive-move --to D:\Films --resume   # reprend un dé
 - Sans archive (`archive_films` désactivé), les rejeux sont construits et les faits persistés, les
   chunks sont retirés une fois cuits, et la rétention des rejeux doit rester illimitée (la purge suppose
   une reconstruction depuis l'archive).
+- Le défaut de `archive_films` vient du profil de déploiement (capacité `ArchiveFilmsByDefault`) : actif pour
+  l'application de bureau, le développement et la démo ; coupé sur un serveur hébergé, qui ne garde pas les
+  films. Une valeur enregistrée dans `app_settings.json` gagne toujours. La source des frags (post-sync) lit
+  le réglage pour chaque film téléchargé : coupé, le film est décodé en mémoire et n'est pas écrit, dans
+  tous les profils (la passe des rejeux le télécharge de nouveau de toute façon : le client Halo du serveur n'a
+  pas de cache de film). Le compteur `killsource_films_non_archives` compte les
+  films non écrits.
 - Pour mesurer le gain sur son poste : `du -sh data/cache/film_chunks` avant et après `film recompress`.
 
 ### Artefacts de rejeu (compression)

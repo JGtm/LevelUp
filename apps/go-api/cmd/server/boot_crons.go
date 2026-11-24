@@ -17,6 +17,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/haloadapter"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/logging"
+	"levelup/go-api/internal/platform/auth/pool"
 	"levelup/go-api/internal/platform/duckdb/worldrepo"
 	"levelup/go-api/internal/scheduler"
 )
@@ -109,7 +110,7 @@ func launchCatalogCrons(st *bootState) {
 		// pas d'experience_rules.toml → skip propre. Comportement prod identique au
 		// proxy, signal précis.
 		WithCatalogAdapterCheck(reg.HasCatalogAdapter)
-	if boot.launch(loopTask(taskCatalogCron, true, schedulerCtx, catalogCron.Run)) {
+	if boot.launch(loopTask(taskCatalogCron, true, schedulerCtx, afterAccountsResolved(autoSyncPool, catalogCron.Run))) {
 		slog.InfoContext(ctx, "catalog_refresh_cron: scheduled", "module", logging.ModuleCatalog, "interval", scheduler.DefaultCatalogRefreshInterval)
 	}
 
@@ -124,8 +125,22 @@ func launchCatalogCrons(st *bootState) {
 		// Même gate RÉEL que le drain catalogue : le sweep de noms passe par le
 		// même fetcher /hi/ hardcodé, donc même critère (catalog adapter résolvable).
 		WithCatalogAdapterCheck(reg.HasCatalogAdapter)
-	if boot.launch(loopTask(taskAssetNameSweep, true, schedulerCtx, sweepCron.Run)) {
+	if boot.launch(loopTask(taskAssetNameSweep, true, schedulerCtx, afterAccountsResolved(autoSyncPool, sweepCron.Run))) {
 		slog.InfoContext(ctx, "asset_name_sweep_cron: scheduled", "module", logging.ModuleSync, "interval", scheduler.DefaultAssetNameSweepInterval)
+	}
+}
+
+// afterAccountsResolved retarde une boucle de fond jusqu'à la fin de la résolution des comptes du pool :
+// celles dont la première passe a lieu au démarrage et qui ne se rejouent que bien plus tard (catalogue :
+// une semaine) ne doivent pas trouver un pool encore vide et perdre leur passe. Pool sans résolution de
+// fond (ou absent) : la boucle part tout de suite. Arrêt demandé pendant l'attente : la boucle ne part pas.
+func afterAccountsResolved(p pool.Pool, run func(context.Context)) func(context.Context) {
+	return func(ctx context.Context) {
+		// Le contexte est relu APRÈS l'attente : à l'arrêt, les deux canaux de WaitResolved peuvent être prêts.
+		if !pool.WaitResolved(ctx, p) || ctx.Err() != nil {
+			return
+		}
+		run(ctx)
 	}
 }
 
@@ -177,7 +192,7 @@ func launchSpartanCron(st *bootState) {
 			_, err = livesync.PersistAppearance(rctx, src, playerDBPath, cacheRoot, p.Gamertag, p.XUID)
 			return err
 		})
-		if boot.launch(loopTask(taskSpartanCron, true, schedulerCtx, spartanCron.Run)) {
+		if boot.launch(loopTask(taskSpartanCron, true, schedulerCtx, afterAccountsResolved(autoSyncPool, spartanCron.Run))) {
 			slog.InfoContext(ctx, "spartan_cron: scheduled",
 				"interval", scheduler.DefaultSpartanCustomizationInterval)
 		}

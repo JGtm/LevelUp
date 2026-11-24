@@ -241,4 +241,18 @@ type PoolOptions struct {
 	// d'un joueur). Faux : l'absence de slot est une erreur, comme pour un outil en ligne de
 	// commande qui n'a rien à faire sans jeton.
 	AllowEmpty bool
+
+	// ResolveInBackground rend la main à NewPool sans attendre la résolution des comptes : le pool naît
+	// VIDE, les comptes se résolvent en tâche de fond (mêmes règles qu'au démarrage synchrone : six à la
+	// fois, jamais deux comptes du même refresh token ensemble, plafond MaxSize) et chacun entre dans le
+	// pool dès qu'il est résolu. Tant que la résolution dure :
+	//   - HasPlayer rend vrai pour un compte encore à résoudre, et IsWithheld lui applique déjà son
+	//     consentement (un compte sans accord n'emprunte pas les jetons des autres) ;
+	//   - une acquisition épinglée attend le compte visé, une acquisition publique le premier compte
+	//     partageable, dans la limite du contexte de l'appelant ; un compte dont la résolution échoue
+	//     rend l'erreur d'un compte absent, sans attendre la fin du lot ;
+	//   - SetShared s'applique aussi aux comptes encore à résoudre.
+	// Close annule la résolution et en attend la fin. Un appel qui doit rendre un pool rempli attend
+	// WaitResolved.
+	ResolveInBackground bool
 }

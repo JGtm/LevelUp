@@ -100,6 +100,8 @@ type PostSyncHook struct {
 	// peut changer d'emplacement à chaud (title.SetFilmArchiveRuntime). Nil : `cacheRoot` seul.
 	archiveRoot func() string
 	perCycle    int
+	// archive : le reglage « archiver les films », relu a chaque film (WithArchive). Nil = oui.
+	archive func(context.Context) bool
 	// budget : la duree maximale d une passe ([PostSyncBudget]). Un champ et non la constante en dur,
 	// pour que les tests prouvent l arret sur le temps sans attendre cinq minutes.
 	budget time.Duration
@@ -132,6 +134,21 @@ func NewPostSyncHook(repoRoot string, perCycle int) *PostSyncHook {
 		budget:      PostSyncBudget,
 		horizon:     PostSyncBacklogHorizon,
 	}
+}
+
+// WithArchive branche l'ecriture des films lus au reseau sur le reglage « archiver les films » : la
+// fonction est relue a chaque film, un reglage change a chaud prend effet a la passe en cours. Sans
+// elle (nil), la source archive tout ce qu'elle lit. Le moteur de synchronisation l'appelle depuis le
+// hook des rejeux, qui porte le reglage. Coupe, rien n'est ecrit, dans aucun profil.
+func (h *PostSyncHook) WithArchive(archive func(context.Context) bool) *PostSyncHook {
+	h.archive = archive
+	return h
+}
+
+// ArchiveFilms dit si la source des frags ecrit a l'archive le film qu'elle lit au reseau (oui sans
+// [PostSyncHook.WithArchive]).
+func (h *PostSyncHook) ArchiveFilms(ctx context.Context) bool {
+	return h.archive == nil || h.archive(ctx)
 }
 
 // capabilities resout `capabilities.toml` UNE fois, puis rend le resultat memorise — succes
@@ -283,7 +300,7 @@ func RunPostSync(ctx context.Context, h *PostSyncHook, d PostSyncDeps, insertedI
 	}
 
 	racine, cache := h.racineDuCache(ctx, d.LocalCache)
-	source := NewRemoteFilms(NewLocalCacheFilms(cache), d.Fetcher, racine)
+	source := NewRemoteFilms(NewLocalCacheFilms(cache), d.Fetcher, racine).AvecArchivage(h.ArchiveFilms)
 	debut := time.Now()
 	capture := h.capture(ctx, d)
 	col := NewKillSourceCollector(

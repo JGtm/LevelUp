@@ -114,5 +114,6 @@ func (s *AutoSyncScheduler) deferCatchUp(ctx context.Context, p domain.PlayerSum
 		Reason:                 "différé: budget de rattrapage du titre réparti, passe au cycle suivant",
 		AttemptedAt:            s.clock(),
 		ConsecutiveZeroInserts: s.previousZeroInsertCount(p.Gamertag),
+		LastMatchAt:            s.previousLastMatchAt(p.Gamertag),
 	})
 }

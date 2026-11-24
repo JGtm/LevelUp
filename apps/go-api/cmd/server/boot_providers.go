@@ -219,7 +219,8 @@ func initSettingsAndAuth(st *bootState) {
 	settingsStore := settings.NewStore(cfg.AppSettingsPath).
 		WithEnforcedDefaults(authz.Enforced(cfg.DemoMode, cfg.AuthMode)).
 		WithSystemDefaults(cfg.SystemLocale).
-		WithAutoSyncDefault(cfg.Capabilities.AutoSyncByDefault)
+		WithAutoSyncDefault(cfg.Capabilities.AutoSyncByDefault).
+		WithArchiveFilmsDefault(cfg.Capabilities.ArchiveFilmsByDefault)
 	// Propage le réglage global "rendement sans assistances" au package analysis
 	// dès le boot (sinon le défaut false s'applique jusqu'au premier PATCH).
 	if s, lerr := settingsStore.Load(); lerr == nil {

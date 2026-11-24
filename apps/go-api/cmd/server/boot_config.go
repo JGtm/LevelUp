@@ -86,6 +86,7 @@ type bootState struct {
 	autoScheduler      *scheduler.AutoSyncScheduler
 	schedulerCtx       context.Context
 	cancelScheduler    context.CancelFunc
+	cancelAccounts     context.CancelFunc // annule la résolution des comptes en tâche de fond (nil : pool non construit)
 	adminActionJournal *adminstate.ActionJournal
 	autoBatchQueue     *persist.BatchQueue // nil : persistance synchrone
 	workerWG           sync.WaitGroup      // suit la goroutine du worker de la file de persistance

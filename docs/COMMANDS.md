@@ -542,6 +542,11 @@ go run ./cmd/levelup film archive-move --to D:\Films --resume   # resumes an int
 - Without an archive (`archive_films` off) replays are still built and facts persisted, the chunks
   are removed once cooked, and the replay retention must stay unlimited (the purge assumes a rebuild
   from the archive).
+- The default of `archive_films` comes from the deployment profile (capability `ArchiveFilmsByDefault`): on
+  for the desktop application, development and the demo; off on a hosted server, which does not keep films.
+  A value saved in `app_settings.json` always wins. The frag source (post-sync) reads the setting for each
+  film it downloads: off, the film is decoded from memory and not written, in every profile (the replay pass
+  downloads the film again anyway: the server's Halo client has no film cache). The counter `killsource_films_non_archives` counts the films not written.
 - To measure the gain on your machine: `du -sh data/cache/film_chunks` before and after `film recompress`.
 
 ### Replay artifacts (compression)
