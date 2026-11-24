@@ -154,6 +154,19 @@ describe('MatchObjectivesSection — les deux vues', () => {
     ).toBeTruthy()
   })
 
+  it('montre les éliminations liées à l’objectif (zones) : valeur par joueur, total par équipe', () => {
+    const zones = [
+      ligne('Alpha', 't0', { zone_captures: 4, zone_offensive_kills: 5, zone_defensive_kills: 2 }, true),
+      ligne('Bravo', 't0', { zone_captures: 1, zone_offensive_kills: 3, zone_defensive_kills: 0 }),
+      ligne('Charlie', 't1', { zone_captures: 2, zone_offensive_kills: 1, zone_defensive_kills: 6 }),
+    ]
+    const vue = afficher(zones)
+    const attaque = t.objectives.cols.zone_offensive_kills.label
+    expect(vue.getByLabelText(t.objectives.gridTipFmt('Alpha', attaque, '5'))).toBeTruthy()
+    expect(vue.getByLabelText(t.objectives.duelTipFmt('Équipe Eagle', attaque, '8'))).toBeTruthy()
+    expect(vue.getAllByText(t.objectives.cols.zone_defensive_kills.label).length).toBeGreaterThan(0)
+  })
+
   it('garde la vue par joueur SEULE quand le lobby ne présente pas deux camps', () => {
     const vue = afficher([BASTION[0], BASTION[1]], ['t0', 't1'], 't0')
     expect(vue.getByRole('region', { name: t.objectives.viewByPlayer })).toBeTruthy()

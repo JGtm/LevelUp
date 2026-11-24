@@ -184,22 +184,27 @@ const CTF_COLS: ObjectiveColSpec[] = [
   { key: 'flag_captures', agg: 'sum' },
   { key: 'flag_returns', agg: 'sum' },
   { key: 'flag_steals', agg: 'sum' },
+  { key: 'flag_carriers_killed', agg: 'sum' },
+  { key: 'flag_returners_killed', agg: 'sum' },
   { key: 'time_as_flag_carrier_seconds', agg: 'sum', duration: true },
 ]
 const ZONES_COLS: ObjectiveColSpec[] = [
   { key: 'zone_captures', agg: 'sum' },
   { key: 'zone_secures', agg: 'sum' },
+  { key: 'zone_offensive_kills', agg: 'sum' },
+  { key: 'zone_defensive_kills', agg: 'sum' },
   { key: 'time_in_zones_seconds', agg: 'sum', duration: true },
 ]
 const ODDBALL_COLS: ObjectiveColSpec[] = [
   { key: 'skull_grabs', agg: 'sum' },
+  { key: 'skull_carriers_killed', agg: 'sum' },
   { key: 'time_as_skull_carrier_seconds', agg: 'sum', duration: true },
   { key: 'longest_time_as_skull_carrier_seconds', agg: 'max', duration: true },
 ]
 // Stockpile (V721-02) : 6 champs natifs exposés, 4 affichés — dépôts et vols de
 // graines d'énergie (le cœur du mode), porteurs adverses éliminés (défense), temps
 // de portage. `time_as_power_seed_driver_seconds` et `kills_as_power_seed_carrier`
-// restent dans le DTO sans colonne dédiée (parité avec CTF : 11 exposés, 4 affichés).
+// restent dans le DTO sans colonne dédiée.
 const STOCKPILE_COLS: ObjectiveColSpec[] = [
   { key: 'power_seeds_deposited', agg: 'sum' },
   { key: 'power_seeds_stolen', agg: 'sum' },
@@ -214,12 +219,13 @@ const EXTRACTION_COLS: ObjectiveColSpec[] = [
   { key: 'extraction_conversions_completed', agg: 'sum' },
   { key: 'extraction_conversions_denied', agg: 'sum' },
 ]
-// VIP (V721-02) : 7 champs natifs, 5 affichés — VIP adverses abattus (le score du
-// mode), fois désigné VIP, frags réalisés en VIP, temps cumulé et meilleure survie
+// VIP (V721-02) : 7 champs natifs, 6 affichés — VIP adverses abattus (le score du
+// mode), aides sur ces éliminations, fois désigné VIP, frags réalisés en VIP, temps cumulé et meilleure survie
 // en VIP (`max` : une somme de « meilleurs temps » n'a pas de sens, cf. Oddball).
-// `vip_assists` et `max_killing_spree_as_vip` restent exposés sans colonne dédiée.
+// `max_killing_spree_as_vip` reste exposé sans colonne dédiée.
 const VIP_COLS: ObjectiveColSpec[] = [
   { key: 'vip_kills', agg: 'sum' },
+  { key: 'vip_assists', agg: 'sum' },
   { key: 'times_selected_as_vip', agg: 'sum' },
   { key: 'kills_as_vip', agg: 'sum' },
   { key: 'time_as_vip_seconds', agg: 'sum', duration: true },

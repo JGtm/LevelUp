@@ -287,11 +287,31 @@ export const EN_TEXT = {
       flag_captures: { label: 'Captures', tooltip: 'Flag captures' },
       flag_returns: { label: 'Returns', tooltip: 'Flag returns' },
       flag_steals: { label: 'Steals', tooltip: 'Flag steals' },
+      flag_carriers_killed: {
+        label: 'Carriers killed',
+        tooltip: 'Enemy flag carriers killed',
+      },
+      flag_returners_killed: {
+        label: 'Returners killed',
+        tooltip: 'Players killed while returning their flag',
+      },
       time_as_flag_carrier_seconds: { label: 'Carrier time', tooltip: 'Time as flag carrier' },
       zone_captures: { label: 'Captures', tooltip: 'Zones captured' },
       zone_secures: { label: 'Secured', tooltip: 'Zones secured' },
+      zone_offensive_kills: {
+        label: 'Attacking kills',
+        tooltip: 'Defenders killed while attacking a zone',
+      },
+      zone_defensive_kills: {
+        label: 'Defending kills',
+        tooltip: 'Attackers killed while defending a zone',
+      },
       time_in_zones_seconds: { label: 'Zone time', tooltip: 'Time spent in zones' },
       skull_grabs: { label: 'Grabs', tooltip: 'Skull grabs' },
+      skull_carriers_killed: {
+        label: 'Carriers killed',
+        tooltip: 'Skull carriers killed',
+      },
       time_as_skull_carrier_seconds: { label: 'Carrier time', tooltip: 'Time as skull carrier' },
       longest_time_as_skull_carrier_seconds: {
         label: 'Longest',
@@ -324,6 +344,10 @@ export const EN_TEXT = {
         tooltip: 'Enemy conversions denied',
       },
       vip_kills: { label: 'VIPs killed', tooltip: 'Enemy VIPs killed' },
+      vip_assists: {
+        label: 'VIP assists',
+        tooltip: 'Assists on killing the enemy VIP',
+      },
       times_selected_as_vip: { label: 'Times VIP', tooltip: 'Times selected as VIP' },
       kills_as_vip: { label: 'Kills as VIP', tooltip: 'Kills while being the VIP' },
       time_as_vip_seconds: { label: 'VIP time', tooltip: 'Time spent as VIP' },

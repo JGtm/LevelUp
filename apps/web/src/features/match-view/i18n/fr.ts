@@ -283,14 +283,34 @@ export const FR_TEXT = {
       flag_captures: { label: 'Captures', tooltip: 'Captures de drapeau' },
       flag_returns: { label: 'Retours', tooltip: 'Retours de drapeau' },
       flag_steals: { label: 'Vols', tooltip: 'Vols de drapeau' },
+      flag_carriers_killed: {
+        label: 'Porteurs éliminés',
+        tooltip: 'Porteurs du drapeau adverse éliminés',
+      },
+      flag_returners_killed: {
+        label: 'Rapatrieurs éliminés',
+        tooltip: 'Joueurs éliminés pendant qu’ils rendaient leur drapeau',
+      },
       time_as_flag_carrier_seconds: {
         label: 'Temps porteur',
         tooltip: 'Temps en tant que porteur du drapeau',
       },
       zone_captures: { label: 'Captures', tooltip: 'Zones capturées' },
       zone_secures: { label: 'Sécurisées', tooltip: 'Zones sécurisées' },
+      zone_offensive_kills: {
+        label: 'Éliminations en attaque',
+        tooltip: 'Défenseurs éliminés en attaquant une zone',
+      },
+      zone_defensive_kills: {
+        label: 'Éliminations en défense',
+        tooltip: 'Attaquants éliminés en défendant une zone',
+      },
       time_in_zones_seconds: { label: 'Temps en zone', tooltip: 'Temps passé en zone' },
       skull_grabs: { label: 'Récup.', tooltip: 'Récupérations du crâne' },
+      skull_carriers_killed: {
+        label: 'Porteurs éliminés',
+        tooltip: 'Porteurs du crâne éliminés',
+      },
       time_as_skull_carrier_seconds: {
         label: 'Temps porteur',
         tooltip: 'Temps en tant que porteur du crâne',
@@ -329,6 +349,10 @@ export const FR_TEXT = {
         tooltip: 'Conversions adverses empêchées',
       },
       vip_kills: { label: 'VIP abattus', tooltip: 'VIP adverses éliminés' },
+      vip_assists: {
+        label: 'Aides sur VIP',
+        tooltip: 'Aides à l’élimination du VIP adverse',
+      },
       times_selected_as_vip: {
         label: 'Fois VIP',
         tooltip: 'Nombre de fois désigné VIP',

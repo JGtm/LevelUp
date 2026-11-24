@@ -67,11 +67,13 @@ describe('buildObjectiveGrid — la vue par joueur', () => {
     expect(m.columns.map((c) => c.key)).toEqual([
       'zone_captures',
       'zone_secures',
+      'zone_offensive_kills',
+      'zone_defensive_kills',
       'time_in_zones_seconds',
     ])
     expect(m.columns[0].bound).toBe(10)
     expect(m.columns[1].bound).toBe(6)
-    expect(m.columns[2].bound).toBe(150)
+    expect(m.columns[4].bound).toBe(150)
   })
 
   it('n’écrit PAS de total sur une colonne dont la somme n’a pas de sens (agrégat max)', () => {
@@ -79,13 +81,14 @@ describe('buildObjectiveGrid — la vue par joueur', () => {
       [
         ligne('Alpha', 't0', {
           skull_grabs: 2,
+          skull_carriers_killed: 1,
           time_as_skull_carrier_seconds: 40,
           longest_time_as_skull_carrier_seconds: 25,
         }),
       ],
       'oddball',
     )
-    expect(oddball.columns.map((c) => c.totalText)).toEqual(['2', '0:40', null])
+    expect(oddball.columns.map((c) => c.totalText)).toEqual(['2', '1', '0:40', null])
   })
 
   it('donne à chaque barre l’encre du CAMP du joueur, et sépare les camps', () => {
@@ -118,8 +121,9 @@ describe('buildObjectiveGrid — la vue par joueur', () => {
       expect(m.columns).toHaveLength(cols.length)
       expect(m.cells[0]).toHaveLength(cols.length)
     }
-    // Et la plus large des six (VIP) porte bien cinq grandeurs : la grille doit l'encaisser.
-    expect(objectiveColsFor('vip')).toHaveLength(5)
+    // Les plus larges (drapeau et VIP) portent six grandeurs : la grille doit les encaisser.
+    expect(objectiveColsFor('vip')).toHaveLength(6)
+    expect(objectiveColsFor('ctf')).toHaveLength(6)
   })
 })
 
