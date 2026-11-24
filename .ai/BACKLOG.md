@@ -2,14 +2,6 @@
 
 ---
 
-### [page du match] Cartes Némésis : compte possiblement inférieur de 1 quand le fil ne nomme pas la victime
-
-**Relevé le 2026-11-22** (revue du plan des antagonistes). Les cartes de la page du match comptent les éliminations du fil qui portent une victime (`apps/web/src/features/match-view/MatchNemesisCards.logic.ts:40`). Le serveur ne nomme pas la victime quand un même tueur a deux victimes à la même milliseconde (`apps/go-api/internal/service/match_view_killfeed_weapon.go:108-111` et `:172`) et retire du fil une élimination antérieure au coup d'envoi (`match_view_builders_combat.go:105`). Mesuré sur la base du poste : Halo 5, 4 éliminations dans 2 matchs ; Halo Infinite, 4 éliminations dans 1 match. Le rejeu a la même limite (même fil). À faire : nommer la victime ambiguë par le film ou par les paires, ou garder ces éliminations dans le fil.
-
-**Effort : moyen. Priorité : basse.**
-
----
-
 ### [données] Éliminations en double dans `highlight_events`
 
 **Relevé le 2026-11-22** (étape 0 du plan des antagonistes). Sur la base du poste, 172 matchs sur 1 462 portent chaque élimination deux fois dans `highlight_events` (30 372 lignes sur 161 147, surtout avril et mai 2026) ; le fil du rejeu de ces matchs les affiche en double. Les antagonistes les écartent, pas le fil. Prod non regardée. À faire : trouver l'écrivain qui double, dédoublonner la table, vérifier la prod.

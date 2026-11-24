@@ -64,6 +64,16 @@ Cible confirmée par le user le 2026-11-24 : la **8.3.0**.
   touche gardée jusqu'au chantier précision ; D-5 : abandon du correctif Halo 5 sauf si 0.4 montre que
   l'API sert encore la chronologie.
 
+- **D-14 — décisions du user du 2026-11-24 sur l'étape 0 (« ok avec tes recos »).**
+  - Mètres : une unité du jeu = 3,048 m (10 pieds). Les valeurs AFFICHÉES sont converties ; les 22 champs
+    d'API nommés en mètres ne sont pas renommés, ils sont documentés comme des unités du jeu.
+  - Radar de la Tactique : corrigé (le rayon en vrais mètres est comparé à des distances converties) ; les
+    comptes « isolé » changent, c'est dit dans les notes de version.
+  - Coup d'envoi après la fin du match : la fenêtre du match est bornée par le plus long temps de jeu quand
+    la durée du registre est manifestement fausse.
+  - Cartes Némésis (B.1) : écarté, entrée retirée du backlog.
+  - Pseudos réels (E.4) : limité aux trois noms de tests.
+
 ## 2. Orchestration
 
 - Pilote : cette session. Elle ne code pas, relit chaque compte rendu sur pièces, intègre, lance la suite web
@@ -128,7 +138,7 @@ Gates communs. Go : `go build ./... && go vet ./...`, tests des paquets touchés
 
 ### Piste B — page du match (Go et web)
 
-- [ ] B.1 Cartes Némésis : victime ambiguë nommée, ou éliminations gardées dans le fil.
+- [!] B.1 (écarté par le user le 2026-11-24, D-14 : volume nul sur Halo Infinite, 6 éliminations sur Halo 5) Cartes Némésis : victime ambiguë nommée, ou éliminations gardées dans le fil.
 - [ ] B.2 Ordre déterministe des sections « rencontres » et « némésis » de l'onglet d'équipe.
 - [ ] B.3 Éliminations liées à l'objectif sur la fiche de match, par mode ; séries temporelles si elles y ont
       un sens (règle : Sessions, séries temporelles, Escouade).
@@ -266,3 +276,6 @@ dépendance est close.
   piste se fusionne directement dans `release/v8.3.0` à son gate, sans branche d'intégration intermédiaire.
   Tenus hors des consignes en attendant le user : B.1, B.6, la partie « durée fausse au registre » de A.3.
   E et F partent quand une place d'agent se libère (borne de 4).
+- 2026-11-24 — GATE 0 passée : le user retient les six recommandations (D-14). B.1 écarté ; A.3 (durée du
+  registre) et A.4 (fenêtre) débloqués et transmis à l'agent de la piste A ; B.6 part après la piste B, dans
+  son worktree.
