@@ -82,9 +82,10 @@
 # arena_objectif} ; TestMapMuToLegacyRating_ReferencePlayers/{Madina_BTB_Diamant_I, Madina_Slayer_Diamant_I, Madina_Objectif_Platine_II}
 # deviennent .../joueur_075_{...} et .../XxDaemon_Bronze_VI devient .../joueur_639_Bronze_VI. Les lignes sont réécrites en place
 # (même nombre de lignes). Vérifié par `go test -run ReferencePlayers -json` (les 12 sous-tests passent sous leurs nouveaux noms).
-# Restent dans la baseline trois autres tests dont le nom contient « Madina » (platform/duckdb TestQ7XPHistory_MadinaRegressionScenario,
-# service TestBuildProjections_MadinaScenarioPostFix, sync TestComputeAndPersistHadBotTeammate_MadinaRealCase_FALSE) : hors périmètre,
-# signalés au pilote.
+# Les trois autres tests dont le nom portait un pseudo de joueur sont renommés le même jour (piste d'hygiène du backlog du
+# 2026-11-24, item E.4) : platform/duckdb TestQ7XPHistory_RegressionScenario, service TestBuildProjections_ScenarioPostFix,
+# sync TestComputeAndPersistHadBotTeammate_RealCase_FALSE. Leurs 13 lignes de `tests_pre_migration.jsonl` sont réécrites en
+# place (même nombre de lignes) ; les corps des tests ne changent pas.
 #
 # RETRAIT DU 2026-11-23 (montée du décodeur v1.5.0) : 4 paires (Package, Test), 4 lignes JSONL, quittent la baseline
 # avec le code qu'elles couvraient. `internal/sync/killcollector` (3 paires, 3 lignes dans `tests_pre_migration.jsonl`) :
