@@ -201,9 +201,9 @@ Dans le dépôt de la brique (`halo-infinite-film-decoder`), sur une branche et 
 
 ### Piste M — réglages d'affichage du rejeu (D-6)
 
-- [ ] M.1 Inventaire de tous les réglages du rejeu (calques, informations sur la carte, vues, préférences),
+- [x] M.1 (2026-11-24 : 66 réglages, 17 surfaces, constats ; annexe `reglages_inventaire.md`) Inventaire de tous les réglages du rejeu (calques, informations sur la carte, vues, préférences),
       où ils vivent, ce qu'ils règlent, leurs défauts. Rendu : `annexes_backlog_1124/reglages_inventaire.md`.
-- [ ] M.2 Maquette au plus près de la vraie application (D-6) : prototype interactif publié en artefact, tous les réglages, répliques comprises,
+- [x] M.2 (2026-11-24 : publiée, https://claude.ai/artifact/FZKvRLrcujrfnFMQac2kYk ; sources `annexes_backlog_1124/maquette_reglages/` ; vue par le pilote dans un navigateur, sans erreur de console ; lignedans l'artefact des vérifications) Maquette au plus près de la vraie application (D-6) : prototype interactif publié en artefact, tous les réglages, répliques comprises,
       compromis préréglages et réglage fin ; ligne dans l artefact des vérifications.
 - [ ] M.3 Validation du user (citation consignée ici). Une remarque n'est pas une validation.
 - [ ] M.4 Implémentation conforme à la maquette, après la fusion de C. Migration des préférences existantes.
@@ -279,3 +279,8 @@ dépendance est close.
 - 2026-11-24 — GATE 0 passée : le user retient les six recommandations (D-14). B.1 écarté ; A.3 (durée du
   registre) et A.4 (fenêtre) débloqués et transmis à l'agent de la piste A ; B.6 part après la piste B, dans
   son worktree.
+- 2026-11-24 — M.1 et M.2 closes. Maquette : page entière aux trois cadres, carte animée sur les fonds réels
+  d'une carte versionnée, 5 rubriques (Joueurs, Carte, Objets, Fil, Son), préréglages souples (« modifié »,
+  retour, Mes vues, vue par défaut, vue par mode), accès rapide épinglable, variantes A (onglets) et B
+  (repliable avec recherche), comparaison avec le panneau actuel, répliques intégrées. Commandes visibles à
+  l'ouverture du panneau : 29 aujourd'hui, 14 en A, 19 en B. M.3 attend le user.
