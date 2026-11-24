@@ -377,6 +377,7 @@ sous `rayon_m` et `rayons_radar_m`).
 - **Un seul foyer du facteur** : `internal/analysis/gameunits` (Go) et `lib/formatters/distance.ts` (web). Le littéral
   `3.048` est interdit ailleurs (gardes `archlint/gameunits_factor_test.go` et `distance.guard.test.ts`), et un test
   de parité tient les deux valeurs égales.
+- **Cas persisté** : `match_life_placement.beyond_ms` (part d'une vie passée hors du radar) est calculé au sync par le décodeur de film, qui compare des distances en unités du jeu à la portée qu'on lui donne : le collecteur lui transmet donc la portée déjà convertie (`killcollector.entreeDuPlacement`), et `radar_m` reste en vrais mètres.
 
 ---
 

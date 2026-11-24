@@ -29,6 +29,7 @@ import (
 	"log/slog"
 	"strconv"
 
+	"levelup/go-api/internal/analysis/gameunits"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 
@@ -83,7 +84,12 @@ const (
 // porte les membres d une chaine de contradictions a leur index des chunks
 // (`replay/identity_registry_index_des_chunks.go`, `replay/identity_registry_chaines.go`) : a qui un
 // portage revient en depend.
-const PlacementRev = "placement-2026-10-17"
+//
+// `placement-2026-11-24` (B.7 du plan du backlog du 2026-11-24) : la portee du radar etait transmise au
+// decodeur en vrais metres alors qu'il la compare a des distances en unites du jeu ; le rayon
+// appliquait 18 unites (55 m) au lieu de 18 m, et `beyond_ms` etait sous-estime. La portee est
+// transmise en unites ([entreeDuPlacement]) : `beyond_ms` change, `radar_m` non.
+const PlacementRev = "placement-2026-11-24"
 
 // PorteeDuRadar rend la portee du radar d'une variante (`game_variant_name` tel que la base le
 // porte), en metres. `connue` faux = variante absente de la table : la ligne s'ecrit sans portee
@@ -117,11 +123,8 @@ func (c *KillSourceCollector) projeterPlacementDesVies(
 ) {
 	portages, lus := c.portagesDuMatch(ctx, matchID, mat, ids)
 	radar := c.placement.porteeDe(ids.Variante)
-	vies, bilan := replay.PlacementDesVies(replay.EntreePlacement{
-		Positions: mat.positions, Registre: mat.registre, Equipes: equipesNumeriques(ids.Equipes),
-		Journal: journalDuPlacement(journal), Portages: portages, RadarM: radar,
-	})
-	rows, nonMesurees := toPlacementRows(vies)
+	vies, bilan := replay.PlacementDesVies(entreeDuPlacement(mat, ids, journal, portages, radar))
+	rows, nonMesurees := toPlacementRows(vies, radar)
 	if err := c.writePlacement(ctx, persist.LifePlacementBatch{
 		MatchID: matchID, DecoderRev: PlacementRev, Rows: rows,
 	}); err != nil {
@@ -133,6 +136,28 @@ func (c *KillSourceCollector) projeterPlacementDesVies(
 	publierLePlacement(ctx, matchID, bilanDuPlacement{
 		vies: len(rows), nonMesurees: nonMesurees, radar: radar, frags: bilan, porteurs: lus,
 	})
+}
+
+// entreeDuPlacement assemble ce que le collecteur donne a `replay.PlacementDesVies` : la COUTURE par
+// laquelle un test pince la portee transmise (meme raison qu'[entreeDesPorteurs]).
+//
+// `radarM` est la portee du radar en VRAIS METRES (18, 24) ; le decodeur compare ses distances, en
+// UNITES DU JEU, a `EntreePlacement.RadarM` sans conversion (`replay/placement_des_vies.go:234`) : la
+// portee lui est donc transmise EN UNITES (`gameunits.MetersToUnits`). C'est le seul endroit ou la
+// portee change d'unite avant le decodeur ; [toPlacementRows] rend les metres a la ligne ecrite.
+func entreeDuPlacement(
+	mat materiauDIsolement, ids MatchIdentities, journal persist.KillSourceBatch,
+	portages map[uint64][]replay.IntervalleDePort, radarM *float64,
+) replay.EntreePlacement {
+	var radarUnites *float64
+	if radarM != nil {
+		u := gameunits.MetersToUnits(*radarM)
+		radarUnites = &u
+	}
+	return replay.EntreePlacement{
+		Positions: mat.positions, Registre: mat.registre, Equipes: equipesNumeriques(ids.Equipes),
+		Journal: journalDuPlacement(journal), Portages: portages, RadarM: radarUnites,
+	}
 }
 
 // portagesDuMatch lit les intervalles de port d'objectif, sous la garde de mode de l'entree.
@@ -216,8 +241,10 @@ func journalDuPlacement(b persist.KillSourceBatch) []replay.FragDuJournal {
 }
 
 // toPlacementRows traduit les mesures pures en lignes ecrivables, et compte les vies non
-// mesurees (mediane nulle).
-func toPlacementRows(vies []replay.PlacementVie) ([]persist.LifePlacementInsert, int) {
+// mesurees (mediane nulle). `radar_m` est ecrit en VRAIS METRES (`radarM`, la portee du manifeste) : la
+// valeur que le decodeur recopie sur chaque vie est celle qu'on lui a transmise, en unites du jeu
+// ([entreeDuPlacement]), et n'est jamais ecrite.
+func toPlacementRows(vies []replay.PlacementVie, radarM *float64) ([]persist.LifePlacementInsert, int) {
 	out := make([]persist.LifePlacementInsert, 0, len(vies))
 	nonMesurees := 0
 	for i := range vies {
@@ -228,12 +255,22 @@ func toPlacementRows(vies []replay.PlacementVie) ([]persist.LifePlacementInsert,
 		out = append(out, persist.LifePlacementInsert{
 			XUID: strconv.FormatUint(v.XUID, 10), StartMS: v.DebutMS, EndMS: v.FinMS,
 			DurationMS: v.DureeMS, MeasuredMS: v.MesureMS, MedianM: v.MedianeM,
-			BeyondMS: v.HorsRadarMS, RadarM: v.RadarM, CarrierMS: v.PorteurMS,
+			BeyondMS: v.HorsRadarMS, RadarM: radarEcrit(v.RadarM, radarM), CarrierMS: v.PorteurMS,
 			TeamDownMS: v.EquipeATerreMS, UnplacedMS: v.NonSitueMS,
 			TeammateUnplacedMS: v.CoequipierNonSitueMS, Kills: v.Frags,
 		})
 	}
 	return out, nonMesurees
+}
+
+// radarEcrit rend le `radar_m` d'une ligne : la portee en metres quand le decodeur a employe une portee
+// pour cette vie, rien sinon.
+func radarEcrit(employe, radarM *float64) *float64 {
+	if employe == nil || radarM == nil {
+		return nil
+	}
+	r := *radarM
+	return &r
 }
 
 // writePlacement : l'ecriture, sous son PROPRE lease court — meme raison que writeIsolationFacts

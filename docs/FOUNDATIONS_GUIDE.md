@@ -369,6 +369,7 @@ radar ranges announced by the game (18 m in Arena, 24 m in BTB; `regulation.toml
 - **One home for the factor**: `internal/analysis/gameunits` (Go) and `lib/formatters/distance.ts` (web). The literal
   `3.048` is forbidden elsewhere (guards `archlint/gameunits_factor_test.go` and `distance.guard.test.ts`), and a
   parity test keeps the two values equal.
+- **Persisted case**: `match_life_placement.beyond_ms` (share of a life spent beyond the radar) is computed at sync by the film decoder, which compares game-unit distances with the range it is given: the collector therefore passes the range already converted (`killcollector.entreeDuPlacement`), and `radar_m` stays in real meters.
 
 ---
 

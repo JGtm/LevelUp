@@ -214,6 +214,15 @@ le premier passage après ce bump redécode tout le parc (environ 1 600 films, r
 échouent à la validation, rien de ce match n'est publié pour la passe (`match_lives` et
 `match_death_context` compris).
 
+**Placement des vies recalculé (`placement-2026-11-24`).** La portée du radar (18 m, 24 m) était transmise au décodeur en
+vrais mètres alors qu'il compare des unités du jeu : `beyond_ms` (temps hors radar) était sous-estimé par un rayon trois
+fois trop large. `killcollector.PlacementRev` passe à `placement-2026-11-24` : `backfill-killsource` sélectionne donc tout
+match dont le placement porte une révision plus ancienne (environ 1 450 matchs sur la copie du poste de développement). Il
+exige le film dans le cache local : un match sans film en cache garde son ancienne valeur et se compte à part.
+Rien ne part de soi-même : ni le backlog d'après synchronisation ni le démarrage du serveur ne lisent
+cette révision. `radar_m` ne change pas (vrais mètres) ; les anciennes lignes se reconnaissent à leur `decoder_rev`,
+aucun lecteur ne filtre dessus.
+
 **`--workers` (défaut 3) — N films décodés en parallèle, UN SEUL qui touche la base.** La
 décomposition du coût (lot 5.24.1) mesure **93 à 99 % du temps d'un film en CPU hors base** :
 c'est la seule raison d'être du parallélisme ici. Les écritures et les deux lectures par match

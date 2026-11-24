@@ -6,19 +6,22 @@ package squademprise
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"testing"
 
+	"levelup/go-api/internal/analysis/gameunits"
 	"levelup/go-api/internal/domain"
 )
 
 func pf(v float64) *float64 { return &v }
 func pi(v int64) *int64     { return &v }
 
-// vieMesuree : une vie mesurée à la portée 18 m, 20 s dont 10 s mesurées.
+// vieMesuree : une vie mesurée à la portée 18 m, 20 s dont 10 s mesurées. `medianM` s'écrit en VRAIS
+// mètres ici, et la ligne la porte comme le sync, en unités du jeu.
 func vieMesuree(match, xuid string, start int64, medianM float64, kills int) PlacementRow {
 	return PlacementRow{
 		MatchID: match, XUID: xuid, StartMS: start, EndMS: start + 20000, DurationMS: 20000,
-		MeasuredMS: 10000, MedianM: pf(medianM), BeyondMS: pi(2500), RadarM: pf(18),
+		MeasuredMS: 10000, MedianM: pf(gameunits.MetersToUnits(medianM)), BeyondMS: pi(2500), RadarM: pf(18),
 		CarrierMS: 1000, TeamDownMS: 2000, UnplacedMS: 3000, TeammateUnplacedMS: 4100, Kills: kills,
 	}
 }
@@ -51,7 +54,7 @@ func joueur(t *testing.T, b *domain.SquadEmprisePlacement, xuid string) domain.S
 func TestPlacement_XEtPartHorsRadar(t *testing.T) {
 	b, _ := Placement(entree(vieMesuree("m1", "A", 0, 27, 2)))
 	v := joueur(t, b, "A").Lives[0]
-	if v.RadarRatio != 1.5 || v.OutOfRadarShare != 0.25 {
+	if math.Abs(v.RadarRatio-1.5) > 1e-9 || v.OutOfRadarShare != 0.25 {
 		t.Errorf("X = %v, part hors radar = %v ; attendu 1,5 et 0,25", v.RadarRatio, v.OutOfRadarShare)
 	}
 	if v.MatchID != "m1" || v.StartMS != 0 || v.DurationMS != 20000 || v.Kills != 2 {
@@ -171,7 +174,7 @@ func TestPlacement_Medianes(t *testing.T) {
 	b, _ := Placement(entree(vieMesuree("m1", "A", 0, 9, 0), vieMesuree("m1", "A", 1, 18, 1),
 		vieMesuree("m1", "A", 2, 27, 3), vieMesuree("m1", "A", 3, 36, 4)))
 	a := joueur(t, b, "A")
-	if *a.MedianRadarRatio != 1.25 || *a.MedianKills != 2 {
+	if math.Abs(*a.MedianRadarRatio-1.25) > 1e-9 || *a.MedianKills != 2 {
 		t.Errorf("médianes = %v, %v ; attendu 1,25 et 2", *a.MedianRadarRatio, *a.MedianKills)
 	}
 }
@@ -266,5 +269,21 @@ func TestPlacement_ContratJSON(t *testing.T) {
 	}
 	if _, ok := racine["coverage"]; ok {
 		t.Errorf("couverture publiée (%s) : elle ne sert qu'au journal de la lecture", brut)
+	}
+}
+
+// La médiane d'une vie est une distance du film, en UNITÉS DU JEU (`median_m` du sync) ; la portée du
+// radar (18 m) est en vrais mètres. Une vie dont le coéquipier le plus proche est à 7 unités (21,3 m)
+// est ISOLÉE : X = 7 / (18 / 3,048) = 1,19. Comparés tels quels (7 / 18 = 0,39), elle serait « à portée ».
+func TestPlacement_MedianeEnUnitesDuJeuPorteeEnMetres(t *testing.T) {
+	ligne := vieMesuree("m1", "A", 0, 0, 1)
+	ligne.MedianM = pf(7)
+	b, _ := Placement(entree(ligne))
+	v := joueur(t, b, "A").Lives[0]
+	if want := 7 / gameunits.MetersToUnits(18); math.Abs(v.RadarRatio-want) > 1e-9 || v.RadarRatio < 1 {
+		t.Errorf("X = %v, attendu %v (> 1 : isolée)", v.RadarRatio, want)
+	}
+	if v.Quadrant != domain.EmprisePlacementIsolatedProductive {
+		t.Errorf("quart %s, attendu isolé et rentable", v.Quadrant)
 	}
 }

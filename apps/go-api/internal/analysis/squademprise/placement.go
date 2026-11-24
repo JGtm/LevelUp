@@ -24,6 +24,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/analysis/gameunits"
 	"levelup/go-api/internal/domain"
 )
 
@@ -140,11 +141,13 @@ func retenirLeMatch(
 	return perime
 }
 
-// vieTracee projette une vie mesurée : ses deux coordonnées et son quart.
+// vieTracee projette une vie mesurée : ses deux coordonnées et son quart. La médiane est une distance du
+// film, en UNITÉS DU JEU ; `rayon` est la portée du radar en vrais mètres : X les compare dans une seule
+// unité (la portée ramenée en unités par `gameunits.MetersToUnits`).
 func vieTracee(r PlacementRow, rayon float64) domain.SquadEmprisePlacementLife {
 	v := domain.SquadEmprisePlacementLife{
 		MatchID: r.MatchID, StartMS: r.StartMS, DurationMS: r.DurationMS,
-		RadarRatio: *r.MedianM / rayon, Kills: r.Kills,
+		RadarRatio: *r.MedianM / gameunits.MetersToUnits(rayon), Kills: r.Kills,
 	}
 	if r.MeasuredMS > 0 {
 		v.OutOfRadarShare = float64(*r.BeyondMS) / float64(r.MeasuredMS)

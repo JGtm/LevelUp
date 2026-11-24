@@ -205,3 +205,27 @@ func TestMatchsAJour_PlacementPosterieurAuxVies(t *testing.T) {
 		10000, 10000, 10100, 0, 0, 0, 0, 0)`, id, killcollector.PlacementRev)
 	verifier("placement reecrit apres les vies", true)
 }
+
+// TestMatchsAJour_PlacementAvantLaPorteeEnUnites_EstRecalcule — B.7 (2026-11-24). Les placements ecrits
+// avec l'ancien rayon (portee du radar transmise en metres au decodeur, qui la lit en unites du jeu)
+// portent `placement-2026-10-17` : la selection du rattrapage les veut redecodes, alors qu'un
+// placement a la revision courante est a jour.
+func TestMatchsAJour_PlacementAvantLaPorteeEnUnites_EstRecalcule(t *testing.T) {
+	db := baseDeSelection(t)
+	for _, id := range []string{"ancien-rayon", "nouveau-rayon"} {
+		matchAJourDeSesVies(t, db, id)
+	}
+	placementA(t, db, "ancien-rayon", "placement-2026-10-17")
+	placementA(t, db, "nouveau-rayon", killcollector.PlacementRev)
+
+	aJour, err := matchsAJour(context.Background(), db)
+	if err != nil {
+		t.Fatalf("matchsAJour: %v", err)
+	}
+	if aJour["ancien-rayon"] {
+		t.Error("un placement a l'ancienne revision est dit a jour : il ne serait pas recalcule")
+	}
+	if !aJour["nouveau-rayon"] {
+		t.Error("un placement a la revision courante est dit a recalculer")
+	}
+}
