@@ -93,8 +93,9 @@ func groupesDImpact(rows []domain.SquadMatchRow, evenings []squadimpact.Evening)
 }
 
 // buildSquadImpact rend le tableau d'impact par session. Nil sans coéquipier sélectionné, quand la
-// population est vide, ou quand aucun rôle ne tombe sur l'escouade (titre sans événements ni équipe
-// alliée, ou lecture des événements en échec, journalisée par loadImpactEventsByMatch). Le nil
+// population est vide, quand l'équipe alliée du principal n'a pas été lue (equipeAllieeLue), ou quand
+// aucun rôle ne tombe sur l'escouade (titre sans événements, ou lecture des événements en échec,
+// journalisée par loadImpactEventsByMatch). Le nil
 // d'une escouade pourtant sélectionnée se journalise avec sa raison (raisonSessionsAbsentes). Le serveur
 // ne tranche pas la présence de la section : c'est le front, par la capability match.events.timeline
 // du titre (déclarée : section avec son état vide ; non déclarée : section absente). Les matchs de la population sans libellé de session n'ont pas de ligne ; leur
@@ -105,6 +106,11 @@ func (s *TeammatesService) buildSquadImpact(ctx context.Context, in impactEscoua
 		return nil
 	}
 	journaliserMatchsSansSession(ctx, in.rows)
+	if len(in.evenings) > 0 && !equipeAllieeLue(in) {
+		slog.InfoContext(ctx, "teammates_squad_impact_sessions_absent",
+			"reason", sessionsSansEquipe, "sessions", len(in.evenings), "main_xuid_known", in.mainXUID != "")
+		return nil
+	}
 	// L'APPARTENANCE SE DÉCIDE PAR XUID (teammates[].XUID), sous le nom de la ligne (le nom
 	// choisi) : Q29 et Q32b nomment chacune par l'annuaire de SES matchs, un même xuid peut y
 	// porter deux casses.
@@ -124,7 +130,17 @@ func (s *TeammatesService) buildSquadImpact(ctx context.Context, in impactEscoua
 const (
 	sessionsSansSession = "no_session"
 	sessionsSansRole    = "no_role_attributed"
+	// sessionsSansEquipe : l'équipe alliée du joueur principal n'a pas été lue (équipe alliée vide ou xuid du
+	// principal inconnu) : sans elle « a joué » retombe sur « a un rôle » et le net par match est faux.
+	sessionsSansEquipe = "no_ally_team"
 )
+
+// equipeAllieeLue dit si l'équipe alliée du joueur principal (Q32b) a été lue : sans elle la
+// présence d'un joueur dans un match ne se décide pas (squadimpact.SessionsInput.Allied), et le
+// tableau n'est pas publié.
+func equipeAllieeLue(in impactEscouade) bool {
+	return in.mainXUID != "" && len(in.allies) > 0
+}
 
 // raisonSessionsAbsentes dit pourquoi squadimpact.BuildSessions n'a rien publié : aucune session
 // (aucun match de la population ne porte de libellé de session) ou aucun rôle attribué à l'escouade

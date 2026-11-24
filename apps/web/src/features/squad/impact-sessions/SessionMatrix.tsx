@@ -18,7 +18,11 @@ import type { Locale } from '@/lib/i18n/locale'
 import type { SquadText } from '../i18n'
 import {
   formatSignedNet,
+  matrixMinWidthPx,
+  PLAYER_COL_PX,
   roleCellStates,
+  ROLE_COL_PX,
+  SCORE_COL_PX,
   scoreCellStates,
   scoreMark,
   type CellState,
@@ -27,10 +31,6 @@ import {
   type ImpactSessionsView,
 } from './impactSessions.logic'
 import type { ImpactSessionsText } from './impactSessionsText'
-
-const PLAYER_COL_PX = 200
-const ROLE_COL_PX = 40
-const SCORE_COL_PX = 110
 
 /** Le fond et le texte du meilleur (vert) et du pire (rouge), au rendu des MVP / LVP du scoreboard de match. */
 function highlightStyle(state: CellState): CSSProperties | undefined {
@@ -106,7 +106,11 @@ export function SessionMatrix({ row, view, impact, text, locale, inkOf, ariaLabe
     ]),
   )
   return (
-    <table className="w-full min-w-[900px] table-fixed border-collapse text-sm" aria-label={ariaLabel}>
+    <table
+      className="w-full table-fixed border-collapse text-sm"
+      style={{ minWidth: matrixMinWidthPx(row.matches.length, view.roleOrder.length) }}
+      aria-label={ariaLabel}
+    >
       <colgroup>
         <col style={{ width: PLAYER_COL_PX }} />
         {row.matches.map((m) => (

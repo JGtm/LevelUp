@@ -70,7 +70,9 @@ type SquadImpactSessionsMatch struct {
 type SquadImpactSessionsPlayer struct {
 	Player string `json:"player"`
 	// MatchesPlayed : les matchs de la session où le joueur est dans l'équipe alliée du joueur
-	// principal. 0 : le joueur n'a pas joué la session (Points et tous les comptes de Counts valent alors 0).
+	// principal, ou où un rôle lui est attribué (un rôle ne tombe que sur un joueur du match). Le
+	// bloc n'est publié que si l'équipe alliée a été lue : sans elle seuls les rôles feraient
+	// présence. 0 : le joueur n'a pas joué la session (Points et tous les comptes de Counts valent alors 0).
 	MatchesPlayed int `json:"matches_played"`
 	// Points : le net de la session, somme du barème sur tous ses rôles. Le net par match que le
 	// tableau affiche est Points / MatchesPlayed (calculé par l'écran, MatchesPlayed > 0).

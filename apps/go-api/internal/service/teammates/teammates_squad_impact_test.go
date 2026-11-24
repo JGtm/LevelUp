@@ -280,7 +280,7 @@ func TestGetPage_ImpactParSession_FragsReconstituesParGroupe(t *testing.T) {
 }
 
 // TestBuildSquadImpact_SessionsAbsentesJournalise : une escouade sélectionnée dont aucun rôle ne
-// tombe (ni événement ni équipe alliée) rend un bloc nul ET le journalise avec sa raison ; sans
+// tombe (l'équipe alliée est lue, sans événement) rend un bloc nul ET le journalise avec sa raison ; sans
 // session, la raison est « no_session ».
 func TestBuildSquadImpact_SessionsAbsentesJournalise(t *testing.T) {
 	repo, all := soireesFixture()
@@ -305,6 +305,8 @@ func TestBuildSquadImpact_SessionsAbsentesJournalise(t *testing.T) {
 				sessions = svc.buildSquadImpact(context.Background(), impactEscouade{
 					rows: all, timeline: all, evenings: evenings,
 					mainXUID: "x_main", selected: []string{"Ally"}, teammates: tm,
+					// Équipe alliée lue (le principal seul), sans événement : aucun rôle ne tombe.
+					allies: []domain.AllyParticipant{{MatchID: all[1].MatchID, XUID: "x_main", Gamertag: "Main"}},
 				})
 			})
 			if sessions != nil {

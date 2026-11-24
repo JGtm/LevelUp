@@ -23,7 +23,9 @@ type SessionsInput struct {
 	Roles map[string][]Attribution
 	// Allied : par identifiant de match, les joueurs de l'escouade présents dans l'équipe alliée du
 	// joueur principal. Un joueur a joué un match quand il y figure ; un rôle attribué dans un match
-	// vaut présence (un rôle ne tombe que sur un joueur du match).
+	// vaut présence (un rôle ne tombe que sur un joueur du match). Le service ne publie pas le bloc
+	// quand l'équipe alliée n'a pas été lue : sans elle cette carte est vide et « a joué » ne se
+	// décide plus que par les rôles.
 	Allied map[string]map[string]bool
 }
 

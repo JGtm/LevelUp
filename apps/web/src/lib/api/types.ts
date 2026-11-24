@@ -1068,13 +1068,6 @@ export type SquadMapHeatmap = components['schemas']['SquadMapHeatmap']
 
 /** Impact des coéquipiers par session (une ligne par session, matrice dépliable, décompte de toutes les sessions). */
 export type SquadImpactSessions = components['schemas']['SquadImpactSessions']
-export type SquadImpactSessionsRoleWeight = components['schemas']['SquadImpactSessionsRoleWeight']
-export type SquadImpactSessionsSession = components['schemas']['SquadImpactSessionsSession']
-export type SquadImpactSessionsMatch = components['schemas']['SquadImpactSessionsMatch']
-export type SquadImpactSessionsPlayer = components['schemas']['SquadImpactSessionsPlayer']
-export type SquadImpactSessionsRoleCount = components['schemas']['SquadImpactSessionsRoleCount']
-export type SquadImpactSessionsPerMatch = components['schemas']['SquadImpactSessionsPerMatch']
-export type SquadImpactSessionsTotal = components['schemas']['SquadImpactSessionsTotal']
 
 /**
  * Ligne du tableau historique escouade (teammates.11). Une ligne par match
