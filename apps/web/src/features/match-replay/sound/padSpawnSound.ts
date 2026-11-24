@@ -29,7 +29,7 @@
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { frameToMs } from '../../../lib/replay/replayLogic'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
-import { padEquipmentFamilyOf } from '../model/weaponPadFamilies'
+import { padIsEquipment } from '../model/weaponPadFamilies'
 
 /**
  * Le son de l'apparition d'une ARME sur socle. Banque `sb_004_mod_mp_shared_weaponpad`,
@@ -43,8 +43,8 @@ export const PAD_SPAWN_SOUND_STEM = 'objective_pad_spawn'
  * `4093f3c4`, nom Wwise non cassé.
  *
  * DEUX SONS ET PAS UN, parce que le calque distingue déjà les deux natures : un socle
- * d'équipement publie sa FAMILLE (`powerup_overshield` / `powerup_camo`) là où un socle d'arme
- * publie un identifiant de famille d'arme — c'est `padEquipmentFamilyOf` qui les sépare, la
+ * d'équipement publie sa FAMILLE (`powerup_overshield`, `wall`, `grapple`, toute famille d'équipement du manifeste) là où un socle d'arme
+ * publie un identifiant de famille d'arme — c'est `padIsEquipment` qui les sépare, la
  * même jointure que l'affichage des socles (`useReplayWeaponPads`). Le jeu, lui, n'a PAS de
  * banque de socle d'équipement (mesuré le 2026-08-30 : gabarit `sb_004_mod_mp_shared_%s` sur
  * le dictionnaire complet, rien pour l'équipement) — le son vient donc de la banque commune,
@@ -74,7 +74,7 @@ export function padSpawnSoundEvents(doc: ReplayDocumentReady): ReplaySoundEvent[
   if (pads.length === 0) return []
   const spawns: { t: number; stem: string }[] = []
   for (const p of pads) {
-    const stem = padEquipmentFamilyOf(p.weapon)
+    const stem = padIsEquipment(p.weapon)
       ? EQUIPMENT_PAD_SPAWN_SOUND_STEM
       : PAD_SPAWN_SOUND_STEM
     for (const t of p.spawns ?? []) spawns.push({ t, stem })

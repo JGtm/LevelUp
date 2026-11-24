@@ -37,3 +37,14 @@ export function carriedIsAbilityRank(
   const family = c.family
   return family !== undefined && family === labels?.[String(rank)]?.family
 }
+
+/**
+ * abilityLabelOfFamily — le libellé bilingue du document pour une FAMILLE d'équipement (la table des
+ * capacités est indexée par rang : on la parcourt), ou undefined quand aucun rang du film ne porte cette famille.
+ */
+export function abilityLabelOfFamily(
+  labels: ReplayDocumentReady['abilityLabels'],
+  family: string,
+): NonNullable<ReplayDocumentReady['abilityLabels']>[string] | undefined {
+  return Object.values(labels ?? {}).find((l) => l.family === family)
+}

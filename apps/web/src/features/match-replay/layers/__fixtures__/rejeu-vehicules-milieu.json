@@ -446,8 +446,8 @@
 {"op":"lineTo","args":[500.403016988239,681.8341738796219]}
 {"op":"closePath","args":[]}
 {"op":"fill","args":[]}
-{"op":"set strokeStyle","args":["#d71486"]}
-{"op":"set fillStyle","args":["#d71486"]}
+{"op":"set strokeStyle","args":["#718d42"]}
+{"op":"set fillStyle","args":["#718d42"]}
 {"op":"set globalAlpha","args":[0.35]}
 {"op":"beginPath","args":[]}
 {"op":"moveTo","args":[370.2839201168422,179.61681937120457]}
@@ -466,8 +466,8 @@
 {"op":"strokeText","args":["60 s",370.2839201168422,177.11681937120457]}
 {"op":"set fillStyle","args":["#5b6f63"]}
 {"op":"fillText","args":["60 s",370.2839201168422,177.11681937120457]}
-{"op":"set strokeStyle","args":["#d71486"]}
-{"op":"set fillStyle","args":["#d71486"]}
+{"op":"set strokeStyle","args":["#718d42"]}
+{"op":"set fillStyle","args":["#718d42"]}
 {"op":"set globalAlpha","args":[0.95]}
 {"op":"beginPath","args":[]}
 {"op":"moveTo","args":[400.8679733722808,52.382625689906995]}
@@ -476,8 +476,8 @@
 {"op":"lineTo","args":[396.8679733722808,56.382625689906995]}
 {"op":"closePath","args":[]}
 {"op":"fill","args":[]}
-{"op":"set strokeStyle","args":["#d71486"]}
-{"op":"set fillStyle","args":["#d71486"]}
+{"op":"set strokeStyle","args":["#718d42"]}
+{"op":"set fillStyle","args":["#718d42"]}
 {"op":"set globalAlpha","args":[0.95]}
 {"op":"beginPath","args":[]}
 {"op":"moveTo","args":[430.3264459989239,384.6444997770774]}
@@ -486,8 +486,8 @@
 {"op":"lineTo","args":[426.3264459989239,388.6444997770774]}
 {"op":"closePath","args":[]}
 {"op":"fill","args":[]}
-{"op":"set strokeStyle","args":["#d71486"]}
-{"op":"set fillStyle","args":["#d71486"]}
+{"op":"set strokeStyle","args":["#718d42"]}
+{"op":"set fillStyle","args":["#718d42"]}
 {"op":"set globalAlpha","args":[0.95]}
 {"op":"beginPath","args":[]}
 {"op":"moveTo","args":[537.7672771773389,370.7028449842417]}
@@ -496,8 +496,8 @@
 {"op":"lineTo","args":[533.7672771773389,374.7028449842417]}
 {"op":"closePath","args":[]}
 {"op":"fill","args":[]}
-{"op":"set strokeStyle","args":["#d71486"]}
-{"op":"set fillStyle","args":["#d71486"]}
+{"op":"set strokeStyle","args":["#718d42"]}
+{"op":"set fillStyle","args":["#718d42"]}
 {"op":"set globalAlpha","args":[0.35]}
 {"op":"beginPath","args":[]}
 {"op":"moveTo","args":[596.353191790299,579.8308230917058]}
@@ -546,8 +546,8 @@
 {"op":"lineTo","args":[496.0714604658314,151.04677856868324]}
 {"op":"closePath","args":[]}
 {"op":"fill","args":[]}
-{"op":"set strokeStyle","args":["#d71486"]}
-{"op":"set fillStyle","args":["#d71486"]}
+{"op":"set strokeStyle","args":["#718d42"]}
+{"op":"set fillStyle","args":["#718d42"]}
 {"op":"set globalAlpha","args":[0.95]}
 {"op":"beginPath","args":[]}
 {"op":"moveTo","args":[326.46035108002155,290.6247932969483]}
@@ -556,8 +556,8 @@
 {"op":"lineTo","args":[322.46035108002155,294.6247932969483]}
 {"op":"closePath","args":[]}
 {"op":"fill","args":[]}
-{"op":"set strokeStyle","args":["#d71486"]}
-{"op":"set fillStyle","args":["#d71486"]}
+{"op":"set strokeStyle","args":["#718d42"]}
+{"op":"set fillStyle","args":["#718d42"]}
 {"op":"set globalAlpha","args":[0.35]}
 {"op":"beginPath","args":[]}
 {"op":"moveTo","args":[407.6201502344532,244.81586692289957]}
@@ -576,8 +576,8 @@
 {"op":"strokeText","args":["58 s",407.6201502344532,242.31586692289957]}
 {"op":"set fillStyle","args":["#5b6f63"]}
 {"op":"fillText","args":["58 s",407.6201502344532,242.31586692289957]}
-{"op":"set strokeStyle","args":["#d71486"]}
-{"op":"set fillStyle","args":["#d71486"]}
+{"op":"set strokeStyle","args":["#718d42"]}
+{"op":"set fillStyle","args":["#718d42"]}
 {"op":"set globalAlpha","args":[0.35]}
 {"op":"beginPath","args":[]}
 {"op":"moveTo","args":[561.0694725190253,507.6027815819818]}
@@ -596,8 +596,8 @@
 {"op":"strokeText","args":["32 s",561.0694725190253,505.1027815819818]}
 {"op":"set fillStyle","args":["#5b6f63"]}
 {"op":"fillText","args":["32 s",561.0694725190253,505.1027815819818]}
-{"op":"set strokeStyle","args":["#d71486"]}
-{"op":"set fillStyle","args":["#d71486"]}
+{"op":"set strokeStyle","args":["#718d42"]}
+{"op":"set fillStyle","args":["#718d42"]}
 {"op":"set globalAlpha","args":[0.95]}
 {"op":"beginPath","args":[]}
 {"op":"moveTo","args":[640.9712798216622,468.1200773618264]}
@@ -606,8 +606,8 @@
 {"op":"lineTo","args":[636.9712798216622,472.1200773618264]}
 {"op":"closePath","args":[]}
 {"op":"fill","args":[]}
-{"op":"set strokeStyle","args":["#d71486"]}
-{"op":"set fillStyle","args":["#d71486"]}
+{"op":"set strokeStyle","args":["#718d42"]}
+{"op":"set fillStyle","args":["#718d42"]}
 {"op":"set globalAlpha","args":[0.35]}
 {"op":"beginPath","args":[]}
 {"op":"moveTo","args":[420.9920824044892,609.3548891997848]}
@@ -626,8 +626,8 @@
 {"op":"strokeText","args":["28 s",420.9920824044892,606.8548891997848]}
 {"op":"set fillStyle","args":["#5b6f63"]}
 {"op":"fillText","args":["28 s",420.9920824044892,606.8548891997848]}
-{"op":"set strokeStyle","args":["#d71486"]}
-{"op":"set fillStyle","args":["#d71486"]}
+{"op":"set strokeStyle","args":["#718d42"]}
+{"op":"set fillStyle","args":["#718d42"]}
 {"op":"set globalAlpha","args":[0.95]}
 {"op":"beginPath","args":[]}
 {"op":"moveTo","args":[697.7701517411024,570.8681748328081]}
@@ -636,8 +636,8 @@
 {"op":"lineTo","args":[693.7701517411024,574.8681748328081]}
 {"op":"closePath","args":[]}
 {"op":"fill","args":[]}
-{"op":"set strokeStyle","args":["#d71486"]}
-{"op":"set fillStyle","args":["#d71486"]}
+{"op":"set strokeStyle","args":["#718d42"]}
+{"op":"set fillStyle","args":["#718d42"]}
 {"op":"set globalAlpha","args":[0.35]}
 {"op":"beginPath","args":[]}
 {"op":"moveTo","args":[371.4094904143286,459.56761306787615]}
@@ -656,8 +656,8 @@
 {"op":"strokeText","args":["13 s",371.4094904143286,457.06761306787615]}
 {"op":"set fillStyle","args":["#5b6f63"]}
 {"op":"fillText","args":["13 s",371.4094904143286,457.06761306787615]}
-{"op":"set strokeStyle","args":["#d71486"]}
-{"op":"set fillStyle","args":["#d71486"]}
+{"op":"set strokeStyle","args":["#718d42"]}
+{"op":"set fillStyle","args":["#718d42"]}
 {"op":"set globalAlpha","args":[0.95]}
 {"op":"beginPath","args":[]}
 {"op":"moveTo","args":[596.2869939272812,296.30688932277656]}

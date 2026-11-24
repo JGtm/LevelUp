@@ -40,7 +40,7 @@ export function useFeedEventEntries(
   return useMemo(() => {
     if (!doc) return []
     const t = REPLAY_TEXT[locale]
-    const nameOf = (weapon: string) => padNameFor(weapon, doc.weaponLabels, t, locale)
+    const nameOf = (weapon: string) => padNameFor(weapon, doc.weaponLabels, t, locale, doc.abilityLabels)
     const padPickups = pickupFeedEntries(doc, nameOf)
     return [
       ...objectiveFeedEntries(doc).entries,

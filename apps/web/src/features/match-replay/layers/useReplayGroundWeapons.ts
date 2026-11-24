@@ -300,7 +300,7 @@ export function useReplayGroundWeapons({
         const next: GroundWeaponHover = {
           item: found,
           at,
-          weaponName: padNameFor(found.w, labels, t, locale),
+          weaponName: padNameFor(found.w, labels, t, locale, doc.abilityLabels),
           originLine: groundWeaponOriginLine(found, nameOfSlot, t),
           pickupLine: groundWeaponPickupLine(found, nameOfSlot, t),
           ammoLine: groundWeaponAmmoFragment(doc, found, t),

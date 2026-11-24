@@ -35,6 +35,7 @@ import { useTitleSlug } from '@/lib/title-routing'
 
 import { catalogText } from '../i18n/catalogLabel'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
+import { abilityLabelOfFamily } from '../model/carriedFamily'
 import { equipmentFamilyLabel } from '../model/equipmentUsageColumns'
 import { applyPadPickupDating } from '../model/padPickupDating'
 import { refinePadPresence } from '../model/padPresenceRefine'
@@ -137,12 +138,18 @@ export function padNameFor(
   labels: PadLabels,
   t: ReplayText,
   locale: ReplayLocale,
+  abilityLabels?: ReplayDocumentReady['abilityLabels'],
 ): string {
   const family = padEquipmentFamilyOf(weapon)
   if (family) return t.padEquipmentFamily[family]
   const catalogued = catalogText(labels?.[weaponLabelKeyOf(weapon)], locale)
   if (catalogued) return catalogued
-  return WEAPON_FAMILY_HEX.test(weapon) ? weapon : equipmentFamilyLabel(weapon, t)
+  if (WEAPON_FAMILY_HEX.test(weapon)) return weapon
+  // Une famille d'équipement : les tables du rendu d'abord, puis le libellé du document (la table
+  // des capacités couvre les familles qui ne se posent pas : grappin, répulseur, propulseur).
+  const named = equipmentFamilyLabel(weapon, t)
+  if (named !== weapon) return named
+  return catalogText(abilityLabelOfFamily(abilityLabels, weapon), locale) ?? weapon
 }
 
 /** L'écriture d'une famille d'ARME dans le document : `0x` et huit chiffres hexadécimaux. */
@@ -373,8 +380,8 @@ export function useReplayWeaponPads({
     [labels, ink.family],
   )
   const nameOf = useCallback(
-    (weapon: string) => padNameFor(weapon, labels, t, locale),
-    [labels, t, locale],
+    (weapon: string) => padNameFor(weapon, labels, t, locale, doc.abilityLabels),
+    [labels, t, locale, doc.abilityLabels],
   )
 
   // LES VIGNETTES, cuites une fois par document ET par encre : un masque se teint hors écran,

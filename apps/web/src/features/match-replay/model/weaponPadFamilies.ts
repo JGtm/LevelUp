@@ -53,7 +53,7 @@ export type PadFamily = 'powerup' | 'power' | 'classic'
  * prudente que `padScaleOf` juste en dessous.
  */
 export function padFamilyOf(weapon: string, key: string | null | undefined): PadFamily {
-  if (padEquipmentFamilyOf(weapon)) return 'powerup'
+  if (padIsEquipment(weapon)) return 'powerup'
   return key && POWER_PAD_WEAPON_KEYS.includes(key) ? 'power' : 'classic'
 }
 
@@ -154,4 +154,37 @@ export function padEquipmentFamilyOf(weapon: string): PadEquipmentFamilyKey | nu
   return Object.prototype.hasOwnProperty.call(PAD_EQUIPMENT_FAMILIES, weapon)
     ? (weapon as PadEquipmentFamilyKey)
     : null
+}
+
+/**
+ * LES FAMILLES D'ÉQUIPEMENT QUE LE MANIFESTE DU TITRE PUBLIE, hors power-ups (ceux-ci ont leur
+ * table, `PAD_EQUIPMENT_FAMILIES`). Liste ÉCRITE et non déduite de `PLACEMENT_RENDER`, pour la
+ * raison de dépendances que dit `placementDropped.ts` : ce module est importé par la couche qui
+ * porte cette table. Un garde-rail (`padEquipment.guard.test.ts`) la tient égale aux clés de
+ * `PLACEMENT_RENDER` et la recoupe avec les familles de socle des documents publiés par Go.
+ */
+export const PAD_PLACED_EQUIPMENT_FAMILIES: readonly string[] = [
+  'wall',
+  'sensor',
+  'translocator_beacon',
+  'shroud_screen',
+  'threat_seeker',
+  'repair_field',
+  'other',
+  'grenade_frag',
+  'grenade_plasma',
+  'grenade_dynamo',
+  'grenade_spike',
+  'grapple',
+  'thruster',
+  'repulsor',
+]
+
+/**
+ * padIsEquipment — le socle porte-t-il un ÉQUIPEMENT, quelle que soit sa famille ? Les trois
+ * lecteurs de socle (nom, encre, son d'apparition) se règlent sur cette réponse : un socle de
+ * grappin ou de mur n'est pas un râtelier d'arme.
+ */
+export function padIsEquipment(weapon: string): boolean {
+  return padEquipmentFamilyOf(weapon) !== null || PAD_PLACED_EQUIPMENT_FAMILIES.includes(weapon)
 }
