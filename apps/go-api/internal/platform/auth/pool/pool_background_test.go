@@ -430,3 +430,74 @@ func TestWaitResolved(t *testing.T) {
 		t.Error("WaitResolved doit rendre vrai tout de suite sans résolution de fond")
 	}
 }
+
+// capturerJournalPool remplace le journal par défaut le temps du test et rend ses lignes.
+func capturerJournalPool(t *testing.T) func() string {
+	t.Helper()
+	var mu sync.Mutex
+	var buf bytes.Buffer
+	ancien := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&lockedWriter{mu: &mu, w: &buf}, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	t.Cleanup(func() { slog.SetDefault(ancien) })
+	return func() string {
+		mu.Lock()
+		defer mu.Unlock()
+		return buf.String()
+	}
+}
+
+// TestBackground_BilanDeResolution : trois issues distinctes au journal. Tout ou partie résolu : une
+// information avec le compte et la durée ; aucun résolu : un avertissement qui dit d'authentifier un joueur ;
+// interrompu par l'arrêt : le message d'interruption, et lui seul.
+func TestBackground_BilanDeResolution(t *testing.T) {
+	t.Run("tout résolu", func(t *testing.T) {
+		journal := capturerJournalPool(t)
+		p := newBackgroundPool(t, newCtxResolver(func(string) time.Duration { return time.Millisecond }), bgSources("A", "B"), 0)
+		WaitResolved(context.Background(), p)
+		l := journal()
+		if !strings.Contains(l, "pool: comptes résolus") || !strings.Contains(l, "size=2") || !strings.Contains(l, "resolve_ms=") {
+			t.Errorf("bilan de succès absent du journal :\n%s", l)
+		}
+		if strings.Contains(l, "résolution des comptes interrompue") || strings.Contains(l, "pool: aucun compte résolu") {
+			t.Errorf("bilan faux après une résolution réussie :\n%s", l)
+		}
+	})
+	t.Run("partiellement résolu", func(t *testing.T) {
+		journal := capturerJournalPool(t)
+		p := newBackgroundPool(t, newCtxResolver(func(string) time.Duration { return time.Millisecond }, "Mort"), bgSources("Mort", "Vivant"), 0)
+		WaitResolved(context.Background(), p)
+		l := journal()
+		if !strings.Contains(l, "pool: comptes résolus") || !strings.Contains(l, "size=1") || !strings.Contains(l, "echecs=1") {
+			t.Errorf("bilan d'une résolution partielle absent :\n%s", l)
+		}
+	})
+	t.Run("aucun résolu", func(t *testing.T) {
+		journal := capturerJournalPool(t)
+		p := newBackgroundPool(t, newCtxResolver(func(string) time.Duration { return time.Millisecond }, "A", "B"), bgSources("A", "B"), 0)
+		WaitResolved(context.Background(), p)
+		l := journal()
+		if !strings.Contains(l, "level=WARN") || !strings.Contains(l, "pool: aucun compte résolu") || !strings.Contains(l, "authentifier un joueur") {
+			t.Errorf("avertissement « aucun compte résolu » absent ou sans consigne :\n%s", l)
+		}
+		if strings.Contains(l, "résolution des comptes interrompue") || strings.Contains(l, "pool: comptes résolus") {
+			t.Errorf("bilan faux quand aucun compte n'est résolu :\n%s", l)
+		}
+	})
+	t.Run("interrompu", func(t *testing.T) {
+		journal := capturerJournalPool(t)
+		r := newCtxResolver(func(string) time.Duration { return time.Minute })
+		p, err := NewPool(context.Background(), r, bgSources("A", "B"), PoolOptions{AllowEmpty: true, ResolveInBackground: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		waitFor(t, "deux résolutions en vol", func() bool { n, _ := r.stats(); return n == 2 })
+		p.Close()
+		l := journal()
+		if !strings.Contains(l, "pool: résolution des comptes interrompue") {
+			t.Errorf("message d'interruption absent :\n%s", l)
+		}
+		if strings.Contains(l, "pool: comptes résolus") || strings.Contains(l, "pool: aucun compte résolu") {
+			t.Errorf("bilan de succès ou d'absence journalisé après une interruption :\n%s", l)
+		}
+	})
+}

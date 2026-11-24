@@ -191,20 +191,23 @@ func (p *poolImpl) runBootFill(ctx context.Context, sorted []CredentialSource, m
 		}
 		p.installBootSlot(ctx, src, o.resolved)
 	})
-	p.fill.finish()
-	p.fill.cancel()
+	// Interrompue : constaté AVANT de relâcher le contexte de la résolution (cancel le rendrait toujours annulé).
+	interrompue := ctx.Err() != nil
 	size := p.Size()
 	attrs := []any{"size", size, "sources", len(sorted), "echecs", failed,
-		"resolve_ms", time.Since(debut).Milliseconds(), "annule", ctx.Err() != nil}
+		"resolve_ms", time.Since(debut).Milliseconds(), "interrompue", interrompue}
 	switch {
-	case ctx.Err() != nil:
+	case interrompue:
 		slog.WarnContext(ctx, "pool: résolution des comptes interrompue", attrs...)
 	case size == 0:
-		slog.WarnContext(ctx, "pool: aucun compte résolu — il se remplira à la connexion d'un joueur ou au re-scan",
+		slog.WarnContext(ctx, "pool: aucun compte résolu — authentifier un joueur (SSO Xbox ou `go run ./cmd/token-capture/ <GT>`) : le pool se remplira à sa connexion ou au re-scan",
 			attrs...)
 	default:
 		slog.InfoContext(ctx, "pool: comptes résolus", attrs...)
 	}
+	// Le bilan est écrit avant la clôture : ceux qui attendent la fin (WaitResolved) le trouvent au journal.
+	p.fill.finish()
+	p.fill.cancel()
 }
 
 // installBootSlot installe le slot d'un compte résolu en tâche de fond. Le consentement est celui du
