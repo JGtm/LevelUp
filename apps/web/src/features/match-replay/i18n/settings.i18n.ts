@@ -62,6 +62,8 @@ export interface SettingsText {
   quickOffFmt: (label: string) => string
   quickNoMatch: string
   quickNoFrame: string
+  /** L'infobulle d'un réglage épinglé grisé : son nom, puis la raison. */
+  quickDisabledFmt: (label: string, reason: string) => string
   /** Les petites phrases de la rubrique « Fil ». */
   feedFilterLabel: string
   feedStandardNote: string
@@ -141,6 +143,7 @@ export const FR_SETTINGS = {
   quickOffFmt: (label) => `${label} : désactivé`,
   quickNoMatch: 'Sans objet sur ce match',
   quickNoFrame: 'Disponible au Cinéma et au Plein cadre',
+  quickDisabledFmt: (label, reason) => `${label} : ${reason}`,
   feedFilterLabel: 'Filtre du fil',
   feedStandardNote: 'Le fil posé sur le plan se règle au Cinéma et au Plein cadre.',
   volumeLabel: 'Volume',
@@ -215,6 +218,7 @@ export const EN_SETTINGS = {
   quickOffFmt: (label) => `${label}: off`,
   quickNoMatch: 'Not applicable to this match',
   quickNoFrame: 'Available in Cinema and Full frame',
+  quickDisabledFmt: (label, reason) => `${label}: ${reason}`,
   feedFilterLabel: 'Feed filter',
   feedStandardNote: 'The feed laid over the map is set in Cinema and Full frame.',
   volumeLabel: 'Volume',

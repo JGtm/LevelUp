@@ -15,6 +15,7 @@
  */
 import { REPLAY_TEXT } from '../i18n/i18n'
 import { ReplayDimensionSwitch } from '../ui/ReplayDimensionSwitch'
+import { ReplayQuickAccess } from './ReplayQuickAccess'
 import { ReplayViewPanel } from './ReplayViewPanel'
 import { SlidersIcon } from './SlidersIcon'
 import type { ReplayViewMenuState } from './useReplayViewMenu'
@@ -25,6 +26,7 @@ export function ReplayViewMenu({ open, toggle, close, buttonRef, label, model, d
     <>
       <div className="absolute right-2 top-2 z-20 flex items-center gap-2">
         <ReplayDimensionSwitch {...dimension} locale={model.locale} />
+        <ReplayQuickAccess model={model} />
         <button
           ref={buttonRef}
           type="button"
