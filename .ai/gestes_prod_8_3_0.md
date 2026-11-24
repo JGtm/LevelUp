@@ -169,3 +169,39 @@ Points « à vérifier avant le déploiement » de cette section : faits de film
 `BASCULE.sh` (D2, le comportement du premier démarrage devant des rejeux périmés est établi, voir plus haut), durée des passes et rôle de
 `backfill-killsource` sur le serveur (D3), lecture du profil hébergé (D4), état du correctif d'archivage (D5),
 comportement d'une 8.2.x devant le schéma 127 (D6), libellé du panneau d'administration (D7).
+
+## Archivage des films et démarrage du serveur (backlog du 24 novembre, piste serveur)
+
+Écrit le 2026-11-24 à l'intégration de la piste. Rien n'est exécuté. Complète D5 : la purge horaire des films
+ne se retire qu'après le contrôle A3.
+
+### A1. Avant de déployer : lire deux clés du fichier de réglages du serveur
+
+Dans `app_settings.json` du serveur, lire `archive_films` (présente ou absente, sa valeur) et
+`replay_retention_months`.
+
+| `archive_films` | `replay_retention_months` | Effet de la 8.3.0 |
+|---|---|---|
+| absente | 0 | rien ne change ; le site n'archive plus les films (défaut du profil hébergé) |
+| absente | plus de 0 | la durée de conservation est ramenée à 0 (illimitée) avec un seul avertissement au journal, puis écrite ainsi dans le fichier à la première modification d'un réglage |
+| `true` écrite | toute valeur | le nouveau défaut ne s'applique pas : le site continue d'archiver tant que la clé n'est pas passée à `false` |
+| `false` | 0 | état visé du site hébergé |
+
+Décision à prendre dans le cas « absente, plus de 0 » : accepter la conservation illimitée des rejeux, ou
+écrire `archive_films: true` en connaissance de cause (le site archive alors de nouveau les films).
+
+### A2. Si la clé vaut `true` : la passer à `false`
+
+Par `PATCH /settings`, après avoir vérifié que `replay_retention_months` vaut 0 (sinon la demande est refusée).
+
+### A3. Après le déploiement : contrôler, puis retirer la purge horaire
+
+- Le dossier d'archive des films ne grossit plus ; le compteur `killsource_films_non_archives` monte.
+- Alors seulement : retirer la tâche planifiée de purge horaire des films (minuterie systemd du serveur ; son
+  nom se lit par `systemctl list-timers`).
+
+### A4. Démarrage : deux lignes à lire au journal
+
+`pool: créé vide…` puis, à la fin de la résolution des comptes, le bilan avec `resolve_ms`. Un bilan « aucun
+compte résolu » demande d'authentifier un joueur. Aucun geste. Le gain de temps au démarrage n'a été mesuré que
+sur un banc simulé : relever le temps réel jusqu'à « serveur prêt » au premier déploiement.

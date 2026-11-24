@@ -173,11 +173,11 @@ Gates communs. Go : `go build ./... && go vet ./...`, tests des paquets touchés
 
 ### Piste D — serveur et production (Go ; `-tags=integration` au gate)
 
-- [ ] D.1 Archivage des films : le calcul des frags respecte le réglage ; pas d'archivage par défaut sur le
+- [x] D.1 (`a1990f6270` puis revue `79dc2f95f0`, `997a98028f`, `f1003466bc` : archive coupée, la source des frags n'écrit rien dans aucun profil ; défaut par la capacité `ArchiveFilmsByDefault` ; gestes de production A1 à A3) Archivage des films : le calcul des frags respecte le réglage ; pas d'archivage par défaut sur le
       site hébergé ; conservé sur le bureau. Le retrait de la tâche du serveur va dans les gestes de production.
-- [ ] D.2 Démarrage : pool de jetons créé vide, comptes résolus en tâche de fond, port ouvert sans attendre.
+- [x] D.2 (`bf3718ed37` puis revue `a5254b8be7`, `1cb7cb33e4`, `7ebc10a000`, `845b5709b6` : sur banc simulé à douze comptes, 665 ms avant, moins de 1 ms après ; temps réel non mesuré) Démarrage : pool de jetons créé vide, comptes résolus en tâche de fond, port ouvert sans attendre.
       Revue adversariale propre (authentification).
-- [ ] D.3 Alerte « zero-insert » qui ignore les matchs rangés par une autre voie ; avertissement de mise en file
+- [x] D.3 (`94723378ab` : alerte au franchissement du seuil puis tous les 48 cycles ; avertissement de jeton une fois par épisode) Alerte « zero-insert » qui ignore les matchs rangés par une autre voie ; avertissement de mise en file
       quand aucun compte n'a consenti.
 - [!] D.4 (abandon, D-5 et D-13 : au plus 66 matchs sur 3 032 ; une commande de reprise manuelle existe) Halo 5 incomplet : seulement si D-5 le retient.
 - **Gate D :** gates Go, `go test -tags=integration ./internal/sync/... ./internal/scheduler/...`, démarrage
@@ -313,3 +313,15 @@ dépendance est close.
   fait partie de `make gate-push`, avant `main`. Découvertes : deux autres gardes figées sur « 2026- »
   (`checkpoint_single_site_test.go`, `no_inline_per_minute_test.go`) ; `pkg/duckdbbackup` lance restic hors
   garde ; un pseudo reste dans `.gitignore`, deux scripts de banc et l'ADR 0018.
+- 2026-11-24 — PISTE D fusionnée (`2168335b54`) après UNE ronde de revue adversariale (deux relecteurs Sonnet).
+  Pool de jetons : 6 constats recevables, 4 corrigés avec leur test (bilan de résolution, acquisition
+  endormie, course sur `MarkUnhealthy`, boucle différée à l'arrêt), 2 en découverte. Archivage et journal :
+  5 constats recevables ; le « relais » d'archivage est retiré (le client Halo du serveur n'a pas de cache de
+  film : il n'évitait aucun second téléchargement et laissait des films sur le disque) ; garde d'architecture
+  neuve sur les magasins de réglages qui écrivent ; le cas « durée de conservation sans clé d'archive » va aux
+  gestes de production. Aucun P0. Gate de l'agent rejoué après corrections, tout à 0 ; build et vet rejoués
+  par le pilote sur la branche intégrée.
+- 2026-11-24 — CI rouge après la fusion de la piste B, deux causes : huit tests du code supprimé encore dans la
+  référence (retirés, `4eeba506c6`) ; garde de taille des fonctions du front à 244 pour 243 (`SessionMatrix`,
+  corrigé par l'agent, `89243f758e`). Leçon : les gardes globaux (`src/lib` côté web, référence des tests
+  côté Go) tournent avant chaque fusion de piste, pas seulement les tests ciblés.
