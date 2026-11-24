@@ -237,3 +237,7 @@ dépendance est close.
 ## 10. Journal d'exécution
 
 - 2026-11-24 — plan écrit ; go du user le même jour ; pièces montées (piste F) et « mètres » (0.6, B.6) ajoutés à sa demande.
+- 2026-11-24 — étape 1 : le report de `main` donne 20 fichiers en conflit (code de synchronisation, contrat,
+  CI, notes de version). Résolution confiée à un agent Sonnet dans le worktree `LevelUp-wt-bl24-report`,
+  branche `chore/report-main-8-2-3`. L'étape 0 et M.1, en lecture seule, partent en même temps : les entrées
+  dont les fichiers sont touchés par le report (Halo 5, synchronisation) seront relues après lui.
