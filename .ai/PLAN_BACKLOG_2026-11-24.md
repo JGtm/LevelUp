@@ -3,7 +3,7 @@
 Statut : **écrit le 2026-11-24 à la demande du user (« Pour moi faut faire 1 à 29 », « Les répliques de
 spartan va falloir le faire », « Le 10 faut partir sur une maquette réaliste »). Relu contre la grille
 `plan-review` et son complément `levelup-plan`. GO DONNÉ par le user le 2026-11-24 (« ok avec ton plan et tes autres recos », cible 8.3.0 confirmée) ; il lui reste
-les voix des répliques (D-8) et la validation de la maquette (M.3).**
+la validation de la maquette (M.3).**
 
 Contrat d'exécution : skill `plan-execution`, complément `levelup-plan`. Statuts : `[x]` fait, `[~]` couvert
 ailleurs (référence), `[!]` non traité (motif écrit). Aucune case vide à la clôture. Ordre strict dans une
@@ -46,7 +46,7 @@ Cible confirmée par le user le 2026-11-24 : la **8.3.0**.
   l'affichage des répliques : la piste R attend la validation de la maquette M.
 - **D-8 — répliques : la fonction plaît au user (2026-11-24) ; leurs réglages se décident dans la maquette M.**
   Défauts, emplacement et son des répliques sont des réglages parmi les autres : la maquette M les porte et
-  le user les tranche en la validant. Reste à lui : verser ou non les voix au dépôt (avant R.3).
+  le user les tranche en la validant. Voix : versées au dépôt (user, 2026-11-24 : « Oui on verse les voix au depot »).
 - **D-9 — base et branches.** Base `release/v8.3.0`, après le report de `main` (étape 1). Branche
   d'intégration `feat/backlog-2026-11-24` ; une sous-branche et un worktree par piste
   (`<poste>/Downloads/Scripts/LevelUp-wt-bl24-<piste>`, sans jonction vers `data/`). Fusion dans
@@ -204,7 +204,7 @@ Dans le dépôt de la brique (`halo-infinite-film-decoder`), sur une branche et 
 - [ ] R.1 Table des textes des répliques par langue (commande de table), sans voix.
 - [ ] R.2 Affichage dans le rejeu selon la maquette publiée et les choix D-8 ; réglages rangés dans le panneau
       de M.
-- [ ] R.3 Voix : selon D-8 ; les voix anglaises restent à recevoir, hors de ce plan si elles n'arrivent pas.
+- [ ] R.3 Voix versées au dépôt (D-8) ; les voix anglaises restent à recevoir, hors de ce plan si elles n'arrivent pas.
 - **Gate R :** gates Go et web, vérification EN LECTURE sur un rejeu en 1.12 ou 1.13 (répliques nommées),
   ligne dans l'artefact des vérifications.
 
@@ -241,3 +241,6 @@ dépendance est close.
   CI, notes de version). Résolution confiée à un agent Sonnet dans le worktree `LevelUp-wt-bl24-report`,
   branche `chore/report-main-8-2-3`. L'étape 0 et M.1, en lecture seule, partent en même temps : les entrées
   dont les fichiers sont touchés par le report (Halo 5, synchronisation) seront relues après lui.
+- 2026-11-24 — décisions du user : voix des répliques versées au dépôt (D-8) ; entrée du schéma des bases
+  joueur retirée du backlog ; entrée des fichiers de variante de carte gardée et reformulée, en attente de la
+  réponse de Den sur Cartographer.
