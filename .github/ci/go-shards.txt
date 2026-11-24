@@ -47,27 +47,34 @@
 # Les tests qui partagent un décodage mémoïsé du paquet (bobines_memo_test.go, `etatsDeLaBobine`,
 # `bilanDeLaBobine`) vont dans le MÊME lot : séparés, chaque lot refairait la marche des sept bobines.
 #
-# V1.6 DU DÉCODEUR (montée en v1.6.1, PR 216). Les tests « forme sur les bobines » ajoutés par la
-# brique ont fait atteindre `-timeout 600s` au lot reste (598 s de tests au premier passage). Deux
-# relevés de cette PR, somme des durées des tests de premier niveau sous couverture, puis durée du
-# job sur le runner (compilation et édition de liens comprises, ~50 s) :
-#   premier passage    lourd 258 s   moyen  97 s   reste 598 s (délai atteint, lot rouge)
-#   second passage     lourd 137 s   moyen 450 s   reste 522 s ; runner 3 min 8 s / 8 min 13 s / 9 min 49 s
-#   après rééquilibrage lourd ~375 s  moyen ~371 s  reste ~363 s ; runner visé ~7 min chacun
-# Les durées varient du simple au double d'un passage à l'autre (la boucle de `TestSuivante...` :
-# 178 s puis 92 s) : on équilibre sur la somme du second passage. Déplacements : la recherche de table sur
-# les bobines (`TestLesRecherchesDeTableEgalentLeurFormeSurLesBobines`, 238 s) va dans le lot lourd ;
-# `TestFilsMotsIdentiques` (159 s) du lot reste dans le lot moyen. Aucun de ces tests ne partage de
-# décodage mémoïsé avec un autre lot. Trois lots, aucun test retiré, délai inchangé.
+# V1.6 DU DÉCODEUR (montée en v1.6.1, PR 216). Les tests ajoutés par la brique (formes sur les bobines dans
+# `grammar`, fils et voies dans `replay`) ont fait atteindre `-timeout 600s` à deux lots. Les durées d'un même test
+# varient du simple au double d'un runner à l'autre (`TestSuivante...` : 92 s, 178 s) ; on équilibre sur le relevé du
+# runner LENT de la PR (somme des tests de premier niveau sous couverture, en secondes) :
+#   avant   grammar lourd 502 / moyen 348 / reste 589 (runner 10 min 37 s) ; replay 582 sur 600 (lot `film` : délai atteint)
+#   après   grammar lourd 377 / moyen 348 / bobines 386 / reste 329 ; replay fils 361 / reste 221
+# Premier passage de la PR (runner rapide) : tests 258 / 97 / 598 s, le lot reste a atteint le délai ; un
+# rééquilibrage à trois lots a donné 9 min 11 s, 6 min 31 s et 10 min 37 s de runner au passage suivant : d'où
+# le quatrième lot de `grammar` et la coupe de `replay`. Visée : chaque lot sous 7 minutes de runner sur un
+# runner rapide, sous le délai de 600 s par processus sur un runner lent. Aucun test retiré, délai inchangé.
+# Aucun test déplacé ne lit le décodage mémoïsé (`etatsDeLaBobine`, `bilanDeLaBobine`), qui reste dans le lot moyen.
 
 # Tests les plus longs de `grammar`, joués seuls (`film-grammar-lourd`). Un nom qui disparaît du
 # paquet fait rougir archlint (liste périmée) ; une liste n'a aucun test en commun avec une autre.
-heavy grammar-lourds TestSuivanteEgaleLaBoucleDAvantSurTamponsSynthetiques TestFrameClosureDetailleeRendLaCarteDeFrameClosure TestGoldenMiniBobineFamilles TestChaqueLectureCiteUneEtendueDeLaStructure TestLesRecherchesDeTableEgalentLeurFormeSurLesBobines
+heavy grammar-lourds TestSuivanteEgaleLaBoucleDAvantSurTamponsSynthetiques TestFrameClosureDetailleeRendLaCarteDeFrameClosure TestGoldenMiniBobineFamilles TestChaqueLectureCiteUneEtendueDeLaStructure TestEchantillonsDesBandesEgalentLeurFormeSurLaMiniBobine TestFilsEntetesExactsIdentiques
 
 # Tests moyens de `grammar` (`film-grammar-moyen`) : la structure des bobines et sa fermeture, la marche
 # d'état complet (avec ses lecteurs du même décodage mémoïsé), les équipes et les entités `ti=9`, les
 # corps de génération et les records, plus `TestFilsMotsIdentiques` (prédécodage des images-clés, v1.6).
 heavy grammar-moyens TestLaStructureDesBobinesTientSesInvariants TestLaFermetureDeLaStructureNeDescendPas TestFrameClosureRatchet TestLesValeursDeLEtatCompletDesBobines TestLaFenetreNeVoitQueLesRecordsNonAdmis TestLEtatCompletDesBobines TestLesArmesSeulesSontCellesDeLaMarcheComplete TestUnRecordRecupereParLInventairePorteUneValeur TestEntitesTi9SurLesBobines TestScanPlayerTeamsSurLesBobines TestPositions_CorpsDeGenerationDeuxPublieParLeCheminDeProduction TestLesRecordsTi9DeLaMarcheOntUnEnTeteExact TestMarcheurDelta_GenerationPorteeEstCelleDuHandle TestMarcheurDelta_CorpsDeGenerationDeuxVuParLesHuitCanaux TestLeCanalDesMortsRecoitLesRecordsPartisDeLaFinDeLaVueA TestFilsMotsIdentiques
+
+# Tests « forme sur les bobines » de `grammar` (`film-grammar-bobines`), v1.6 de la brique : chacun rejoue
+# une forme d'origine sur la mini-bobine ou sur les bobines.
+heavy grammar-bobines TestLesRecherchesDeTableEgalentLeurFormeSurLesBobines TestBalayageDesViseesEgaleSaFormeSurLaMiniBobine TestMarcheurDeltaBipedeEgaleSaFormeSurLaMiniBobine TestPasseDesCreationsEgaleSaFormeSurLaMiniBobine
+
+# Tests des fils et des voies de `replay` (`film-replay-fils`), v1.6 de la brique : chacun rejoue le décodage sur
+# plusieurs fils et compare les sorties. Plus de la moitié du temps du paquet.
+heavy replay-fils TestFilsBorneReelleDesFilsQuiCalculent TestVoieFondIdentiqueATousLesFils TestFilsDocumentEtFaitsIdentiquesDeBoutEnBout TestVoieOrdreDesEtapesIdentique TestVoieAUnFilAucuneGoroutine TestVoieSiegesIdentique TestVoieMondeCompteLesReplisUneSeuleFois TestVoieMondeIdentique TestFilsContexteDejaLuMemesReplisATousLesFils
 
 # Module apps/go-api. `persist` et `ops` partageaient le lot du décodeur de film (56 + 6 s hors
 # couverture au relevé du 2026-10-28) avant que le décodeur ne devienne une brique.
@@ -77,12 +84,15 @@ lot platform            - ./internal/platform/duckdb/... ./internal/migration ./
 lot sync                - ./internal/sync/... ./internal/api/wire ./internal/archlint
 lot reste               - @reste
 
-# Brique du décodeur de film (ADR 0041, 0043) : `grammar` coupé en trois tiers, le reste du
-# module (dont `replay`, 72 s hors couverture) dans son complément.
+# Brique du décodeur de film (ADR 0041, 0043) : `grammar` coupé en quatre lots, `replay` en deux, le reste du
+# module dans son complément.
 module github.com/JGtm/halo-infinite-film-decoder
 lot film-grammar-lourd  run:grammar-lourds ./internal/grammar
 lot film-grammar-moyen  run:grammar-moyens ./internal/grammar
-lot film-grammar-reste  skip:grammar-lourds,grammar-moyens ./internal/grammar
+lot film-grammar-bobines run:grammar-bobines ./internal/grammar
+lot film-grammar-reste  skip:grammar-lourds,grammar-moyens,grammar-bobines ./internal/grammar
+lot film-replay-fils    run:replay-fils ./replay
+lot film-replay-reste   skip:replay-fils ./replay
 lot film                - @reste
 
 # Brique de l'API Halo (ADR 0041, 0042, 0043) : sans CGo ni DuckDB, quelques secondes de test : un

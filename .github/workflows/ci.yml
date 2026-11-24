@@ -928,7 +928,7 @@ jobs:
       # lot rouge est une information de plus, pas du bruit.
       fail-fast: false
       matrix:
-        lot: [persist-ops, platform, sync, reste, film-grammar-lourd, film-grammar-moyen, film-grammar-reste, film, haloapi]
+        lot: [persist-ops, platform, sync, reste, film-grammar-lourd, film-grammar-moyen, film-grammar-bobines, film-grammar-reste, film-replay-fils, film-replay-reste, film, haloapi]
     defaults:
       run:
         working-directory: apps/go-api
