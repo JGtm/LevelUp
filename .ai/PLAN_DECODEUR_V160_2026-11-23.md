@@ -1255,8 +1255,9 @@ Ordre imposé : R.1, R.2, puis L.1, L.2, L.3. Toute correction après L.1 fait r
 - [ ] L.7 Mesures APRÈS sur le parc régénéré, comparées à `avant.md` de ce plan ET aux mesures reportées du
       plan v1.5.0 (A.3, C.4, E.4, L.7) ; durée de la régénération comparée au précédent (1 455 films en
       2 h 26) ; vérifications à l'écran inscrites à l'artefact des vérifications.
-- [ ] L.8 Gestes de production inscrits à la liste de la release : dossier d'attente, bascule ; niveau de
+- [x] L.8 Gestes de production inscrits à la liste de la release : dossier d'attente, bascule ; niveau de
       fils du serveur à 1.
+      (2026-11-24 : gestes inscrits dans `.ai/gestes_prod_8_3_0.md`, non exécutés : ils se font au déploiement de la 8.3.0)
 - [ ] L.9 Clôture : tous les items statués ; recherches closes ou `[!]` avec leurs pièces et leur motif ;
       backlog mis à jour entrée par entrée (section 1.4) ; registre des reports (dont le report de
       la marche commune, déjà fait) ; items L.6, L.7 et R.3 du plan v1.5.0 statués `[~]` vers ce plan ;
@@ -1405,3 +1406,4 @@ Ordre imposé : R.1, R.2, puis L.1, L.2, L.3. Toute correction après L.1 fait r
 - 2026-11-24 (CI de la brique) — Deux lots de CI de la brique tournent autour de 8 minutes pour un délai de 10 (`film-grammar-lourd`, `film-replay-reste`) : à recouper s'ils rougissent. Entrée du backlog.
 - 2026-11-24 (leçon de méthode) — Avant de publier une brique, faire tourner TOUS les garde-rails de l'hôte contre elle par l'espace de travail local, pas seulement le contrôle de la façade : 9 rouges ont été découverts après la publication de la v1.6.0 (7 garde-rails de la brique, 2 tests de l'hôte), d'où la v1.6.1.
 - 2026-11-24 (à faire à l'écran par l'utilisateur) — Trois contrôles : la couleur des socles d'équipement sur la carte du rejeu (ils prennent la couleur des équipements), le nom des socles de grappin, de répulseur et de propulseur dans l'infobulle (corrigé dans la montée, à voir à l'écran).
+- 2026-11-24 (L.8) — Gestes de production du décodeur v1.6.1 inscrits dans `.ai/gestes_prod_8_3_0.md` (fichier créé, section « Décodeur de film v1.6.1 » : D1 à D7), non exécutés. Neuf points restent « à vérifier avant le déploiement » (ordre bascule et premier démarrage, `BASCULE.sh` à recréer, durée des passes sur le serveur, `killsource` côté serveur, lecture du profil hébergé, correctif d archivage, une 8.2.x devant le schéma 127, faits de film du serveur, libellé du panneau d administration).
