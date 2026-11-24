@@ -75,6 +75,7 @@ type ReplayLabelSet struct {
 	shotTints     map[string]string // weapon_key -> nature de la decharge
 	shotImpacts   map[string]bool   // weapon_key -> le projectile explose a l'impact
 	equipObjects  map[uint32]string // GlobalID de tag `eqip` -> famille de pose
+	deployedEquip map[uint32]bool   // ceux de equipObjects que le manifeste marque `kind = deployed`
 	// impulseFamilies : les familles de capacite dont l'USAGE est MESURE par le canal
 	// d'impulsion du bipede (i57/i59 tag 1). Liste VIDE = le titre ne declare aucun usage
 	// mesure sur ce canal, et le calque ne publie rien — une degradation, jamais une erreur.
@@ -357,6 +358,10 @@ func LoadReplayLabelsFromBytes(path string, raw []byte) (*ReplayLabelSet, error)
 	if err != nil {
 		return nil, err
 	}
+	deployed, err := parseDeployedEquipment(path, doc.EquipObjects)
+	if err != nil {
+		return nil, err
+	}
 	objs, err := parseObjectiveObjects(path, doc.ObjObjects)
 	if err != nil {
 		return nil, err
@@ -386,6 +391,7 @@ func LoadReplayLabelsFromBytes(path string, raw []byte) (*ReplayLabelSet, error)
 		shotTints:       tints,
 		shotImpacts:     impacts,
 		equipObjects:    equip,
+		deployedEquip:   deployed,
 		impulseFamilies: impulses,
 		chargeFamilies:  charges,
 		objObjects:      objs,
