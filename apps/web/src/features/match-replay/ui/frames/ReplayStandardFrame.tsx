@@ -31,6 +31,7 @@ import { ReplayPlayerPicker } from '../ReplayPlayerPicker'
 import { ReplayRosterColumn } from '../ReplayRosterColumn'
 import { ReplayScoreBanner } from '../ReplayScoreBanner'
 import type { CardRowLayout } from '../../hooks/useCardRowLayout'
+import { ficheViewpointOf } from '../fiche/ficheViewpoint'
 import { ReplayFrameHeader } from './ReplayFrameHeader'
 import type { ReplayFrameChrome, ReplayFrameView, ReplayFrameZoneContent } from './replayFrameTypes'
 
@@ -89,6 +90,7 @@ function standardColumn(view: ReplayFrameView) {
               player={focus.player}
               solo={focus.solo}
               onSolo={() => playerPanel.onSolo(focus.player.xuid)}
+              viewpoint={ficheViewpointOf(focus.player, view.viewpoint)}
               onClose={playerPanel.onClose}
               doc={doc}
               frame={playFrame}

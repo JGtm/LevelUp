@@ -29,6 +29,7 @@ import { ReplayPlayerPopover } from '../ReplayPlayerPopover'
 import { ReplayRosterColumn } from '../ReplayRosterColumn'
 import { ReplayScoreBanner } from '../ReplayScoreBanner'
 import { ReplayTeamsRow } from '../ReplayTeamsRow'
+import { ficheViewpointOf } from '../fiche/ficheViewpoint'
 import { ReplayFrameHeader } from './ReplayFrameHeader'
 import type { ReplayFrameChrome, ReplayFrameView, ReplayFrameZoneContent } from './replayFrameTypes'
 
@@ -95,6 +96,7 @@ function playerPopover(view: ReplayFrameView, disposition: CardRowLayout['dispos
       player={focus.player}
       solo={focus.solo}
       onSolo={() => playerPanel.onSolo(focus.player.xuid)}
+      viewpoint={ficheViewpointOf(focus.player, view.viewpoint)}
       onClose={playerPanel.onClose}
       doc={doc}
       frame={playFrame}

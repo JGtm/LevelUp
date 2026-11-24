@@ -29,7 +29,7 @@ sont rangés dans `settings/settingsText.ts` (textes d'origine) et `i18n/setting
 | E15 | Un préréglage ou une vue enregistrée n'écrit JAMAIS un réglage partagé avec une autre page : fond, traits du relief, plan des murs et orientation sont hors de la couverture des préréglages et de l'état « modifié » (la maquette couvrait le plan des murs et les traits) | Appliquer « Combat » ne doit pas changer ce que voient la Tactique et « Occupation du terrain ». Liste unique : `SHARED_SETTING_IDS` (`settings/settingsTable.ts`), gardée par `settings/sharedSettings.guard.test.tsx` (quatre préréglages et une vue enregistrée : aucune clé partagée écrite). Les gestes explicites du panneau (ligne, interrupteur maître de Carte, « Réinitialiser » pour le fond, le plan des murs et l'orientation) les écrivent comme avant. |
 | E16 | Aucun des outils de la maquette : variante B, recherche, « Comparer avec l'existant », thème, sélecteur de mode, « Rouvrir le rejeu », « Réinitialiser la maquette », compte de commandes | Outillage de démonstration. |
 | E17 | Pas de bandeau d'état « Point de vue : … · Caméra : … · Étage : … » sur la carte, ni de témoin visuel du son | Décor de la maquette, sans équivalent dans l'application. |
-| E18 | Fiche d'un joueur : pas de bouton « Caméra : suivre » ni « Prendre le point de vue », pas de sous-titre « point de vue du rejeu » | Absents de l'inventaire (R58 à R62 « inchangés ») et de la fiche d'application, où Suivre et Masquer vivent sur les tuiles ; non codés. |
+| E18 | Fiche d'un joueur : « Prendre le point de vue » est codé (absent pour le joueur déjà regardé, grisé avec la raison pour un joueur sans ligne de tableau de score) ; pas de bouton « Caméra : suivre » dans la fiche, pas de sous-titre « point de vue du rejeu » | Le bouton se branche sur `useReplayViewpoint` (même valeur que le menu de la frise, `ui/fiche/ficheViewpoint.ts`). Suivre et Masquer vivent sur les tuiles (R58 à R62 inchangés) ; la ligne du joueur regardé porte déjà la mention « point de vue ». |
 | E19 | Le commutateur 2D / 3D se nomme « Dimension du rejeu » (avant : « Vue du rejeu ») | Règle « Vue ne désigne que le panneau » ; la maquette ne le montre pas. |
 | E20 | Les couches du panneau portent `role="dialog"` ; l'accès rapide, `role="toolbar"` sans navigation aux flèches | Comme la maquette ; aucune navigation à flèches dans l'accès rapide (boutons tabulables). |
 
@@ -137,7 +137,7 @@ Légende : **C** = conforme, **E#** = écart du tableau 1, **VE** = à voir à l
 | Mention « point de vue » à côté du joueur regardé | C | `ui/ReplayRosterRow.tsx` |
 | Export : « Inclure le son » suit le son de la page | C | `export/ReplayExportDialog.tsx` |
 | Barres, vitesse, lecture automatique, cadres, zoom, Plan tourné, raccourcis | C (inchangés) | — |
-| Fiche : Seul / Masquer / Tout afficher | C (inchangés ; E18) | — |
+| Fiche : Seul, Prendre le point de vue ; Masquer et Suivre sur les tuiles | C (E18) | `ui/fiche/FicheActions.tsx` |
 
 ## 3. Où est chaque réglage de l'inventaire (R1 à R66) dans le code livré
 

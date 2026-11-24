@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { REPLAY_TEXT } from '../../i18n/i18n'
 import { FicheActions } from './FicheActions'
+import type { FicheViewpoint } from './ficheViewpoint'
 
 function monter(solo = false, locale: 'fr' | 'en' = 'fr', onSolo = vi.fn()) {
   const view = render(<FicheActions name="JGtm" solo={solo} onSolo={onSolo} locale={locale} />)
@@ -68,6 +69,50 @@ describe('les libellés et les infobulles', () => {
     monter(false, 'fr')
     const t = REPLAY_TEXT.fr.playerPanel.solo
     expect(screen.getByRole('button').textContent).toBe(t.label)
+  })
+})
+
+describe('« Prendre le point de vue »', () => {
+  const montrer = (viewpoint: FicheViewpoint, locale: 'fr' | 'en' = 'fr') =>
+    render(<FicheActions name="JGtm" solo={false} onSolo={vi.fn()} locale={locale} viewpoint={viewpoint} />)
+
+  it('sans point de vue donné, la fiche ne porte que « Seul » (le bouton n’existe pas)', () => {
+    monter()
+    expect(screen.queryByRole('button', { name: 'Prendre le point de vue' })).toBeNull()
+  })
+
+  it('un clic prend le point de vue de ce joueur, une seule fois', () => {
+    const onTake = vi.fn()
+    montrer({ current: false, inert: false, onTake })
+    fireEvent.click(screen.getByRole('button', { name: 'Prendre le point de vue' }))
+    expect(onTake).toHaveBeenCalledTimes(1)
+  })
+
+  it('le joueur déjà regardé n’a pas de bouton : rien d’inutile à cliquer', () => {
+    montrer({ current: true, inert: false, onTake: vi.fn() })
+    expect(screen.queryByRole('button', { name: 'Prendre le point de vue' })).toBeNull()
+  })
+
+  it('un joueur sans ligne de tableau de score reste inerte, avec la raison en infobulle', () => {
+    const onTake = vi.fn()
+    montrer({ current: false, inert: true, onTake })
+    const bouton = screen.getByRole('button', { name: 'Prendre le point de vue' })
+    expect(bouton).toBeDisabled()
+    expect(bouton.getAttribute('title')).toBe(REPLAY_TEXT.fr.viewpointNoData)
+    fireEvent.click(bouton)
+    expect(onTake).not.toHaveBeenCalled()
+  })
+
+  it('en anglais', () => {
+    montrer({ current: false, inert: false, onTake: vi.fn() }, 'en')
+    expect(screen.getByRole('button', { name: 'Take the viewpoint' })).toBeInTheDocument()
+  })
+
+  it('la souris ne prend pas le focus (Espace reste « Lecture »)', () => {
+    montrer({ current: false, inert: false, onTake: vi.fn() })
+    const evenement = new MouseEvent('mousedown', { bubbles: true, cancelable: true })
+    screen.getByRole('button', { name: 'Prendre le point de vue' }).dispatchEvent(evenement)
+    expect(evenement.defaultPrevented).toBe(true)
   })
 })
 

@@ -73,6 +73,18 @@ describe('ReplayPage : la rangée des équipes, 4 contre 4', () => {
     expect(container.contains(fenetre)).toBe(false)
   })
 
+  it('« Prendre le point de vue » dans la fiche : le point de vue passe au joueur ouvert, et le bouton disparaît', async () => {
+    const { container } = await mount(match(4), L4)
+    goToFrame('cinema')
+    const fiches = within(rangee(container) as HTMLElement)
+    fireEvent.click(fiches.getByRole('button', { name: 'Ouvrir la fiche de Joueur5' }))
+    expect(fiches.getByRole('button', { name: 'Ouvrir la fiche de Joueur0' }).style.borderColor).toBe('var(--ring)')
+    fireEvent.click(screen.getByRole('button', { name: T.playerPanel.viewpoint.label }))
+    // La bordure de point de vue quitte le joueur de la page ; la fiche ouverte garde la sienne (bordure de sélection).
+    expect(fiches.getByRole('button', { name: 'Ouvrir la fiche de Joueur0' }).style.borderColor).toBe('var(--border)')
+    expect(screen.queryByRole('button', { name: T.playerPanel.viewpoint.label })).toBeNull()
+  })
+
   it('le joueur de la page est le joueur suivi : sa fiche a la bordure de suivi', async () => {
     const { container } = await mount(match(4), L4)
     goToFrame('cinema')
