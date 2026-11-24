@@ -4,6 +4,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -216,5 +217,45 @@ func TestFilmArchiveMove_ResumeSansDeplacementEnCoursNEstPasUneDerogation(t *tes
 	err := runFilmTo(cfg, []string{subcmdFilmArchiveMove, "--to", plein, "--resume"}, &bytes.Buffer{})
 	if !errors.Is(err, filmarchive.ErrCibleNonVide) {
 		t.Fatalf("erreur = %v, attendu ErrCibleNonVide", err)
+	}
+}
+
+// Sur un profil qui n'archive pas par défaut (site hébergé), `film archive-move` ne doit pas FIGER l'ancien défaut
+// dans le fichier : son Save écrit toutes les clés connues, dont archive_films. Sans clé écrite, la valeur écrite
+// reste celle du profil (faux) ; sur le bureau elle reste vraie.
+func TestFilmArchiveMove_NeFigePasLAncienDefautDArchive(t *testing.T) {
+	for _, tc := range []struct {
+		nom       string
+		parDefaut bool
+	}{
+		{"profil hébergé : archive_films n'est pas écrit à true", false},
+		{"profil bureau : archive_films reste vrai", true},
+	} {
+		t.Run(tc.nom, func(t *testing.T) {
+			dir := t.TempDir()
+			chemin := filepath.Join(dir, "app_settings.json")
+			if err := os.WriteFile(chemin, []byte(`{"show_records": true}`), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			cfg := &config.AppConfig{RepoRoot: dir, AppSettingsPath: chemin}
+			cfg.Capabilities.ArchiveFilmsByDefault = tc.parDefaut
+			poserFilmBrut(t, cfg.PathResolver().FilmArchiveDir(), "0000d002")
+			cible := filepath.Join(t.TempDir(), "films")
+			var out bytes.Buffer
+			if err := runFilmTo(cfg, []string{subcmdFilmArchiveMove, "--to", cible}, &out); err != nil {
+				t.Fatalf("archive-move : %v\n%s", err, out.String())
+			}
+			octets, err := os.ReadFile(chemin)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var raw map[string]any
+			if err := json.Unmarshal(octets, &raw); err != nil {
+				t.Fatal(err)
+			}
+			if got, _ := raw["archive_films"].(bool); got != tc.parDefaut {
+				t.Errorf("archive_films écrit = %v, attendu %v (fichier : %s)", raw["archive_films"], tc.parDefaut, octets)
+			}
+		})
 	}
 }
