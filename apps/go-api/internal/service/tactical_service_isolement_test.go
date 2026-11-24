@@ -15,6 +15,7 @@ import (
 	"context"
 	"testing"
 
+	"levelup/go-api/internal/analysis/gameunits"
 	"levelup/go-api/internal/domain"
 )
 
@@ -100,8 +101,10 @@ func variantes(table map[string]string, variante string, ids ...string) map[stri
 func TestIsole_RayonDeLaVarianteDuMatch(t *testing.T) {
 	arene, btb := []string{"a1", "a2", "a3"}, []string{"b1", "b2", "b3"}
 	table := variantes(variantes(map[string]string{}, "Slayer:Arena", arene...), "BTB:Slayer", btb...)
-	morts := append(mortsDansTroisMatchs(arene, tsMoi, 2, 3, m(19), 1),
-		mortsDansTroisMatchs(btb, tsMoi, 2, 3, m(19), 1)...)
+	// 19 VRAIS metres, en unites du jeu (les distances du film) : les radars sont en vrais metres.
+	aDixNeufM := m(gameunits.MetersToUnits(19))
+	morts := append(mortsDansTroisMatchs(arene, tsMoi, 2, 3, aDixNeufM, 1),
+		mortsDansTroisMatchs(btb, tsMoi, 2, 3, aDixNeufM, 1)...)
 	svc, _ := svcIsole(universVariantes(table), morts...)
 
 	out := lireIsole(t, svc, append(arene, btb...)...)

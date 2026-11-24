@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/coordination"
+	"levelup/go-api/internal/analysis/gameunits"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 )
@@ -31,7 +32,9 @@ func (v *viesFixes) LoadLivesNearTeammate(_ context.Context, ids []string, xuid 
 	return v.lues, v.err
 }
 
-func distanceDeTest(m float64) *float64 { return &m }
+// distanceDeTest : la distance du film (unités du jeu) d'un coéquipier situé à `m` VRAIS mètres : la
+// portée du radar est en vrais mètres, les distances du film en unités.
+func distanceDeTest(m float64) *float64 { u := gameunits.MetersToUnits(m); return &u }
 
 // viesDeTest : m1 (Slayer:Arena, 18 m) une vie près (10 m, 1 frag) ; m2 (variante sans portée)
 // une vie, écartée.

@@ -26,6 +26,7 @@ package coordination
 import (
 	"sort"
 
+	"levelup/go-api/internal/analysis/gameunits"
 	"levelup/go-api/internal/domain"
 )
 
@@ -142,6 +143,10 @@ func mortsParMatch(morts []domain.MortSituee) map[string][]domain.MortSituee {
 // c'est se voir). Une distance absente n'est jamais à portée. SOURCE UNIQUE de la comparaison :
 // isolement, vies près d'un coéquipier, détail et badge d'une zone tactique la lisent (garde-rail
 // archlint/no_local_portee_comparison_test.go).
-func APortee(d *float64, rayon float64) bool {
-	return d != nil && *d <= rayon
+//
+// DEUX UNITÉS, CONVERTIES ICI ET NULLE PART AILLEURS : `d` est une distance du film, en UNITÉS DU JEU ;
+// `rayonM` est la portée du radar annoncée par le jeu (18 m en arène, 24 m en Grande bataille), en
+// VRAIS MÈTRES. La portée est ramenée en unités (`gameunits.MetersToUnits`) avant de comparer.
+func APortee(d *float64, rayonM float64) bool {
+	return d != nil && *d <= gameunits.MetersToUnits(rayonM)
 }

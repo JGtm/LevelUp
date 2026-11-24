@@ -189,7 +189,7 @@ export interface TraineDeScene {
 
 /** Ce que le plan peint pour une vue de la lecture des coéquipiers. */
 export interface SceneDuPlan {
-  /** Le cercle du rayon du radar, en mètres monde. */
+  /** Le cercle du rayon du radar : `rayonM` en VRAIS mètres (18, 24), converti en unités du jeu à la peinture. */
   cercle: { centre: Pt; rayonM: number } | null
   traines: TraineDeScene[]
   marques: MarqueDeScene[]
