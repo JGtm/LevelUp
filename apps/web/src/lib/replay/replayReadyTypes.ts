@@ -198,8 +198,8 @@ export type ReplayEliminationReady = Omit<
 /** ReplayScoreActionReady — une action de score dont le destinataire et la cible sont des clés du film (même règle). */
 export type ReplayScoreActionReady = Omit<
   NonNullable<ReplayDocument['scoreActions']>[number],
-  'xuid' | 'place' | 'target' | 'targetPlace'
-> & { xuid: string; target?: string }
+  'xuid' | 'place'
+> & { xuid: string }
 
 /**
  * ReplayDocumentReady — le document tel que le rendu a le droit de le lire : chaque

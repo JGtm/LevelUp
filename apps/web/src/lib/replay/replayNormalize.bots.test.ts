@@ -58,28 +58,24 @@ describe('éliminations d’un bot, désignées par place', () => {
 describe('actions de score d’un bot, désignées par place', () => {
   const human = '2533274800000001'
 
-  it('un destinataire bot reçoit sa clé de roster, une cible bot aussi', () => {
+  it('un destinataire bot reçoit sa clé de roster, un humain garde son xuid', () => {
     const doc = normalize({
       scoreActions: [
-        { t: 5, place: 2, name: 'killPersonalScore', points: 100, target: human },
-        { t: 6, xuid: human, name: 'killPersonalScore', points: 100, targetPlace: 2 },
+        { t: 5, place: 2, name: 'killPersonalScore', points: 100 },
+        { t: 6, xuid: human, name: 'killPersonalScore', points: 100 },
       ],
     })
-    expect(doc.scoreActions.map((a) => [a.xuid, a.target])).toEqual([
-      ['bot:Marc', human],
-      [human, 'bot:Marc'],
-    ])
+    expect(doc.scoreActions.map((a) => a.xuid)).toEqual(['bot:Marc', human])
   })
 
-  it('une place inconnue écarte l’action ; une cible inconnue la garde sans cible', () => {
+  it('une place inconnue écarte l’action, jamais un joueur deviné', () => {
     const doc = normalize({
       scoreActions: [
         { t: 5, place: 9, name: 'killPersonalScore', points: 100 },
-        { t: 6, xuid: human, name: 'killPersonalScore', points: 100, targetPlace: 9 },
+        { t: 6, xuid: human, name: 'killPersonalScore', points: 100 },
       ],
     })
     expect(doc.scoreActions).toHaveLength(1)
     expect(doc.scoreActions[0]).toMatchObject({ xuid: human, points: 100 })
-    expect(doc.scoreActions[0].target).toBeUndefined()
   })
 })

@@ -26555,9 +26555,6 @@ components:
           type: integer
         target:
           type: string
-        targetPlace:
-          format: int64
-          type: integer
         xuid:
           type: string
       required:

@@ -38,6 +38,7 @@ describe('ReplaySchemaPanel', () => {
     expect(screen.getByText('Rejeux par version de schéma')).toBeTruthy()
     expect(screen.getByText('Halo Infinite')).toBeTruthy()
     expect(screen.getByText(/Schéma courant · 127/)).toBeTruthy()
+    expect(screen.getByText(/Compté le/).textContent).toContain(new Date('2026-11-24T10:00:00Z').toLocaleString('fr-FR'))
     expect(screen.getByText("À l'ancien schéma").nextSibling?.textContent).toBe((40).toLocaleString('fr-FR'))
     expect(screen.getByText('Au schéma courant').nextSibling?.textContent).toBe((1450).toLocaleString('fr-FR'))
     expect(screen.getByText('Illisibles').nextSibling?.textContent).toBe('10')
@@ -68,10 +69,11 @@ describe('ReplaySchemaPanel', () => {
   it('se dit en anglais', () => {
     useAppShellStore.setState({ locale: 'en' } as never)
     respond({
-      data: { generated_at: 'x', current_schema: 127, titles: [{ title_slug: 'halo_infinite', total: 3, current: 1, behind: 2, unreadable: 0 }] },
+      data: { generated_at: '2026-11-24T10:00:00Z', current_schema: 127, titles: [{ title_slug: 'halo_infinite', total: 3, current: 1, behind: 2, unreadable: 0 }] },
     })
     render(<ReplaySchemaPanel />)
     expect(screen.getByText('Replays by schema version')).toBeTruthy()
+    expect(screen.getByText(/Counted at/)).toBeTruthy()
     expect(screen.getByText('On an older schema')).toBeTruthy()
   })
 })

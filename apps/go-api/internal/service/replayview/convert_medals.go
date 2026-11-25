@@ -46,7 +46,7 @@ func toMedalCoverage(v replay.MedalCoverage) replaydoc.MedalCoverage {
 
 func toScoreAction(v replay.ScoreAction) replaydoc.ScoreAction {
 	return replaydoc.ScoreAction{
-		T: v.T, XUID: v.XUID, Place: v.Place, Name: v.Name, Points: v.Points, Target: v.Target, TargetPlace: v.TargetPlace,
+		T: v.T, XUID: v.XUID, Place: v.Place, Name: v.Name, Points: v.Points, Target: v.Target,
 	}
 }
 

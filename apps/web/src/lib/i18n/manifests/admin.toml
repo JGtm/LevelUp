@@ -861,6 +861,10 @@ en = "Replays by schema version"
 fr = "Rejeux rangés sur ce serveur, comptés d'après leur en-tête. Un rejeu à l'ancien schéma reste lisible, mais ne porte pas ce que la version courante sait y mettre."
 en = "Replays stored on this server, counted from their header. A replay on an older schema stays readable, but lacks what the current version can put in it."
 
+[admin.overview.replay_schema_generated_at]
+fr = "Compté le"
+en = "Counted at"
+
 [admin.overview.replay_schema_current_schema]
 fr = "Schéma courant"
 en = "Current schema"

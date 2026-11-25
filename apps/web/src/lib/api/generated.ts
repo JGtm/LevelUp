@@ -12293,8 +12293,6 @@ export interface components {
             /** Format: int64 */
             t: number;
             target?: string;
-            /** Format: int64 */
-            targetPlace?: number;
             xuid?: string;
         };
         ScoreActionCoverage: {

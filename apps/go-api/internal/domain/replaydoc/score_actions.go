@@ -7,16 +7,15 @@ package replaydoc
 // ses points (negatifs pour une penalite) et, quand son libelle nomme un joueur, le xuid de celui-ci.
 //
 // Un bot n'a pas d'identifiant : le destinataire bot s'ecrit `place` (index de joueur du film, meme espace que
-// `roster[].filmIndex`), sans `xuid` ; la cible bot s'ecrit `targetPlace`, sans `target`. Un champ et son jumeau
-// `place` s'excluent.
+// `roster[].filmIndex`), sans `xuid`. Un champ et son jumeau `place` s'excluent. La cible bot (`targetPlace` du
+// decodeur) n'a aucun lecteur ici (`testutil.ReplayChampsNonServis`).
 type ScoreAction struct {
-	T           int    `json:"t"`
-	XUID        string `json:"xuid,omitempty"`
-	Place       *int   `json:"place,omitempty"`
-	Name        string `json:"name"`
-	Points      int    `json:"points"`
-	Target      string `json:"target,omitempty"`
-	TargetPlace *int   `json:"targetPlace,omitempty"`
+	T      int    `json:"t"`
+	XUID   string `json:"xuid,omitempty"`
+	Place  *int   `json:"place,omitempty"`
+	Name   string `json:"name"`
+	Points int    `json:"points"`
+	Target string `json:"target,omitempty"`
 }
 
 // ScoreActionCoverage dit ce que le calque a lu, publie et ecarte. `complete` est le verdict : la

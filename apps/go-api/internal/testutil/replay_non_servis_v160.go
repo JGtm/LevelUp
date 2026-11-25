@@ -16,6 +16,8 @@ const (
 	motifChatterChamp = "2026-11-25 (piste R, repliques) : champ du calque `chatter` que l API sert depuis cette date ; le client lit l instant, le joueur, " +
 		"l identifiant du son et le nom court. La priorite ne sert a rien a l ecran, et l indice de replique change de sens d un build a l autre " +
 		"(la cle des textes est l identifiant du son)."
+	motifV160CibleBot = "2026-11-25 (decodeur v1.6.0) : la cible d'une action de score quand c'est un bot, designee par sa place ; " +
+		"aucun lecteur ici ne lit `scoreActions[].target`, la place n'est donc pas servie."
 	motifV160Compteur = "2026-11-24 (decodeur v1.6.0) : compteur de couverture du schema 127 ; aucun lecteur ici, la fiche " +
 		"ne lit que les compteurs qui disent qu'une valeur est approximative et ils sont deja servis."
 )
@@ -39,6 +41,7 @@ func init() {
 	}
 	ReplayChampsNonServis["Chatter.Priority"] = motifChatterChamp
 	ReplayChampsNonServis["Chatter.Line"] = motifChatterChamp
+	ReplayChampsNonServis["ScoreAction.TargetPlace"] = motifV160CibleBot
 	for _, cle := range []string{
 		"EliminationCoverage.BotEliminations", "EliminationCoverage.VictimAmbiguous", "EliminationCoverage.VictimPlaces",
 		"FlagCarriesCoverage.GaugeReadsAmbiguous", "FlagCarriesCoverage.GaugeReadsOffDrops",
