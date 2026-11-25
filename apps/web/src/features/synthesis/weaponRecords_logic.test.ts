@@ -91,6 +91,23 @@ describe('unités du jeu → mètres', () => {
   })
 })
 
+describe('borne haute de la règle', () => {
+  it('est un multiple du pas de graduation retenu : le dernier repère écrit COUVRE le record', () => {
+    // 301 m : la dizaine donnerait 310, mais le pas retenu est de 50 m — la règle va jusqu'à 350.
+    expect(rulerMaxMeters([{ record_m: 301 }])).toBe(350)
+    expect(rulerMaxMeters([{ record_m: 300 }])).toBe(300)
+    for (const record of [3.2, 99.9, 100.1, 150, 251, 299, 301, 560, 1001]) {
+      const max = rulerMaxMeters([{ record_m: record }])
+      const step = rulerTickStep(max)
+      expect(max % step, `record ${record}`).toBe(0)
+      expect(max, `record ${record}`).toBeGreaterThanOrEqual(record)
+    }
+    const layout = weaponRecordsLayout([row('a', 304.8)], 'fr', 1000) // la règle lit des mètres
+    expect(layout.maxMeters).toBe(350)
+    expect(layout.ticks[layout.ticks.length - 1]).toBe(350)
+  })
+})
+
 describe('weaponRecordsLayout', () => {
   it("ne retrie pas : l'ordre du backend est l'ordre des items", () => {
     const layout = weaponRecordsLayout([row('a', 10), row('b', 50), row('c', 30)], 'fr', 1000)
