@@ -249,7 +249,7 @@ describe('createSlotTitles : un seul calcul par image', () => {
   })
 })
 
-describe('un bot n’est jamais marqué', () => {
+describe('un bot est marqué comme tout joueur', () => {
   const roster = [
     { xuid: 'S', team: 0, bot: false, lives: [] },
     { xuid: 'e1', team: 1, bot: false, lives: [] },
