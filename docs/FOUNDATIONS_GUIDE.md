@@ -361,9 +361,11 @@ units: the field names are not renamed, and the contract documents them as such.
 radar ranges announced by the game (18 m in Arena, 24 m in BTB; `regulation.toml [radar_range_m]`, served as
 `rayon_m` and `rayons_radar_m`).
 
-- **Display**: a distance written "m" goes through `formatGameDistance` (`apps/web/src/lib/formatters/distance.ts`),
-  which converts and rounds (one decimal under 10 m, the meter above). The string templates carry the unit "m" and
-  receive the already converted number.
+- **Display**: a distance written "m" is converted with `gameUnitsToMeters` (`apps/web/src/lib/formatters/distance.ts`)
+  where the screen reads it (the chart or table model, or the call to its own formatter, which keeps its own rounding).
+  The string templates carry the unit "m" and receive the already converted number. A guard
+  (`distanceFields.guard.test.ts`) fails when a file reads a contract field documented "game units" without going
+  through the helper; the field list is read from the contract descriptions, not written by hand.
 - **Comparison**: a real-meter value (the radar range) is brought back to game units with `gameunits.MetersToUnits`
   (Go) or `metersToGameUnits` (web) before it is compared with a distance from the film.
 - **One home for the factor**: `internal/analysis/gameunits` (Go) and `lib/formatters/distance.ts` (web). The literal
