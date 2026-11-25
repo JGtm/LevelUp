@@ -13,6 +13,8 @@ const (
 	motifV160ChampPose = "2026-11-24 (decodeur v1.6.0) : champ ajoute par le schema 127 a un calque que l'API sert deja " +
 		"(pleine cadence, decalage d'un tir, hauteur d'un projectile, instants d'un rechargement, pistes d'une ligne de degat, " +
 		"orientation d'un socle) ; aucun lecteur ici."
+	motifV160CibleBot = "2026-11-25 (decodeur v1.6.0) : la cible d'une action de score quand c'est un bot, designee par sa place ; " +
+		"aucun lecteur ici ne lit `scoreActions[].target`, la place n'est donc pas servie."
 	motifV160Compteur = "2026-11-24 (decodeur v1.6.0) : compteur de couverture du schema 127 ; aucun lecteur ici, la fiche " +
 		"ne lit que les compteurs qui disent qu'une valeur est approximative et ils sont deja servis."
 )
@@ -34,6 +36,7 @@ func init() {
 	} {
 		ReplayChampsNonServis[cle] = motifV160ChampPose
 	}
+	ReplayChampsNonServis["ScoreAction.TargetPlace"] = motifV160CibleBot
 	for _, cle := range []string{
 		"EliminationCoverage.BotEliminations", "EliminationCoverage.VictimAmbiguous", "EliminationCoverage.VictimPlaces",
 		"FlagCarriesCoverage.GaugeReadsAmbiguous", "FlagCarriesCoverage.GaugeReadsOffDrops",
