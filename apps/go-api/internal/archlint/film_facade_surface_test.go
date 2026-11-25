@@ -481,7 +481,10 @@ const plafondSurfaceFacade = 181 // 2026-11-22 — decodeur v1.5.0 : 182 - 2 (de
 //	341  decodeur v1.6.1 (2026-11-24)               base 339 re-mesuree. +2 : `replay.Gesture` et `replay.GestureCoverage`,
 //	                                           les types des gestes du joueur (coup de melee, lancer amorce) que le
 //	                                           document servi projette (`service/replayview`). Aucun retrait.
-const plafondSurfaceReplay = 341 // 2026-11-24 — decodeur v1.6.1 : 339 + 2 ; cf. l historique ci-dessus
+//	342  piste R des repliques (2026-11-25)         base 341 re-mesuree sur la base 1d00ee5869. +1 : `replay.Chatter`, le type d une
+//	                                           replique de Spartan (instant, joueur, son, nom court) que le document servi
+//	                                           projette (`service/replayview`) depuis que l ecran les lit. Aucun retrait.
+const plafondSurfaceReplay = 342 // 2026-11-25 — piste R des repliques : 341 + 1 ; cf. l historique ci-dessus
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //
