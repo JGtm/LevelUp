@@ -22,12 +22,19 @@ export function ReplaySchemaPanel() {
   const { data: titles } = useAdminTitles()
   const nameOf = (slug: string) => (titles?.titles ?? []).find((t) => t.slug === slug)?.name ?? slug
   const counted = data?.titles ?? []
+  const countedAt = data?.generated_at ? new Date(data.generated_at) : null
+  const dateLocale = useDateLocale()
 
   return (
     <section className="space-y-3">
       <div>
         <SectionHeader title={tA('admin.overview.replay_schema_section')} />
         <p className="mt-0.5 text-xs text-muted-foreground">{tA('admin.overview.replay_schema_hint')}</p>
+        {countedAt && !Number.isNaN(countedAt.getTime()) && (
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {tA('admin.overview.replay_schema_generated_at')} {countedAt.toLocaleString(dateLocale)}
+          </p>
+        )}
       </div>
       {isLoading && <p className="text-xs text-muted-foreground">…</p>}
       {isError && <p className="text-xs text-destructive">{tA('admin.overview.replay_schema_unavailable')}</p>}

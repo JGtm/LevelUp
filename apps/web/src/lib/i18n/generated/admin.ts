@@ -466,6 +466,7 @@ export const adminManifest = {
   "admin.overview.replay_schema_behind": { fr: "À l'ancien schéma", en: "On an older schema" },
   "admin.overview.replay_schema_current_schema": { fr: "Schéma courant", en: "Current schema" },
   "admin.overview.replay_schema_empty": { fr: "Aucun titre ne range de rejeux.", en: "No title stores replays." },
+  "admin.overview.replay_schema_generated_at": { fr: "Compté le", en: "Counted at" },
   "admin.overview.replay_schema_hint": { fr: "Rejeux rangés sur ce serveur, comptés d'après leur en-tête. Un rejeu à l'ancien schéma reste lisible, mais ne porte pas ce que la version courante sait y mettre.", en: "Replays stored on this server, counted from their header. A replay on an older schema stays readable, but lacks what the current version can put in it." },
   "admin.overview.replay_schema_section": { fr: "Rejeux par version de schéma", en: "Replays by schema version" },
   "admin.overview.replay_schema_title_empty": { fr: "Aucun rejeu rangé pour ce titre.", en: "No stored replay for this title." },
