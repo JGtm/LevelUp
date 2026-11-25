@@ -235,10 +235,10 @@ Dans le dépôt de la brique (`halo-infinite-film-decoder`), sur une branche et 
 
 ## 6. Clôture
 
-- [ ] Z.1 Suite web complète une fois (`npx vitest run`), `go test ./...`, `go test -tags=integration ./...`.
-- [ ] Z.2 Revue finale Fable du diff cumulé (skills `adversarial-review` et `levelup-revue`) ; P0 et P1
+- [x] Z.1 (2026-11-25, sur la branche réunie : suite web complète, 15 909 tests passés, un garde en dépassement de délai sous charge qui passe seul ; `go test ./...` et intégration de `persist`, `migration`, `sync`, `games`, `platform/duckdb`, `service` : un écart réel trouvé et corrigé, le compte des champs du contrat du rejeu, porté à 81 ; restent trois échecs propres au poste, en découverte) Suite web complète une fois (`npx vitest run`), `go test ./...`, `go test -tags=integration ./...`.
+- [x] Z.2 (2026-11-25 : trois relecteurs indépendants, un Fable et deux Sonnet, une ronde ; aucun P0 ; deux P1 sur les préréglages du rejeu, corrigés avec leurs tests ; dix P2 traités ; reports au backlog) Revue finale Fable du diff cumulé (skills `adversarial-review` et `levelup-revue`) ; P0 et P1
       corrigés, P2 au backlog.
-- [ ] Z.3 Skills `delivery-checklist` et `levelup-livraison` ; CI de la release lue.
+- [x] Z.3 (2026-11-25 : listes de livraison passées sur le diff cumulé ; CI de la release verte sur trois runs de suite) Skills `delivery-checklist` et `levelup-livraison` ; CI de la release lue.
 - [ ] Z.4 Backlog : entrées traitées passées en « Récemment complété » ; reports au registre ; journal ;
       caches de compilation rendus (`scripts/disk-hygiene.ps1 -Lot bl24-<piste> -Apply`) ; worktrees retirés
       dans un tour à part.
@@ -381,3 +381,21 @@ dépendance est close.
 - 2026-11-25 — CI : quatrième cause de rouge, intermittente (`EnvironmentTeardownError` dans un test de la
   toile du rejeu). Cause : l'échec de la requête du manifeste des véhicules journalisait et redessinait après
   le démontage. Corrigé avec son test, vu en échec par mutation (`8c4800dde8`).
+- 2026-11-25 — PISTE R fusionnée (`bfab87cce0`) : table des répliques (519 parlées, textes 53 Ko), affichage
+  (bulles, icône de voix, fil, familles, fréquence par phrase, réglages dans le panneau), voix françaises
+  (519 fichiers, 7,3 Mo) chargées à la demande (4 s d'avance, 16 voix en mémoire au plus, 17 Mo au pire).
+  Le document servi porte `chatter` : plafond du contrat à 81.
+- 2026-11-25 — REVUE FINALE (Z.2), une ronde, trois relecteurs sur ce qui n'avait pas été relu. Réglages et
+  répliques (Fable) : 4 constats recevables, 16 conditions qui tiennent ; deux P1 corrigés (un préréglage ne
+  coupait qu'une catégorie de son ; la vue d'ouverture ne valait pas pour les réglages disponibles après
+  l'ouverture), plus la réinitialisation, la table des répliques demandée une fois, et les tests de Seul et
+  Masquer sur la bulle et la voix. Mètres et page du match (Sonnet) : 4 P2, 18 conditions qui tiennent ; test
+  de bout en bout du branchement vers le décodeur, helper sans appelant retiré, garde des distances lues
+  brutes, règle des records. Rejeu et contrat (Sonnet) : 4 P2, 17 conditions qui tiennent ; champ sans lecteur
+  retiré, garde morte, titre de test, date du compte affichée. Fusions `67ee911d1d`, `420150b776`,
+  `c9050ec637`.
+- 2026-11-25 — CI de `release/v8.3.0` : cinq causes de rouge trouvées et fermées pendant l'exécution
+  (référence des tests, taille d'une fonction, identifiant fictif d'un test, avertissement après démontage,
+  fermeture de couche hors du mécanisme commun). Verte sur `99010dcd`, `420150b7`, `67ee911d`. Leçon retenue :
+  avant chaque fusion de piste, le pilote lance tous les gardes du front (`npx vitest run guard`) et les
+  tests de contrat, pas seulement les tests des dossiers touchés.
