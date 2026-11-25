@@ -28,7 +28,7 @@ func TestTextesLusDansLeJeuInstalle(t *testing.T) {
 		t.Fatalf("son lu = %+v, une variante par évènement attendue (trois)", got)
 	}
 	v := got[0].Variantes[0]
-	if v.Textes["fr"] != "Je l'ai dans mon viseur !" || v.Textes["en"] != "In my sights." {
+	if v.Textes["fr"] != "Je l'ai dans mon viseur\u00a0!" || v.Textes["en"] != "In my sights." {
 		t.Errorf("première variante = %+v", v)
 	}
 }

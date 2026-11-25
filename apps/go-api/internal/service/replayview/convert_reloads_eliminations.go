@@ -33,6 +33,10 @@ func toGesture(v replay.Gesture) replaydoc.Gesture {
 	return replaydoc.Gesture{T: v.T, Place: v.Place, Kind: v.Kind}
 }
 
+func toChatter(v replay.Chatter) replaydoc.Chatter {
+	return replaydoc.Chatter{T: v.T, Player: v.Player, Sound: v.Sound, Name: v.Name}
+}
+
 func toGestureCoverage(v replay.GestureCoverage) replaydoc.GestureCoverage {
 	return replaydoc.GestureCoverage{Gated: v.Gated, StoppedFrames: v.StoppedFrames, WithoutPlayer: v.WithoutPlayer}
 }

@@ -135,6 +135,7 @@ export const replayDocumentSchema = z.strictObject({
   killEffects: z.record(z.string(), z.string()).optional(),
   knockbacks: calque<Elem<'knockbacks'>>(),
   carriedEquipment: calque<Elem<'carriedEquipment'>>(),
+  chatter: calque<Elem<'chatter'>>(),
   riftPoses: calque<Elem<'riftPoses'>>(),
   // `layers` : nom de calque -> révision de la couche qui l'a produit (schéma 62). MÊME FORME
   // que `killEffects` — une table plate de chaînes — et MÊME RÉGIME que `coverage` : l'objet

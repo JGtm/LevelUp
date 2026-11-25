@@ -97,7 +97,7 @@ func TestExtraireTextesLitLesVariantesDesSonsDemandes(t *testing.T) {
 }
 
 func TestNettoyerTexteGardeLEspaceInsecable(t *testing.T) {
-	if got := nettoyerTexte(" Ennemi !\n"); got != "Ennemi !" {
+	if got := nettoyerTexte(" Ennemi\u00a0!\n"); got != "Ennemi\u00a0!" {
 		t.Errorf("texte = %q : l'espace insécable avant la ponctuation est de la typographie, pas du blanc à retirer", got)
 	}
 }

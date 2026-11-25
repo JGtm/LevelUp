@@ -238,6 +238,8 @@ const NULLABLE_ARRAYS = [
   // élimination, avec sa marque de tir à la tête et de frag parfait. Le premier se lit dans la fiche du joueur, le
   // second dans le fil ; la frontière les comble dès le schéma.
   'reloads',
+  // `chatter` (schéma 127, servi depuis la piste des répliques) : une ligne par réplique d'un Spartan ; absent = film sans réplique lue.
+  'chatter',
 ] as const
 
 /** (1) La liste couvre EXACTEMENT les tableaux nullables du contrat — ni plus, ni moins. */
@@ -339,6 +341,7 @@ const NULLABLE_ARRAY_PATHS = [
   'knockbacks',
   // `carriedEquipment` (schéma 95) : trois tableaux IMBRIQUÉS, `energy`, `uses` et `tracked` (schéma 96).
   'carriedEquipment',
+  'chatter',
   'carriedEquipment[].energy',
   'carriedEquipment[].uses',
   'carriedEquipment[].tracked',

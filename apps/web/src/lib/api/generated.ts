@@ -6297,6 +6297,13 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        Chatter: {
+            name?: string;
+            player?: string;
+            sound?: string;
+            /** Format: int64 */
+            t: number;
+        };
         CitationCategoryGroup: {
             category: string;
             /** Format: int64 */
@@ -12066,6 +12073,7 @@ export interface components {
             bounds: components["schemas"]["Bounds"];
             bursts?: components["schemas"]["FireBurst"][] | null;
             carriedEquipment?: components["schemas"]["CarriedEquipment"][] | null;
+            chatter?: components["schemas"]["Chatter"][] | null;
             coverage?: components["schemas"]["Coverage"];
             damage?: components["schemas"]["Damage"][] | null;
             /** Format: int64 */

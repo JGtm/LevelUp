@@ -12484,6 +12484,21 @@ components:
         - key
         - datapoints
       type: object
+    Chatter:
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+        player:
+          type: string
+        sound:
+          type: string
+        t:
+          format: int64
+          type: integer
+      required:
+        - t
+      type: object
     CitationCategoryGroup:
       additionalProperties: false
       properties:
@@ -25903,6 +25918,12 @@ components:
         carriedEquipment:
           items:
             $ref: '#/components/schemas/CarriedEquipment'
+          type:
+            - array
+            - "null"
+        chatter:
+          items:
+            $ref: '#/components/schemas/Chatter'
           type:
             - array
             - "null"
