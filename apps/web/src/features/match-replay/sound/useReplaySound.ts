@@ -231,13 +231,20 @@ function useSoundCategoryFilter(): {
   // d'état en pleine phase de rendu — React le refuse (« Cannot update a component while
   // rendering a different component »). Aucun symptôme aujourd'hui (`SOUND_CATEGORIES_OFF_KEY`
   // n'a pas d'abonné croisé), mais le motif fautif ne doit pas se reproduire.
+  //
+  // LES BASCULES D'UN MÊME GESTE SE COMPOSENT : un préréglage, le maître de la rubrique Son ou « Réinitialiser » basculent
+  // plusieurs catégories d'affilée, avant tout nouveau rendu. Partir de l'état du RENDU faisait repartir chaque appel du même
+  // ensemble, et le dernier écrasait les autres (une seule catégorie sur cinq changeait). `latestOff` est l'ensemble À JOUR,
+  // écrit à chaque bascule ; l'état du rendu n'en est que le reflet.
+  const latestOff = useRef<ReadonlySet<SoundCategory>>(categoriesOff)
   const toggleCategory = useCallback((category: SoundCategory) => {
-    const next = new Set(categoriesOff)
+    const next = new Set(latestOff.current)
     if (next.has(category)) next.delete(category)
     else next.add(category)
+    latestOff.current = next
     setCategoriesOff(next)
     persistPreference(SOUND_CATEGORIES_OFF_KEY, JSON.stringify(Array.from(next)))
-  }, [categoriesOff])
+  }, [])
 
   return { categories, toggleCategory }
 }
