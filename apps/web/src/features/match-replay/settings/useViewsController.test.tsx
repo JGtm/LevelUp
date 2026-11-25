@@ -157,15 +157,18 @@ describe('l’ouverture d’un rejeu', () => {
 describe('les réglages épinglés', () => {
   it('épingle jusqu’à cinq, dit quand c’est plein, et se retrouve au prochain montage', () => {
     const { result } = mount()
-    expect(result.current.controller.pins).toEqual(['aim', 'trail', 'heatmap', 'planFeed'])
+    expect(result.current.controller.pins).toEqual(['aim', 'trail', 'heatmap', 'planFeed', 'chatterBubbles'])
     let res: string = ''
+    act(() => { res = result.current.controller.pin('zones') })
+    expect(res).toBe('full') // les cinq épingles d’usine sont posées
+    act(() => { result.current.controller.pin('aim') }) // retirer la visée
     act(() => { res = result.current.controller.pin('zones') })
     expect(res).toBe('ok')
     act(() => { res = result.current.controller.pin('vehicles') })
     expect(res).toBe('full')
     expect(result.current.controller.pins).toHaveLength(5)
-    act(() => { result.current.controller.pin('aim') })
-    expect(mount().result.current.controller.pins).toEqual(['trail', 'heatmap', 'planFeed', 'zones'])
+    act(() => { result.current.controller.pin('trail') })
+    expect(mount().result.current.controller.pins).toEqual(['heatmap', 'planFeed', 'chatterBubbles', 'zones'])
   })
 })
 
@@ -174,6 +177,7 @@ describe('réinitialiser', () => {
     const { result } = mount({ initial: { aim: false, bg: 'relief', volume: 0.2, sound: true, floor: 2, reliefLines: false } })
     act(() => { result.current.controller.saveAs('Ma vue') })
     act(() => result.current.controller.setDefault('v1'))
+    act(() => { result.current.controller.pin('aim') }) // les cinq épingles d’usine sont posées : on en retire une
     act(() => { result.current.controller.pin('zones') })
     act(() => result.current.controller.reset())
     // Les traits du relief n'ont pas de valeur d'usine unique (elle dépend du fond) : la remise à zéro n'y touche pas.

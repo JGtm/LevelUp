@@ -36,6 +36,7 @@ export type FeedGlyphKey =
   | 'medal'
   | 'assist'
   | 'round'
+  | 'reply'
 
 /** La flèche qui monte du sol : la pointe en haut, la tige, le sol. */
 const PICKUP_ARROW = 'M12 16V4M7 9l5-5 5 5M4 20h16'
@@ -62,6 +63,7 @@ export const FEED_GLYPH_PATH: Readonly<Record<FeedGlyphKey, string>> = {
   medal: 'M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12ZM8.5 14 7 21l5-3 5 3-1.5-7',
   assist: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM5 21a7 7 0 0 1 14 0',
   round: 'M4 4h16v16H4ZM4 12h16M12 4v16',
+  reply: 'M4 5h16v11H10l-4 4v-4H4Z',
 }
 
 /** Le pictogramme de la ligne d'une action d'objectif : celui de sa famille. */
@@ -91,4 +93,5 @@ export const FEED_FILTER_GLYPH: Readonly<Record<FeedFilterId, FeedGlyphKey>> = {
   vehicles: 'vehicle',
   medals: 'medal',
   assists: 'assist',
+  replies: 'reply',
 }

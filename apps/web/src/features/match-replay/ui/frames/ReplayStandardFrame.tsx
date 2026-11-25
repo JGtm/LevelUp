@@ -58,6 +58,7 @@ function standardColumn(view: ReplayFrameView) {
     playbackStore: view.playbackStore,
     weaponIcons: view.weaponIcons,
     followedKeys: playerKeys(playerPanel.camera.player),
+    hiddenPlayers: playerPanel.hiddenPlayers,
   }
   const focus = playerPanel.focus
   return (

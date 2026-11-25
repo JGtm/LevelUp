@@ -55,6 +55,8 @@ import { useReplayWeaponPads } from '../layers/useReplayWeaponPads'
 import { useReplayKillFocus } from '../layers/useReplayKillFocus'
 import { useReplayAntagonistMarks } from '../layers/useReplayAntagonistMarks'
 import { useReplayLives } from '../layers/useReplayLives'
+import { useReplayChatter } from '../layers/useReplayChatter'
+import { useChatterVoices } from '../hooks/useChatterVoices'
 import { useReplayRespawnForecast } from '../layers/useReplayRespawnForecast'
 import { useReplayGroundWeapons } from '../layers/useReplayGroundWeapons'
 import { useReplayVehicles } from '../layers/useReplayVehicles'
@@ -275,8 +277,10 @@ export function ReplayCanvas({
   } = settings
   // SON : coupé par défaut, câblage dans le hook (replaySound.ts, lecture replayAudio.ts, camps
   // objectiveSound.ts, fin endMatch, « manche terminée » locale-aware — la `locale` ne sert qu'à lui).
+  // LES VOIX DES RÉPLIQUES entrent dans la piste : mêmes filtres et même masquage que leurs bulles (cf. useChatterVoices).
+  const chatterVoices = useChatterVoices(doc, locale, hiddenPlayers)
   const sound = useReplaySound(doc, feedKills, multiplier, {
-    allegiance, endMatch: endMatch ?? null, locale,
+    allegiance, endMatch: endMatch ?? null, locale, chatterVoices,
   })
 
   const paletteVersion = useColorPaletteVersion()
@@ -284,7 +288,7 @@ export function ReplayCanvas({
   const {
     teamColorOf, geometry: geometryColor, shot: shotColor, grenade: grenadeColor, neutral: neutralInk, pad: padInk,
     floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, scrim, self: selfInk, markerOutline, wall: wallInk, rift: riftInk, shroud: shroudInk, mark: markInk,
-    zone: zoneInk, wallPlan: wallPlanInk, onScrim,
+    zone: zoneInk, wallPlan: wallPlanInk, onScrim, bubble: bubbleInk,
   } = useReplayInks(paletteVersion)
   // Les deux encres du fond Relief (teinte de base, liseré), les mêmes que celles de la Tactique et d'« Occupation du terrain ».
   const reliefInk = useReliefInks()
@@ -435,6 +439,11 @@ export function ReplayCanvas({
     doc, view: canvasView, feedEntries, settings, allegiance, marks, ink: labelStroke, shownAtSlot,
     identity: { colorOfSlot, colorOfXuid, campOfSlot, markOfSlot, seatedOfXuid },
   })
+  // LES RÉPLIQUES DES SPARTANS : bulles et icônes de voix sur le joueur qui parle (familles, fréquence et masquage lus dans le hook).
+  const chatter = useReplayChatter({
+    doc, locale, view: canvasView, showBubbles: settings.showBubbles, showIcon: settings.showIcon, ink: bubbleInk,
+    fallbackColor: neutralInk, identity: { colorOfXuid }, shownAuthor: focusShown?.author, reducedMotion,
+  })
   // LA PROBABILITÉ DE RÉAPPARITION d'un joueur mort : chargée dès que la carte a des zones (la réponse décide de l'interrupteur), teinte sous les pions et repères au-dessus.
   const respawnForecast = useReplayRespawnForecast({
     doc, view: canvasView, enabled: settings.showRespawnForecast, draw: settings.respawnForecastDraw, playerSlug, matchId, locale, callouts: calloutZones,
@@ -514,7 +523,7 @@ export function ReplayCanvas({
       // et le mettre ici ferait recuire `draw` (donc toute la scène) pour une infobulle.
       layers: {
         weaponPads, groundWeapons, vehicles, abilityFx, grenadeRest, flags, objectiveObjects,
-        vipCrown, skullCarrier, bombCarrier, bombBlast, killFocus, lives, respawnForecast,
+        vipCrown, skullCarrier, bombCarrier, bombBlast, killFocus, lives, respawnForecast, chatter,
       },
     }),
     [
@@ -529,7 +538,7 @@ export function ReplayCanvas({
       shotFx, fireMarks, killFx, objectivePulses, zones,
       placements.all, placements.windowTime, placements.toggles, placements.rift, placements.counts.drawable,
       weaponPads, groundWeapons, vehicles, abilityFx, grenadeRest, flags, objectiveObjects,
-      vipCrown, skullCarrier, bombCarrier, bombBlast, killFocus, lives, respawnForecast,
+      vipCrown, skullCarrier, bombCarrier, bombBlast, killFocus, lives, respawnForecast, chatter,
     ],
   )
 
@@ -586,7 +595,7 @@ export function ReplayCanvas({
     heat: { mode: heat.mode, killsAvailable: heat.killsAvailable },
     available: filmLayerAvailability({
       zoneCount: calloutZones.length, placements, weaponPads, groundWeapons, objectiveCount: mapObjectives.length, flags, vipCrown, skullCarrier,
-      bombCarrier, vehicles, hasWallPlan: !!mapImage?.plan, lives: lives.available, respawnForecast,
+      bombCarrier, vehicles, hasWallPlan: !!mapImage?.plan, lives: lives.available, respawnForecast, chatter: chatter.available,
     }),
     // LA BARRE FINE : l'option du panneau n'existe qu'où la barre peut se poser sur le plan (Plein cadre).
     thinBarAvailable: barPlacement(frameControl.frame, true) === 'overlay',

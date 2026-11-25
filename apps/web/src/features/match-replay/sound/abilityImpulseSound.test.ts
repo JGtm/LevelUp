@@ -27,6 +27,7 @@ const CATEGORIES = {
   melee: false,
   equipment: true,
   objective: false,
+  voice: false,
 }
 
 function docWith(impulses: { t: number; slot: number; family: string }[]) {

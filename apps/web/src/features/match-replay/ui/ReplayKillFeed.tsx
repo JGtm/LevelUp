@@ -40,6 +40,7 @@ import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { ReplayFeedEntry } from '../model/killFeedLogic'
 import { NO_WEAPON_ICONS, type WeaponIconsByKey } from '../model/killSourceIcons'
 import type { PlaybackStore } from '../model/playbackStore'
+import type { HiddenPlayers } from '../model/playerPanelLogic'
 import { displayClockMs, type ReplayWindowBounds } from '../model/replayWindow'
 import { NO_MARKS, type PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
@@ -102,10 +103,12 @@ interface Props {
    * ou vide : aucune ligne marquée.
    */
   followedKeys?: ReadonlySet<string>
+  /** Les joueurs masqués (« Seul », « Masquer ») : leurs répliques quittent le fil avec eux. Absent = tout se montre. */
+  hiddenPlayers?: HiddenPlayers | null
 }
 
 export function ReplayKillFeed({
-  entries, nowMs, playWindow, scoreboard, xuidMeta, allegiance, locale, marks, zoneOf, doc, playbackStore, weaponIcons = NO_WEAPON_ICONS, followedKeys,
+  entries, nowMs, playWindow, scoreboard, xuidMeta, allegiance, locale, marks, zoneOf, doc, playbackStore, weaponIcons = NO_WEAPON_ICONS, followedKeys, hiddenPlayers,
 }: Props) {
   const t = REPLAY_TEXT[locale]
   // UNE SEULE RÈGLE POUR TOUTES LES FORMES DE LIGNE : l'allégeance du film, `team-ally` /
@@ -113,7 +116,7 @@ export function ReplayKillFeed({
   const inkOf = useMemo<InkOf>(() => (xuid) => teamTokenCssVar(allegiance.ofXuid(xuid)), [allegiance])
   const teams = useTeamCascades(scoreboard ?? undefined, allegiance, locale)
   const { lines, options, filter, chooseFilter, matchHasNone, selectedKey, select } = useFeedView({
-    entries, nowMs, doc, locale, allegiance, weaponIcons, playbackStore,
+    entries, nowMs, doc, locale, allegiance, weaponIcons, playbackStore, hiddenPlayers,
   })
 
   // POSITION DE LECTURE (règle du POC) : on ne colle en tête que si le lecteur y était.

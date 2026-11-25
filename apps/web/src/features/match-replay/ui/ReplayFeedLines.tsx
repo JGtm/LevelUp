@@ -23,6 +23,7 @@ import type { ReplayTeamCascades } from '../hooks/useTeamCascades'
 import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import { MedalBadges } from './MedalBadges'
 import { isObjectiveStateLine, type FeedEventLine } from '../model/feedEventLines'
+import { ReplayChatterLine } from './ReplayChatterLine'
 import { ReplayEventLine } from './ReplayEventLine'
 import { ReplayObjectiveLine, type CaptureAssister } from './ReplayObjectiveLine'
 import { ReplayObjectiveStateLine } from './ReplayObjectiveStateLine'
@@ -456,6 +457,7 @@ function EventFeedLine({
     }))
     return <ReplayObjectiveLine line={event} {...shared} assisters={assisters} />
   }
+  if (event.family === 'replies') return <ReplayChatterLine line={event} {...shared} />
   const killed = 'destroyed' in event ? event.killedXuids : []
   return (
     <ReplayEventLine

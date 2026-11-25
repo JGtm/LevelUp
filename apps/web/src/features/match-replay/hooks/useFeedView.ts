@@ -29,11 +29,14 @@ import {
   type FeedFilterId,
   type FeedFilterOption,
 } from '../model/feedFilterLogic'
+import { chatterShownFor } from '../model/chatterLines'
 import { feedAt, type ReplayFeedEntry } from '../model/killFeedLogic'
 import { focusTargetOf } from '../model/killFocusLogic'
 import { NO_WEAPON_ICONS, type WeaponIconsByKey } from '../model/killSourceIcons'
 import { usePlaybackFocus, type PlaybackStore } from '../model/playbackStore'
+import type { HiddenPlayers } from '../model/playerPanelLogic'
 import { useFeedFilter } from '../settings/useFeedFilter'
+import { useChatterFeedLines } from './useChatterLines'
 import { useFeedEventEntries } from './useFeedEventEntries'
 
 export interface FeedViewInput {
@@ -50,6 +53,8 @@ export interface FeedViewInput {
   weaponIcons?: WeaponIconsByKey
   /** Le magasin de lecture de la page : sans lui, aucune ligne n'est choisie ni cliquable. */
   playbackStore?: PlaybackStore
+  /** Les joueurs masqués (« Seul », « Masquer ») : une réplique est à son joueur, elle se retire du fil avec lui. Absent = tout se montre. */
+  hiddenPlayers?: HiddenPlayers | null
 }
 
 export interface FeedView {
@@ -76,14 +81,23 @@ export function useFeedView({
   allegiance,
   weaponIcons = NO_WEAPON_ICONS,
   playbackStore,
+  hiddenPlayers = null,
 }: FeedViewInput): FeedView {
   const campIds = useMemo(() => allegiance.camps.map((c) => c.team), [allegiance])
-  const events = useFeedEventEntries(doc, locale, weaponIcons, campIds)
+  const chatter = useChatterFeedLines(doc, locale)
+  const events = useFeedEventEntries(doc, locale, weaponIcons, campIds, chatter)
   const fullFeed = useMemo(() => withEventLines(entries, events), [entries, events])
   const options = useMemo(() => availableFeedFilters(fullFeed), [fullFeed])
   const [storedFilter, chooseFilter] = useFeedFilter()
   const filter = effectiveFeedFilter(storedFilter, options)
-  const shown = useMemo(() => filterFeedEntries(fullFeed, filter), [fullFeed, filter])
+  const shown = useMemo(() => {
+    const filtered = filterFeedEntries(fullFeed, filter)
+    const chatterShown = chatterShownFor(hiddenPlayers)
+    // Une réplique est à son joueur : masqué, il emporte sa ligne du fil (les autres lignes ne changent pas).
+    return chatterShown
+      ? filtered.filter((e) => e.event?.family !== 'replies' || chatterShown({ xuid: e.event.xuid }))
+      : filtered
+  }, [fullFeed, filter, hiddenPlayers])
   const lines = useMemo(() => feedAt(shown, nowMs), [shown, nowMs])
   const matchHasNone = (options.find((o) => o.id === filter)?.count ?? 0) === 0
 

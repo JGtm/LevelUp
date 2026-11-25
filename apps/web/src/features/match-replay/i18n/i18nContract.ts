@@ -16,6 +16,7 @@ import type { FeedLinesText } from './feedLines.i18n'
 import type { EquipmentUsageText } from './equipmentUsage.i18n'
 import type { FramesText } from './frames.i18n'
 import type { HillSequenceText } from './hillSequence.i18n'
+import type { ChatterText } from './chatter.i18n'
 import type { LivesText } from './lives.i18n'
 import type { ReliefText } from './relief.i18n'
 import type { PlayerInstantText } from './playerInstant.i18n'
@@ -202,6 +203,8 @@ export interface ReplayText {
   roster: RosterText
   /** La fiche du joueur à l'instant lu : `playerInstant.i18n.ts`. */
   playerInstant: PlayerInstantText
+  /** Les répliques des Spartans (bulles, icône de voix, fil, familles, fréquence, voix) : `chatter.i18n.ts`. */
+  chatter: ChatterText
   /** Les traces des vies du panneau de la vue (apparitions, morts, tueurs, qui, quand) : `lives.i18n.ts`. */
   lives: LivesText
   /** Le panneau de la vue (rubriques, préréglages souples, Mes vues, accès rapide, pied) : `settings.i18n.ts`. */

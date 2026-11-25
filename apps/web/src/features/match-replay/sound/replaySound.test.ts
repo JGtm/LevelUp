@@ -539,7 +539,7 @@ describe('buildSoundTimeline — explosions de fin de vol', () => {
 })
 
 describe('buildSoundTimeline — filtre par catégorie (tiroir de réglages, phase 2)', () => {
-  const ALL_ON: SoundCategoryFilter = { weapon: true, grenade: true, melee: true, equipment: true, objective: true }
+  const ALL_ON: SoundCategoryFilter = { weapon: true, grenade: true, melee: true, equipment: true, objective: true, voice: true }
 
   it('sans 4e paramètre, comportement INCHANGÉ : les cinq catégories sonnent', () => {
     const tl = buildSoundTimeline(docAvecTirs(2), [])
@@ -603,7 +603,7 @@ describe('buildSoundTimeline — filtre par catégorie (tiroir de réglages, pha
     const tl = buildSoundTimeline(
       docWithCouple({ grenades: [grenade({ t: 50, rank: 0 })] }),
       [kill()],
-      { weapon: false, grenade: false, melee: false, equipment: false, objective: false },
+      { weapon: false, grenade: false, melee: false, equipment: false, objective: false, voice: false },
     )
     expect(tl).toEqual([])
   })

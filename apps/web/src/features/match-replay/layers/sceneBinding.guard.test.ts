@@ -54,6 +54,9 @@ const CABLES_PAR_LE_HOOK_DE_LA_PROBABILITE: ReadonlyArray<[ReplayLayerId, string
   ['reapparition-reperes', 'useReplayRespawnForecast.ts'],
 ]
 
+/** Le calque des répliques des Spartans : un hook, un peintre, son id à côté de son `paint`. */
+const CABLES_PAR_LE_HOOK_DES_REPLIQUES: ReadonlyArray<[ReplayLayerId, string]> = [['repliques', 'useReplayChatter.ts']]
+
 /** Les onze calques dont le hook porte l'identité (id -> hook qui le câble). */
 const CABLES_PAR_HOOK: ReadonlyArray<[ReplayLayerId, string]> = [
   ['socles-armes', 'useReplayWeaponPads.ts'],
@@ -124,6 +127,7 @@ describe('garde-rail : la liaison id -> peintre', () => {
       ...CABLES_PAR_LE_MEME_HOOK.map(([id]) => id),
       ...CABLES_PAR_LE_HOOK_DES_VIES.map(([id]) => id),
       ...CABLES_PAR_LE_HOOK_DE_LA_PROBABILITE.map(([id]) => id),
+      ...CABLES_PAR_LE_HOOK_DES_REPLIQUES.map(([id]) => id),
       ...FERMETURES.map(([id]) => id),
     ]
     expect(couverts).toHaveLength(LAYER_ORDER.length)
@@ -163,6 +167,12 @@ describe('garde-rail : la liaison id -> peintre', () => {
     }
   })
 
+  it('le hook des répliques déclare l’id de son calque', () => {
+    for (const [id, hook] of CABLES_PAR_LE_HOOK_DES_REPLIQUES) {
+      expect(lire(fichierNomme(hook)), `${hook} ne déclare pas l'id ${id}`).toContain(`id: '${id}',`)
+    }
+  })
+
   it('le hook des vies déclare l’id de ses trois calques, chacun à côté de son peintre', () => {
     for (const [id, hook] of CABLES_PAR_LE_HOOK_DES_VIES) {
       const src = lire(fichierNomme(hook))
@@ -177,6 +187,7 @@ describe('garde-rail : la liaison id -> peintre', () => {
       ...CABLES_PAR_LE_MEME_HOOK,
       ...CABLES_PAR_LE_HOOK_DES_VIES,
       ...CABLES_PAR_LE_HOOK_DE_LA_PROBABILITE,
+      ...CABLES_PAR_LE_HOOK_DES_REPLIQUES,
     ]) {
       // La clé telle qu'elle s'écrirait dans la table, à son indentation exacte. Pas de
       // RegExp construite : dans un gabarit JS, `\s` vaut `s` — le motif serait inerte.

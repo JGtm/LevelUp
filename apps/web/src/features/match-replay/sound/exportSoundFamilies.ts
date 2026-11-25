@@ -19,6 +19,7 @@ import type { ReplayLocale } from '../i18n/i18n'
 import { INTRO_MUSIC_STEM } from './introSound'
 import { seededRandom } from './replayAudioMix'
 import { ROUND_OVER_SOUND_STEMS } from './roundOverSound'
+import { stemsOf, type ReplaySoundEvent } from './replaySoundVariants'
 
 /**
  * endMatchSoundsFor — les prises de fin QUE L'EXPORT JOUERA, tirage seme.
@@ -57,4 +58,17 @@ export function soundFamiliesFor(
     music.push(...Object.values(END_MUSIC_STEMS))
   }
   return { voice, music }
+}
+
+/**
+ * withChatterVoices — LES VOIX DES RÉPLIQUES SONT DE LA VOIX : leurs stems rejoignent la famille « voix » des pistes séparées
+ * du clip exporté, avec celles de l'annonceur. Un bruitage mal classé reste dans le mixage complet ; une voix mal classée
+ * resterait dans la piste des bruitages : le classement vaut ce que vaut cette liste.
+ */
+export function withChatterVoices(
+  families: { voice: readonly string[]; music: readonly string[] },
+  timeline: readonly ReplaySoundEvent[],
+): { voice: readonly string[]; music: readonly string[] } {
+  const stems = new Set(timeline.filter((e) => e.chatter).flatMap((e) => stemsOf(e)))
+  return stems.size === 0 ? families : { voice: [...families.voice, ...stems], music: families.music }
 }

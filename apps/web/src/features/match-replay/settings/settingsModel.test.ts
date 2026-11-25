@@ -50,12 +50,13 @@ describe('la table des réglages', () => {
     expect(off('master')).toEqual(['floorFollow', 'thinBar'])
     expect(off('pinnable')).toEqual([
       'floorFollow', 'groundSpecial', 'groundStarting', 'placeDropped', 'placeUnnamed',
-      'vip', 'skull', 'bomb', 'catWeapon', 'catGrenade', 'catMelee', 'catEquip', 'thinBar',
+      'vip', 'skull', 'bomb', 'famEnemy', 'famShields', 'famSquadDown', 'famPraise', 'famOther',
+      'catWeapon', 'catGrenade', 'catMelee', 'catEquip', 'thinBar',
     ])
   })
 
-  it('les préréglages couvrent 29 réglages : les interrupteurs de rubrique sauf l’étage, le son, la barre fine et les réglages partagés, plus le filtre du fil', () => {
-    expect(PRESET_COVERED).toHaveLength(29)
+  it('les préréglages couvrent 38 réglages : les interrupteurs de rubrique sauf l’étage, le son, la barre fine et les réglages partagés, plus le filtre du fil', () => {
+    expect(PRESET_COVERED).toHaveLength(38)
     expect(PRESET_COVERED).toContain('feedFilter')
     for (const hors of ['bg', 'orientation', 'floor', 'floorFollow', 'sound', 'volume', 'colors', 'heatMode', 'heatSpan', 'livesWho', 'livesWhen', 'forecastDraw', 'thinBar'] as const) {
       expect(PRESET_COVERED).not.toContain(hors)
@@ -131,7 +132,7 @@ describe('ce que la rubrique affiche', () => {
     const c = makeSettingsContext()
     const joueurs = shownOfRubric('joueurs', c, FACTORY).map((d) => d.id)
     expect(joueurs).toEqual(['aim', 'trail', 'colors', 'shotFx', 'killFx', 'spawns', 'deaths', 'killers', 'forecast', 'forecastDraw'])
-    expect(defsOfRubric('son').map((d) => d.sub)).toEqual([undefined, undefined, 'categories', 'categories', 'categories', 'categories'])
+    expect(defsOfRubric('son').map((d) => d.sub)).toEqual([undefined, undefined, 'categories', 'categories', 'categories', 'categories', 'chatter'])
   })
 })
 

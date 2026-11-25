@@ -20,6 +20,7 @@ export const FULL_FILM: FilmLayerAvailability = {
   wallPlan: true,
   lives: { spawns: true, deaths: true, killers: true, followedKnown: true },
   respawnForecast: true,
+  chatter: { lines: false, voice: false },
 }
 
 /** Un Assassin : ni zone, ni socle, ni objectif ; la visée et la traînée restent. */
@@ -37,7 +38,14 @@ export const SLAYER_FILM: FilmLayerAvailability = {
   wallPlan: false,
   lives: { spawns: false, deaths: false, killers: false, followedKnown: false },
   respawnForecast: false,
+  chatter: { lines: false, voice: false },
 }
+
+/** Un match de capture dont le film porte des répliques parlées, avec une voix dans la langue de la page. */
+export const CHATTER_FILM: FilmLayerAvailability = { ...FULL_FILM, chatter: { lines: true, voice: true } }
+
+/** Un match dont les répliques n'ont pas de voix dans la langue de la page (l'anglais, tant que ses voix ne sont pas versées). */
+export const CHATTER_FILM_SILENT: FilmLayerAvailability = { ...FULL_FILM, chatter: { lines: true, voice: false } }
 
 /** Le contexte d'un match de capture au Cinéma, sur le fond Rendu, avec un relief lisible et du son. */
 export function makeSettingsContext(over: Partial<SettingsContext> = {}): SettingsContext {

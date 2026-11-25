@@ -213,9 +213,10 @@ export { ROUND_OVER_SOUND_STEMS, roundOverSoundEvents } from './roundOverSound'
  * Catégorie d'un son, pour le filtre du tiroir de réglages (phase 2, décision utilisateur
  * du 16/08) : ARMES (tirs et kills d'arme, même table — cf. WEAPON_SOUND_STEMS), GRENADES
  * (lancers ET explosions : c'est le même objet, sous deux formes), MÊLÉE (le seul coup
- * fatal sonné, `melee_kill`), ÉQUIPEMENTS (camouflage, surbouclier).
+ * fatal sonné, `melee_kill`), ÉQUIPEMENTS (camouflage, surbouclier), VOIX (les répliques des Spartans,
+ * `chatterSound.ts`).
  */
-export type SoundCategory = 'weapon' | 'grenade' | 'melee' | 'equipment' | 'objective'
+export type SoundCategory = 'weapon' | 'grenade' | 'melee' | 'equipment' | 'objective' | 'voice'
 
 /**
  * Son d'ARME par weapon_key -> stem de fichier sous static/sounds/{slug}/.
@@ -461,6 +462,7 @@ export const SOUND_CATEGORIES: readonly TogglableSoundCategory[] = [
   'grenade',
   'melee',
   'equipment',
+  'voice',
 ]
 
 /** Filtre par catégorie : une entrée par catégorie, `true` = catégorie audible. */
@@ -473,6 +475,7 @@ export const SOUND_CATEGORIES_DEFAULT: SoundCategoryFilter = {
   melee: true,
   equipment: true,
   objective: true,
+  voice: true,
 }
 
 /**

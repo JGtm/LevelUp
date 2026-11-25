@@ -73,6 +73,7 @@ function cinemaColumn(view: ReplayFrameView, withTeams: boolean, popover: ReactN
             playbackStore={view.playbackStore}
             weaponIcons={view.weaponIcons}
             followedKeys={playerKeys(playerPanel.camera.player)}
+            hiddenPlayers={playerPanel.hiddenPlayers}
           />
         }
       />

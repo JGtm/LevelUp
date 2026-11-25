@@ -29,6 +29,11 @@ export interface FilmLayerAvailability {
    * connue alors que le calque est éteint).
    */
   respawnForecast: boolean
+  /**
+   * Les répliques des Spartans : le film en porte au moins une affichable (nommée, parlée, d'un joueur) ; `voice` : l'une
+   * d'elles a une voix dans la langue de l'interface. Sans voix, ni l'icône ni la voix ne se proposent.
+   */
+  chatter: { lines: boolean; voice: boolean }
   /** Pourquoi aucune probabilité n'est servie, quand la réponse la refuse ; le panneau le dit à la place de l'interrupteur. */
   respawnForecastRefusal?: string | null
   /** Le fond retenu porte un plan des murs : il ne fait que conditionner l'affichage de sa bascule. */
@@ -59,6 +64,8 @@ export interface FilmLayerSources {
   lives: FilmLayerAvailability['lives']
   /** La probabilité de réapparition : de quoi se peindre, et le motif du refus quand la réponse en donne un. */
   respawnForecast: Availability & { refusal?: string | null }
+  /** Les répliques affichables du match (sans filtre) : leur nombre et combien portent une voix. */
+  chatter: { count: number; withVoice: number }
 }
 
 export function filmLayerAvailability(s: FilmLayerSources): FilmLayerAvailability {
@@ -80,6 +87,7 @@ export function filmLayerAvailability(s: FilmLayerSources): FilmLayerAvailabilit
     wallPlan: s.hasWallPlan,
     lives: s.lives,
     respawnForecast: s.respawnForecast.available,
+    chatter: { lines: s.chatter.count > 0, voice: s.chatter.withVoice > 0 },
     respawnForecastRefusal: s.respawnForecast.refusal ?? null,
   }
 }

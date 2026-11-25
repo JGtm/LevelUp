@@ -30,6 +30,9 @@ export function isPresetId(raw: unknown): raw is PresetId {
 /** Les trois couches portées de l'enjeu (VIP, crâne, bombe) suivent les drapeaux : elles s'allument ensemble. */
 const WITH_CARRIED: readonly SettingId[] = ['flags', 'vip', 'skull', 'bomb']
 
+/** Les cinq familles de répliques : elles s'allument ensemble, sauf là où un préréglage en choisit. */
+const CHATTER_ALL: readonly SettingId[] = ['famEnemy', 'famShields', 'famSquadDown', 'famPraise', 'famOther']
+
 /** Une table de préréglage : les interrupteurs allumés, tous les autres éteints, et le filtre du fil. */
 function table(on: readonly SettingId[], feedFilter = 'tout'): ViewValues {
   const out: Partial<Record<SettingId, SettingValue>> = {}
@@ -40,23 +43,26 @@ function table(on: readonly SettingId[], feedFilter = 'tout'): ViewValues {
 /**
  * LES TABLES.
  *  - Complet : tout ce qui se dessine ou se dit, sauf les traces de vies et la chaleur ; c'est l'état d'ouverture ;
- *  - Combat : regard, tirs, véhicules, objectifs, morts et tueurs ; le fil ne montre que les éliminations ;
- *  - Déplacements : trajets, apparitions, zones et chaleur ;
- *  - Objectif : trajets, zones et objectifs ; le fil ne montre que les objectifs.
+ *  - Combat : regard, tirs, véhicules, objectifs, morts et tueurs ; le fil ne montre que les éliminations ; ni bulle, ni voix,
+ *    seules les familles d'ennemi repéré, de boucliers et d'équipier tombé restent choisies ;
+ *  - Déplacements : trajets, apparitions, zones et chaleur ; les cinq familles de répliques, sans bulle ni voix ;
+ *  - Objectif : trajets, zones et objectifs ; le fil ne montre que les objectifs ; bulles, icône, fil et voix, pour les
+ *    répliques d'ennemi repéré et des autres familles.
  */
 const PRESETS: Readonly<Record<PresetId, ViewValues>> = {
   complet: table([
     'aim', 'trail', 'shotFx', 'killFx', 'forecast', 'zones', 'weaponPads', 'groundWeapons',
     'vehicles', 'placements', 'placeDropped', 'objectives', ...WITH_CARRIED, 'planFeed',
-    'catWeapon', 'catGrenade', 'catMelee', 'catEquip',
+    'catWeapon', 'catGrenade', 'catMelee', 'catEquip', ...CHATTER_ALL, 'chatterBubbles', 'chatterIcon', 'chatterFeed', 'chatterVoice',
   ]),
   combat: table([
     'aim', 'trail', 'shotFx', 'killFx', 'deaths', 'killers', 'weaponPads', 'groundWeapons', 'vehicles',
-    'objectives', ...WITH_CARRIED, 'planFeed', 'catWeapon', 'catGrenade', 'catMelee',
+    'objectives', ...WITH_CARRIED, 'planFeed', 'catWeapon', 'catGrenade', 'catMelee', 'famEnemy', 'famShields', 'famSquadDown',
   ], 'kills'),
-  deplacements: table(['trail', 'spawns', 'forecast', 'zones', 'heatmap', 'vehicles', 'planFeed']),
+  deplacements: table(['trail', 'spawns', 'forecast', 'zones', 'heatmap', 'vehicles', 'planFeed', ...CHATTER_ALL]),
   objectif: table([
     'trail', 'zones', 'objectives', ...WITH_CARRIED, 'vehicles', 'weaponPads', 'planFeed', 'catWeapon',
+    'chatterBubbles', 'chatterIcon', 'chatterFeed', 'chatterVoice', 'famOther', 'famEnemy',
   ], 'objectives'),
 }
 

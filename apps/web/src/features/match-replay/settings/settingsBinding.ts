@@ -15,6 +15,7 @@ import { normalizeTurns } from '@/lib/replay/orientation'
 import type { MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
 
 import type { ReplayRelief } from '../hooks/useReplayRelief'
+import type { ChatterFrequency } from '../model/chatterLines'
 import type { FeedFilterId } from '../model/feedFilterLogic'
 import type { ForecastDraw } from '../model/respawnForecast.logic'
 import { effectiveLivesWho, type LivesWhen, type LivesWho } from '../model/livesMarks'
@@ -67,6 +68,8 @@ function valuesOf(i: BindingInput): SettingValues {
     livesWhen: s.livesWhen,
     forecast: s.showRespawnForecast,
     forecastDraw: s.respawnForecastDraw,
+    chatterBubbles: s.showBubbles,
+    chatterIcon: s.showIcon,
     bg: relief.selected,
     reliefLines: relief.lines.show,
     wallPlan: s.showWallPlan,
@@ -92,12 +95,20 @@ function valuesOf(i: BindingInput): SettingValues {
     bomb: s.showBombCarrier,
     feedFilter: feed.value,
     planFeed: s.showPlanFeed,
+    chatterFeed: s.showFeed,
+    famEnemy: s.families.enemy,
+    famShields: s.families.shields,
+    famSquadDown: s.families.squadDown,
+    famPraise: s.families.praise,
+    famOther: s.families.other,
+    chatterFreq: s.frequency,
     sound: sound.on,
     volume: sound.volume,
     catWeapon: sound.categories.weapon,
     catGrenade: sound.categories.grenade,
     catMelee: sound.categories.melee,
     catEquip: sound.categories.equipment,
+    chatterVoice: sound.categories.voice,
     thinBar: s.thinBarAtFullFrame,
   }
 }
@@ -115,6 +126,10 @@ function flagSetters(i: BindingInput): Partial<Record<SettingId, () => void>> {
     placeDropped: s.toggleDroppedPlacements, placeUnnamed: s.toggleUnnamedPlacements,
     objectives: s.toggleModeObjectives, flags: s.toggleFlagCarries, vip: s.toggleVipCrown,
     skull: s.toggleSkullCarrier, bomb: s.toggleBombCarrier, planFeed: s.togglePlanFeed, thinBar: s.toggleThinBarAtFullFrame,
+    chatterBubbles: s.toggleBubbles, chatterIcon: s.toggleIcon, chatterFeed: s.toggleFeed,
+    famEnemy: () => s.toggleFamily('enemy'), famShields: () => s.toggleFamily('shields'),
+    famSquadDown: () => s.toggleFamily('squadDown'), famPraise: () => s.toggleFamily('praise'), famOther: () => s.toggleFamily('other'),
+    chatterVoice: () => sound.toggleCategory('voice'),
     sound: sound.toggle,
     catWeapon: () => sound.toggleCategory(SOUND_CATEGORY_OF.catWeapon),
     catGrenade: () => sound.toggleCategory(SOUND_CATEGORY_OF.catGrenade),
@@ -136,6 +151,7 @@ function valueSetters(i: BindingInput): Partial<Record<SettingId, (value: Settin
     heatMode: (v) => s.setHeatmapMode(v as HeatmapMode),
     heatSpan: (v) => s.setHeatmapSpan(v as HeatmapSpan),
     feedFilter: (v) => feed.choose(v as FeedFilterId),
+    chatterFreq: (v) => s.setFrequency(v as ChatterFrequency),
     volume: (v) => sound.setVolume(Number(v)),
     floor: (v) => (v === null ? relief.floor.selectAll() : relief.floor.setHeight(Number(v))),
   }
