@@ -2,6 +2,30 @@
 
 ---
 
+### [citations] « Annexion forcée » compte les captures de tous les joueurs du match
+
+**Relevé le 2026-11-25** (plan `.ai/PLAN_BACKLOG_2026-11-24.md`, piste données, signalé par l'agent et non noté à la clôture). `computeAnnexionForcee` (`apps/go-api/internal/games/halo_infinite/citations_custom.go`) compte les temps forts « mode » de tous les joueurs du match, sans filtrer sur le joueur dont on calcule la citation. Le plan a corrigé le mode (Bases seulement) et le double compte, pas ce filtre. Effet non mesuré : la valeur affichée de la citation serait trop haute pour chaque joueur. **Pour reprendre :** confirmer sur un match de Bases (compte du joueur contre compte du match), filtrer, puis recalculer la citation (`levelup backfill --citations-recompute-all`). **Effort : S. Priorité : moyenne (une valeur affichée est peut-être fausse).**
+
+---
+
+### [divers] Signalements des agents du plan du 24 novembre non repris à la clôture
+
+**Relevé le 2026-11-25.** Signalés par les agents pendant le plan `.ai/PLAN_BACKLOG_2026-11-24.md`, sans effet visible connu, non traités :
+- Rejeu des événements d'un match déjà rempli : le statut rendu dit « no_film » alors que rien n'était à insérer.
+- Compteur des coups d'envoi de la synchronisation : il compte à la résolution, pas à l'écriture acquittée par la file ; le brancher à l'acquittement demande un point d'accrochage.
+- `mapcatalog/store.go` journalise par `slog.Warn` sans contexte (règle 3).
+- `internal/platform/auth/pool/pool.go` dépasse toujours 500 lignes (dette sous baseline).
+- L'étape de démarrage « comptes » est devenue quasi instantanée : son libellé à l'écran de démarrage ne s'affiche presque plus, à retirer ou à reformuler.
+- `scripts/check_test_baseline.sh` et `archlint/no_unbounded_film_loop_test.go` citent encore d'anciens noms (tests à pseudo, `libs/film/...`).
+- Deux copies identiques d'un hook de largeur (`_shared/assists/useElementWidth.ts`, `synthesis/WeaponRecordsRuler.tsx`), inscrites sur la liste datée du garde des observateurs de taille.
+- Rejeu, répliques : à 4×, une bulle dure 0,65 s réelle ; le bouton épinglé des répliques reste grisé sur un rejeu sans réplique nommée ; la mémoire des voix n'a pas été mesurée dans un navigateur.
+- Poste de développement : un exécutable Go bâti par `cmd/chatter-build` a été bloqué par l'antivirus (faux positif), `go run` passe.
+- Trois fixtures HTML du rejeu (`ui/__fixtures__/replayTransport*.avant.html`) portent le pseudo du mainteneur (gardé par décision, noté pour mémoire).
+
+**Effort : faible, point par point. Priorité : basse.**
+
+---
+
 ### [commentaires] Commentaires du code périmés (regroupés)
 
 **Relevé le 2026-11-22. Mis à jour le 2026-11-25** (plan du 2026-11-24, E.2, `395b4b82e4`) : fait : 23 fichiers corrigés sans effet à l'écran (les marqueurs `color-allow` qui citaient « CLAUDE.md §20 », les tons de `lib/accessibility/semantic-tokens.ts`, `games/canonical/fields.go`, `analysis/modelabel/category.go`, la doc de `replay-corpus-gate` en anglais et en français, l'en-tête de `cmd/killsource`). Reste : le « libellé d'un garde-rail qui décrit l'ancien comportement » (relevé de la relecture finale du 2026-11-23, voir la puce du même nom de la section « 2026-11-23 ») n'a pas été localisé avec certitude : deux messages d'un test de garde ont été corrigés, sans preuve que ce soit celui visé. Pour reprendre : le nom du garde, donné par qui l'a relevé.
