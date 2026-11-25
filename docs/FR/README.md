@@ -47,7 +47,7 @@ Tous les détails dans le [journal des modifications](CHANGELOG.md).
 - **25 calques à cocher** — visée, traînées, éclairs de bouche, effets de tirs et de mort, vols de grenade et explosions, étoiles de corps à corps, carte de chaleur (temps passé ou éliminations), emplacements d'armes et socles de bonus, armes laissées au sol avec leurs munitions exactes, équipements posés (mur, faille, capteur, translocateur…), objets lâchés, véhicules, zones nommées, chevrons hors cadre
 - **Les objectifs vivants** — portages et zone de retour du drapeau, crâne d'Oddball, jauge de propriété de colline en Roi de la colline, bastions A/B/C, bombe d'Assaut avec son décompte de mèche, couronne du VIP
 - **Un bandeau de score** — le score de la manche en cours, la cible de victoire, et la courbe de score du mode
-- **Le son du jeu** — 177 sons tirés du jeu (armes, grenades, corps à corps, équipements, objectifs, annonceur, fanfare de fin), coupés par défaut, filtrables par catégorie
+- **Le son du jeu** — 177 sons tirés du jeu (armes, grenades, corps à corps, équipements, objectifs, annonceur, fanfare de fin) et 519 répliques des Spartans à voix française (bulles de texte, lignes du fil et voix, filtrées par famille et par fréquence), coupés par défaut, filtrables par catégorie
 - **Zoom, glissement et cadrage** — paliers, molette, clavier ou croix directionnelle ; la toile prend tout le bloc et le zoom ne recadre jamais la carte
 - **Capture et enregistrement** — une image PNG en un clic, ou un export vidéo complet du rejeu avec sa bande-son mixée, encodé hors du temps réel
 

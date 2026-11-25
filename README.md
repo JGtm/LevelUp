@@ -47,7 +47,7 @@ Full details in the [changelog](docs/CHANGELOG.md).
 - **25 layers you switch on and off** — aim cone, trails, muzzle flashes, shot and kill effects, grenade flights and explosions, melee stars, heat map (time spent or eliminations), weapon spots and power-up pads, weapons left on the ground with their exact ammunition, deployed equipment (wall, rift, sensor, translocator…), dropped objects, vehicles, named zones, off-screen chevrons
 - **Live objectives** — flag carries and the return zone, Oddball skull, King of the Hill ownership gauge, Strongholds A/B/C, the Assault bomb with its fuse countdown, the VIP crown
 - **Score band** — the score of the round in progress, the victory target, and the score curve of the mode
-- **The game's own sound** — 177 sounds taken from the game (weapons, grenades, melee, equipment, objectives, announcer, end-of-match fanfare), muted by default, filtered by category
+- **The game's own sound** — 177 sounds taken from the game (weapons, grenades, melee, equipment, objectives, announcer, end-of-match fanfare) and 519 French voice lines of the Spartans (text bubbles, feed lines and voice, filtered by family and frequency), muted by default, filtered by category
 - **Zoom, pan and framing** — steps, wheel, keyboard or a directional pad; the canvas takes the whole block and zooming never crops the map
 - **Capture and record** — a PNG in one click, or a full video export of the replay with its mixed soundtrack, encoded away from real time
 
