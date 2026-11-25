@@ -130,7 +130,6 @@ export function useViewsController({ ctx, binding, mode, matchKey, newId = defau
     const late = writesToReach(pending.table, values, ctx)
     pending.ctx = ctx
     // Écrire une vue est une synchronisation avec les réglages persistés, comme à l'ouverture.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (late.length > 0) write(late)
   })
 
@@ -168,7 +167,10 @@ export function useViewsController({ ctx, binding, mode, matchKey, newId = defau
       const factory = factoryValues()
       // « Traits du relief » n'a pas de valeur d'usine unique : elle dépend du fond (allumés sur le Relief seulement).
       lateOpening.current = null
-      write(SETTING_IDS.filter((id) => id !== 'reliefLines' && values[id] !== factory[id]).map((id) => [id, factory[id]] as const))
+      // On compare à la valeur RETENUE quand elle diffère de l'appliquée : une préférence que ce match ne propose pas
+      // (« Point de vue » sans joueur suivi, filtre « Objectifs » sans objectif) est remise à l'usine elle aussi.
+      const kept = (id: SettingId) => binding.retained[id] ?? values[id]
+      write(SETTING_IDS.filter((id) => id !== 'reliefLines' && kept(id) !== factory[id]).map((id) => [id, factory[id]] as const))
       commit(setActiveView(state, DEFAULT_ACTIVE))
     },
   }

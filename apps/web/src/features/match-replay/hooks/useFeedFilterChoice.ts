@@ -28,6 +28,8 @@ import { useFeedEventEntries } from './useFeedEventEntries'
 export interface FeedFilterChoice {
   options: readonly FeedFilterOption[]
   value: FeedFilterId
+  /** Le filtre RETENU par le lecteur, même s'il n'est pas proposé pour ce match (`value` retombe alors sur Tout). */
+  retained: FeedFilterId
   choose: (id: FeedFilterId) => void
 }
 
@@ -43,5 +45,5 @@ export function useFeedFilterChoice(
   const events = useFeedEventEntries(doc, locale, NO_WEAPON_ICONS, campIds, chatter)
   const options = useMemo(() => availableFeedFilters(withEventLines(entries, events)), [entries, events])
   const [stored, choose] = useFeedFilter()
-  return { options, value: effectiveFeedFilter(stored, options), choose }
+  return { options, value: effectiveFeedFilter(stored, options), retained: stored, choose }
 }

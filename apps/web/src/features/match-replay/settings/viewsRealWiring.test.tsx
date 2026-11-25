@@ -12,7 +12,7 @@ vi.mock('@/features/settings/queries', () => ({ useSettings: () => ({ data: unde
 
 import { NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
 
-import type { FeedFilterId } from '../model/feedFilterLogic'
+import { effectiveFeedFilter, type FeedFilterId } from '../model/feedFilterLogic'
 import { useReplaySound } from '../sound/useReplaySound'
 import { installFakeAudio } from '../test/fakeAudio'
 import { CHATTER_FILM, makeSettingsContext } from '../test/settingsContextFixtures'
@@ -20,6 +20,7 @@ import { testReplayDoc } from '../test/testDoc'
 import { isProposed, masterWrites } from './settingsAvailability'
 import { bindSettings, type BindingInput } from './settingsBinding'
 import { PRESET_COVERED, type SettingId } from './settingsTable'
+import { useFeedFilter } from './useFeedFilter'
 import { useReplaySettings } from './useReplaySettings'
 import { useViewsController } from './useViewsController'
 import { PRESET_IDS, presetValues, type PresetId } from './viewPresets'
@@ -115,5 +116,35 @@ describe('le maître de la rubrique Son et « Réinitialiser »', () => {
     first.unmount()
     const second = mount()
     expect(second.result.current.sound.categories).toMatchObject({ weapon: false, grenade: false, melee: false, equipment: false, voice: false })
+  })
+})
+
+describe('« Réinitialiser » et les préférences que ce match ne propose pas', () => {
+  /** Un match sans joueur suivi (« Qui = Point de vue » n'y est pas proposé) et sans ligne d'objectif (filtre « Objectifs » absent). */
+  function mountSansSuiviNiObjectif() {
+    return renderHook(() => {
+      const settings = useReplaySettings()
+      const sound = useReplaySound(DOC, [], 1, { allegiance: NO_ALLEGIANCE, endMatch: null, locale: undefined })
+      const [stored, choose] = useFeedFilter()
+      const binding = bindSettings({
+        settings, relief: RELIEF, orientation: ORIENTATION, sound,
+        feed: { value: effectiveFeedFilter(stored, [{ id: 'tout', count: 1 }, { id: 'kills', count: 1 }]), retained: stored, choose },
+        heatMode: settings.heatmapMode, followedKnown: false,
+      })
+      const controller = useViewsController({ ctx: CTX, binding, mode: 'flag', matchKey: 'm1' })
+      return { controller, settings, binding }
+    })
+  }
+
+  it('remet à l’usine « Qui = Point de vue » et le filtre « Objectifs » retenus, même quand ils ne s’appliquent pas ici', () => {
+    window.localStorage.setItem('replay-lives-who', 'followed')
+    window.localStorage.setItem('replay-feed-filter', 'objectives')
+    const { result } = mountSansSuiviNiObjectif()
+    expect(result.current.binding.values.livesWho).toBe('all') // la valeur appliquée : le repli
+    expect(result.current.settings.livesWho).toBe('followed') // la valeur retenue : celle du lecteur
+    act(() => result.current.controller.reset())
+    expect(result.current.settings.livesWho).toBe('all')
+    expect(window.localStorage.getItem('replay-lives-who')).toBe('all')
+    expect(window.localStorage.getItem('replay-feed-filter')).toBe('tout')
   })
 })

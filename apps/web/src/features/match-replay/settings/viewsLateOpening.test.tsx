@@ -24,7 +24,7 @@ function mount(matchKey: string, ctx: SettingsContext) {
   return renderHook(
     (props: { ctx: SettingsContext; matchKey: string }) => {
       const [values, setValues] = useState<SettingValues>(factoryValues())
-      const binding: SettingsBinding = { values, set: (id, value) => setValues((v) => ({ ...v, [id]: value })) }
+      const binding: SettingsBinding = { values, retained: {}, set: (id, value) => setValues((v) => ({ ...v, [id]: value })) }
       const controller = useViewsController({ ctx: props.ctx, binding, mode: 'flag', matchKey: props.matchKey })
       return { controller, values, binding }
     },

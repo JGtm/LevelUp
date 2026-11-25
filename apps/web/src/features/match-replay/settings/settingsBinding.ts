@@ -33,7 +33,7 @@ export interface BindingInput {
   orientation: ReplayOrientation
   sound: ReplaySound
   /** Le filtre du fil APPLIQUÉ à ce match (le mémorisé s'il est proposé, Tout sinon) et le geste qui le change. */
-  feed: { value: FeedFilterId; choose: (id: FeedFilterId) => void }
+  feed: { value: FeedFilterId; /** Le filtre RETENU par le lecteur (peut ne pas être proposé ici) ; absent = le filtre appliqué. */ retained?: FeedFilterId; choose: (id: FeedFilterId) => void }
   /** La lecture de la chaleur RÉELLEMENT servie (sans mort localisable, la présence), pas celle demandée. */
   heatMode: HeatmapMode
   /** Il y a un joueur suivi dans ce match : sans lui, « point de vue » se lit « tous ». */
@@ -42,6 +42,12 @@ export interface BindingInput {
 
 export interface SettingsBinding {
   values: SettingValues
+  /**
+   * Les valeurs RETENUES des réglages dont la valeur APPLIQUÉE diffère (« Qui = Point de vue » sans joueur suivi, filtre
+   * « Objectifs » sans ligne d'objectif) : ce que le lecteur a laissé, qui revient au match suivant. « Réinitialiser » les
+   * compare à l'usine, pas aux valeurs appliquées.
+   */
+  retained: Partial<Record<SettingId, SettingValue>>
   /** Écrit un réglage. Un réglage hors table n'existe pas ; une valeur étrangère à son réglage est ignorée. */
   set: (id: SettingId, value: SettingValue) => void
 }
@@ -169,5 +175,6 @@ export function bindSettings(i: BindingInput): SettingsBinding {
     }
     writers[id]?.(value)
   }
-  return { values, set }
+  const retained = { livesWho: i.settings.livesWho, feedFilter: i.feed.retained ?? i.feed.value }
+  return { values, retained, set }
 }
