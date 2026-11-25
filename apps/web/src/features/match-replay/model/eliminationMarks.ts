@@ -130,9 +130,9 @@ export function attachEliminationMarks(kills: readonly MarkableKill[], doc: Elim
   if (!doc || doc.coverage?.eliminations === undefined || doc.eliminations.length === 0) return
   const rowsByKiller = new Map<string, ScoreboardRow[]>()
   for (const e of doc.eliminations) {
-    // Un tueur sans identifiant (un bot) n'a pas de ligne propre : sous la clé vide les lignes de tous les bots se
-    // confondraient, et une marque irait à la ligne d'un autre bot.
-    if (!e.xuid) continue
+    // Le tueur est toujours une clé du film non vide (la frontière écarte les lignes sans auteur) : un humain sous son
+    // xuid, un bot sous `bot:<nom>`, une clé par bot, sans confusion possible. Le fil de la base n'a aucune élimination
+    // dont un bot est l'auteur : aucune ligne ne réclame les lignes d'un bot, qui ne marquent donc rien, volontairement.
     pushUnder(rowsByKiller, e.xuid, { ms: frameToMs(e.t, doc), victim: e.victim, headshot: e.headshot, perfect: e.perfect })
   }
   const killsByKiller = new Map<string, MarkableKill[]>()

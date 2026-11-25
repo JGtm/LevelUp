@@ -52,31 +52,30 @@ describe('attachEliminationMarks — ce qui se pose', () => {
   })
 })
 
-describe('attachEliminationMarks — un tueur sans identifiant', () => {
-  it('ne pose rien : les lignes de plusieurs bots ne se confondent pas sous une clé vide', () => {
+describe('attachEliminationMarks — l’élimination d’un bot', () => {
+  it('ne marque rien : le fil n’a aucune ligne dont un bot est l’auteur, et deux bots ne se confondent pas', () => {
     const kills = [kill('', 'v1', 1000), kill('', 'v2', 5000)]
     attachEliminationMarks(
       kills,
       doc([
-        { t: 10, xuid: '', victim: 'v1', headshot: true },
-        { t: 50, xuid: '', victim: 'v2', perfect: true },
+        { t: 10, xuid: 'bot:Marc', victim: 'v1', headshot: true },
+        { t: 50, xuid: 'bot:Rex', victim: 'v2', perfect: true },
       ]),
     )
     expect(kills[0].fragMarks).toBeUndefined()
     expect(kills[1].fragMarks).toBeUndefined()
   })
 
-  it('ne gêne pas les marques d’un tueur identifié du même document', () => {
-    const kills = [kill('', 'v1', 1000), kill('a', 'v1', 1000)]
+  it('ne gêne pas les marques d’un tueur humain du même document', () => {
+    const kills = [kill('a', 'v1', 1000)]
     attachEliminationMarks(
       kills,
       doc([
-        { t: 10, xuid: '', victim: 'v1', headshot: true },
+        { t: 10, xuid: 'bot:Marc', victim: 'v1', headshot: true },
         { t: 10, xuid: 'a', victim: 'v1', perfect: true },
       ]),
     )
-    expect(kills[0].fragMarks).toBeUndefined()
-    expect(kills[1].fragMarks).toEqual({ perfect: true })
+    expect(kills[0].fragMarks).toEqual({ perfect: true })
   })
 })
 
