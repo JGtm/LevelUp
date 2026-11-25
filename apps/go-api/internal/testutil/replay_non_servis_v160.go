@@ -13,6 +13,9 @@ const (
 	motifV160ChampPose = "2026-11-24 (decodeur v1.6.0) : champ ajoute par le schema 127 a un calque que l'API sert deja " +
 		"(pleine cadence, decalage d'un tir, hauteur d'un projectile, instants d'un rechargement, pistes d'une ligne de degat, " +
 		"orientation d'un socle) ; aucun lecteur ici."
+	motifChatterChamp = "2026-11-25 (piste R, repliques) : champ du calque `chatter` que l API sert depuis cette date ; le client lit l instant, le joueur, " +
+		"l identifiant du son et le nom court. La priorite ne sert a rien a l ecran, et l indice de replique change de sens d un build a l autre " +
+		"(la cle des textes est l identifiant du son)."
 	motifV160Compteur = "2026-11-24 (decodeur v1.6.0) : compteur de couverture du schema 127 ; aucun lecteur ici, la fiche " +
 		"ne lit que les compteurs qui disent qu'une valeur est approximative et ils sont deja servis."
 )
@@ -21,7 +24,7 @@ func init() {
 	for _, cle := range []string{
 		"Coverage.AmmoReads", "Coverage.Announcements", "Coverage.Appearance", "Coverage.Chatter",
 		"Coverage.ControlPlaces", "Coverage.DrawnWeapons", "Coverage.Vitals",
-		"ReplayDocument.AmmoReads", "ReplayDocument.Announcements", "ReplayDocument.Attachments", "ReplayDocument.Chatter",
+		"ReplayDocument.AmmoReads", "ReplayDocument.Announcements", "ReplayDocument.Attachments",
 		"ReplayDocument.DrawnWeapons", "ReplayDocument.PadCandidates", "ReplayDocument.Vitals",
 		"RosterEntry.Appearance", "ProjectileCoverage.Attach",
 	} {
@@ -34,6 +37,8 @@ func init() {
 	} {
 		ReplayChampsNonServis[cle] = motifV160ChampPose
 	}
+	ReplayChampsNonServis["Chatter.Priority"] = motifChatterChamp
+	ReplayChampsNonServis["Chatter.Line"] = motifChatterChamp
 	for _, cle := range []string{
 		"EliminationCoverage.BotEliminations", "EliminationCoverage.VictimAmbiguous", "EliminationCoverage.VictimPlaces",
 		"FlagCarriesCoverage.GaugeReadsAmbiguous", "FlagCarriesCoverage.GaugeReadsOffDrops",
@@ -54,7 +59,7 @@ func init() {
 	}
 	for _, nom := range []string{
 		"AmmoRead", "AmmoReadCoverage", "Announcement", "AnnouncementCoverage", "Appearance", "AppearanceCoverage",
-		"Attachment", "Chatter", "ChatterCoverage", "ControlKindCoverage", "ControlPlaceCoverage", "DrawnWeapon",
+		"Attachment", "ChatterCoverage", "ControlKindCoverage", "ControlPlaceCoverage", "DrawnWeapon",
 		"DrawnWeaponCoverage", "FullRateFlight", "FullRateTrack", "GrenadeDetonation",
 		"ProjectileAttach", "ProjectileAttachCoverage", "ViseesSeulesCoverage", "Vital", "VitalCoverage",
 	} {

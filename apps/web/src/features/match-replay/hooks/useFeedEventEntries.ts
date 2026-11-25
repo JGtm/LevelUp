@@ -30,12 +30,18 @@ import { skullFeedEntries } from '../model/skullFeedLogic'
 import { vehicleFeedEntries } from '../model/vehicleFeedLogic'
 import { vehicleDestructionsOf } from '../model/vehicleDestructionSource'
 import type { WeaponIconsByKey } from '../model/killSourceIcons'
+import { chatterFeedEntries } from '../model/chatterFeedLogic'
+import type { ChatterLine } from '../model/chatterLines'
+
+/** Aucune réplique dans le fil : la liste vide partagée. */
+const NO_CHATTER: readonly ChatterLine[] = []
 
 export function useFeedEventEntries(
   doc: ReplayDocumentReady | null | undefined,
   locale: ReplayLocale,
   icons: WeaponIconsByKey,
   campIds: readonly number[],
+  chatter: readonly ChatterLine[] = NO_CHATTER,
 ): ReplayFeedEntry[] {
   return useMemo(() => {
     if (!doc) return []
@@ -50,6 +56,7 @@ export function useFeedEventEntries(
       ...padPickups,
       ...groundPickupFeedEntries(doc, nameOf, padPickups),
       ...vehicleFeedEntries(doc, locale, vehicleDestructionsOf(doc), icons),
+      ...chatterFeedEntries(chatter, doc),
     ]
-  }, [doc, locale, icons, campIds])
+  }, [doc, locale, icons, campIds, chatter])
 }

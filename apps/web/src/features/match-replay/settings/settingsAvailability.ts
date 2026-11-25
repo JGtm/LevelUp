@@ -55,6 +55,18 @@ export function isProposed(id: SettingId, c: SettingsContext): boolean {
     case 'livesWhen': return f.lives.spawns || f.lives.deaths || f.lives.killers
     case 'forecast':
     case 'forecastDraw': return f.respawnForecast
+    // Les répliques : la bulle, le fil, les familles et la fréquence se proposent dès que le film porte une réplique affichable ;
+    // l'icône de voix et la voix, seulement quand une de ces répliques a une voix dans la langue (et, pour la voix, un son à régler).
+    case 'chatterBubbles':
+    case 'chatterFeed':
+    case 'famEnemy':
+    case 'famShields':
+    case 'famSquadDown':
+    case 'famPraise':
+    case 'famOther':
+    case 'chatterFreq': return f.chatter.lines
+    case 'chatterIcon': return f.chatter.voice
+    case 'chatterVoice': return f.chatter.voice && c.soundAvailable
     case 'bg': return c.backgroundOptions.length > 0
     case 'reliefLines': return c.reliefLinesAvailable
     // Le plan porte déjà les murs : poser leur dessin par-dessus n'a pas de sens, le réglage n'est pas proposé.

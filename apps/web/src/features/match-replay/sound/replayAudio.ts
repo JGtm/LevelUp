@@ -398,12 +398,39 @@ export class ReplayAudioPlayer {
 
   /** start pose une source enveloppée ; `kind` dit si elle se soumet au plafond (et le tient) et si la pause l'éteint. */
   private start(url: string, kind: SoundKind, draw?: SoundDraw, shape?: SoundShape, offsetS = 0): void {
-    const { voix, survitALaPause } = kind
     const buf = this.buffers.get(url)
-    if (!buf || (voix && this.voices >= SOUND_MAX_VOICES)) {
+    if (!buf || (kind.voix && this.voices >= SOUND_MAX_VOICES)) {
       if (buf === undefined) this.preload([url])
       return
     }
+    this.startBuffer(buf, kind, draw, shape, offsetS)
+  }
+
+  /**
+   * charge et décode un fichier SANS le mémoriser dans le cache du lecteur : c'est le chargement à la demande des voix
+   * de réplique (`chatterVoiceCache.ts`), qui garde ses propres tampons, en borne le nombre et annule ses requêtes.
+   * Rejette à l'annulation ou à l'échec ; ne journalise rien.
+   */
+  async fetchDecoded(url: string, signal: AbortSignal): Promise<AudioBuffer> {
+    const res = await fetch(url, { signal })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const raw = await res.arrayBuffer()
+    return this.ctx.decodeAudioData(raw)
+  }
+
+  /**
+   * playBuffer joue un tampon DÉJÀ décodé que l'appelant garde (voie ordinaire, plafond de voix), sans jamais rien
+   * charger : un son pas prêt n'a pas de tampon, l'appelant le saute.
+   */
+  playBuffer(buffer: AudioBuffer): void {
+    const kind = soundKindOf({})
+    if (kind.voix && this.voices >= SOUND_MAX_VOICES) return
+    this.startBuffer(buffer, kind)
+  }
+
+  /** startBuffer pose la source enveloppée d'un tampon prêt. */
+  private startBuffer(buf: AudioBuffer, kind: SoundKind, draw?: SoundDraw, shape?: SoundShape, offsetS = 0): void {
+    const { voix, survitALaPause } = kind
     const t0 = this.ctx.currentTime
     const env = soundEnvelopeOf(buf.duration, shape)
     const [fadeStartS, stopS, loop] = [env.fadeStartS - offsetS, env.stopS - offsetS, env.loop]

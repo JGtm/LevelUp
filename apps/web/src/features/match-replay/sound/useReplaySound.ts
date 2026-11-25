@@ -47,7 +47,7 @@ import { soundUrlOf } from './replayAudioMix'
 
 import { persistPreference, readStoredFlag, readStoredNumber } from '../settings/replayPreferences'
 import { endMatchSounds, endMatchSoundStems, type EndMatchSoundSpec } from './endMatchSound'
-import { endMatchSoundsFor, soundFamiliesFor } from './exportSoundFamilies'
+import { endMatchSoundsFor, soundFamiliesFor, withChatterVoices } from './exportSoundFamilies'
 import { INTRO_MUSIC_STEM, playIntroAligned } from './introSound'
 import type { ReplayLocale } from '../i18n/i18n'
 import { ReplayAudioPlayer, soundShapeOf } from './replayAudio'
@@ -72,6 +72,7 @@ import {
 } from './replaySoundCursor'
 import { useReplayEngineSound } from './useReplayEngineSound'
 import { useAudioUnlock } from './useAudioUnlock'
+import { CHATTER_VOICE_AHEAD_MS, ChatterVoiceCache, voicesInWindow } from './chatterVoiceCache'
 import type { EnginePlan } from './vehicleEngineSound'
 
 /** Préférences persistées — patron partagé (replayPreferences.ts), né ici. */
@@ -80,6 +81,9 @@ const SOUND_VOLUME_KEY = 'replay-sound-volume'
 /** Catégories COUPÉES, pas les catégories actives : un futur 5e stem reste ON par défaut
  *  pour qui a déjà une préférence stockée — jamais besoin de migrer ce JSON. */
 const SOUND_CATEGORIES_OFF_KEY = 'replay-sound-categories-off'
+
+/** Aucune voix de réplique : la liste vide partagée, jamais recréée. */
+const NO_VOICES: readonly ReplaySoundEvent[] = []
 
 /** Volume d'ouverture : assez présent pour s'entendre, assez bas pour ne pas faire sursauter. */
 export const SOUND_VOLUME_DEFAULT = 0.7
@@ -217,6 +221,7 @@ function useSoundCategoryFilter(): {
     // TOUJOURS VRAI : « Objectifs » n'est plus réglable (cf. SOUND_CATEGORIES). La lecture
     // du stockage l'ignore déjà, ce littéral dit la même chose au type.
     objective: true,
+    voice: !categoriesOff.has('voice'),
   }), [categoriesOff])
 
   // NEXT CALCULÉ HORS UPDATER, PERSISTANCE APRÈS `setCategoriesOff` (même correctif que le
@@ -249,11 +254,14 @@ function hasSoundEvents(doc: ReplayDocumentReady, kills: readonly ReplayKill[]):
  *  n'ont pas d'instant sur l'horloge — les prises de la fin de partie, dont le tirage n'aura
  *  lieu qu'à l'arrivée en fin. */
 function soundURLsFor(
-  timeline: readonly { stem: string; variants?: readonly string[] }[],
+  timeline: readonly { stem: string; variants?: readonly string[]; chatter?: true }[],
   extra: readonly string[],
 ): Map<string, string> {
   const urls = new Map<string, string>()
   for (const e of timeline) {
+    // Les VOIX DES RÉPLIQUES ne se préchargent jamais en bloc : elles se chargent à la demande, par fenêtre d'avance sur
+    // le curseur, et en nombre borné (`chatterVoiceCache.ts`).
+    if (e.chatter) continue
     // TOUTES les variantes sont préchargées, pas seulement celle qui sortira du tirage : le
     // tirage a lieu à la lecture, et un fichier pas encore décodé y serait un silence.
     for (const stem of stemsOf(e)) {
@@ -322,6 +330,12 @@ export interface ReplaySoundContext {
   /** La LANGUE de l'interface : elle ne sert QU'au son « manche terminée » (voix d'annonceur,
    *  `roundOverSound.ts`), la seule entrée locale-aware de la piste. Absente, ce son se tait. */
   locale: ReplayLocale | undefined
+  /**
+   * LES VOIX DES RÉPLIQUES (`useChatterVoices`) : les répliques affichées qui ont une voix, déjà filtrées par les familles, la
+   * fréquence et le masquage des joueurs. Facultatif : un appelant sans répliques n'en passe pas. La catégorie « Voix » du
+   * panneau les retire de la piste, comme celle d'une arme.
+   */
+  chatterVoices?: readonly ReplaySoundEvent[]
 }
 
 export function useReplaySound(
@@ -331,7 +345,7 @@ export function useReplaySound(
   speed: number,
   context: ReplaySoundContext,
 ): ReplaySound {
-  const { allegiance, endMatch, locale } = context
+  const { allegiance, endMatch, locale, chatterVoices = NO_VOICES } = context
   const sideOfXuid = useMemo(() => objectiveSideResolver(allegiance), [allegiance])
   // Le camp allié EN NUMÉRO : les sons d'état de zone joignent sur le propriétaire d'une zone,
   // pas sur le xuid d'un joueur. Même allégeance du film que le résolveur ci-dessus.
@@ -342,6 +356,8 @@ export function useReplaySound(
   )
   const { categories, toggleCategory } = useSoundCategoryFilter()
   const playerRef = useRef<ReplayAudioPlayer | null>(null)
+  // Les voix des répliques, chargées à la demande : il naît avec le lecteur (donc dans le geste d'activation du son).
+  const voicesRef = useRef<ChatterVoiceCache | null>(null)
   const tuning = useInstanceSoundTuning(playerRef)
   // LES MOTEURS DE VÉHICULES (sous-hook dédié, même raison de taille que les deux autres) :
   // des états continus, pas des événements — ils ne passent ni par la piste ni par le curseur.
@@ -349,15 +365,16 @@ export function useReplaySound(
 
   // Piste JOUÉE, catégories coupées retirées À LA CONSTRUCTION (jamais en aval, dans le
   // lecteur) ; DISPONIBILITÉ DU PANNEAU indépendante de ce filtre (hasSoundEvents ci-dessus).
-  const timeline = useMemo(
-    () => buildSoundTimeline(doc, kills, categories, sideOfXuid, allyTeam, locale),
-    [doc, kills, categories, sideOfXuid, allyTeam, locale],
-  )
+  const timeline = useMemo(() => {
+    const base = buildSoundTimeline(doc, kills, categories, sideOfXuid, allyTeam, locale)
+    // Les voix des répliques rejoignent la piste dans l'ordre du temps ; la catégorie « Voix » coupée n'en laisse aucune.
+    return categories.voice && chatterVoices.length > 0 ? [...base, ...chatterVoices].sort((a, b) => a.ms - b.ms) : base
+  }, [doc, kills, categories, sideOfXuid, allyTeam, locale, chatterVoices])
   // Les MOTEURS comptent dans la disponibilité : un match sans événement sonore mais avec un
   // véhicule occupé a bien quelque chose à faire entendre, donc un bouton à offrir.
   const hasAnySound = useMemo(
-    () => hasSoundEvents(doc, kills) || engine.stems.length > 0,
-    [doc, kills, engine.stems],
+    () => hasSoundEvents(doc, kills) || engine.stems.length > 0 || chatterVoices.length > 0,
+    [doc, kills, engine.stems, chatterVoices],
   )
   // Les prises de la FIN entrent dans le préchargement avec la piste : le tirage n'a lieu qu'à
   // l'arrivée en fin, et un fichier demandé à cet instant sonnerait après le silence.
@@ -402,9 +419,17 @@ export function useReplaySound(
 
   // Le lecteur meurt AVEC le composant : un AudioContext laissé ouvert survit à la page.
   useEffect(() => () => {
+    // Les chargements de voix en cours s'annulent AVANT que le contexte ne ferme : aucune réponse ni journal ensuite.
+    voicesRef.current?.clear()
+    voicesRef.current = null
     playerRef.current?.dispose()
     playerRef.current = null
   }, [])
+  // Un autre match, ou la voix éteinte : les voix en mémoire et les chargements en cours ne servent plus à rien.
+  useEffect(() => () => voicesRef.current?.clear(), [doc])
+  useEffect(() => {
+    if (!categories.voice) voicesRef.current?.clear()
+  }, [categories.voice])
 
   /**
    * openPlayer — LE LECTEUR PREND VIE. À N'APPELER QUE DANS UN GESTE UTILISATEUR : c'est la
@@ -420,6 +445,8 @@ export function useReplaySound(
     if (!player) {
       player = new ReplayAudioPlayer(level)
       playerRef.current = player
+      const created = player
+      voicesRef.current = new ChatterVoiceCache((url, signal) => created.fetchDecoded(url, signal))
       tuning.apply(player)
     }
     engine.attach(player)
@@ -475,6 +502,8 @@ export function useReplaySound(
       // rafales tenues aussi.
       engine.stop()
       playerRef.current?.stopHeld()
+      // Son coupé : plus aucune voix ne se charge, et celles déjà décodées sont libérées.
+      voicesRef.current?.clear()
     }
     setOn(next)
   }, [openPlayer, hasAnySound, engine.stop])
@@ -516,6 +545,10 @@ export function useReplaySound(
     // plus rien n'éteignait (la pause a déjà eu lieu), un véhicule ronflant sur une image fixe.
     if (playingRef.current) engine.sync(ms)
     else engine.stop()
+    // Les voix des quelques secondes à venir se demandent maintenant (la piste ne porte aucune voix quand la catégorie
+    // est éteinte ou que la langue n'en a pas : la fenêtre est alors vide).
+    const voices = voicesRef.current
+    if (voices) for (const stem of voicesInWindow(tl, ms, CHATTER_VOICE_AHEAD_MS)) voices.request(soundUrlOf(stem))
     if (resyncRef.current) {
       resyncRef.current = false
       cursorRef.current = resyncSoundCursor(tl, ms)
@@ -526,6 +559,13 @@ export function useReplaySound(
     const { cursor, fire } = advanceSoundCursor(tl, cursorRef.current, ms)
     cursorRef.current = cursor
     for (const e of fire) {
+      // UNE VOIX DE RÉPLIQUE ne part que si son tampon est déjà prêt : jamais en retard sur son texte, jamais chargée à cet
+      // instant (une voix qui n'est pas arrivée est sautée).
+      if (e.chatter) {
+        const buffer = voicesRef.current?.take(soundUrlOf(e.stem))
+        if (buffer) player.playBuffer(buffer)
+        continue
+      }
       // LE TIRAGE DE VARIANTE A LIEU ICI, pas à la construction de la piste : une piste est
       // bâtie une fois pour tout le match, y tirer ferait rejouer le même fichier à chaque
       // occurrence du geste — exactement ce que la variante évite (`replaySoundVariants.ts`).
@@ -604,7 +644,7 @@ export function useReplaySound(
       // voix tiree, plus la musique. Les confondre faisait jouer les deux prises a la fois.
       // Le tirage est SEME pour que deux exports du meme match sonnent pareil (decision D7).
       endMatchStems: endMatchSoundsFor(endMatchRef.current),
-      families: soundFamiliesFor(endMatchRef.current, locale),
+      families: withChatterVoices(soundFamiliesFor(endMatchRef.current, locale), timelineRef.current),
       engines: engine.plansForExport(),
       variationPercent: tuning.variationPercentRef.current,
       distancePercent: tuning.distancePercentRef.current,

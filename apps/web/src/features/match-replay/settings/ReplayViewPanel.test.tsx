@@ -466,11 +466,13 @@ describe('l’accès rapide : épingler depuis une ligne', () => {
     expect(screen.getByRole('button', { name: 'Retirer « Visée » de l’accès rapide' })).toHaveAttribute('aria-pressed', 'true')
     fireEvent.click(screen.getByRole('button', { name: 'Retirer « Visée » de l’accès rapide' }))
     expect(screen.getByRole('button', { name: 'Épingler « Visée » à l’accès rapide' })).toHaveAttribute('aria-pressed', 'false')
-    expect(JSON.parse(window.localStorage.getItem('replay-pins') ?? '[]')).toEqual(['trail', 'heatmap', 'planFeed'])
+    expect(JSON.parse(window.localStorage.getItem('replay-pins') ?? '[]')).toEqual(['trail', 'heatmap', 'planFeed', 'chatterBubbles'])
   })
 
   it('une cinquième épingle passe, une sixième est refusée avec la raison', () => {
     renderOpenPanel()
+    // Les cinq épingles d’usine sont déjà posées : on en retire une pour que la cinquième repasse.
+    fireEvent.click(screen.getByRole('button', { name: 'Retirer « Visée » de l’accès rapide' }))
     fireEvent.click(screen.getByRole('button', { name: 'Épingler « Effets de tirs » à l’accès rapide' }))
     expect(JSON.parse(window.localStorage.getItem('replay-pins') ?? '[]')).toHaveLength(5)
     fireEvent.click(screen.getByRole('button', { name: 'Épingler « Effets de mort » à l’accès rapide' }))
@@ -490,6 +492,7 @@ describe('réinitialiser', () => {
   it('demande confirmation, remet les réglages d’usine, garde Mes vues et les épingles', () => {
     renderOpenPanel()
     fireEvent.click(sw('Visée'))
+    fireEvent.click(screen.getByRole('button', { name: 'Retirer « Visée » de l’accès rapide' }))
     fireEvent.click(screen.getByRole('button', { name: 'Épingler « Effets de tirs » à l’accès rapide' }))
     fireEvent.click(screen.getByRole('button', { name: 'Réinitialiser' }))
     expect(screen.getByText('Remettre les réglages d’usine ?')).toBeInTheDocument()

@@ -252,6 +252,8 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // Les gestes du joueur (coup de mêlée, lancer amorcé, schéma 127) : un tableau plat ; absent = rien de posé sur ce
     // film, `coverage.gestures` dit si le calque a été lu et si la porte de cadence l'a laissé passer.
     gestures: raw.gestures ?? [],
+    // Les répliques des Spartans (schéma 127) : un tableau plat ; absent = film sans réplique lue.
+    chatter: raw.chatter ?? [],
     roundClock: raw.roundClock ?? [],
     respawnCountdowns: raw.respawnCountdowns ?? [],
     // Le calque d'actions d'objectif traverse la frontière comme les autres tableaux ;

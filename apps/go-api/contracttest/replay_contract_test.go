@@ -801,9 +801,13 @@ var replaySchemas = []struct {
 //	                      film (schema 127). `coverage.gestures` (GestureCoverage) nait au meme commit SANS faire
 //	                      monter ce compte (type imbrique).
 //
-// Les trente fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+//	81 (2026-11-25) : `chatter` (les repliques des Spartans : instant, joueur, identifiant du son et nom court),
+//	                      deja publie par le decodeur de film (schema 127) et desormais servi : la page du rejeu
+//	                      affiche les repliques parlees. Un champ de tete.
+//
+// Les trente et une fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 80
+const wantReplayDocumentFields = 81
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

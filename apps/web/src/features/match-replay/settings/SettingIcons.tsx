@@ -60,6 +60,26 @@ const GLYPHS: Partial<Record<SettingId, ReactNode>> = {
   objectives: <path d="M4 14V2M4 3h8l-2 3 2 3H4" />,
   flags: <path d="M4 14V2M4 3h8l-2 3 2 3H4" fill="currentColor" fillOpacity=".35" />,
   planFeed: <path d="M2 5h6M2 8h9M2 11h7" />,
+  chatterBubbles: <path d="M2.5 3.5h11v7H7l-3 3v-3H2.5z" />,
+  chatterIcon: (
+    <>
+      <path d="M2 6h2.4L8 3v10L4.4 10H2z" fill="currentColor" strokeWidth=".8" />
+      <path d="M10.4 5.8a3.2 3.2 0 0 1 0 4.4" />
+    </>
+  ),
+  chatterFeed: (
+    <>
+      <path d="M2 4.5h12M2 8h5M2 11.5h7" />
+      <path d="M10.5 7h3.5v3h-1.8l-1.7 1.6z" />
+    </>
+  ),
+  chatterVoice: (
+    <>
+      <path d="M2 6h2.4L8 3v10L4.4 10H2z" fill="currentColor" strokeWidth=".8" />
+      <path d="M10.4 5.8a3.2 3.2 0 0 1 0 4.4" />
+      <path d="M12.4 3.8a6 6 0 0 1 0 8.4" />
+    </>
+  ),
   sound: (
     <>
       <path d="M1.5 5.6h2.6L8.3 2v12L4.1 10.4H1.5z" fill="currentColor" strokeWidth=".8" />

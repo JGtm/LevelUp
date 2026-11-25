@@ -11,9 +11,9 @@ export const PIN_MAX = 5
 
 /**
  * Les réglages épinglés tant que le lecteur n'a rien choisi : la visée, la traînée, la carte de chaleur et le fil
- * posé sur le plan. Le cinquième (les bulles de répliques) arrive avec les répliques.
+ * posé sur le plan, puis les bulles de répliques.
  */
-export const DEFAULT_PINS: readonly SettingId[] = ['aim', 'trail', 'heatmap', 'planFeed']
+export const DEFAULT_PINS: readonly SettingId[] = ['aim', 'trail', 'heatmap', 'planFeed', 'chatterBubbles']
 
 const PINNABLE: ReadonlySet<string> = new Set(SETTING_DEFS.filter((d) => d.pinnable).map((d) => d.id))
 

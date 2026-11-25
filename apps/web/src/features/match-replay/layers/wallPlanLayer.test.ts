@@ -101,13 +101,13 @@ describe('plan-murs dans la scène', () => {
     toggles: {
       zones: true, shotFx: true, placements: true, killFx: true, modeObjectives: true,
       wallPlan: over.wallPlan ?? true,
-      lives: { spawns: false, deaths: false, killers: false }, respawnForecast: false,
+      lives: { spawns: false, deaths: false, killers: false }, respawnForecast: false, chatter: false,
     },
     has: {
       background: true, floor: false, heat: false, zoneNames: false, objectivesCooked: false,
       projectiles: false, placements: false, rifts: false, fireMarks: false, shotFx: false,
       zoneStates: false, objectivePulses: false, killFx: false, wallPlan: over.has ?? true, reliefLines: false,
-      lives: { spawns: false, deaths: false, killers: false }, respawnForecast: false,
+      lives: { spawns: false, deaths: false, killers: false }, respawnForecast: false, chatter: false,
     },
     paint: Object.fromEntries(LAYER_ORDER.map((id) => [id, temoin(id)])) as ReplayScene['paint'],
   })

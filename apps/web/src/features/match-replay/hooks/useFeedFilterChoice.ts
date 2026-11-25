@@ -22,6 +22,7 @@ import {
 import type { ReplayFeedEntry } from '../model/killFeedLogic'
 import { NO_WEAPON_ICONS } from '../model/killSourceIcons'
 import { useFeedFilter } from '../settings/useFeedFilter'
+import { useChatterFeedLines } from './useChatterLines'
 import { useFeedEventEntries } from './useFeedEventEntries'
 
 export interface FeedFilterChoice {
@@ -38,7 +39,8 @@ export function useFeedFilterChoice(
 ): FeedFilterChoice {
   const campIds = useMemo(() => allegiance.camps.map((c) => c.team), [allegiance])
   // Les pictogrammes d'arme ne changent aucun compte : les lignes de véhicule se comptent avec ou sans.
-  const events = useFeedEventEntries(doc, locale, NO_WEAPON_ICONS, campIds)
+  const chatter = useChatterFeedLines(doc, locale)
+  const events = useFeedEventEntries(doc, locale, NO_WEAPON_ICONS, campIds, chatter)
   const options = useMemo(() => availableFeedFilters(withEventLines(entries, events)), [entries, events])
   const [stored, choose] = useFeedFilter()
   return { options, value: effectiveFeedFilter(stored, options), choose }

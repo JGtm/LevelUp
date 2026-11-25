@@ -11,6 +11,7 @@
  */
 import { foldCarrierKills } from './carrierKillFold'
 import type { ReplayFeedEntry } from './killFeedLogic'
+import type { ChatterFamily } from './chatterLines'
 import type { ObjectiveFeedStat } from './objectiveFeedLogic'
 import type { PadFamily } from './weaponPadFamilies'
 
@@ -113,12 +114,25 @@ export interface VehicleDestroyedEventLine {
   weapon?: FeedWeaponIcon
 }
 
+/**
+ * Une RÉPLIQUE d'un Spartan : le joueur qui parle et ce qu'il dit, dans la langue de l'interface. `voice` dit si la réplique a
+ * une voix dans cette langue (le pictogramme ne promet pas un son qui n'existe pas) ; `chatterFamily` sert la mise en forme.
+ */
+export interface ChatterEventLine {
+  family: 'replies'
+  xuid: string
+  text: string
+  voice: boolean
+  chatterFamily: ChatterFamily
+}
+
 export type FeedEventLine =
   | ObjectiveEventLine
   | ObjectiveStateLine
   | PickupEventLine
   | VehicleEventLine
   | VehicleDestroyedEventLine
+  | ChatterEventLine
 
 /** Vrai pour une ligne d'objectif de manche, de crâne ou de colline (celles qui ne portent pas `stat`). */
 export function isObjectiveStateLine(line: FeedEventLine): line is ObjectiveStateLine {

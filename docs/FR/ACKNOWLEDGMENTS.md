@@ -22,6 +22,10 @@ des références dont nous avons appris, pas du code que nous embarquons, sauf l
   réponses de score, des médailles et des effets de dégât, et les largeurs de charge de certains messages du film, lues
   par le décodeur de film (`halo-infinite-film-decoder`, v1.6.1) ; les en-têtes de crédit et les textes de licence se
   trouvent à côté des tables.
+- **Den Delimarsky** ([dend](https://github.com/dend)) pour libfilmshell (OpenSpartan, licence MIT) — la méthode de
+  lecture du message de parole d'un film et la table de textes qui l'accompagne, que suivent les répliques du rejeu
+  (`cmd/chatter-build`, `static/sounds/halo_infinite/repliques/`). Les textes et les voix eux-mêmes sont lus dans le
+  jeu installé ; aucun code n'est repris.
 - **llampwall** ([llampwall](https://github.com/llampwall)) pour le lecteur de rejeu 3D bâti sur le décodeur de film
   (`llampwall/installation-08`) et les lectures qu'il a apportées : gestes, commandes d'accroupi et de saut, tireur par
   place de contrôle, visées sans position, arme en main, munitions portées, positions à la cadence pleine du film,

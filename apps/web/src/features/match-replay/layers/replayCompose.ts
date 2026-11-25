@@ -103,6 +103,9 @@ export const LAYER_ORDER = [
   // LES REPÈRES DE LA PROBABILITÉ DE RÉAPPARITION : l'anneau entoure la croix de mort, le point réel se
   // verrouille sur les pions ; sous la mise en valeur d'un frag, qui prime.
   'reapparition-reperes',
+  // LES RÉPLIQUES DES SPARTANS : bulles et icônes de voix posées sur le joueur qui parle, au-dessus de ses événements, sous la
+  // mise en valeur d'un frag qui prime.
+  'repliques',
   // LA MISE EN VALEUR D'UNE ÉLIMINATION (clic sur une ligne de frag du fil), tout en haut : le
   // voile et les équerres au-dessus des pions et des événements, puis les étiquettes de nom
   // au-dessus de tout — un nom de tueur ne passe jamais sous une équerre ni sous le voile.
@@ -136,6 +139,8 @@ export interface SceneToggles {
   lives: LivesFlags
   /** « Probabilité de réapparition » (groupe « Vies ») : DEUX calques (fond : teinte et disques ; repères), UN interrupteur. */
   respawnForecast: boolean
+  /** « Répliques en bulles » et « Icône de voix » (groupe « Répliques ») : un calque, deux interrupteurs ; il s'ouvre si l'un des deux est allumé. */
+  chatter: boolean
 }
 
 /**
@@ -168,6 +173,8 @@ export interface SceneMatter {
   lives: LivesFlags
   /** La probabilité de réapparition est prête (réponse servie, zones à teinter) : sans elle, rien ne s'ouvre. */
   respawnForecast: boolean
+  /** Au moins une réplique affichable : sans elle, le calque ne s'ouvre pas. */
+  chatter: boolean
 }
 
 /** La scène : ce qu'il y a à peindre, ce qui est allumé, et comment peindre chaque calque. */
@@ -266,6 +273,7 @@ export function sceneLayers(scene: ReplayScene): ReplayLayer[] {
     'pulses-objectif': t.modeObjectives && h.objectivePulses,
     morts: t.killFx && h.killFx,
     'reapparition-reperes': t.respawnForecast && h.respawnForecast,
+    repliques: t.chatter && h.chatter,
     // Sans condition : le peintre ne pose rien tant qu'aucune élimination n'est mise en valeur.
     'mise-en-valeur': true,
     'etiquettes-mise-en-valeur': true,

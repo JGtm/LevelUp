@@ -17,6 +17,7 @@ const FULL: FilmLayerSources = {
   hasWallPlan: true,
   lives: { spawns: true, deaths: true, killers: false, followedKnown: true },
   respawnForecast: ON,
+  chatter: { count: 5, withVoice: 3 },
 }
 
 describe('filmLayerAvailability', () => {
@@ -29,6 +30,7 @@ describe('filmLayerAvailability', () => {
       lives: { spawns: true, deaths: true, killers: false, followedKnown: true },
       respawnForecast: true,
       respawnForecastRefusal: null,
+      chatter: { lines: true, voice: true },
     })
   })
 

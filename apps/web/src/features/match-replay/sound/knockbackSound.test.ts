@@ -127,7 +127,7 @@ describe('knockbackSoundEvents', () => {
       tracks: PISTES_215E7022,
       knockbacks: POUSSEES_215E7022,
     })
-    const tout = { weapon: true, grenade: false, melee: false, equipment: true, objective: false }
+    const tout = { weapon: true, grenade: false, melee: false, equipment: true, objective: false, voice: false }
     const sons = buildSoundTimeline(doc, [killAuRepulseur(ELMO)], tout).filter(
       (e) => e.stem === KNOCKBACK_SOUND_STEM,
     )
@@ -145,6 +145,7 @@ describe('knockbackSoundEvents', () => {
       melee: false,
       equipment: true,
       objective: false,
+      voice: false,
     }
     expect(
       buildSoundTimeline(doc, [], on).filter((e) => e.stem === KNOCKBACK_SOUND_STEM),

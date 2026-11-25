@@ -76,7 +76,7 @@ export function buildReplayScene(
   s: ReplaySceneInputs,
 ): ReplayScene {
   const { weaponPads, groundWeapons, vehicles, abilityFx, grenadeRest, flags, objectiveObjects } = s.layers
-  const { vipCrown, skullCarrier, bombCarrier, bombBlast, killFocus, lives, respawnForecast } = s.layers
+  const { vipCrown, skullCarrier, bombCarrier, bombBlast, killFocus, lives, respawnForecast, chatter } = s.layers
   // Pendant un glisser, cuisson gelée : les calques cuits se recopient DÉCALÉS (layerOffset).
   const lo = layerOffset(s.cooked.origin.current, s.view)
   // LE FOND SUIT LA FENÊTRE, PAS LA SCÈNE : sinon il resterait cadré large pendant que les
@@ -105,6 +105,7 @@ export function buildReplayScene(
         killFocus.labels,
         ...lives.layers,
         ...respawnForecast.layers,
+        ...chatter.layers,
       ),
       ...terrainPainters(ctx, s, bgRect, lo),
       ...trackPainters(ctx, s),
@@ -125,6 +126,7 @@ function sceneToggles(s: ReplaySceneInputs): ReplayScene['toggles'] {
     wallPlan: show.wallPlan,
     lives: layers.lives.show,
     respawnForecast: layers.respawnForecast.show,
+    chatter: layers.chatter.show,
   }
 }
 
@@ -149,6 +151,7 @@ function sceneMatter(s: ReplaySceneInputs, bgRect: MapRect): ReplayScene['has'] 
     killFx: fx.killFx.length > 0,
     lives: layers.lives.available,
     respawnForecast: layers.respawnForecast.ready,
+    chatter: layers.chatter.available.count > 0,
   }
 }
 

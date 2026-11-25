@@ -231,6 +231,7 @@ export type ReplayDocumentReady = Omit<
   | 'damage'
   | 'eliminations'
   | 'gestures'
+  | 'chatter'
   | 'grenades'
   | 'hits'
   | 'identity'
@@ -401,6 +402,12 @@ export type ReplayDocumentReady = Omit<
   damage: NonNullable<ReplayDocument['damage']>
   eliminations: ReplayEliminationReady[]
   gestures: NonNullable<ReplayDocument['gestures']>
+  /**
+   * Les répliques des Spartans, une par ligne, dans l'ordre du film : l'instant, le joueur qui parle (absent pour un bot),
+   * l'identifiant du son et le nom court que le décodeur donne à la réplique (absent sur les builds dont il ne connaît pas la
+   * disposition). Vide = film sans réplique lue.
+   */
+  chatter: NonNullable<ReplayDocument['chatter']>
   grenades: NonNullable<ReplayDocument['grenades']>
   hits: NonNullable<ReplayDocument['hits']>
   inventory: ReplayInventoryReady[]

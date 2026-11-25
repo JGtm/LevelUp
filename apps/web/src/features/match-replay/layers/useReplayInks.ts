@@ -204,6 +204,8 @@ export interface ReplayInks {
   self: string
   /** Le plan des murs du fond : l'encre de mise en page la plus contrastée du thème (`--foreground`). */
   wallPlan: string
+  /** La bulle d'une réplique : le fond de la carte du système de design et son texte (`--card`, `--foreground`). */
+  bubble: { fill: string; text: string }
   /** Arc du mur de protection : un token FIXE, plus la couleur d'équipe (cf. WALL_TOKEN). */
   wall: string
   /** Les deux encres FIXES de la faille du translocateur (cf. RIFT_RIM_TOKEN). */
@@ -266,6 +268,7 @@ export function useReplayInks(paletteVersion: number): ReplayInks {
       markerOutline: { band: resolveToken(MARKER_OUTLINE_BAND_TOKEN), rim: resolveToken(MARKER_OUTLINE_RIM_TOKEN) },
       self: resolveToken(SELF_TOKEN),
       wallPlan: readInk('--foreground'),
+      bubble: { fill: readInk('--card'), text: readInk('--foreground') },
       wall: resolveToken(WALL_TOKEN),
       rift: { rim: resolveToken(RIFT_RIM_TOKEN), core: resolveToken(RIFT_CORE_TOKEN) },
       shroud: shroudInk(resolveToken(SHROUD_GLOW_TOKEN)),

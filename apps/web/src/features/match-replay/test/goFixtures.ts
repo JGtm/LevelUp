@@ -156,7 +156,6 @@ const STORED_ONLY_LAYERS: readonly string[] = [
   'ammoReads',
   'announcements',
   'attachments',
-  'chatter',
   'drawnWeapons',
   'padCandidates',
   'vitals',

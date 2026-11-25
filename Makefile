@@ -252,7 +252,7 @@ go-api-test-gamefiles:
 	cd $(GO_API_DIR) && CGO_ENABLED=1 go test -tags=gamefiles -count=1 -timeout 3600s github.com/JGtm/halo-infinite-map-images/himap/ github.com/JGtm/halo-infinite-files-reader/hinavmesh/ -v
 	cd $(GO_API_DIR) && CGO_ENABLED=1 go test -tags=gamefiles -count=1 -timeout 3600s \
 		./internal/gamefilescorpus/ \
-		./cmd/film-profiles-build/ ./cmd/mapfond-build/ ./cmd/mapstruct-build/ -v
+		./cmd/film-profiles-build/ ./cmd/mapfond-build/ ./cmd/mapstruct-build/ ./cmd/chatter-build/ -v
 
 ## Coquille desktop (Tauri 2, ADR 0045) : compile le vrai serveur Go sous le nom du sidecar, puis la
 ## coquille en profil debug. L installeur NSIS est la cible desktop-installer.

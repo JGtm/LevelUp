@@ -32,6 +32,7 @@ import type { useReplayLives } from './useReplayLives'
 import type { useReplayObjectiveObjects } from './useReplayObjectiveObjects'
 import type { useReplayPlacements } from './useReplayPlacements'
 import type { useReplayRespawnForecast } from './useReplayRespawnForecast'
+import type { useReplayChatter } from './useReplayChatter'
 import type { useReplaySkullCarrier } from './useReplaySkullCarrier'
 import type { useReplayVehicles } from './useReplayVehicles'
 import type { useReplayVipCrown } from './useReplayVipCrown'
@@ -111,6 +112,7 @@ export interface SceneLayers {
   killFocus: ReturnType<typeof useReplayKillFocus>
   lives: ReturnType<typeof useReplayLives>
   respawnForecast: ReturnType<typeof useReplayRespawnForecast>
+  chatter: ReturnType<typeof useReplayChatter>
 }
 
 /** L'état d'une toile : tout ce que le moteur lit pour peindre une image. */

@@ -956,6 +956,34 @@ go run ./cmd/weapon-sounds -mode livrer -donnees <chantier>/_donnees [-sons <cha
 - Replay when: a weapon vote is finalized, or the full recipe is redone (game update, new
   weapon). Full recipe: `.ai/archive/V7.5/RECETTE_SONS_ARMES.md`.
 
+#### chatter-build (the Spartans' spoken lines: table, texts, voices)
+
+```bash
+CGO_ENABLED=1 go run ./cmd/chatter-build rejeux  -rejeux <replay documents> -travail <work dir>
+CGO_ENABLED=1 go run -tags=gamefiles ./cmd/chatter-build textes  -travail <work dir>
+CGO_ENABLED=1 go run -tags=gamefiles ./cmd/chatter-build banques -travail <work dir>
+CGO_ENABLED=1 go run ./cmd/chatter-build choix   -travail <work dir>
+CGO_ENABLED=1 go run -tags=gamefiles ./cmd/chatter-build medias  -travail <work dir>
+CGO_ENABLED=1 go run ./cmd/chatter-build voix    -src <work>/wem/fr -out <work>/wav/fr -vgmstream <vgmstream-cli>
+go run ./cmd/sounds-encode -src <work>/wav/fr -dst <work>/ogg/fr -check
+CGO_ENABLED=1 go run ./cmd/chatter-build livrer  -travail <work dir> -voix fr=<work>/ogg/fr[,en=<work>/ogg/en]
+```
+
+- Builds `static/sounds/halo_infinite/repliques/repliques.json` (sound id -> text in every language of
+  `config/locales.toml`, voices available) and the voices `repliques/<language>/<sound>.ogg` (Opus, same format as
+  the other replay sounds). One variant per sound: text and voice come from the same variant (the film does not say
+  which one played). Only spoken lines are kept (a text in each required language); cries have none.
+- The steps marked `gamefiles` read the installed game (modules of tags and banks, voice packs) and stop with a clear
+  message when built without the tag. Steps are separate processes because the banks module weighs 7 GB. The decoder
+  is `vgmstream-cli` (the one of the weapon sounds); the Opus encoding is `sounds-encode`.
+- The list of sounds comes from the stored replay documents (`chatter[].sound`), not from the whole game (1,950
+  voice sounds, 73 MB). A sound of a build the parc has not played is absent until the step is replayed.
+- English voices are not installed (welcome screen only): `medias` says how many are missing. When a contributor
+  sends the English voice packs, put them in the game's `Sound/win/English(US)` folder and replay `banques`, `choix`,
+  `medias`, `voix`, `sounds-encode` and `livrer` (with `-voix fr=...,en=...`): the table then announces the English
+  voice and the client plays it. Bare media named `<media id>.wem` go in `<work>/wem/en`; replay from `voix`.
+- Credit: method and text table by Den (libfilmshell, MIT), in `docs/ACKNOWLEDGMENTS.md`.
+
 #### sounds-encode (replay sounds, WAV -> Opus)
 
 ```bash

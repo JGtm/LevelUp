@@ -46,6 +46,7 @@ const TOUT_ALLUME: ReplayScene['toggles'] = {
   wallPlan: true,
   lives: { spawns: true, deaths: true, killers: true },
   respawnForecast: true,
+  chatter: true,
 }
 
 const TOUT_A_PEINDRE: ReplayScene['has'] = {
@@ -66,6 +67,7 @@ const TOUT_A_PEINDRE: ReplayScene['has'] = {
   killFx: true,
   lives: { spawns: true, deaths: true, killers: true },
   respawnForecast: true,
+  chatter: true,
 }
 
 function scene(over: Partial<ReplayScene> = {}): ReplayScene {
@@ -132,12 +134,13 @@ const ORDRE_ATTENDU = [
   'pulses-objectif',
   'morts',
   'reapparition-reperes',
+  'repliques',
   'mise-en-valeur',
   'etiquettes-mise-en-valeur',
 ] as const
 
 describe('sceneLayers — l’ordre de la scène', () => {
-  it('rend les trente-trois calques, dans l’ordre attendu, sans doublon ni oubli', () => {
+  it('rend les trente-quatre calques, dans l’ordre attendu, sans doublon ni oubli', () => {
     const layers = sceneLayers(scene())
     expect(layers.map((l) => l.id)).toEqual([...ORDRE_ATTENDU])
     // La table de la source ne s'écarte pas de l'oracle : le second garde le premier.
@@ -171,12 +174,27 @@ describe('sceneLayers — l’ordre de la scène', () => {
     expect(ordre.indexOf('reapparition-fond')).toBeLessThan(ordre.indexOf('trajectoires'))
     expect(ordre.indexOf('morts')).toBeLessThan(ordre.indexOf('reapparition-reperes'))
     expect(ordre.indexOf('reapparition-reperes')).toBeLessThan(ordre.indexOf('mise-en-valeur'))
+    // Les répliques (bulles et icônes) se lisent sur les joueurs et leurs événements, sous la mise en valeur d'un frag.
+    expect(ordre.indexOf('trajectoires')).toBeLessThan(ordre.indexOf('repliques'))
+    expect(ordre.indexOf('morts')).toBeLessThan(ordre.indexOf('repliques'))
+    expect(ordre.indexOf('repliques')).toBeLessThan(ordre.indexOf('mise-en-valeur'))
   })
 
   it('transmet À CHAQUE calque l’image courante et la densité de pixels', () => {
     const { ctx, journal } = contexteEnregistreur()
     composeScene(ctx, sceneLayers(scene()), 1_337, 3)
     expect(journal.every((e) => e.endsWith('@1337/3'))).toBe(true)
+  })
+})
+
+describe('sceneLayers — le calque des répliques', () => {
+  it('se peint quand un affichage est allumé et que le film a une réplique affichable', () => {
+    expect(peints(scene())).toContain('repliques')
+  })
+
+  it('ne se peint pas quand les deux affichages sont éteints, ni sans réplique', () => {
+    expect(peints(scene({ toggles: { ...TOUT_ALLUME, chatter: false } }))).not.toContain('repliques')
+    expect(peints(scene({ has: { ...TOUT_A_PEINDRE, chatter: false } }))).not.toContain('repliques')
   })
 })
 

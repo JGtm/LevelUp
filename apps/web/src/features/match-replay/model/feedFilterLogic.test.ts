@@ -108,7 +108,8 @@ describe('availableFeedFilters — entrées proposées au menu', () => {
     expect(availableFeedFilters(ALL).map((f) => f.id)).toEqual([
       'tout', 'kills', 'objectives', 'pickups', 'vehicles', 'medals', 'assists',
     ])
-    expect([...FEED_FILTER_IDS]).toEqual(availableFeedFilters(ALL).map((f) => f.id))
+    // « Répliques » n'est proposé que si le fil porte une réplique : aucune dans ce match.
+    expect(FEED_FILTER_IDS.filter((id) => id !== 'replies')).toEqual(availableFeedFilters(ALL).map((f) => f.id))
   })
 
   it("Objectifs n'apparaît pas sur un match Assassin (aucune ligne d'objectif)", () => {

@@ -12,12 +12,13 @@
  *    retient aussi les frags qui portent le badge « porteur » (une victime qui portait le drapeau :
  *    la ligne d'objectif s'y est repliée, elle ne disparaît pas du filtre) ;
  *  - Médailles : les médailles seules ET les frags qui en portent ;
- *  - Assistances : les frags dont l'assistance est NOMMÉE.
+ *  - Assistances : les frags dont l'assistance est NOMMÉE ;
+ *  - Répliques : les répliques des Spartans (elles n'entrent dans le fil que si le réglage les y met).
  * Assistances, médailles et badge « porteur » restent sur la ligne de leur élimination dans « Tout » : leurs
  * entrées de menu servent à les isoler, pas à les dédoubler.
  *
  * LE MENU. Toutes les entrées sont proposées, sauf Objectifs : un match sans aucune ligne
- * d'objectif (Assassin, ou horloge non sûre) n'a pas de commande à proposer. Le choix mémorisé
+ * d'objectif (Assassin, ou horloge non sûre) n'a pas de commande à proposer ; il en va de même de Répliques. Le choix mémorisé
  * qui n'existe pas pour le match ouvert retombe sur Tout (`effectiveFeedFilter`) sans que la
  * préférence soit réécrite : elle revient dès qu'un match qui l'a est ouvert.
  */
@@ -32,14 +33,18 @@ export const FEED_FILTER_IDS = [
   'vehicles',
   'medals',
   'assists',
+  'replies',
 ] as const
 
 export type FeedFilterId = (typeof FEED_FILTER_IDS)[number]
 
 export const DEFAULT_FEED_FILTER: FeedFilterId = 'tout'
 
-/** Le filtre qui n'est proposé que si le match a au moins une ligne de sa famille. */
-const CONDITIONAL_FILTER: FeedFilterId = 'objectives'
+/**
+ * Les filtres qui ne sont proposés que si le match a au moins une ligne de leur famille : Objectifs (un Assassin n'en a
+ * aucune) et Répliques (aucune quand le réglage « Répliques dans le fil » est éteint, ou que le film n'en porte pas).
+ */
+const CONDITIONAL_FILTERS: readonly FeedFilterId[] = ['objectives', 'replies']
 
 /** Une entrée du menu : le filtre et son nombre de lignes dans TOUT le match. */
 export interface FeedFilterOption {
@@ -58,6 +63,7 @@ export function matchesFeedFilter(entry: ReplayFeedEntry, filter: FeedFilterId):
       return entry.event?.family === 'objectives' || entry.flagCarrierKill === true || (entry.objectiveKills?.length ?? 0) > 0
     case 'pickups':
     case 'vehicles':
+    case 'replies':
       return entry.event?.family === filter
     case 'medals':
       return entry.medal !== null || (entry.kill?.medals.length ?? 0) > 0
@@ -78,7 +84,7 @@ export function countByFeedFilter(entries: readonly ReplayFeedEntry[]): Record<F
 /** Les entrées du menu pour ce match : toutes, sauf Objectifs quand le match n'a aucune ligne d'objectif. */
 export function availableFeedFilters(entries: readonly ReplayFeedEntry[]): FeedFilterOption[] {
   const counts = countByFeedFilter(entries)
-  return FEED_FILTER_IDS.filter((id) => id !== CONDITIONAL_FILTER || counts[id] > 0).map((id) => ({
+  return FEED_FILTER_IDS.filter((id) => !CONDITIONAL_FILTERS.includes(id) || counts[id] > 0).map((id) => ({
     id,
     count: counts[id],
   }))

@@ -19,10 +19,10 @@ const quick = (name: string) => within(toolbar()).getByRole('button', { name })
 beforeEach(() => window.localStorage.clear())
 
 describe('l’accès rapide', () => {
-  it('pose les quatre épingles d’usine à gauche du bouton Vue, dans le même conteneur', () => {
+  it('pose les cinq épingles d’usine à gauche du bouton Vue, dans le même conteneur', () => {
     renderViewMenu()
     expect(within(toolbar()).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual([
-      'Visée', 'Traînée', 'Carte de chaleur', 'Fil posé sur le plan',
+      'Visée', 'Traînée', 'Carte de chaleur', 'Fil posé sur le plan', 'Répliques en bulles',
     ])
     const vue = screen.getByRole('button', { name: 'Vue Complet' })
     expect(toolbar().parentElement).toBe(vue.parentElement)
@@ -83,6 +83,9 @@ describe('l’accès rapide', () => {
 
   it('les épingles survivent à la page', () => {
     const premier = renderOpenPanel()
+    fireEvent.click(screen.getByRole('tab', { name: /Carte/ }))
+    fireEvent.click(screen.getByRole('tab', { name: /Joueurs/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Retirer « Visée » de l’accès rapide' })) // les cinq épingles d’usine sont posées
     fireEvent.click(screen.getByRole('tab', { name: /Carte/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Épingler « Zones nommées » à l’accès rapide' }))
     premier.unmount()

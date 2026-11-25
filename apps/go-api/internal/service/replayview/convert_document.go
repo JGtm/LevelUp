@@ -92,6 +92,7 @@ func toReplayDocument(v replay.ReplayDocument) replaydoc.ReplayDocument {
 		Reloads:             sliceOf(v.Reloads, toReload),
 		Eliminations:        sliceOf(v.Eliminations, toElimination),
 		Gestures:            sliceOf(v.Gestures, toGesture),
+		Chatter:             sliceOf(v.Chatter, toChatter),
 		// `layers` VOYAGE TEL QUEL : une table de chaines courtes, dont les cles sont les balises
 		// JSON des calques et les valeurs des revisions de couche. Rien a traduire — et surtout pas
 		// a completer : une entree absente est une reponse (« ce calque n a pas ete produit »).

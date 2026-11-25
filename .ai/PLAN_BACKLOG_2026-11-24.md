@@ -226,10 +226,10 @@ Dans le dépôt de la brique (`halo-infinite-film-decoder`), sur une branche et 
 
 ### Piste R — répliques des Spartans (après M.3 et D-8)
 
-- [ ] R.1 Table des textes des répliques par langue (commande de table), sans voix.
-- [ ] R.2 Affichage dans le rejeu selon la maquette publiée et les choix D-8 ; réglages rangés dans le panneau
+- [x] R.1 (`0432c6de24`, commande `cmd/chatter-build`, table `static/sounds/halo_infinite/repliques/repliques.json`) Table des textes des répliques par langue (commande de table), sans voix.
+- [x] R.2 (`a2510ff5ee` contrat servi, `ff84137829` affichage) Affichage dans le rejeu selon la maquette publiée et les choix D-8 ; réglages rangés dans le panneau
       de M.
-- [ ] R.3 Voix versées au dépôt (D-8) ; les voix anglaises restent à recevoir, hors de ce plan si elles n'arrivent pas.
+- [x] R.3 (`a7089784d1`, 7,66 Mo, français seul) Voix versées au dépôt (D-8) ; les voix anglaises restent à recevoir, hors de ce plan si elles n'arrivent pas.
 - **Gate R :** gates Go et web, vérification EN LECTURE sur un rejeu en 1.12 ou 1.13 (répliques nommées),
   ligne dans l'artefact des vérifications.
 

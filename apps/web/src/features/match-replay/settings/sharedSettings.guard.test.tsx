@@ -44,7 +44,7 @@ describe('les réglages partagés avec une autre page', () => {
       expect(PRESET_COVERED).not.toContain(id)
       for (const p of PRESET_IDS) expect(presetValues(p)).not.toHaveProperty(id)
     }
-    expect(PRESET_COVERED).toHaveLength(29)
+    expect(PRESET_COVERED).toHaveLength(38)
   })
 
   it('ne comptent pas dans l’état « modifié »', () => {

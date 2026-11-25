@@ -47,6 +47,8 @@ export interface ReplaySoundEvent {
    * l'export (`soundOccupiesVoice`). Absent = un bruitage, soumis au plafond.
    */
   announcer?: true
+  /** UNE VOIX DE RÉPLIQUE (`chatterSound.ts`) : l'export la range dans la famille « voix » de ses pistes séparées. */
+  chatter?: true
 }
 
 /**

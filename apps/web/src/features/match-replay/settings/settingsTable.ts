@@ -20,23 +20,27 @@
  */
 import type { MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
 
+import { CHATTER_FREQUENCIES } from '../model/chatterLines'
+
 /** Les cinq rubriques du panneau, dans l'ordre où il les propose. */
 export const RUBRIC_IDS = ['joueurs', 'carte', 'objets', 'fil', 'son'] as const
 export type RubricId = (typeof RUBRIC_IDS)[number]
 
 /** Les sous-titres de rubrique (une pile de réglages qui parlent d'une même chose). */
-export type SubGroupId = 'vies' | 'categories'
+export type SubGroupId = 'vies' | 'categories' | 'chatter' | 'chatterWhich'
 
 /** Tous les réglages de la table, dans l'ordre de leur rubrique. */
 export const SETTING_IDS = [
   'aim', 'trail', 'colors', 'shotFx', 'killFx',
   'spawns', 'deaths', 'killers', 'livesWho', 'livesWhen', 'forecast', 'forecastDraw',
+  'chatterBubbles', 'chatterIcon',
   'bg', 'reliefLines', 'wallPlan', 'floor', 'floorFollow', 'orientation', 'zones',
   'heatmap', 'heatMode', 'heatSpan',
   'weaponPads', 'groundWeapons', 'groundSpecial', 'groundStarting', 'vehicles',
   'placements', 'placeDropped', 'placeUnnamed', 'objectives', 'flags', 'vip', 'skull', 'bomb',
-  'feedFilter', 'planFeed',
-  'sound', 'volume', 'catWeapon', 'catGrenade', 'catMelee', 'catEquip',
+  'feedFilter', 'planFeed', 'chatterFeed',
+  'famEnemy', 'famShields', 'famSquadDown', 'famPraise', 'famOther', 'chatterFreq',
+  'sound', 'volume', 'catWeapon', 'catGrenade', 'catMelee', 'catEquip', 'chatterVoice',
   'thinBar',
 ] as const
 export type SettingId = (typeof SETTING_IDS)[number]
@@ -110,6 +114,9 @@ export const SETTING_DEFS: readonly SettingDef[] = [
   choice('livesWhen', 'joueurs', ['all', 'sofar'], 'all', { sub: 'vies' }),
   toggle('forecast', 'joueurs', true, { sub: 'vies' }),
   choice('forecastDraw', 'joueurs', ['both', 'zones', 'points'], 'both', { sub: 'vies', parent: 'forecast', hideWhenParentOff: true }),
+  // Les répliques des Spartans : une bulle de texte et une icône de voix sur le joueur qui parle. Allumées d'office.
+  toggle('chatterBubbles', 'joueurs', true, { sub: 'chatter' }),
+  toggle('chatterIcon', 'joueurs', true, { sub: 'chatter' }),
 
   // CARTE : le terrain.
   choice('bg', 'carte', BACKGROUNDS, 'plan'),
@@ -143,6 +150,15 @@ export const SETTING_DEFS: readonly SettingDef[] = [
   // FIL : le fil des événements.
   { id: 'feedFilter', rubric: 'fil', control: 'select', default: 'tout', preset: true, pinnable: false, master: false },
   toggle('planFeed', 'fil', true),
+  // Les répliques dans le fil, puis QUELLES répliques : cinq familles et la fréquence, qui filtrent ensemble les bulles,
+  // l'icône, le fil et la voix. La fréquence reste hors des préréglages (elle ne dit rien de ce qui se dessine).
+  toggle('chatterFeed', 'fil', true),
+  toggle('famEnemy', 'fil', true, { ...CHILD, sub: 'chatterWhich' }),
+  toggle('famShields', 'fil', true, { ...CHILD, sub: 'chatterWhich' }),
+  toggle('famSquadDown', 'fil', true, { ...CHILD, sub: 'chatterWhich' }),
+  toggle('famPraise', 'fil', true, { ...CHILD, sub: 'chatterWhich' }),
+  toggle('famOther', 'fil', true, { ...CHILD, sub: 'chatterWhich' }),
+  choice('chatterFreq', 'fil', CHATTER_FREQUENCIES, 'all', { sub: 'chatterWhich' }),
 
   // SON : un seul endroit de réglage ; la barre garde l'interrupteur et le volume, sur le même état.
   toggle('sound', 'son', false, { preset: false }),
@@ -151,6 +167,8 @@ export const SETTING_DEFS: readonly SettingDef[] = [
   toggle('catGrenade', 'son', true, { ...CHILD, sub: 'categories' }),
   toggle('catMelee', 'son', true, { ...CHILD, sub: 'categories' }),
   toggle('catEquip', 'son', true, { ...CHILD, sub: 'categories' }),
+  // La voix des répliques : une catégorie du son comme les autres (elle ne joue que si le son est activé), épinglable.
+  toggle('chatterVoice', 'son', true, { sub: 'chatter' }),
 
   // HORS RUBRIQUES : au pied du panneau, au Plein cadre seulement.
   toggle('thinBar', null, true, APART),

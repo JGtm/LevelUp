@@ -4,6 +4,7 @@ import { gameUnitsToMeters } from '@/lib/formatters/distance'
 import type { ReplayText } from './i18nContract'
 import { FR_FEED_LINES } from './feedLines.i18n'
 import { FR_HILL_SEQUENCE } from './hillSequence.i18n'
+import { FR_CHATTER } from './chatter.i18n'
 import { FR_LIVES } from './lives.i18n'
 import { FR_SETTINGS } from './settings.i18n'
 import { FR_RELIEF } from './relief.i18n'
@@ -57,6 +58,7 @@ export const FR_TEXT = {
     vehicles: 'Véhicules',
     medals: 'Médailles',
     assists: 'Assistances',
+    replies: 'Répliques',
   },
   feedFilterMenuLabel: 'Filtrer le fil',
   feedFilterMoreHeading: 'Proposées en plus',
@@ -99,6 +101,7 @@ export const FR_TEXT = {
   frames: FR_FRAMES,
   roster: FR_ROSTER,
   playerInstant: FR_PLAYER_INSTANT,
+  chatter: FR_CHATTER,
   lives: FR_LIVES,
   settings: FR_SETTINGS,
   relief: FR_RELIEF,

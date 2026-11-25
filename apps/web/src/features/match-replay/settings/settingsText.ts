@@ -13,6 +13,7 @@ import type { ReplayText } from '../i18n/i18nContract'
 import { normalizeTurns, turnsToDegrees } from '@/lib/replay/orientation'
 
 import type { ReliefText } from '../i18n/relief.i18n'
+import type { ChatterFrequency } from '../model/chatterLines'
 import { nearestChip } from '@/lib/replay/reliefViewLogic'
 import type { SettingId } from './settingsTable'
 import type { ReplayFloorControls } from './viewPanelModel'
@@ -45,6 +46,8 @@ const TEXTS: Readonly<Record<SettingId, (t: ReplayText) => SettingText>> = {
   livesWhen: (t) => entry(t.lives.whenLabel),
   forecast: (t) => entry(t.respawnForecast.title, t.respawnForecast.hint),
   forecastDraw: (t) => entry(t.respawnForecast.drawLabel),
+  chatterBubbles: (t) => entry(t.chatter.layerBubbles, t.chatter.layerBubblesHint),
+  chatterIcon: (t) => entry(t.chatter.layerIcon, t.chatter.layerIconHint),
   bg: (t) => entry(t.layerBackground, t.settings.backgroundHint),
   reliefLines: (t) => entry(t.relief.lines, t.relief.linesHint),
   wallPlan: (t) => entry(t.layerWallPlan, t.layerWallPlanHint),
@@ -70,12 +73,20 @@ const TEXTS: Readonly<Record<SettingId, (t: ReplayText) => SettingText>> = {
   bomb: (t) => entry(t.layerBombCarrier, t.layerBombCarrierHint),
   feedFilter: (t) => entry(t.settings.feedFilterLabel),
   planFeed: (t) => entry(t.frames.planFeed, t.frames.planFeedHint),
+  chatterFeed: (t) => entry(t.chatter.layerFeed, t.chatter.layerFeedHint),
+  famEnemy: (t) => entry(t.chatter.family.enemy, t.chatter.familyHint),
+  famShields: (t) => entry(t.chatter.family.shields, t.chatter.familyHint),
+  famSquadDown: (t) => entry(t.chatter.family.squadDown, t.chatter.familyHint),
+  famPraise: (t) => entry(t.chatter.family.praise, t.chatter.familyHint),
+  famOther: (t) => entry(t.chatter.family.other, t.chatter.familyHint),
+  chatterFreq: (t) => entry(t.chatter.frequencyLabel, t.chatter.frequencyHint),
   sound: (t) => entry(t.sound, t.soundHint),
   volume: (t) => entry(t.settings.volumeLabel, t.soundVolume),
   catWeapon: (t) => entry(t.soundCategory.weapon),
   catGrenade: (t) => entry(t.soundCategory.grenade),
   catMelee: (t) => entry(t.soundCategory.melee),
   catEquip: (t) => entry(t.soundCategory.equipment),
+  chatterVoice: (t) => entry(t.chatter.layerVoice, t.chatter.layerVoiceHint),
   thinBar: (t) => entry(t.frames.thinBar, t.frames.thinBarHint),
 }
 
@@ -105,6 +116,8 @@ export function choiceText(locale: ReplayLocale, id: SettingId, option: string, 
       return entry(t.lives.when[option as 'all' | 'sofar'], t.lives.whenHint[option as 'all' | 'sofar'])
     case 'forecastDraw':
       return entry(t.respawnForecast.draw[option as 'both' | 'zones' | 'points'], t.respawnForecast.drawHint[option as 'both' | 'zones' | 'points'])
+    case 'chatterFreq':
+      return entry(t.chatter.frequency[option as ChatterFrequency], t.chatter.frequencyOptionHint[option as ChatterFrequency])
     default:
       return entry(option)
   }
