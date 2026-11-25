@@ -369,9 +369,11 @@ noms de champs ne sont pas renommés, et le contrat les documente comme tels. Le
 de radar annoncées par le jeu (18 m en arène, 24 m en Grande bataille ; `regulation.toml [radar_range_m]`, servies
 sous `rayon_m` et `rayons_radar_m`).
 
-- **Affichage** : une distance écrite « m » passe par `formatGameDistance` (`apps/web/src/lib/formatters/distance.ts`),
-  qui convertit et arrondit (une décimale sous 10 m, le mètre au-delà). Les gabarits de texte portent l'unité « m » et
-  reçoivent le nombre déjà converti.
+- **Affichage** : une distance écrite « m » se convertit par `gameUnitsToMeters` (`apps/web/src/lib/formatters/distance.ts`)
+  là où l'écran la lit (modèle du graphe ou du tableau, ou appel de son propre formateur, qui garde son arrondi). Les
+  gabarits de texte portent l'unité « m » et reçoivent le nombre déjà converti. Un garde
+  (`distanceFields.guard.test.ts`) échoue quand un fichier lit un champ du contrat documenté « unités du jeu » sans
+  passer par le helper ; la liste des champs est lue dans les descriptions du contrat, jamais écrite à la main.
 - **Comparaison** : une valeur en vrais mètres (la portée du radar) se ramène en unités du jeu par
   `gameunits.MetersToUnits` (Go) ou `metersToGameUnits` (web) avant d'être comparée à une distance du film.
 - **Un seul foyer du facteur** : `internal/analysis/gameunits` (Go) et `lib/formatters/distance.ts` (web). Le littéral

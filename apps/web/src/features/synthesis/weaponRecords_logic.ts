@@ -72,12 +72,16 @@ export function formatMeters(m: number, locale: ManifestLocale): string {
 }
 
 /**
- * Borne haute de l'axe : le record le plus lointain arrondi à la dizaine supérieure, jamais
- * en dessous d'un pas (une règle de 0 à 10 m reste une règle).
+ * Borne haute de l'axe : le record le plus lointain arrondi à la dizaine supérieure, jamais en
+ * dessous d'un pas (une règle de 0 à 10 m reste une règle), puis relevée au MULTIPLE SUPÉRIEUR DU
+ * PAS DE GRADUATION retenu pour cette dizaine : le dernier repère écrit est la borne, et il couvre
+ * le record (301 m : dizaine 310, pas de 50 m, borne 350 — jamais une règle de 310 close sur 300).
  */
 export function rulerMaxMeters(rows: readonly { record_m: number }[]): number {
   const max = rows.reduce((acc, r) => Math.max(acc, r.record_m), 0)
-  return Math.max(RULER_TICK_STEP_M, Math.ceil(max / RULER_TICK_STEP_M) * RULER_TICK_STEP_M)
+  const dizaine = Math.max(RULER_TICK_STEP_M, Math.ceil(max / RULER_TICK_STEP_M) * RULER_TICK_STEP_M)
+  const step = rulerTickStep(dizaine)
+  return Math.ceil(dizaine / step) * step
 }
 
 /** Écart entre le bas de la zone des graduations et la ligne de base du premier rang bas. */
