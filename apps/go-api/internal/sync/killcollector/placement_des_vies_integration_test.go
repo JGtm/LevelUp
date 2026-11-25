@@ -40,6 +40,7 @@ import (
 
 	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // writerSur : un writer qui rend toujours la meme base (le test est seul a l'ecrire).
@@ -117,6 +118,58 @@ func TestProjeterPlacementDesVies_EcritUneLigneParVie(t *testing.T) {
 	}
 	if got := observability.LoadCounter(metricPlacementSansPortee) - avant; got != 1 {
 		t.Fatalf("%s a bouge de %d, attendu 1", metricPlacementSansPortee, got)
+	}
+}
+
+// TestProjeterPlacementDesVies_VieMesuree_PorteeEnUnitesJusquAuDecodeur — LE BRANCHEMENT DE BOUT EN
+// BOUT. Deux coequipiers vivants, a 7 UNITES DU JEU l'un de l'autre (21,3 m), sur une variante de 18 m
+// de radar : `projeterPlacementDesVies` doit sortir une vie MESUREE dont tout le temps mesure est hors
+// radar (7 unites depassent les 5,9 unites de 18 m), et `radar_m` en vrais metres.
+//
+// MUTATION : remettre `RadarM: radar` (metres) en ligne dans `projeterPlacementDesVies` au lieu de
+// `entreeDuPlacement` -> le decodeur lit 18 unites, 7 ne les depasse pas, `beyond_ms` tombe a 0, ROUGE.
+func TestProjeterPlacementDesVies_VieMesuree_PorteeEnUnitesJusquAuDecodeur(t *testing.T) {
+	db := baseBacklog(t)
+	c := (&KillSourceCollector{acquireShared: writerSur(db)}).AvecPorteeDuRadar(
+		func(v string) (float64, bool) { return 18, v == "Team Slayer:Arena" })
+
+	var pos []decfilm.BipedPosition
+	for ms := int64(0); ms <= 10_000; ms += 100 {
+		us := uint64(ms) * 1000
+		pos = append(pos,
+			decfilm.BipedPosition{Slot: 1, TimestampUS: us, HasWorld: true, X: 0, Y: 0},
+			decfilm.BipedPosition{Slot: 2, TimestampUS: us, HasWorld: true, X: 7, Y: 0})
+	}
+	reg := replay.BuildIdentityRegistry(context.Background(), replay.IdentityInput{
+		Positions:     pos,
+		Deaths:        []types.Death{{XUID: 111, TimeMS: 10_000}},
+		PlayerIndices: types.PlayerIndexTable{ByXUID: map[uint64]int{111: 0}, Readings: 26},
+		RosterXUIDs:   rosterUint64([]string{"111", "222"}),
+	})
+	mat := materiauDIsolement{registre: reg, positions: pos}
+	ids := MatchIdentities{Equipes: map[string]int{"111": 0, "222": 0}, Variante: "Team Slayer:Arena"}
+
+	c.projeterPlacementDesVies(context.Background(), "m1", mat, ids, persist.KillSourceBatch{Publishable: true})
+
+	var vue *lignePlacement
+	for _, l := range lirePlacement(t, db, "m1") {
+		if l.xuid == "111" {
+			l := l
+			vue = &l
+		}
+	}
+	if vue == nil {
+		t.Fatal("aucune ligne pour 111")
+	}
+	if vue.mesure == 0 || vue.mediane == nil {
+		t.Fatalf("ligne = %+v : attendu une vie MESUREE (coequipier visible a 7 unites)", *vue)
+	}
+	if vue.radar == nil || *vue.radar != 18 {
+		t.Fatalf("radar_m = %v, attendu 18 (vrais metres)", vue.radar)
+	}
+	if vue.horsRadar == nil || *vue.horsRadar != vue.mesure {
+		t.Fatalf("hors radar = %v ms sur %d ms mesures : a 7 unites (21,3 m) d'un radar de 18 m, tout le "+
+			"temps mesure est hors radar", vue.horsRadar, vue.mesure)
 	}
 }
 
