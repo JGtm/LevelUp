@@ -171,3 +171,57 @@ describe('useChatterFeedLines', () => {
     expect(result.current).toHaveLength(0)
   })
 })
+
+describe('une seule requête par titre, partagée entre les lecteurs', () => {
+  it('quatre lecteurs montés ensemble (carte, voix, panneau, fil) : une seule requête', async () => {
+    hoisted.hold = true
+    const doc = docOf(nextSlug())
+    const readers = [
+      renderHook(() => useChatterLines(doc, 'fr')),
+      renderHook(() => useChatterLines(doc, 'fr')),
+      renderHook(() => useChatterFeedLines(doc, 'fr')),
+      renderHook(() => useChatterLines(doc, 'fr')),
+    ]
+    await waitFor(() => expect(api.getStatic).toHaveBeenCalled())
+    expect(api.getStatic).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      hoisted.resolvers.forEach((r) => r())
+    })
+    for (const r of readers) await waitFor(() => expect(r.result.current).toHaveLength(2))
+    expect(api.getStatic).toHaveBeenCalledTimes(1)
+  })
+
+  it("un lecteur qui se démonte n'annule pas la requête des autres ; le dernier l'annule", async () => {
+    hoisted.hold = true
+    const doc = docOf(nextSlug())
+    const a = renderHook(() => useChatterLines(doc, 'fr'))
+    const b = renderHook(() => useChatterLines(doc, 'fr'))
+    await waitFor(() => expect(hoisted.signals).toHaveLength(1))
+    a.unmount()
+    expect(hoisted.signals[0].aborted).toBe(false)
+    await act(async () => {
+      hoisted.resolvers.forEach((r) => r())
+    })
+    await waitFor(() => expect(b.result.current).toHaveLength(2))
+    // le dernier lecteur part avant la réponse : la requête s'annule
+    const slug = nextSlug()
+    const c = renderHook(() => useChatterLines(docOf(slug), 'fr'))
+    await waitFor(() => expect(hoisted.signals).toHaveLength(2))
+    c.unmount()
+    expect(hoisted.signals[1].aborted).toBe(true)
+  })
+
+  it('un échec n’est pas mémorisé : un nouveau montage retente', async () => {
+    hoisted.fail = true
+    const doc = docOf(nextSlug())
+    const first = renderHook(() => useChatterLines(doc, 'fr'))
+    await waitFor(() => expect(api.getStatic).toHaveBeenCalledTimes(1))
+    await act(async () => {})
+    expect(first.result.current).toEqual([])
+    first.unmount()
+    hoisted.fail = false
+    const second = renderHook(() => useChatterLines(doc, 'fr'))
+    await waitFor(() => expect(second.result.current).toHaveLength(2))
+    expect(api.getStatic).toHaveBeenCalledTimes(2)
+  })
+})
