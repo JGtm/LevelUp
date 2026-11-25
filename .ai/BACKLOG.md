@@ -201,13 +201,6 @@ Reste ouvert :
 
 ---
 
-### [décodeur] Chantier décodeur à ouvrir (décision D-6 du plan)
-
-**Relevé le 2026-11-17** (plan `.ai/PLAN_BACKLOG_2026-11-17.md`, décision D-6). **Mis à jour le 2026-11-23** : le plan du décodeur v1.6.0 a traité une partie de ces points. Restent, chacun renvoyé à son entrée : verdict « lecture complète » du score en BTB et en Assaut (voir « Actions de score : verdict « lecture complète » faux en BTB et en Assaut ») ; étape manquante de `replay-equiv` pour les joueurs du tableau (voir « `replay-equiv` ne compare ni les joueurs du tableau… ») ; arme d'une touche sur l'index brut (voir « Auteur d'un dégât lu sur l'index brut du film ») ; quatre compteurs nommés faux (voir « Écarts restants du gate du corpus ») ; lettres des zones (voir « Nommer les états des marqueurs d'objectifs »). Traités par la v1.6.0 : porteurs du drapeau au-delà de 8 sièges et commandes et gestes (voir leurs entrées). **Effort : à estimer.**
-
-
----
-
 ### [décodeur/score] Points de bombe en Assaut : explosion reconnue, action sans nom
 
 **Relevé le 2026-11-23 (plan du décodeur v1.6.0, item A.4), mis au backlog à la demande du user.** Mesure sur 8 films d'Assaut :
@@ -302,12 +295,6 @@ Relevé le 2026-11-16 (phase C du décodeur, C7). **Mis à jour le 2026-11-23** 
 **Reformulée le 2026-11-17.** Constat sur pièces : trois écarts réglés ou expliqués ; deux replis restent par construction (films de builds anciens) ; quatre compteurs nommés faux pour 78 joueurs comparés, cause inconnue. Sort : chantier décodeur, recherche (décision D-6 du plan). Le détail de chaque écart d'origine (score personnel, assistances, replis actifs, compteurs nommés) est dans l'historique git de ce fichier.
 
 Règle de travail : pour chaque écart restant, trouver la cause dans le film (lecture de la grammaire, pas d'heuristique) et la corriger par une règle générale validée sur le parc, jusqu'à zéro faux positif et zéro repli actif sur ces témoins. Le décodeur v1.4.1 (phase C) a pu en réduire une partie ; remesurer ces témoins avant de reprendre. **Plan de référence :** `.ai/PLAN_MONTEE_DECODEUR_V1_3_9_2026-11-15.md` (worktree `LevelUp-wt-decodeur139`). **Effort : à estimer après instruction.**
-
----
-
-### [progression] Jalon « jours avec une précision d'au moins 50 % » atteint trop facilement
-
-Relevé le 2026-11-14 (plan `.ai/PLAN_COMPLEMENTS_V8_2_0_2026-11-14.md`, étape 1.5). `match_participants.accuracy` porte la précision native de l'API en POURCENTAGE, mais le jalon `accuracy_threshold_days` la compare au seuil 0,50 (`internal/platform/duckdb/post_sync_progression_store.go`, agrégat `Aggregates` autour de la ligne 179, et `internal/ops/milestone_dates.go`) : tout match à plus de 0,5 % de précision compte comme un jour réussi. Le test `post_sync_stores_test.go` fige ce comportement en le signalant comme « unité en question ». Corriger (diviser par 100 ou comparer à 50) change des jalons déjà affichés et datés. **Décision du user du 2026-11-15 : ne pas y toucher à ce stade, noté au backlog.** **Effort : S, plus la décision sur les jalons déjà posés.**
 
 ---
 
@@ -553,6 +540,8 @@ Réglages Discord sans interrupteur web : relais du coach, rejeu prêt, reconnex
 
 | Date | Item |
 |------|------|
+| 2026-11-25 | **[progression] Jalon « jours avec une précision d'au moins 50 % » atteint trop facilement** — écarté (décision du user du 2026-11-24, plan `.ai/PLAN_BACKLOG_2026-11-24.md`, D-13) : laissé tel quel, corriger retirerait des jalons déjà affichés. |
+| 2026-11-25 | **[décodeur] Chantier décodeur à ouvrir (décision D-6 du plan)** — entrée chapeau retirée : chacun de ses points a sa propre entrée (score en Grande bataille et en Assaut, `replay-equiv`, écarts du corpus, marqueurs d'objectifs). |
 | 2026-11-25 | **[données] Éliminations en double dans `highlight_events`** — traité (plan `.ai/PLAN_BACKLOG_2026-11-24.md`, A.1 et A.2) : le rejeu des événements, seul écrivain qui pouvait encore doubler, n'insère plus que le surplus ; une étape de migration (`shared_highlight_events_dedupe_v1`) a retiré 38 573 lignes en double sur la base du poste, sans toucher une ligne légitime ; un match n'affiche plus chaque élimination deux fois. Avant de déployer, compter la production en lecture seule (`.ai/gestes_prod_8_3_0.md`, B1). |
 | 2026-11-25 | **[décodeur/rejeu] Éliminations dont un bot est l'auteur : à rouvrir côté LevelUp à la montée du décodeur v1.6.0** — traité (plan `.ai/PLAN_BACKLOG_2026-11-24.md`, C.4, `0a18f92fb4`) : les éliminations et les actions de score d'un bot sont désignées par place (le `xuid` devient facultatif), les lignes de bot se rattachent à leur place dans le fil et les bots reviennent dans les antagonistes. |
 | 2026-11-25 | **[contrat] `combat_tab.nemesis_duels` servi vide et sans lecteur** — traité (plan `.ai/PLAN_BACKLOG_2026-11-24.md`, B.5, `c583d1eca3`) : `nemesis_duels`, son type et le bloc `team_tab.nemesis` du fichier de référence sont retirés ; contrat OpenAPI et types web régénérés. |
