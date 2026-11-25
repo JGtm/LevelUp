@@ -400,3 +400,4 @@ dépendance est close.
   avant chaque fusion de piste, le pilote lance tous les gardes du front (`npx vitest run guard`) et les
   tests de contrat, pas seulement les tests des dossiers touchés.
 - 2026-11-25 — CLÔTURE (Z.4) : aucun item sans statut. Backlog : 19 entrées closes ou écartées, 10 allégées, 8 découvertes ajoutées. Registre des reports alimenté. Notes de version et journal des modifications complétés dans les deux langues. Caches rendus, worktrees retirés.
+- 2026-11-25 — recalcul de l'Emprise fait sur le poste à la demande du user (`levelup backfill-killsource`) : 1 456 films en 34 min 41 s, 0 erreur ; 1 453 matchs à la révision `placement-2026-11-24`. L'essai à vide a joué les migrations de la 8.3.0 sur la base du poste : 377 348 temps forts après le retrait des doubles, le compte attendu.
