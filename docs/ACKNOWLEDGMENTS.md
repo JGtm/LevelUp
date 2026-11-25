@@ -21,6 +21,10 @@ art we learned from, not code we ship, except the data files named below:
 - **Den Delimarsky** ([dend](https://github.com/dend)) for libfilmshell (OpenSpartan, MIT licence) — the tables of the
   score responses, of the medals and of the damage effects, and the payload widths of some film messages, read by the
   film decoder (`halo-infinite-film-decoder`, v1.6.1); the credit headers and licence texts sit next to the tables.
+- **Den Delimarsky** ([dend](https://github.com/dend)) for libfilmshell (OpenSpartan, MIT licence) — the method of
+  reading the speech message of a film and the text table that goes with it, which the speech lines of the replay
+  follow (`cmd/chatter-build`, `static/sounds/halo_infinite/repliques/`). The texts and the voices themselves are read
+  from the installed game; no code is copied.
 - **llampwall** ([llampwall](https://github.com/llampwall)) for the 3D replay reader built on the film decoder
   (`llampwall/installation-08`) and the readings it brought: gestures, crouch and jump commands, the shooter by control
   place, aims without a position, the weapon in hand, the ammunition carried, positions at the film's full rate,

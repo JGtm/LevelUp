@@ -71,7 +71,9 @@ fan content. It is listed so that nobody mistakes it for something this licence
 lets them reuse:
 
   - Game imagery and audio shipped with the application: static/ (medals, maps,
-    ranks, commendations, weapons, vehicles, abilities, prestige, sounds),
+    ranks, commendations, weapons, vehicles, abilities, prestige, sounds,
+    and the Spartans' spoken lines: the voice recordings and the texts of
+    static/sounds/halo_infinite/repliques/, read from the game by cmd/chatter-build),
     apps/web/public/titles/ (Halo 5 emblems and nameplates), and the reference
     images under data/titles/.
   - Test fixtures that carry game content, kept in the tree only because tests read

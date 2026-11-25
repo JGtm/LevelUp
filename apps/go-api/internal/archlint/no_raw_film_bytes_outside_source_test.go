@@ -229,6 +229,10 @@ var exclusionsOctetsBruts = []exclusionOctets{
 		"2026-10-29 (plan D2, item 2.5) sans changer de nature."},
 	{chemin: "cmd/weapon-sounds", raison: "lit les banques Wwise de l INSTALLATION DU JEU, " +
 		"jamais un film."},
+	{chemin: "cmd/chatter-build", raison: "lit les banques Wwise (BKHD, HIRC, DIDX), les paquets AKPK et " +
+		"les listes de chaines `uslg` de l INSTALLATION DU JEU, jamais un film. Meme nature que " +
+		"`cmd/weapon-sounds` ci-dessus. Pose avec la piste R du plan du 2026-11-24 : les films ne " +
+		"sont lus que par leur document de rejeu (`chatter[].sound`), en JSON."},
 	{chemin: "cmd/weapon-icons-build", raison: "lit les modules et les textures BC7 de " +
 		"l INSTALLATION DU JEU (son propre `bitReader` de `bc7.go` decode un bloc de " +
 		"texture), jamais un film."},

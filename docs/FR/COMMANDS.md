@@ -994,6 +994,37 @@ go run ./cmd/weapon-sounds -mode livrer -donnees <chantier>/_donnees [-sons <cha
 - À rejouer : un vote d'arme est finalisé, ou la recette complète est rejouée (mise à jour du
   jeu, nouvelle arme). Recette complète : `.ai/archive/V7.5/RECETTE_SONS_ARMES.md`.
 
+#### chatter-build (répliques parlées des Spartans : table, textes, voix)
+
+```bash
+CGO_ENABLED=1 go run ./cmd/chatter-build rejeux  -rejeux <documents de rejeu> -travail <dossier de travail>
+CGO_ENABLED=1 go run -tags=gamefiles ./cmd/chatter-build textes  -travail <dossier de travail>
+CGO_ENABLED=1 go run -tags=gamefiles ./cmd/chatter-build banques -travail <dossier de travail>
+CGO_ENABLED=1 go run ./cmd/chatter-build choix   -travail <dossier de travail>
+CGO_ENABLED=1 go run -tags=gamefiles ./cmd/chatter-build medias  -travail <dossier de travail>
+CGO_ENABLED=1 go run ./cmd/chatter-build voix    -src <travail>/wem/fr -out <travail>/wav/fr -vgmstream <vgmstream-cli>
+go run ./cmd/sounds-encode -src <travail>/wav/fr -dst <travail>/ogg/fr -check
+CGO_ENABLED=1 go run ./cmd/chatter-build livrer  -travail <dossier de travail> -voix fr=<travail>/ogg/fr[,en=<travail>/ogg/en]
+```
+
+- Produit `static/sounds/halo_infinite/repliques/repliques.json` (identifiant du son -> texte dans chaque langue de
+  `config/locales.toml`, voix disponibles) et les voix `repliques/<langue>/<son>.ogg` (Opus, même format que les
+  autres sons du rejeu). Une variante par son : texte et voix viennent de la même variante (le film ne dit pas
+  laquelle a joué). Seules les répliques parlées sont gardées (un texte dans chaque langue requise) ; les cris n'en
+  ont pas.
+- Les étapes marquées `gamefiles` lisent le jeu installé (modules des tags et des banques, paquets de voix) et
+  s'arrêtent avec un message clair quand la commande est compilée sans le tag. Les étapes sont des processus
+  séparés parce que le module des banques pèse 7 Go. Le décodeur est `vgmstream-cli` (celui des sons d'armes) ;
+  l'encodage Opus est `sounds-encode`.
+- La liste des sons vient des documents de rejeu stockés (`chatter[].sound`), pas du jeu entier (1 950 sons de voix,
+  73 Mo). Un son d'un build que le parc n'a pas joué est absent tant que l'étape n'est pas rejouée.
+- Les voix anglaises ne sont pas installées (écran d'accueil seulement) : `medias` dit combien manquent. À la
+  réception des paquets de voix anglais d'un contributeur, les poser dans le dossier `Sound/win/English(US)` du jeu
+  et rejouer `banques`, `choix`, `medias`, `voix`, `sounds-encode` et `livrer` (avec `-voix fr=...,en=...`) : la table
+  annonce alors la voix anglaise et le client la joue. Des médias nus nommés `<identifiant de média>.wem` se posent dans
+  `<travail>/wem/en` ; rejouer à partir de `voix`.
+- Crédit : méthode et table de textes de Den (libfilmshell, MIT), dans `docs/ACKNOWLEDGMENTS.md`.
+
 #### sounds-encode (sons du rejeu, WAV -> Opus)
 
 ```bash
