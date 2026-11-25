@@ -2,7 +2,7 @@
 
 Statut : **écrit le 2026-11-24 à la demande du user (« Pour moi faut faire 1 à 29 », « Les répliques de
 spartan va falloir le faire », « Le 10 faut partir sur une maquette réaliste »). Relu contre la grille
-`plan-review` et son complément `levelup-plan`. GO DONNÉ par le user le 2026-11-24 (« ok avec ton plan et tes autres recos », cible 8.3.0 confirmée) ; il lui reste
+`plan-review` et son complément `levelup-plan`. **EXÉCUTÉ le 2026-11-25, tout est dans `release/v8.3.0`, CI verte ; reste la validation à l'écran du user (artefact des vérifications, chantier « Backlog du 24 novembre (8.3.0) », 17 lignes), due avant `main` ; le plan reste à la racine de `.ai/` jusqu'à elle.** GO DONNÉ par le user le 2026-11-24 (« ok avec ton plan et tes autres recos », cible 8.3.0 confirmée) ; il lui reste
 la validation de la maquette (M.3).**
 
 Contrat d'exécution : skill `plan-execution`, complément `levelup-plan`. Statuts : `[x]` fait, `[~]` couvert
@@ -239,7 +239,7 @@ Dans le dépôt de la brique (`halo-infinite-film-decoder`), sur une branche et 
 - [x] Z.2 (2026-11-25 : trois relecteurs indépendants, un Fable et deux Sonnet, une ronde ; aucun P0 ; deux P1 sur les préréglages du rejeu, corrigés avec leurs tests ; dix P2 traités ; reports au backlog) Revue finale Fable du diff cumulé (skills `adversarial-review` et `levelup-revue`) ; P0 et P1
       corrigés, P2 au backlog.
 - [x] Z.3 (2026-11-25 : listes de livraison passées sur le diff cumulé ; CI de la release verte sur trois runs de suite) Skills `delivery-checklist` et `levelup-livraison` ; CI de la release lue.
-- [ ] Z.4 Backlog : entrées traitées passées en « Récemment complété » ; reports au registre ; journal ;
+- [x] Z.4 (2026-11-25 : backlog, registre, journal, notes de version ; 14 caches de compilation rendus, 33 Go ; 8 worktrees retirés et leurs branches supprimées ; un dossier vide `LevelUp-wt-bl24-a/apps/go-api` reste tenu par un processus de la session) Backlog : entrées traitées passées en « Récemment complété » ; reports au registre ; journal ;
       caches de compilation rendus (`scripts/disk-hygiene.ps1 -Lot bl24-<piste> -Apply`) ; worktrees retirés
       dans un tour à part.
 
@@ -399,3 +399,4 @@ dépendance est close.
   fermeture de couche hors du mécanisme commun). Verte sur `99010dcd`, `420150b7`, `67ee911d`. Leçon retenue :
   avant chaque fusion de piste, le pilote lance tous les gardes du front (`npx vitest run guard`) et les
   tests de contrat, pas seulement les tests des dossiers touchés.
+- 2026-11-25 — CLÔTURE (Z.4) : aucun item sans statut. Backlog : 19 entrées closes ou écartées, 10 allégées, 8 découvertes ajoutées. Registre des reports alimenté. Notes de version et journal des modifications complétés dans les deux langues. Caches rendus, worktrees retirés.
