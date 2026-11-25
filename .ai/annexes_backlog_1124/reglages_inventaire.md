@@ -370,7 +370,7 @@ La page n'emploie presque pas de `--ac-*` pour son habillage : les menus, pannea
 | `--ac-stat-kills`, `--ac-stat-deaths`, `--ac-stat-assists` | frags, morts, assistances | #059669, #F43F5E, #0284C7 |
 | `--ac-frag-heavy`, `--ac-frag-shoulder`, `--ac-frag-unattributed` | classes de frags du fil | #7C3AED, #06B6D4, #60A5FA |
 | `--ac-marker-outline-band` / `--ac-marker-outline-rim` | cerne deux tons des pions | #080C12 / #FFFFFF |
-| `--ac-map-relief-base` | teinte de la rampe du fond Relief | #6B7078 (Okabe-Ito et Tol Bright : #7559B5 ; Cividis : #3F8C4F) |
+| `--ac-map-relief-base` | teinte de la rampe du fond Relief | #3F7D8F, Pétrole, depuis le 2026-11-25 (Okabe-Ito et Tol Bright : #7559B5 ; Cividis : #3F8C4F) |
 | `--ac-outcome-draw`, `--ac-bonus`, `--ac-extreme` | accents de l'écran de fin et de la fiche | #3B82F6, #A855F7, #C026D3 |
 | `--ac-chart-series-1` à `8` | couleur « par joueur » (R39) et zones nommées | #93C5FD, #6366F1, #4F46E5, #4338CA, #3730A3, #10B981, #F59E0B, #EC4899 |
 

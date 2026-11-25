@@ -170,7 +170,7 @@ export const defaultPalette: Palette = {
   'heatmap-freq-high':      '#60A5FA', // fréquence forte  — bleu vif   (neutre)
 
   // ── Fond Relief et cerne des pions ──────────────────────────────────
-  'map-relief-base': '#6B7078', // Graphite
+  'map-relief-base': '#3F7D8F', // Pétrole
   ...MAP_MARKER_OUTLINE,
 
   // ── Équipes — défauts "Red vs Blue" classique Halo ─────────────────────────

@@ -22,11 +22,11 @@
 
 ## 📋 Backlog
 
-Rangé par nature le 2026-11-25 : 60 entrées en quatre sections. Dans une section, l'ordre est celui d'arrivée, pas une priorité.
+Rangé par nature le 2026-11-25 : 62 entrées en quatre sections. Dans une section, l'ordre est celui d'arrivée, pas une priorité.
 
 ---
 
-## 1. À faire dans LevelUp (24)
+## 1. À faire dans LevelUp (25)
 
 Sujets que LevelUp peut traiter seul : restes et découvertes du plan du 24 novembre, dette, idées. Aucun ne bloque la 8.3.0.
 
@@ -215,6 +215,16 @@ Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. `.claude/skil
 ### [sync] Choisir jusqu'où remonter l'historique d'un joueur : une date ou un nombre de matchs
 
 Relevé le 2026-11-22. Aujourd'hui (8.2.2) la synchronisation rattrape tout l'historique sans limite (décision du user, 2026-11-22).
+
+---
+
+### [fonds de carte/Relief] Ombrage du fond Relief : bords épais et baveux
+
+**Relevé le 2026-11-25.** Le fond Relief (`apps/web/src/lib/replay/relief/shading.ts`) lisse les hauteurs sur 5 x 5 pixels, à travers les murs et les marches, puis ombre selon la pente. Chaque rupture de hauteur devient une bande de plusieurs pixels : bordures épaisses et floues. Constat déduit du code, non mesuré à l'écran.
+
+Chez Den (`OpenSpartan/films-ui`, MIT, `src/floor.ts` et `drawTerrain`), les structures sont des aplats et leur bord est un trait net d'un pixel. Ce qui distingue LevelUp reste à garder : la coupe par étage dans les trois vues 2D, le suivi de l'étage du joueur, les palettes d'accessibilité. Crédit à Den à conserver.
+
+**Pour reprendre :** arrêter le lissage et l'ombrage aux ruptures de hauteur, puis comparer à l'écran sur quelques cartes. Code web seulement, sans nouvelle cuisson ; change l'aspect de toutes les cartes, donc validation à l'écran nécessaire. **Effort : à estimer. Priorité : à décider par le user.**
 
 ---
 
@@ -443,7 +453,7 @@ Relevé le 2026-11-15 par levelup-1f à la montée v1.3.9 : l'étape `score` de 
 
 ---
 
-## 4. Après la 8.3.0, ou bloqué faute de donnée (7)
+## 4. Après la 8.3.0, ou bloqué faute de donnée (8)
 
 Prévu pour une version suivante, ou impossible tant que le jeu ne fournit pas la donnée.
 
@@ -535,6 +545,16 @@ explicite d'inventer le schéma par analogie.
 ### [fonds de carte/plan par mode] Fichiers de variante des 20 cartes natives : copies locales vides, à télécharger avant le plan par mode
 
 **Relevé le 2026-11-18, reformulé le 2026-11-24** (recherche du plan par mode, `.ai/V8.3/annexes_plan_par_mode/recherche.md`). Le fichier de variante d'une carte dit quels objets existent dans quel mode (murs, volumes, points d'apparition) : c'est la matière du plan par mode. Le dossier de travail local `.ai/re_dump/mapvar/` (hors dépôt) en porte 20, ceux des cartes natives, tous vides (0 octet). Rien ne les lit aujourd'hui. À télécharger (`mapnav-fetch -fichier map.mvar -nom-cuisson`) quand le plan par mode démarre. **Décision du user du 2026-11-24 :** on garde l'entrée, on ne s'en occupe pas tant que Den n'a pas répondu à la demande n° 1 ouverte sur `OpenSpartan/cartographer` (voir l'entrée « Plan par mode ») ; d'autres priorités passent avant. **Condition de reprise :** réponse de Den à cette demande, puis lancement du plan par mode.
+
+---
+
+### [fonds de carte/Relief] Escaliers et passages sous le sol : contremarches et murs en tirets
+
+**Relevé le 2026-11-25.** Le fond Relief ne montre ni les contremarches des escaliers, ni les murs des passages qui passent sous l'étage affiché (tunnels, dessous de pont). Le terrain de Den (`OpenSpartan/films-ui`, MIT, `treads` et `under`) les dessine en tirets sur un fond sombre. Le passage sous le sol figure déjà dans l'entrée « Passages couverts » plus haut ; la présente entrée la reprend avec les contremarches, qui demandent le même calcul à la cuisson.
+
+Ces traits doivent être calculés à la cuisson, à partir du maillage de navigation : nouvelle version de la brique `halo-infinite-map-images` (tag posé sur son dépôt dédié), montée du `require` dans LevelUp, puis nouvelle cuisson des reliefs du parc. Crédit à Den à conserver.
+
+**Pour reprendre :** après la sortie de la 8.3.0. **Effort : à estimer. Priorité : à décider par le user.**
 
 ---
 

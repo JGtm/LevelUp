@@ -1,3 +1,9 @@
+## [2026-11-25] Fond Relief : teinte Pétrole par défaut, recette de Den au backlog — Complété
+
+- **Décision** : la palette par défaut passe de Graphite `#6B7078` à Pétrole `#3F7D8F` pour `map-relief-base`, choisie par le user sur une comparaison avant/après de quatre cartes (Solitude, Isolation, High Ground, Snowbound) rendues avec le code du rejeu. Pétrole s'éloigne du bleu allié ; Bleu nuit écarté (pions alliés noyés). Palettes d'accessibilité inchangées. ADR 0049 D-11 amendé. Deux entrées au backlog : ombrage à aplats et bords nets (se rapprocher du terrain de Den, `OpenSpartan/films-ui`, MIT, en gardant coupe par étage, suivi d'étage et palettes) ; contremarches et passages sous le sol (cuisson, brique des images de carte).
+- **Résultats** : `mapReliefTokens.test.ts` 170/170 avec la nouvelle valeur (les quatre candidates passaient les contrôles d'écart et de contraste) ; `lint:colors` propre. Exécutions locales de vitest instables pendant la session (« Cannot read properties of undefined (reading 'config') » sur des fichiers non touchés, y compris `shading.test.ts`), sans lien avec le changement.
+- **Suite** : contrôle à l'écran du relief Pétrole avec les autres vérifications de la 8.3.0 ; la CI confirmera la suite web complète.
+
 ## [2026-11-25] Backlog du 24 novembre : exécution complète, revue finale, répliques et réglages du rejeu — Complété
 
 - **Décision** : le plan `.ai/PLAN_BACKLOG_2026-11-24.md` est exécuté dans `release/v8.3.0`. Écartés par le user : trajet de Warthog, cartes Némésis, correctif Halo 5 (au plus 66 matchs sur 3 032). Clos sans code : pièces montées (défaut corrigé par le décodeur v1.5.0, 0 cas sur le parc). Une unité du jeu vaut 3,048 m, convertie à l'affichage. Réglages du rejeu : variante à onglets, préréglages souples, aucun réglage partagé avec une autre page écrit par un préréglage. Répliques : parlées seulement, langue calée sur l'interface, une voix française par réplique.

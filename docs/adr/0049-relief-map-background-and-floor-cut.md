@@ -128,6 +128,9 @@ complement of the existing backgrounds, not a replacement, and a way to look at 
   Cartographer presets and the theme grey keeps the marker cores 15 DeltaE away from every ramp step under the four visions
   (0 combinations out of 64), and the former marker outline reached 3:1 in none of 1 280 combinations; the tint is the least bad,
   and D-12 does the rest.
+  *Amended 2026-11-25:* the default palette now uses Petrol `#3F7D8F` instead of Graphite, chosen by the user on screen for
+  legibility (a blue-green ramp, away from the ally blue). It passes the same guard (`mapReliefTokens.test.ts`) under every
+  theme and vision; the other palettes are unchanged.
 - **D-12 — A two-tone marker outline, on the three backgrounds.** A dark band (`marker-outline-band`, `#080C12`) against the
   core, edged by a light rim (`marker-outline-rim`, `#FFFFFF`), the same in every palette and both themes. The best of the two
   tones reaches at least 4.4:1 against any grey (4.43:1 in the worst combination measured), where one tone cannot hold a

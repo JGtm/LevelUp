@@ -122,7 +122,7 @@ dans un graphe.
 ## Fond « Relief » et cerne des pions — trois jetons
 
 - `map-relief-base` : teinte de base de la rampe du fond Relief, UNE valeur par palette et la même dans les
-  deux thèmes (Graphite `#6B7078` par défaut, Violet `#7559B5` Okabe-Ito et Tol Bright, Vert `#3F8C4F`
+  deux thèmes (Pétrole `#3F7D8F` par défaut depuis le 2026-11-25, Graphite `#6B7078` avant ; Violet `#7559B5` Okabe-Ito et Tol Bright, Vert `#3F8C4F`
   Cividis). La rampe de clarté s'en tire par `lib/accessibility/reliefRamp.ts` (`reliefRampHex`) : pas de
   jeton par palier.
 - `marker-outline-band` (bande sombre) et `marker-outline-rim` (filet clair) : le cerne deux tons des

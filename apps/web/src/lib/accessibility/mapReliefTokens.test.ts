@@ -37,7 +37,7 @@ import { contrastRatio, relLuminance } from './wcagContrast'
 
 /** Teinte de base décidée par palette (une seule valeur, les deux thèmes). */
 const CASES: Record<string, { palette: Palette; base: string }> = {
-  default: { palette: defaultPalette, base: '#6B7078' },
+  default: { palette: defaultPalette, base: '#3F7D8F' },
   'okabe-ito': { palette: okabePalette, base: '#7559B5' },
   cividis: { palette: cividisPalette, base: '#3F8C4F' },
   'tol-bright': { palette: tolBrightPalette, base: '#7559B5' },
