@@ -67,6 +67,45 @@ function defaultNewId(): string {
   return `v${Date.now().toString(36)}${counter}`
 }
 
+/**
+ * Ce que « Réinitialiser » écrit : tout réglage qui n'est pas à sa valeur d'usine. « Traits du relief » n'a pas de valeur d'usine
+ * unique (elle dépend du fond : allumés sur le Relief seulement), il n'y est pas. On compare à la valeur RETENUE quand elle diffère
+ * de l'appliquée : une préférence que ce match ne propose pas (« Point de vue » sans joueur suivi, filtre « Objectifs » sans
+ * objectif) est remise à l'usine elle aussi.
+ */
+function factoryWrites(
+  values: SettingValues,
+  retained: SettingsBinding['retained'],
+): ReadonlyArray<readonly [SettingId, SettingValues[SettingId]]> {
+  const factory = factoryValues()
+  const kept = (id: SettingId) => retained[id] ?? values[id]
+  return SETTING_IDS.filter((id) => id !== 'reliefLines' && kept(id) !== factory[id]).map((id) => [id, factory[id]] as const)
+}
+
+/** L'ouverture en attente de la vue d'ouverture : la table et le contexte avec lequel elle a été appliquée. */
+type LateOpening = { table: ViewValues; ctx: SettingsContext }
+
+/**
+ * Les écritures que la vue d'ouverture doit encore faire pour les réglages devenus proposés depuis, ou rien. Au premier écart du
+ * lecteur sur ce qui était déjà proposé, l'attente s'arrête pour de bon.
+ */
+function lateWrites(
+  pendingRef: { current: LateOpening | null },
+  values: SettingValues,
+  ctx: SettingsContext,
+): ReadonlyArray<readonly [SettingId, SettingValues[SettingId]]> {
+  const pending = pendingRef.current
+  // Même rendu que l'ouverture : ses écritures ne sont pas encore relues, rien à comparer.
+  if (!pending || pending.ctx === ctx) return []
+  if (changedFrom(pending.table, values, pending.ctx).length > 0) {
+    pendingRef.current = null
+    return []
+  }
+  const late = writesToReach(pending.table, values, ctx)
+  pending.ctx = ctx
+  return late
+}
+
 export function useViewsController({ ctx, binding, mode, matchKey, newId = defaultNewId }: Input): ViewsController {
   const [state, setState] = useState(readViewsState)
   const [pins, setPins] = useState(readPinnedSettings)
@@ -86,7 +125,7 @@ export function useViewsController({ ctx, binding, mode, matchKey, newId = defau
 
   // L'OUVERTURE EN ATTENTE : la table de la vue d'ouverture et le contexte avec lequel elle a été appliquée, tant que le lecteur n'a
   // rien changé lui-même à ce rejeu. `null` = rien n'attend (pas de vue d'ouverture, ou le lecteur a agi).
-  const lateOpening = useRef<{ table: ViewValues; ctx: SettingsContext } | null>(null)
+  const lateOpening = useRef<LateOpening | null>(null)
 
   const applyView = useCallback(
     (id: string, opening: boolean) => {
@@ -120,15 +159,7 @@ export function useViewsController({ ctx, binding, mode, matchKey, newId = defau
   // la vue d'ouverture vaut pour eux aussi, tant que rien de ce qu'elle posait n'a été changé par le lecteur. Au premier écart
   // sur ce qui était déjà proposé, l'attente s'arrête pour de bon.
   useEffect(() => {
-    const pending = lateOpening.current
-    // Même rendu que l'ouverture : ses écritures ne sont pas encore relues, rien à comparer.
-    if (!pending || pending.ctx === ctx) return
-    if (changedFrom(pending.table, values, pending.ctx).length > 0) {
-      lateOpening.current = null
-      return
-    }
-    const late = writesToReach(pending.table, values, ctx)
-    pending.ctx = ctx
+    const late = lateWrites(lateOpening, values, ctx)
     // Écrire une vue est une synchronisation avec les réglages persistés, comme à l'ouverture.
     if (late.length > 0) write(late)
   })
@@ -164,13 +195,8 @@ export function useViewsController({ ctx, binding, mode, matchKey, newId = defau
       return 'ok'
     },
     reset: () => {
-      const factory = factoryValues()
-      // « Traits du relief » n'a pas de valeur d'usine unique : elle dépend du fond (allumés sur le Relief seulement).
       lateOpening.current = null
-      // On compare à la valeur RETENUE quand elle diffère de l'appliquée : une préférence que ce match ne propose pas
-      // (« Point de vue » sans joueur suivi, filtre « Objectifs » sans objectif) est remise à l'usine elle aussi.
-      const kept = (id: SettingId) => binding.retained[id] ?? values[id]
-      write(SETTING_IDS.filter((id) => id !== 'reliefLines' && kept(id) !== factory[id]).map((id) => [id, factory[id]] as const))
+      write(factoryWrites(values, binding.retained))
       commit(setActiveView(state, DEFAULT_ACTIVE))
     },
   }
