@@ -5,9 +5,9 @@
  * TROIS LECTEURS, UNE SEULE LECTURE : la carte (bulles et icônes), le fil et la voix lisent chacun ces lignes. Le fichier de
  * la table se télécharge UNE fois par titre (`loadedTables`) ; un film sans réplique ne le demande jamais.
  *
- * UNE REQUÊTE LANCÉE PAR UN EFFET S'ANNULE AU DÉMONTAGE : le signal d'annulation coupe la requête et la réponse arrivée
- * après coup n'écrit plus rien. Un fichier introuvable ou illisible laisse la table vide : les répliques ne s'affichent
- * pas, le reste du rejeu est intact.
+ * UNE REQUÊTE EN VOL PAR TITRE, partagée : elle s'annule quand son DERNIER lecteur se démonte, jamais avant ; la réponse
+ * arrivée après le démontage d'un lecteur n'écrit plus rien chez lui. Un fichier introuvable ou illisible laisse la table
+ * vide (les répliques ne s'affichent pas, le reste du rejeu est intact) et n'est pas gardé : un nouveau montage retente.
  */
 import { useEffect, useMemo, useState } from 'react'
 
@@ -28,23 +28,65 @@ import { chatterFilterOf, useChatterPrefs } from '../settings/useChatterPrefs'
 /** Les tables déjà chargées, par titre : un seul téléchargement pour toute la page. */
 const loadedTables = new Map<string, ChatterTable>()
 
+/**
+ * La requête en vol d'un titre, PARTAGÉE par tous ses lecteurs : la promesse est gardée (pas seulement le résultat), chaque lecteur
+ * qui part retire son compte, et la requête ne s'annule que quand le dernier est parti. Un échec ne reste pas gardé : le prochain
+ * montage retente.
+ */
+interface InFlight {
+  promise: Promise<ChatterTable | null>
+  controller: AbortController
+  readers: number
+}
+const inFlight = new Map<string, InFlight>()
+
+function startRequest(titleSlug: string): InFlight {
+  const controller = new AbortController()
+  const entry: InFlight = { controller, readers: 0, promise: Promise.resolve(null) }
+  entry.promise = api
+    .getStatic<unknown>(staticAssetURL('sound', CHATTER_TABLE_STEM, '.json', titleSlug), { signal: controller.signal })
+    .then((raw) => {
+      const table = parseChatterTable(raw)
+      loadedTables.set(titleSlug, table)
+      return table
+    })
+    .catch(() => null) // Table introuvable, illisible ou requête annulée : aucune réplique, le reste du rejeu ne change pas.
+    .finally(() => {
+      if (inFlight.get(titleSlug) === entry) inFlight.delete(titleSlug)
+    })
+  inFlight.set(titleSlug, entry)
+  return entry
+}
+
+/** Un lecteur rejoint la requête du titre (la lance si elle n'existe pas) ; `leave` la quitte, et l'annule si personne ne reste. */
+function joinRequest(titleSlug: string): { promise: Promise<ChatterTable | null>; leave: () => void } {
+  const entry = inFlight.get(titleSlug) ?? startRequest(titleSlug)
+  entry.readers += 1
+  return {
+    promise: entry.promise,
+    leave: () => {
+      entry.readers -= 1
+      if (entry.readers > 0) return
+      if (inFlight.get(titleSlug) === entry) inFlight.delete(titleSlug)
+      entry.controller.abort()
+    },
+  }
+}
+
 /** La table des répliques du titre, vide tant qu'elle n'est pas arrivée (ou si le film n'a aucune réplique à lire). */
 export function useChatterTable(titleSlug: string, needed: boolean): ChatterTable {
   const [fetched, setFetched] = useState<{ slug: string; table: ChatterTable } | null>(null)
   useEffect(() => {
     if (!needed || loadedTables.has(titleSlug)) return
-    const controller = new AbortController()
-    api
-      .getStatic<unknown>(staticAssetURL('sound', CHATTER_TABLE_STEM, '.json', titleSlug), { signal: controller.signal })
-      .then((raw) => {
-        const table = parseChatterTable(raw)
-        loadedTables.set(titleSlug, table)
-        if (!controller.signal.aborted) setFetched({ slug: titleSlug, table })
-      })
-      .catch(() => {
-        /* Table introuvable ou illisible, ou requête annulée : aucune réplique n'est affichée, le reste du rejeu ne change pas. */
-      })
-    return () => controller.abort()
+    let live = true
+    const request = joinRequest(titleSlug)
+    void request.promise.then((table) => {
+      if (live && table) setFetched({ slug: titleSlug, table })
+    })
+    return () => {
+      live = false
+      request.leave()
+    }
   }, [titleSlug, needed])
   if (!needed) return EMPTY_CHATTER_TABLE
   return loadedTables.get(titleSlug) ?? (fetched?.slug === titleSlug ? fetched.table : EMPTY_CHATTER_TABLE)

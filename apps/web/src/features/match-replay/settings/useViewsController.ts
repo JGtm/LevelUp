@@ -9,7 +9,9 @@
  * des réglages à sa table (`changedFrom`), sur les seuls réglages proposés pour ce match ; rien n'est écrit pour lui.
  *
  * L'OUVERTURE : à l'ouverture d'un rejeu, la vue rattachée au mode du match s'applique, sinon la vue d'ouverture ;
- * sans choix, les réglages restent tels que le lecteur les a laissés. Une seule fois par rejeu ouvert.
+ * sans choix, les réglages restent tels que le lecteur les a laissés. Une seule fois par rejeu ouvert, mais elle vaut aussi
+ * pour les réglages que le match ne propose que plus tard (probabilité de réapparition, répliques), tant que le lecteur n'a
+ * rien changé lui-même.
  *
  * RÉINITIALISER remet les réglages d'usine et la vue « Complet » ; Mes vues, la vue d'ouverture et les épingles
  * restent.
@@ -25,7 +27,7 @@ import {
   attachMode, DEFAULT_ACTIVE, deleteView, openingViewId, renameView, saveView, setActiveView, setDefaultView,
   updateView, userViewOf, valuesOfView, type SavedView, type ViewsState,
 } from './savedViews'
-import { changedFrom, snapshotValues, writesToReach } from './viewPresets'
+import { changedFrom, snapshotValues, writesToReach, type ViewValues } from './viewPresets'
 
 export interface ViewsController {
   state: ViewsState
@@ -65,6 +67,45 @@ function defaultNewId(): string {
   return `v${Date.now().toString(36)}${counter}`
 }
 
+/**
+ * Ce que « Réinitialiser » écrit : tout réglage qui n'est pas à sa valeur d'usine. « Traits du relief » n'a pas de valeur d'usine
+ * unique (elle dépend du fond : allumés sur le Relief seulement), il n'y est pas. On compare à la valeur RETENUE quand elle diffère
+ * de l'appliquée : une préférence que ce match ne propose pas (« Point de vue » sans joueur suivi, filtre « Objectifs » sans
+ * objectif) est remise à l'usine elle aussi.
+ */
+function factoryWrites(
+  values: SettingValues,
+  retained: SettingsBinding['retained'],
+): ReadonlyArray<readonly [SettingId, SettingValues[SettingId]]> {
+  const factory = factoryValues()
+  const kept = (id: SettingId) => retained[id] ?? values[id]
+  return SETTING_IDS.filter((id) => id !== 'reliefLines' && kept(id) !== factory[id]).map((id) => [id, factory[id]] as const)
+}
+
+/** L'ouverture en attente de la vue d'ouverture : la table et le contexte avec lequel elle a été appliquée. */
+type LateOpening = { table: ViewValues; ctx: SettingsContext }
+
+/**
+ * Les écritures que la vue d'ouverture doit encore faire pour les réglages devenus proposés depuis, ou rien. Au premier écart du
+ * lecteur sur ce qui était déjà proposé, l'attente s'arrête pour de bon.
+ */
+function lateWrites(
+  pendingRef: { current: LateOpening | null },
+  values: SettingValues,
+  ctx: SettingsContext,
+): ReadonlyArray<readonly [SettingId, SettingValues[SettingId]]> {
+  const pending = pendingRef.current
+  // Même rendu que l'ouverture : ses écritures ne sont pas encore relues, rien à comparer.
+  if (!pending || pending.ctx === ctx) return []
+  if (changedFrom(pending.table, values, pending.ctx).length > 0) {
+    pendingRef.current = null
+    return []
+  }
+  const late = writesToReach(pending.table, values, ctx)
+  pending.ctx = ctx
+  return late
+}
+
 export function useViewsController({ ctx, binding, mode, matchKey, newId = defaultNewId }: Input): ViewsController {
   const [state, setState] = useState(readViewsState)
   const [pins, setPins] = useState(readPinnedSettings)
@@ -82,15 +123,22 @@ export function useViewsController({ ctx, binding, mode, matchKey, newId = defau
     [set],
   )
 
-  const apply = useCallback(
-    (id: string) => {
+  // L'OUVERTURE EN ATTENTE : la table de la vue d'ouverture et le contexte avec lequel elle a été appliquée, tant que le lecteur n'a
+  // rien changé lui-même à ce rejeu. `null` = rien n'attend (pas de vue d'ouverture, ou le lecteur a agi).
+  const lateOpening = useRef<LateOpening | null>(null)
+
+  const applyView = useCallback(
+    (id: string, opening: boolean) => {
       const table = valuesOfView(state, id)
       if (table === null) return
       write(writesToReach(table, values, ctx))
       commit(setActiveView(state, id))
+      // Une vue appliquée à la main met fin à l'attente ; l'ouverture, elle, la commence.
+      lateOpening.current = opening ? { table, ctx } : null
     },
     [state, values, ctx, write, commit],
   )
+  const apply = useCallback((id: string) => applyView(id, false), [applyView])
 
   // L'OUVERTURE : une fois par rejeu ouvert, avec l'état et le contexte de ce premier rendu.
   const openedFor = useRef<string | null>(null)
@@ -101,10 +149,20 @@ export function useViewsController({ ctx, binding, mode, matchKey, newId = defau
     // Appliquer une vue écrit des préférences : c'est une synchronisation avec le stockage à l'ouverture du rejeu, pas
     // un état dérivé que l'on pourrait calculer au rendu.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (id !== null) apply(id)
+    if (id !== null) applyView(id, true)
+    else lateOpening.current = null
     // Seul le rejeu ouvert déclenche l'ouverture ; l'état d'alors est celui du rendu qui l'a monté.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchKey])
+
+  // LES RÉGLAGES PROPOSÉS APRÈS L'OUVERTURE (la probabilité à la réponse du serveur, les répliques à l'arrivée de la table) :
+  // la vue d'ouverture vaut pour eux aussi, tant que rien de ce qu'elle posait n'a été changé par le lecteur. Au premier écart
+  // sur ce qui était déjà proposé, l'attente s'arrête pour de bon.
+  useEffect(() => {
+    const late = lateWrites(lateOpening, values, ctx)
+    // Écrire une vue est une synchronisation avec les réglages persistés, comme à l'ouverture.
+    if (late.length > 0) write(late)
+  })
 
   const activeTable = valuesOfView(state, state.activeId) ?? valuesOfView(state, DEFAULT_ACTIVE)
   const changed = activeTable === null ? [] : changedFrom(activeTable, values, ctx)
@@ -137,9 +195,8 @@ export function useViewsController({ ctx, binding, mode, matchKey, newId = defau
       return 'ok'
     },
     reset: () => {
-      const factory = factoryValues()
-      // « Traits du relief » n'a pas de valeur d'usine unique : elle dépend du fond (allumés sur le Relief seulement).
-      write(SETTING_IDS.filter((id) => id !== 'reliefLines' && values[id] !== factory[id]).map((id) => [id, factory[id]] as const))
+      lateOpening.current = null
+      write(factoryWrites(values, binding.retained))
       commit(setActiveView(state, DEFAULT_ACTIVE))
     },
   }

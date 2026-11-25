@@ -108,7 +108,7 @@ export function useReplayViewMenu(o: ReplayViewMenuOptions): ReplayViewMenuState
   const ctx = settingsContextOf(o, feedFilters)
   const binding = bindSettings({
     settings: o.settings, relief: o.relief, orientation: o.orientation, sound: o.sound,
-    feed: { value: feed.value, choose: feed.choose }, heatMode: o.heat.mode, followedKnown: o.available.lives.followedKnown,
+    feed: { value: feed.value, retained: feed.retained, choose: feed.choose }, heatMode: o.heat.mode, followedKnown: o.available.lives.followedKnown,
   })
   const views = useViewsController({ ctx, binding, mode: matchModeKey(o.available), matchKey: o.matchKey })
   const toggle = useCallback(() => setOpen((v) => !v), [])
