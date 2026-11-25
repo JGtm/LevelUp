@@ -40,44 +40,54 @@ interface Props {
   triggerRef?: RefObject<HTMLElement | null>
 }
 
+/**
+ * La confirmation de la remise à zéro : une couche d'Échap (la pile de `useDismissable` la ferme SEULE, le panneau à la
+ * frappe suivante). Aucun clic dehors ne la ferme.
+ */
+function ResetConfirm({ model, onDone, onCancel }: { model: ReplayViewPanelModel; onDone: () => void; onCancel: () => void }) {
+  const t = REPLAY_TEXT[model.locale].settings
+  const ref = useDismissable<HTMLDivElement>(true, onCancel, { outside: null })
+  return (
+    <div ref={ref} data-replay-escape-layer="" className="flex flex-1 items-center gap-2">
+      <span>{t.resetAsk}</span>
+      <span className="flex-1" />
+      <button
+        type="button"
+        autoFocus
+        onClick={() => {
+          model.views.reset()
+          onDone()
+        }}
+        className="inline-flex h-6 cursor-pointer items-center rounded-md border border-primary bg-primary px-2 text-[11.5px] text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+      >
+        {t.resetConfirm}
+      </button>
+      <button
+        type="button"
+        onClick={onCancel}
+        className="inline-flex h-6 cursor-pointer items-center rounded-md px-2 text-[11.5px] text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+      >
+        {t.cancel}
+      </button>
+    </div>
+  )
+}
+
 /** Le pied : « Réinitialiser » et sa confirmation, qui garde Mes vues, la vue d'ouverture et les épingles. */
 function PanelFooter({ model, onStatus }: { model: ReplayViewPanelModel; onStatus: (m: string) => void }) {
   const t = REPLAY_TEXT[model.locale].settings
   const [confirming, setConfirming] = useState(false)
   return (
-    <div
-      className="flex items-center gap-2 border-t border-border pt-2.5 text-xs"
-      onKeyDown={(e) => {
-        if (e.key === 'Escape' && confirming) {
-          e.stopPropagation()
-          setConfirming(false)
-        }
-      }}
-    >
+    <div className="flex items-center gap-2 border-t border-border pt-2.5 text-xs">
       {confirming ? (
-        <>
-          <span>{t.resetAsk}</span>
-          <span className="flex-1" />
-          <button
-            type="button"
-            autoFocus
-            onClick={() => {
-              model.views.reset()
-              setConfirming(false)
-              onStatus(t.statusReset)
-            }}
-            className="inline-flex h-6 cursor-pointer items-center rounded-md border border-primary bg-primary px-2 text-[11.5px] text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          >
-            {t.resetConfirm}
-          </button>
-          <button
-            type="button"
-            onClick={() => setConfirming(false)}
-            className="inline-flex h-6 cursor-pointer items-center rounded-md px-2 text-[11.5px] text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          >
-            {t.cancel}
-          </button>
-        </>
+        <ResetConfirm
+          model={model}
+          onDone={() => {
+            setConfirming(false)
+            onStatus(t.statusReset)
+          }}
+          onCancel={() => setConfirming(false)}
+        />
       ) : (
         <button
           type="button"

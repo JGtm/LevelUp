@@ -6,9 +6,12 @@
  * « MODIFIÉ » SE DÉDUIT de la comparaison des réglages à la table de la vue, sur les seuls réglages que le match
  * propose (`useViewsController`) ; rien n'est écrit pour lui.
  */
-import { useRef, useState } from 'react'
+import { useRef, useState, type RefObject } from 'react'
+
+import { useDismissable } from '@/lib/hooks/useDismissable'
 
 import { REPLAY_TEXT } from '../i18n/i18n'
+import type { SettingsText } from '../i18n/settings.i18n'
 import { MyViews } from './ReplayMyViews'
 import { ChevronIcon, StarIcon } from './SettingIcons'
 import { VIEW_LIMIT } from './savedViews'
@@ -25,6 +28,54 @@ const CHIP =
   'inline-flex h-[26px] cursor-pointer items-center gap-1 whitespace-nowrap rounded-full border border-border px-2.5 text-[11.5px] font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground'
 const BUTTON =
   'inline-flex h-6 cursor-pointer items-center rounded-md border border-border px-2 text-[11.5px] transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40'
+
+/**
+ * Le formulaire de nom d'une vue : une couche d'Échap (la pile de `useDismissable` ferme la plus récente SEULE : le
+ * formulaire d'abord, le panneau à la frappe suivante, le Plein cadre ensuite). Aucun clic dehors ne le ferme.
+ */
+function SaveForm({
+  name, onName, onSubmit, onCancel, nameRef, text,
+}: {
+  name: string
+  onName: (value: string) => void
+  onSubmit: () => void
+  onCancel: () => void
+  nameRef: RefObject<HTMLInputElement | null>
+  text: SettingsText
+}) {
+  const ref = useDismissable<HTMLFormElement>(true, onCancel, { outside: null })
+  return (
+    <form
+      ref={ref}
+      // UNE COUCHE QU'ÉCHAP FERME AVANT LE PANNEAU, et avant le mode plein écran (cf. useReplayFullscreen).
+      data-replay-escape-layer=""
+      className="flex items-center gap-1.5"
+      onSubmit={(e) => {
+        e.preventDefault()
+        onSubmit()
+      }}
+    >
+      <label className="sr-only" htmlFor="replay-view-name">{text.viewNameLabel}</label>
+      <input
+        id="replay-view-name"
+        ref={nameRef}
+        autoFocus
+        type="text"
+        maxLength={24}
+        value={name}
+        placeholder={text.viewNameLabel}
+        onChange={(e) => onName(e.target.value)}
+        className="h-[26px] min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+      />
+      <button type="submit" className={`${BUTTON} border-primary bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground`}>
+        {text.save}
+      </button>
+      <button type="button" className={`${BUTTON} border-transparent text-muted-foreground`} onClick={onCancel}>
+        {text.cancel}
+      </button>
+    </form>
+  )
+}
 
 export function ViewChips({ model, onStatus }: Props) {
   const t = REPLAY_TEXT[model.locale].settings
@@ -113,41 +164,14 @@ export function ViewChips({ model, onStatus }: Props) {
         (state.views.length >= VIEW_LIMIT ? (
           <p className="px-0.5 text-[11px] text-muted-foreground">{t.viewLimit}</p>
         ) : (
-          <form
-            // UNE COUCHE QU'ÉCHAP FERME AVANT LE PANNEAU, et avant le mode plein écran (cf. useReplayFullscreen).
-            data-replay-escape-layer=""
-            className="flex items-center gap-1.5"
-            onSubmit={(e) => {
-              e.preventDefault()
-              submit()
-            }}
-            onKeyDown={(e) => {
-              // ÉCHAP FERME LA COUCHE LA PLUS INTÉRIEURE : le formulaire d'abord, le panneau à la frappe suivante.
-              if (e.key === 'Escape') {
-                e.stopPropagation()
-                setSaving(false)
-              }
-            }}
-          >
-            <label className="sr-only" htmlFor="replay-view-name">{t.viewNameLabel}</label>
-            <input
-              id="replay-view-name"
-              ref={nameRef}
-              autoFocus
-              type="text"
-              maxLength={24}
-              value={name}
-              placeholder={t.viewNameLabel}
-              onChange={(e) => setName(e.target.value)}
-              className="h-[26px] min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-            />
-            <button type="submit" className={`${BUTTON} border-primary bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground`}>
-              {t.save}
-            </button>
-            <button type="button" className={`${BUTTON} border-transparent text-muted-foreground`} onClick={() => setSaving(false)}>
-              {t.cancel}
-            </button>
-          </form>
+          <SaveForm
+            name={name}
+            onName={setName}
+            onSubmit={submit}
+            onCancel={() => setSaving(false)}
+            nameRef={nameRef}
+            text={t}
+          />
         ))}
       <button
         type="button"
